@@ -17,7 +17,7 @@ from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.registry import registry_search_plugins
-from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.memory.utils import ContentType, MultimodalContent, VectorMemoryCollectionTypes
 from cat.memory.vector_memory import VectorMemory
 from cat.memory.vector_memory_builder import VectorMemoryBuilder
 
@@ -236,7 +236,6 @@ async def upsert_memory_point(
     collection_id: str, point: MemoryPointBase, cats: ContextualCats, point_id: str = None
 ) -> MemoryPoint:
     ccat = cats.cheshire_cat
-    vector_memory = ccat.memory.vectors
 
     # embed content
     embedding = ccat.embedder.embed_query(point.content)
@@ -250,9 +249,9 @@ async def upsert_memory_point(
         point.metadata["when"] = time.time()  # if when is not in the metadata set the current time
 
     # create point
-    qdrant_point = await vector_memory.collections[collection_id].add_point(
-        content=point.content,
-        vector=embedding,
+    qdrant_point = await ccat.memory.vectors.collections[collection_id].add_point(
+        content=MultimodalContent(text=point.content),
+        vectors={ContentType.TEXT: embedding},
         metadata=point.metadata,
         id=point_id,
     )
