@@ -10,7 +10,7 @@ from cat.auth.connection import HTTPAuth, ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.exceptions import CustomValidationException
 from cat.log import log
-from cat.utils import format_upload_file
+from cat.routes.routes_utils import format_upload_file
 
 router = APIRouter()
 
@@ -208,40 +208,19 @@ async def upload_files(
     ```
     """
 
-    # Check the file format is supported
-    admitted_types = cats.cheshire_cat.file_handlers.keys()
-    log.info(f"Uploading {len(files)} files")
-
     response = {}
     metadata_dict = json.loads(metadata)
 
     for file in files:
-        # Get file mime type
-        content_type = mimetypes.guess_type(file.filename)[0]
-        log.info(f"Uploaded {file.filename} {content_type} down the rabbit hole")
-
-        # check if MIME type of uploaded file is supported
-        if content_type not in admitted_types:
-            raise CustomValidationException(
-                f'MIME type {content_type} not supported. Admitted types: {" - ".join(admitted_types)}'
-            )
-
-        # upload file to long term memory, in the background
-        background_tasks.add_task(
-            # we deepcopy the file because FastAPI does not keep the file in memory after the response returns to the client
-            # https://github.com/tiangolo/fastapi/discussions/10936
-            request.app.state.lizard.rabbit_hole.ingest_file,
-            cats.stray_cat,
-            deepcopy(format_upload_file(file)),
+        response[file.filename] = await upload_file(
+            request,
+            file,
+            background_tasks,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap,
-            # if file.filename in dictionary pass the metadata otherwise pass empty dictionary
-            metadata=metadata_dict[file.filename] if file.filename in metadata_dict else {}
-        )
-
-        # reply to client
-        response[file.filename] = UploadSingleFileResponse(
-            filename=file.filename, content_type=file.content_type, info="File is being ingested asynchronously"
+            # if file.filename in dictionary pass the stringified metadata, otherwise pass empty dictionary-like string
+            metadata=json.dumps(metadata_dict[file.filename]) if file.filename in metadata_dict else "{}",
+            cats=cats
         )
 
     return response

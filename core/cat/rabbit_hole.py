@@ -80,7 +80,7 @@ class RabbitHole:
 
     def ingest_file(
         self,
-        stray,
+        stray: "StrayCat",
         file: str | UploadFile,
         chunk_size: int | None = None,
         chunk_overlap: int | None = None,
@@ -93,7 +93,7 @@ class RabbitHole:
 
         Args:
             stray: StrayCat
-                StrayCat instance.
+                Stray Cat instance.
             file: str, UploadFile
                 The file can be a path passed as a string or an `UploadFile` object if the document is ingested using the
                 `rabbithole` endpoint.
@@ -124,7 +124,7 @@ class RabbitHole:
 
     def file_to_docs(
         self,
-        stray,
+        stray: "StrayCat",
         file: str | UploadFile,
         chunk_size: int | None = None,
         chunk_overlap: int | None = None
@@ -136,7 +136,7 @@ class RabbitHole:
 
         Args:
             stray: StrayCat
-                StrayCat instance.
+                Stray Cat instance.
             file: str, UploadFile
                 The file can be either a string path if loaded programmatically, a FastAPI `UploadFile`
                 if coming from the `/rabbithole/` endpoint or a URL if coming from the `/rabbithole/web` endpoint.
@@ -208,7 +208,7 @@ class RabbitHole:
 
     def string_to_docs(
         self,
-        stray,
+        stray: "StrayCat",
         file_bytes: bytes,
         source: str = None,
         content_type: str = "text/plain",
@@ -222,7 +222,7 @@ class RabbitHole:
 
         Args:
             stray: StrayCat
-                StrayCat instance.
+                Stray Cat instance.
             file_bytes: bytes
                 The bytes to be converted.
             source: str
@@ -259,7 +259,7 @@ class RabbitHole:
 
     def store_documents(
         self,
-        stray,
+        stray: "StrayCat",
         docs: List[Document],
         source: str, # TODO V2: is this necessary?
         metadata: Dict = None
@@ -271,7 +271,7 @@ class RabbitHole:
 
         Args:
             stray: StrayCat
-                StrayCat instance.
+                Stray Cat instance.
             docs: List[Document]
                 List of Langchain `Document` to be inserted in the Cat's declarative memory.
             source: str
@@ -353,7 +353,7 @@ class RabbitHole:
 
         log.warning(f"Agent id: {ccat.id}. Done uploading {source}")
 
-    def __split_text(self, stray, text: List[Document], chunk_size: int, chunk_overlap: int):
+    def __split_text(self, stray: "StrayCat", text: List[Document], chunk_size: int, chunk_overlap: int):
         """Split text in overlapped chunks.
 
         This method splits the incoming text in overlapped  chunks of text. Other two hooks are available to edit the
@@ -361,7 +361,7 @@ class RabbitHole:
 
         Args:
             stray: StrayCat
-                StrayCat instance.
+                Stray Cat instance.
             text: List[Document]
                 Content of the loaded file.
             chunk_size: int
