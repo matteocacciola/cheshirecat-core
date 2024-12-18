@@ -33,13 +33,16 @@ def read(key: str, path: str | None = "$") -> List[Dict] | Dict | None:
 
 
 def store(
-    key: str, value: List | Dict, path: str | None = "$", nx: bool = False, xx: bool = False
+    key: str, value: List | Dict, path: str | None = "$", nx: bool = False, xx: bool = False, expire: int | None = None
 ) -> List[Dict] | Dict | None:
     formatted = serialize_to_redis_json(value)
     new = get_db().json().set(key, path, formatted, nx=nx, xx=xx)
     if not new:
         return None
-
+    
+    if expire:
+        get_db().expire(key, expire)
+    
     return value
 
 
