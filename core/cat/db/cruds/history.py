@@ -1,3 +1,4 @@
+from os import getenv
 from typing import Dict, List, Any
 
 from cat.convo.messages import ConversationHistoryItem
@@ -14,7 +15,11 @@ def get_history(agent_id: str, user_id: str) -> List[Dict[str, Any]]:
 
 
 def set_history(agent_id: str, user_id: str, history: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    crud.store(format_key(agent_id, user_id), history)
+    expiration = getenv("CCAT_HISTORY_EXPIRATION")
+    if expiration is not None:
+        expiration = int(expiration) * 60
+
+    crud.store(format_key(agent_id, user_id), history, expire=expiration)
     return history
 
 

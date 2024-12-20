@@ -23,6 +23,7 @@ services:
       - CCAT_API_KEY_WS=test
       - CCAT_REDIS_HOST=cheshire_cat_redis
       - CCAT_REDIS_PORT=6379
+      - CCAT_HISTORY_EXPIRATION=60
     volumes:
       - ./core:/app
     command:
