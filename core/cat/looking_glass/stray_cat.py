@@ -59,6 +59,14 @@ class StrayCat:
         self.__loop = asyncio.new_event_loop()
         self.__last_message_time = time.time()
 
+    def __del__(self):
+        self.__ws.close()
+        del self.working_memory
+        del self.__user
+        del self.__ws
+        del self.__agent_id
+        self.__loop.close()
+
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""
         if not isinstance(other, StrayCat):
