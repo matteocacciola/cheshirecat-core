@@ -5,19 +5,19 @@
 <div align="center">
   <h2>Cheshire-Cat (Stregatto)</h2>
 <br/>
-  <a href="https://github.com/ai-blackbird/cheshirecat-core">
-  <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/ai-blackbird/cheshirecat-core?style=social">
+  <a href="https://github.com/matteocacciola/cheshirecat-core">
+  <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/matteocacciola/cheshirecat-core?style=social">
 </a>
   <a href="https://discord.gg/bHX5sNFCYU">
         <img src="https://img.shields.io/discord/1092359754917089350?logo=discord"
             alt="chat on Discord"></a>
-  <a href="https://github.com/ai-blackbird/cheshirecat-core/issues">
-  <img alt="GitHub issues" src="https://img.shields.io/github/issues/ai-blackbird/cheshirecat-core">
+  <a href="https://github.com/matteocacciola/cheshirecat-core/issues">
+  <img alt="GitHub issues" src="https://img.shields.io/github/issues/matteocacciola/cheshirecat-core">
   </a>
-  <a href="https://github.com/ai-blackbird/cheshirecat-core/tags">
-  <img alt="GitHub tag (with filter)" src="https://img.shields.io/github/v/tag/ai-blackbird/cheshirecat-core">
+  <a href="https://github.com/matteocacciola/cheshirecat-core/tags">
+  <img alt="GitHub tag (with filter)" src="https://img.shields.io/github/v/tag/matteocacciola/cheshirecat-core">
   </a>
-  <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/ai-blackbird/cheshirecat-core">
+  <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/matteocacciola/cheshirecat-core">
 
   <br/>
   <video src="https://github.com/cheshire-cat-ai/core/assets/6328377/7bc4acff-34bf-4b8a-be61-4d8967fbd60f"></video>
@@ -31,12 +31,16 @@ If you have ever used systems like WordPress or Django to build web apps, imagin
 The current version is a multi-tenant fork of the original [Cheshire Cat](https://github.com/cheshire-cat-ai/core).
 The original project is developed as a framework that could be used for a personal use as well as for single-tenant production.
 In the latter case, the original [documentation](https://cheshire-cat-ai.github.io/docs/) clearly states to set up a secure environment
-by using an API Key. If not configured properly (e.g. by setting up an API Key), the current version will not work, indeed.
+by using an API Key. **If not configured properly (e.g. by setting up an API Key), the current version will not work, indeed**.
 In this way, I tried to make the Cat more secure and production-ready.
 
+**The way of "injecting" the identification of the Chatbot (RAG) is simple**:
+- **in case of the HTTP API endpoints, use the `agent_id` key into the request headers or as a querystring parameter;**
+- **in case of the WebSocket API, use the `agent_id` into the URL, e.g., `/ws/{agent_id}`.**
+
 Moreover, this version can be deployed in a cluster environment. Whilst the original version stored the settings into
-JSON files, our version requires a Redis database to store the  settings, the conversation histories, the plugins and so
-forth. You can configure the Redis database by environment variables. The [`compose.yml`](./compose.yml) file is provided as an example.
+JSON files, **this version requires a Redis database** to store the  settings, the conversation histories, the plugins and so
+forth. You can **configure the Redis database by environment variables**. The [`compose.yml`](./compose.yml) file is provided as an example.
 
 The Cat is still stateless, so it can be easily scaled.
 In case of a cluster environment, we suggest to use a shared storage, mounted in the `cat/plugins` folder, to share the plugins.
@@ -56,6 +60,29 @@ Here, I have introduced some new features and improvements, such as:
 This new version is completely compatible with the original version, so you can easily migrate your existing plugins
 and settings to the new version. It is still in development, but you can already try it out by running the Docker image.
 New features will be added in the future. Please contact us if you want to contribute.
+
+## Software Development Kit
+
+**For your PHP-based projects**, I have developed a [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk) that allows you to
+easily interact with the Cat. You can already add it by setting
+
+```bash
+"matteocacciola/ccatphp-sdk": "dev-master",
+```
+
+into the `require` section of your `composer.json` file, together with:
+
+```json
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/matteocacciola/ccatphp-sdk"
+        }
+    ],
+```
+into the same `composer.json` file.
+
+Node.js and Python SDKs are coming soon.
 
 ## Quickstart
 
