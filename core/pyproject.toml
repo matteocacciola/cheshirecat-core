@@ -26,7 +26,6 @@ dependencies = [
     "langchain",
     "langchain-anthropic",
     "langchain-cohere",
-    "langchain-community",
     "langchain-google-genai",
     "langchain-google-genai[images]",
     "langchain-groq",
@@ -46,6 +45,7 @@ dependencies = [
     "pytest-asyncio",
     "python-multipart",
     "python-slugify",
+    "pytube",
     "qdrant_client",
     "rapidfuzz",
     "redis",
@@ -58,6 +58,7 @@ dependencies = [
     "unstructured",
     "uvicorn[standard]",
     "websockets",
+    "youtube-transcript-api",
 ]
 
 [tool.coverage.run]

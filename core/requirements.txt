@@ -95,7 +95,9 @@ dataclasses-json==0.6.7
     #   langchain-community
     #   unstructured
 defusedxml==0.7.1
-    # via langchain-anthropic
+    # via
+    #   langchain-anthropic
+    #   youtube-transcript-api
 dill==0.3.9
     # via pylint
 distro==1.9.0
@@ -267,9 +269,7 @@ langchain-anthropic==0.3.0
 langchain-cohere==0.3.1
     # via Cheshire-Cat (pyproject.toml)
 langchain-community==0.3.7
-    # via
-    #   Cheshire-Cat (pyproject.toml)
-    #   langchain-experimental
+    # via langchain-experimental
 langchain-core==0.3.19
     # via
     #   langchain
@@ -484,6 +484,8 @@ python-oxmsg==0.0.1
     # via unstructured
 python-slugify==8.0.4
     # via Cheshire-Cat (pyproject.toml)
+pytube==15.0.0
+    # via Cheshire-Cat (pyproject.toml)
 pytz==2024.2
     # via
     #   apscheduler
@@ -522,6 +524,7 @@ requests==2.32.3
     #   tiktoken
     #   unstructured
     #   voyageai
+    #   youtube-transcript-api
 requests-toolbelt==1.0.0
     # via
     #   langsmith
@@ -665,6 +668,8 @@ wrapt==1.16.0
     # via unstructured
 yarl==1.17.2
     # via aiohttp
+youtube-transcript-api==0.6.3
+    # via Cheshire-Cat (pyproject.toml)
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools
