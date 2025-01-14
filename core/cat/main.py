@@ -26,6 +26,8 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=80,
         use_colors=True,
+        workers=get_env("CCAT_WORKERS"),
+        limit_max_requests=get_env("CCAT_LIMIT_MAX_REQUESTS"),
         log_level=get_env("CCAT_LOG_LEVEL").lower(),
         **debug_config,
         **proxy_pass_config,

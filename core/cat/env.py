@@ -26,6 +26,8 @@ def get_supported_env_variables():
         "CCAT_HTTPS_PROXY_MODE": "false",
         "CCAT_CORS_FORWARDED_ALLOW_IPS": "*",
         "CCAT_STRAYCAT_TIMEOUT": str(59),  # in seconds
+        "CCAT_WORKERS": None,
+        "CCAT_LIMIT_MAX_REQUESTS": None,
     }
 
 
