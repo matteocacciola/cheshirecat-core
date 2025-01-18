@@ -37,7 +37,7 @@ async def factory_reset(
 
     try:
         await lizard.shutdown()
-        get_db().flushdb()
+        await get_db().flushdb()
         deleted_settings = True
     except Exception as e:
         log.error(f"Error deleting settings: {e}")
