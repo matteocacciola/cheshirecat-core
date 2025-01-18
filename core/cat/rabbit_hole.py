@@ -246,7 +246,7 @@ class RabbitHole:
         """
 
         # Load the bytes in the Blob schema
-        blob = Blob(data=file_bytes, mimetype=content_type, source=source).from_data(
+        blob = Blob(data=file_bytes, mimetype=content_type).from_data(
             data=file_bytes, mime_type=content_type, path=source
         )
         # Parser based on the mime type

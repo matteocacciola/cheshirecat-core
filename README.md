@@ -28,15 +28,26 @@
 The Cheshire Cat is a framework to build custom AIs on top of any language model. 
 If you have ever used systems like WordPress or Django to build web apps, imagine the Cat as a similar tool, but specific for AI.
 
+## Key differences
+
 The current version is a multi-tenant fork of the original [Cheshire Cat](https://github.com/cheshire-cat-ai/core).
+
+### Security
+
 The original project is developed as a framework that could be used for a personal use as well as for single-tenant production.
 In the latter case, the original [documentation](https://cheshire-cat-ai.github.io/docs/) clearly states to set up a secure environment
 by using an API Key. **If not configured properly (e.g. by setting up an API Key), the current version will not work, indeed**.
 In this way, I tried to make the Cat more secure and production-ready.
 
+### Customizable multi-chatbots
+
+The current version proposes a platform where each chatbot is fully customizable in terms of plugjns, settings, LLM, etc.
+
 **The way of "injecting" the identification of the Chatbot (RAG) is simple**:
 - **in case of the HTTP API endpoints, use the `agent_id` key into the request headers or as a querystring parameter;**
 - **in case of the WebSocket API, use the `agent_id` into the URL, e.g., `/ws/{agent_id}`.**
+
+### Cloud ready
 
 Moreover, this version can be deployed in a cluster environment. Whilst the original version stored the settings into
 JSON files, **this version requires a Redis database** to store the  settings, the conversation histories, the plugins and so
@@ -47,8 +58,12 @@ In case of a cluster environment, we suggest to use a shared storage, mounted in
 
 Hence, the current version is multi-tenant, meaning that you can manage multiple RAGs and other language models at the same time.
 
+### Additional implementations
+
 Here, the structure used for configuring `Embedder`, `LLMs`, `Authorization Handler` and `File Manager` is different from the original version:
 interfaces and factories have been used for the scope.
+
+### New features
 
 Here, I have introduced some new features and improvements, such as:
 - The `Embedder` is centralized and can be used by multiple RAGs and other language models.
@@ -56,6 +71,8 @@ Here, I have introduced some new features and improvements, such as:
 - New admin endpoints allowing to configure the `Embedder` and `File Manager`.
 - A new event system that allows you to get fine-grained control over the AI.
 - **The ability to manage multiple RAGs and other language models at the same time**.
+
+### Compatibility with plugins
 
 This new version is completely compatible with the original version, so you can easily migrate your existing plugins
 and settings to the new version. It is still in development, but you can already try it out by running the Docker image.
