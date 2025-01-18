@@ -1,3 +1,4 @@
+from typing import List
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
@@ -5,6 +6,7 @@ from cat import utils
 from cat.auth.auth_utils import extract_agent_id_from_request
 from cat.auth.connection import AdminConnectionAuth
 from cat.auth.permissions import AdminAuthResource, AuthPermission
+from cat.db import crud
 from cat.db.database import get_db
 from cat.db.vector_database import get_vector_db
 from cat.log import log
@@ -66,6 +68,21 @@ async def factory_reset(
         deleted_memories=deleted_memories,
         deleted_plugin_folders=deleted_plugin_folders,
     )
+
+
+@router.get("/agents")
+async def get_agents(
+    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.CHESHIRE_CATS, AuthPermission.LIST)),
+) -> List[str]:
+    """
+    Get all agents.
+    """
+
+    try:
+        return crud.get_agents_main_keys()
+    except Exception as e:
+        log.error(f"Error creating agent: {e}")
+        return []
 
 
 @router.post("/agent/create", response_model=CreatedResponse)
