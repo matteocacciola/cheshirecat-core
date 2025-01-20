@@ -10,7 +10,7 @@ from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.decorators.hook import CatHook
 from cat.mad_hatter.decorators.tool import CatTool
 from cat.experimental.form.cat_form import CatForm
-from cat.utils import dispatch_event, inspect_calling_folder
+from cat.utils import inspect_calling_folder
 
 
 class MadHatter(ABC):
@@ -56,7 +56,7 @@ class MadHatter(ABC):
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
 
         # notify sync has finished (the Lizard will ensure all tools are embedded in vector memory)
-        dispatch_event(self.on_finish_plugins_sync_callback)
+        self.on_finish_plugins_sync_callback()
 
     def load_active_plugins_from_db(self):
         active_plugins = crud_settings.get_setting_by_name(self.agent_key, "active_plugins")
@@ -90,8 +90,8 @@ class MadHatter(ABC):
         # Remove the plugin from the list of active plugins
         self.active_plugins.remove(plugin_id)
 
-        dispatch_event(self.on_plugin_deactivation, plugin_id=plugin_id)
-        dispatch_event(self.on_finish_toggle_plugin)
+        self.on_plugin_deactivation(plugin_id=plugin_id)
+        self.on_finish_toggle_plugin()
 
     def activate_plugin(self, plugin_id: str):
         if not self.plugin_exists(plugin_id):
@@ -103,7 +103,7 @@ class MadHatter(ABC):
 
         log.warning(f"Toggle plugin {plugin_id}: Activate")
 
-        dispatch_event(self.on_plugin_activation, plugin_id=plugin_id)
+        self.on_plugin_activation(plugin_id=plugin_id)
 
         # execute hook on plugin activation; activating hook must happen before actual activation,
         # otherwise the hook will still not be available in _plugin_overrides
@@ -113,7 +113,7 @@ class MadHatter(ABC):
         # Add the plugin in the list of active plugins
         self.active_plugins.append(plugin_id)
 
-        dispatch_event(self.on_finish_toggle_plugin)
+        self.on_finish_toggle_plugin()
 
     def on_finish_toggle_plugin(self):
         # update DB with list of active plugins, delete duplicate plugins

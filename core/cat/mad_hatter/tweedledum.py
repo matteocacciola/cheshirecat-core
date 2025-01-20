@@ -10,7 +10,7 @@ from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.plugin_extractor import PluginExtractor
 from cat.mad_hatter.plugin import Plugin
 import cat.utils as utils
-from cat.utils import singleton, dispatch_event
+from cat.utils import singleton
 
 
 @singleton
@@ -51,7 +51,7 @@ class Tweedledum(MadHatter):
         super().__init__()
 
     def install_plugin(self, package_plugin: str) -> str:
-        dispatch_event(self.on_start_plugin_install_callback)
+        self.on_start_plugin_install_callback()
 
         # extract zip/tar file into plugin folder
         extractor = PluginExtractor(package_plugin)
@@ -64,12 +64,12 @@ class Tweedledum(MadHatter):
 
         # notify install has finished (the Lizard will ensure to notify the already loaded Cheshire Cats about the
         # plugin)
-        dispatch_event(self.on_end_plugin_install_callback)
+        self.on_end_plugin_install_callback()
 
         return plugin_id
 
     def uninstall_plugin(self, plugin_id: str):
-        dispatch_event(self.on_start_plugin_uninstall_callback, plugin_id=plugin_id)
+        self.on_start_plugin_uninstall_callback(plugin_id=plugin_id)
 
         if self.plugin_exists(plugin_id) and plugin_id != "core_plugin":
             # deactivate plugin if it is active (will sync cache)
@@ -85,7 +85,7 @@ class Tweedledum(MadHatter):
 
         # notify uninstall has finished (the Lizard will ensure to completely remove the plugin from the system,
         # including DB)
-        dispatch_event(self.on_end_plugin_uninstall_callback, plugin_id=plugin_id)
+        self.on_end_plugin_uninstall_callback(plugin_id=plugin_id)
 
     # check if plugin exists
     def plugin_exists(self, plugin_id: str):
