@@ -8,7 +8,7 @@ from cat.convo.messages import LLMModelInteraction
 
 
 class NewTokenHandler(BaseCallbackHandler):
-    def __init__(self, stray):
+    def __init__(self, stray: "StrayCat"):
         """
         Args:
             stray: StrayCat instance

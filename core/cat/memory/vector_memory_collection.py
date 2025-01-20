@@ -109,7 +109,6 @@ class VectorMemoryCollection:
                 "page_content": content,
                 "metadata": metadata,
                 "tenant_id": self.agent_id,
-                "when": time.time(),
             },
             vector=vector,
         )

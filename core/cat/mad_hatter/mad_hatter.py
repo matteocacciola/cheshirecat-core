@@ -56,7 +56,7 @@ class MadHatter(ABC):
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
 
         # notify sync has finished (the Lizard will ensure all tools are embedded in vector memory)
-        self.on_finish_plugins_sync_callback()
+        utils.dispatch_event(self.on_finish_plugins_sync_callback)
 
     def load_active_plugins_from_db(self):
         active_plugins = crud_settings.get_setting_by_name(self.agent_key, "active_plugins")
