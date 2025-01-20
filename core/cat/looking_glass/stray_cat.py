@@ -10,7 +10,6 @@ from langchain_core.runnables import RunnableConfig
 from fastapi import WebSocket
 from websockets.exceptions import ConnectionClosedOK
 
-from cat import utils
 from cat.agents.base_agent import AgentOutput
 from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
@@ -26,13 +25,21 @@ from cat.memory.utils import DocumentRecall, VectorMemoryCollectionTypes
 from cat.memory.vector_memory_collection import VectorMemoryCollection
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
+from cat.utils import (
+    BaseModelDict,
+    default_llm_answer_prompt,
+    get_caller_info,
+    levenshtein_distance,
+    restore_original_model,
+)
+
 
 MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
 DEFAULT_K = 3
 DEFAULT_THRESHOLD = 0.5
 
 
-class RecallSettings(utils.BaseModelDict):
+class RecallSettings(BaseModelDict):
     embedding: List[float]
     k: float | None = DEFAULT_K
     threshold: float | None = DEFAULT_THRESHOLD
@@ -76,15 +83,6 @@ class StrayCat:
         del self.__user
         del self.__ws
         del self.__agent_id
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb):
-        if not self.__ws:
-            return
-        try:
-            await self.__ws.close()
-        except RuntimeError as ex:
-            log.warning(f"Agent id: {self.__agent_id}. Warning {ex}")
-            self.__ws = None
 
     async def _send_ws_json(self, data: Any):
         # Run the coroutine in the main event loop in the main thread
@@ -310,7 +308,7 @@ class StrayCat:
         # Setting default recall configs for each memory + hooks to change recall configs for each memory
         for memory_type in VectorMemoryCollectionTypes:
             metadata = {"source": self.__user.id} if memory_type == VectorMemoryCollectionTypes.EPISODIC else None
-            config = utils.restore_original_model(
+            config = restore_original_model(
                 plugin_manager.execute_hook(
                     f"before_cat_recalls_{str(memory_type)}_memories",
                     RecallSettings(embedding=recall_query_embedding, metadata=metadata),
@@ -348,7 +346,7 @@ class StrayCat:
         callbacks = [] if not stream else NewTokenHandler(self)
 
         # Add a token counter to the callbacks
-        caller = utils.get_caller_info()
+        caller = get_caller_info()
         callbacks.append(ModelInteractionHandler(self, caller or "StrayCat"))
 
         return self.cheshire_cat.llm(prompt, caller=caller, config=RunnableConfig(callbacks=callbacks))
@@ -384,12 +382,12 @@ class StrayCat:
         # Run a totally custom reply (skips all the side effects of the framework)
         fast_reply = plugin_manager.execute_hook("fast_reply", {}, cat=self)
         fast_reply["text"] = fast_reply.get("output", "")
-        fast_reply = utils.restore_original_model(fast_reply, CatMessage)
+        fast_reply = restore_original_model(fast_reply, CatMessage)
         if fast_reply and fast_reply.text:
             return fast_reply
 
         # hook to modify/enrich user input; this is the latest Human message
-        self.working_memory.user_message = utils.restore_original_model(
+        self.working_memory.user_message = restore_original_model(
             plugin_manager.execute_hook("before_cat_reads_message", self.working_memory.user_message, cat=self),
             UserMessage
         )
@@ -490,7 +488,7 @@ Allowed classes are:
 
         # find the closest match and its score with levenshtein distance
         best_label, score = min(
-            ((label, utils.levenshtein_distance(response, label)) for label in labels_names),
+            ((label, levenshtein_distance(response, label)) for label in labels_names),
             key=lambda x: x[1],
         )
 
@@ -501,7 +499,7 @@ Allowed classes are:
         # reply with agent
         try:
             agent_output: AgentOutput = self.main_agent.execute(self)
-            if agent_output.output == utils.default_llm_answer_prompt():
+            if agent_output.output == default_llm_answer_prompt():
                 agent_output.with_llm_error = True
         except Exception as e:
             # This error happens when the LLM does not respect prompt instructions.
@@ -527,7 +525,7 @@ Allowed classes are:
         final_output = CatMessage(text=str(agent_output.output), why=self._build_why(agent_output))
 
         # run message through plugins
-        final_output = utils.restore_original_model(
+        final_output = restore_original_model(
             self.plugin_manager.execute_hook("before_cat_sends_message", final_output, cat=self),
             CatMessage,
         )
