@@ -117,7 +117,7 @@ async def agent_destroy(
         return ResetResponse(deleted_settings=False, deleted_memories=False, deleted_plugin_folders=False)
 
     try:
-        ccat.destroy()
+        await ccat.destroy()
         deleted_settings = True
         deleted_memories = True
     except Exception as e:
