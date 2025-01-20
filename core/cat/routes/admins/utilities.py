@@ -45,7 +45,7 @@ async def factory_reset(
 
     try:
         for collection_name in VectorMemoryCollectionTypes:
-            get_vector_db().delete_collection(str(collection_name))
+            await get_vector_db().delete_collection(str(collection_name))
         deleted_memories = True
     except Exception as e:
         log.error(f"Error deleting memories: {e}")
@@ -59,7 +59,7 @@ async def factory_reset(
         deleted_plugin_folders = False
 
     shutdown_app(request.app)
-    startup_app(request.app)
+    await startup_app(request.app)
 
     return ResetResponse(
         deleted_settings=deleted_settings,
@@ -94,7 +94,7 @@ async def agent_create(
 
     try:
         agent_id = extract_agent_id_from_request(request)
-        lizard.get_cheshire_cat(agent_id)
+        await lizard.create_cheshire_cat(agent_id)
 
         return CreatedResponse(created=True)
     except Exception as e:
@@ -144,6 +144,6 @@ async def agent_reset(
     result = await agent_destroy(request, lizard)
 
     agent_id = extract_agent_id_from_request(request)
-    lizard.get_cheshire_cat(agent_id)
+    await lizard.create_cheshire_cat(agent_id)
 
     return result

@@ -223,16 +223,16 @@ def memory_collection_is_accessible(collection_id: str) -> None:
         raise CustomValidationException("Procedural memory is read-only.")
 
 
-def verify_memory_point_existence(collection_id: str, point_id: str, vector_memory: VectorMemory) -> None:
+async def verify_memory_point_existence(collection_id: str, point_id: str, vector_memory: VectorMemory) -> None:
     memory_collection_is_accessible(collection_id)
 
     # check if point exists
-    points = vector_memory.collections[collection_id].retrieve_points([point_id])
+    points = await vector_memory.collections[collection_id].retrieve_points([point_id])
     if not points:
         raise CustomNotFoundException("Point does not exist.")
 
 
-def upsert_memory_point(
+async def upsert_memory_point(
     collection_id: str, point: MemoryPointBase, cats: ContextualCats, point_id: str = None
 ) -> MemoryPoint:
     ccat = cats.cheshire_cat
@@ -250,7 +250,7 @@ def upsert_memory_point(
         point.metadata["when"] = time.time()  # if when is not in the metadata set the current time
 
     # create point
-    qdrant_point = vector_memory.collections[collection_id].add_point(
+    qdrant_point = await vector_memory.collections[collection_id].add_point(
         content=point.content,
         vector=embedding,
         metadata=point.metadata,
@@ -287,17 +287,14 @@ def format_upload_file(upload_file: UploadFile) -> UploadFile:
     return UploadFile(filename=upload_file.filename, file=io.BytesIO(file_content))
 
 
-def startup_app(app):
+async def startup_app(app):
     # load the Manager and the Job Handler
     app.state.lizard = BillTheLizard()
     app.state.white_rabbit = WhiteRabbit()
 
-    # set a reference to asyncio event loop
-    app.state.event_loop = asyncio.get_running_loop()
-
     memory_builder = VectorMemoryBuilder()
-    memory_builder.build()
-    app.state.lizard.get_cheshire_cat(DEFAULT_AGENT_KEY)
+    await memory_builder.build()
+    await app.state.lizard.create_cheshire_cat(DEFAULT_AGENT_KEY)
 
 
 def shutdown_app(app):

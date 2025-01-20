@@ -16,8 +16,8 @@ class NewTokenHandler(BaseCallbackHandler):
 
         self.stray = stray
 
-    def on_llm_new_token(self, token: str, **kwargs) -> None:
-        self.stray.send_ws_message(token, msg_type="chat_token")
+    async def on_llm_new_token(self, token: str, **kwargs) -> None:
+        await self.stray.send_ws_message(token, msg_type="chat_token")
 
 
 class ModelInteractionHandler(BaseCallbackHandler):

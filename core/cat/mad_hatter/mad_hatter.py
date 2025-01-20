@@ -10,7 +10,7 @@ from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.decorators.hook import CatHook
 from cat.mad_hatter.decorators.tool import CatTool
 from cat.experimental.form.cat_form import CatForm
-import cat.utils as utils
+from cat.utils import dispatch_event, inspect_calling_folder
 
 
 class MadHatter(ABC):
@@ -56,7 +56,7 @@ class MadHatter(ABC):
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
 
         # notify sync has finished (the Lizard will ensure all tools are embedded in vector memory)
-        self.on_finish_plugins_sync_callback()
+        dispatch_event(self.on_finish_plugins_sync_callback)
 
     def load_active_plugins_from_db(self):
         active_plugins = crud_settings.get_setting_by_name(self.agent_key, "active_plugins")
@@ -90,8 +90,8 @@ class MadHatter(ABC):
         # Remove the plugin from the list of active plugins
         self.active_plugins.remove(plugin_id)
 
-        self.on_plugin_deactivation(plugin_id)
-        self._on_finish_toggle_plugin()
+        dispatch_event(self.on_plugin_deactivation, plugin_id=plugin_id)
+        dispatch_event(self.on_finish_toggle_plugin)
 
     def activate_plugin(self, plugin_id: str):
         if not self.plugin_exists(plugin_id):
@@ -103,10 +103,9 @@ class MadHatter(ABC):
 
         log.warning(f"Toggle plugin {plugin_id}: Activate")
 
-        self.on_plugin_activation(plugin_id)
+        dispatch_event(self.on_plugin_activation, plugin_id=plugin_id)
 
-        # Execute hook on plugin activation
-        # Activation hook must happen before actual activation,
+        # execute hook on plugin activation; activating hook must happen before actual activation,
         # otherwise the hook will still not be available in _plugin_overrides
         if "activated" in self.plugins[plugin_id].plugin_overrides:
             self.plugins[plugin_id].plugin_overrides["activated"].function(self.plugins[plugin_id])
@@ -114,9 +113,9 @@ class MadHatter(ABC):
         # Add the plugin in the list of active plugins
         self.active_plugins.append(plugin_id)
 
-        self._on_finish_toggle_plugin()
+        dispatch_event(self.on_finish_toggle_plugin)
 
-    def _on_finish_toggle_plugin(self):
+    def on_finish_toggle_plugin(self):
         # update DB with list of active plugins, delete duplicate plugins
         active_plugins = list(set(self.active_plugins))
         crud_settings.upsert_setting_by_name(self.agent_key, Setting(name="active_plugins", value=active_plugins))
@@ -180,7 +179,7 @@ class MadHatter(ABC):
     # get plugin object (used from within a plugin)
     # TODO: should we allow to take directly another plugins' obj?
     def get_plugin(self):
-        name = utils.inspect_calling_folder()
+        name = inspect_calling_folder()
         return self.plugins[name]
 
     @property

@@ -1,5 +1,3 @@
-import asyncio
-
 from cat.auth.permissions import AuthUserInfo
 from cat.convo.messages import Role
 from cat.looking_glass.stray_cat import StrayCat
@@ -32,7 +30,7 @@ def test_session_creation_from_websocket(
 
     # verify session
     user = AuthUserInfo(id=user_id, name=data["username"], permissions=data["permissions"])
-    stray_cat = StrayCat(user_data=user, main_loop=asyncio.new_event_loop(), agent_id=agent_id)
+    stray_cat = StrayCat(user_data=user, agent_id=agent_id)
 
     convo = stray_cat.working_memory.history
     assert len(convo) == 2
@@ -64,7 +62,7 @@ def test_session_creation_from_http(secure_client, secure_client_headers, cheshi
 
     # verify session
     user = AuthUserInfo(id=user_id, name=data["username"], permissions=data["permissions"])
-    stray_cat = StrayCat(user_data=user, main_loop=asyncio.new_event_loop(), agent_id=agent_id)
+    stray_cat = StrayCat(user_data=user, agent_id=agent_id)
 
     convo = stray_cat.working_memory.history
     assert len(convo) == 0  # no ws message sent from Alice

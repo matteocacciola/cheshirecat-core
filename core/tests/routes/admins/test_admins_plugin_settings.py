@@ -1,5 +1,9 @@
+from tests.utils import just_installed_plugin
+
+
 # endpoint to get settings and settings schema
-def test_get_all_plugin_settings(secure_client, secure_client_headers, just_installed_plugin):
+def test_get_all_plugin_settings(secure_client, secure_client_headers):
+    just_installed_plugin(secure_client, secure_client_headers)
     response = secure_client.get("/admins/plugins/settings", headers=secure_client_headers)
     json = response.json()
 
@@ -15,7 +19,9 @@ def test_get_all_plugin_settings(secure_client, secure_client_headers, just_inst
         assert setting["scheme"] == {}
 
 
-def test_get_plugin_settings_non_existent(secure_client, secure_client_headers, just_installed_plugin):
+def test_get_plugin_settings_non_existent(secure_client, secure_client_headers):
+    just_installed_plugin(secure_client, secure_client_headers)
+
     non_existent_plugin = "ghost_plugin"
     response = secure_client.get(f"/admins/plugins/settings/{non_existent_plugin}", headers=secure_client_headers)
     json = response.json()
@@ -25,7 +31,9 @@ def test_get_plugin_settings_non_existent(secure_client, secure_client_headers, 
 
 
 # endpoint to get settings and settings schema
-def test_get_plugin_settings(secure_client, secure_client_headers, just_installed_plugin):
+def test_get_plugin_settings(secure_client, secure_client_headers):
+    just_installed_plugin(secure_client, secure_client_headers)
+
     response = secure_client.get("/admins/plugins/settings/mock_plugin", headers=secure_client_headers)
     response_json = response.json()
 

@@ -1,7 +1,6 @@
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.connection import WebSocketAuth, ContextualCats
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
-from fastapi.concurrency import run_in_threadpool
 
 from cat.convo.messages import UserMessage
 from cat.log import log
@@ -32,7 +31,7 @@ async def websocket_endpoint(
             user_message = UserMessage(**user_message_text)
 
             # Run the `stray` object's method in a threadpool since it might be a CPU-bound operation.
-            await run_in_threadpool(stray.run_websocket, user_message)
+            await stray.run_websocket(user_message)
     except WebSocketDisconnect:
         # Handle the event where the user disconnects their WebSocket.
         del stray

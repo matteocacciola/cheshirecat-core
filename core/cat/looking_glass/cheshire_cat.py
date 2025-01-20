@@ -77,7 +77,6 @@ class CheshireCat:
         # every time the plugin_manager finishes syncing hooks, tools and forms, it will notify the Cat (so it can
         # embed tools in vector memory)
         self.plugin_manager.on_finish_plugins_sync_callback = self.embed_procedures
-        self.embed_procedures()  # first time launched manually
 
         # Initialize the default user if not present
         if not crud_users.get_users(self.id):
@@ -156,9 +155,9 @@ class CheshireCat:
         # instantiate long term memory
         self.memory = LongTermMemory(agent_id=self.id)
 
-    def embed_procedures(self):
+    async def embed_procedures(self):
         # Destroy all procedural embeddings
-        self.memory.vectors.procedural.destroy_all_points()
+        await self.memory.vectors.procedural.destroy_all_points()
 
         # Easy access to active procedures in plugin_manager (source of truth!)
         active_procedures_hashes = [
@@ -188,7 +187,7 @@ class CheshireCat:
             })
             vectors.append(self.lizard.embedder.embed_documents([t["content"]])[0])
 
-        self.memory.vectors.procedural.add_points(payloads=payloads, vectors=vectors)
+        await self.memory.vectors.procedural.add_points(payloads=payloads, vectors=vectors)
         log.info(f"Agent id: {self.id}. Embedded {len(active_procedures_hashes)} triggers in procedural vector memory")
 
     def send_ws_message(self, content: str, msg_type="notification"):

@@ -171,7 +171,7 @@ def test_update_admin(client):
 
 
 def test_delete_admin(client):
-    # delete unexisting admin
+    # delete not existing admin
     response = client.delete("/admins/users/non_existent_id", headers=get_client_admin_headers(client))
     assert response.status_code == 404
     assert response.json()["detail"]["error"] == "User not found"

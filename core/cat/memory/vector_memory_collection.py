@@ -50,17 +50,17 @@ class VectorMemoryCollection:
 
         return out
 
-    def get_payload_indexes(self) -> Dict:
+    async def get_payload_indexes(self) -> Dict:
         """
         Retrieve the indexes configured on the collection.
 
         Returns:
             Dictionary with the configuration of the indexes
         """
-        collection_info = self.client.get_collection(collection_name=self.collection_name)
+        collection_info = await self.client.get_collection(collection_name=self.collection_name)
         return collection_info.payload_schema
 
-    def retrieve_points(self, points: List) -> List[Record]:
+    async def retrieve_points(self, points: List) -> List[Record]:
         """
         Retrieve points from the collection by their ids
 
@@ -71,7 +71,7 @@ class VectorMemoryCollection:
             the list of points
         """
 
-        results = self.client.scroll(
+        results = await self.client.scroll(
             collection_name=self.collection_name,
             scroll_filter=Filter(must=[self._tenant_field_condition(), HasIdCondition(has_id=points)]),
             limit=len(points),
@@ -82,7 +82,7 @@ class VectorMemoryCollection:
         points_found, _ = results
         return points_found
 
-    def add_point(
+    async def add_point(
         self,
         content: str,
         vector: Iterable,
@@ -109,11 +109,12 @@ class VectorMemoryCollection:
                 "page_content": content,
                 "metadata": metadata,
                 "tenant_id": self.agent_id,
+                "when": time.time(),
             },
             vector=vector,
         )
 
-        update_status = self.client.upsert(collection_name=self.collection_name, points=[point], **kwargs)
+        update_status = await self.client.upsert(collection_name=self.collection_name, points=[point], **kwargs)
 
         if update_status.status == "completed":
             # returning stored point
@@ -122,7 +123,7 @@ class VectorMemoryCollection:
         return None
 
     # add points in collection
-    def add_points(self, payloads: List[Payload], vectors: List, ids: List | None = None):
+    async def add_points(self, payloads: List[Payload], vectors: List, ids: List | None = None):
         """
         Upsert memories in batch mode
         Args:
@@ -143,26 +144,26 @@ class VectorMemoryCollection:
         payloads = [{**p, **{"tenant_id": self.agent_id}} for p in payloads]
         points = Batch(ids=ids, payloads=payloads, vectors=vectors)
 
-        res = self.client.upsert(collection_name=self.collection_name, points=points)
+        res = await self.client.upsert(collection_name=self.collection_name, points=points)
         return res
 
-    def delete_points_by_metadata_filter(self, metadata: Dict | None = None) -> UpdateResult:
+    async def delete_points_by_metadata_filter(self, metadata: Dict | None = None) -> UpdateResult:
         conditions = [self._tenant_field_condition()]
         if metadata:
             conditions.extend([
             condition for key, value in metadata.items() for condition in self._build_condition(key, value)
         ])
 
-        res = self.client.delete(collection_name=self.collection_name, points_selector=Filter(must=conditions))
+        res = await self.client.delete(collection_name=self.collection_name, points_selector=Filter(must=conditions))
         return res
 
     # delete point in collection
-    def delete_points(self, points_ids: List) -> UpdateResult:
-        res = self.client.delete(collection_name=self.collection_name, points_selector=points_ids)
+    async def delete_points(self, points_ids: List) -> UpdateResult:
+        res = await self.client.delete(collection_name=self.collection_name, points_selector=points_ids)
         return res
 
     # retrieve similar memories from embedding
-    def recall_memories_from_embedding(
+    async def recall_memories_from_embedding(
         self, embedding: List[float], metadata: Dict | None = None, k: int | None = 5, threshold: float | None = None
     ) -> List[DocumentRecall]:
         """
@@ -192,7 +193,7 @@ class VectorMemoryCollection:
             ])
 
         # retrieve memories
-        memories = self.client.search(
+        memories = await self.client.search(
             collection_name=self.collection_name,
             query_vector=embedding,
             query_filter=Filter(must=conditions),
@@ -212,7 +213,7 @@ class VectorMemoryCollection:
         # convert Qdrant points to a structure containing langchain.Document and its information
         return [to_document_recall(m) for m in memories]
 
-    def recall_all_memories(self) -> List[DocumentRecall]:
+    async def recall_all_memories(self) -> List[DocumentRecall]:
         """
         Retrieve the entire memories. It is similar to `recall_memories_from_embedding`, but without the embedding
         vector. Like `get_all_points`, it retrieves all the memories in the collection. The memories are returned in the
@@ -227,13 +228,13 @@ class VectorMemoryCollection:
             VectorMemoryCollection.get_all_points
         """
 
-        all_points, _ = self.get_all_points()
+        all_points, _ = await self.get_all_points()
         memories = [to_document_recall(p) for p in all_points]
 
         return memories
 
     # retrieve all the points in the collection
-    def get_all_points(self, limit: int = 10000, offset: str | None = None) -> Tuple[List[Record], int | str | None]:
+    async def get_all_points(self, limit: int = 10000, offset: str | None = None) -> Tuple[List[Record], int | str | None]:
         """
         Retrieve all the points in the collection with an optional offset and limit.
 
@@ -246,7 +247,7 @@ class VectorMemoryCollection:
         """
 
         # retrieving the points
-        return self.client.scroll(
+        return await self.client.scroll(
             collection_name=self.collection_name,
             scroll_filter=Filter(must=[self._tenant_field_condition()]),
             with_vectors=True,
@@ -257,15 +258,15 @@ class VectorMemoryCollection:
     def db_is_remote(self):
         return isinstance(self.client._client, QdrantRemote)
 
-    def get_vectors_count(self) -> int:
-        return self.client.count(
+    async def get_vectors_count(self) -> int:
+        return (await self.client.count(
             collection_name=self.collection_name,
             count_filter=Filter(must=[self._tenant_field_condition()]),
-        ).count
+        )).count
 
-    def destroy_all_points(self) -> bool:
+    async def destroy_all_points(self) -> bool:
         try:
-            self.client.delete(
+            await self.client.delete(
                 collection_name=self.collection_name,
                 points_selector=Filter(must=[self._tenant_field_condition()]),
             )

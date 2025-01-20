@@ -1,5 +1,6 @@
 import json
 import os
+import pytest
 
 from cat import utils
 
@@ -29,8 +30,9 @@ def test_rabbithole_upload_txt(secure_client, secure_client_headers):
     )  # TODO: why txt produces one chunk less than pdf?
 
 
-def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_headers):
-    lizard.get_cheshire_cat("another_agent_test")
+@pytest.mark.asyncio
+async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_headers):
+    await lizard.create_cheshire_cat("another_agent_test")
 
     content_type = "application/pdf"
     file_name = "sample.pdf"

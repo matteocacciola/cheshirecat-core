@@ -117,7 +117,7 @@ class BillTheLizard:
     def destroy_plugin(self, plugin_id: str):
         crud_plugins.destroy_plugin(plugin_id)
 
-    def reload_embed_procedures(self):
+    async def reload_embed_procedures(self):
         """
         Reload the embedding of the procedures in the procedural memory for each Cheshire Cat.
         """
@@ -126,7 +126,7 @@ class BillTheLizard:
             ccat = self.get_cheshire_cat(ccat_id)
 
             # inform the Cheshire Cats about the new plugin available in the system
-            ccat.embed_procedures()
+            await ccat.embed_procedures()
 
     def initialize_users(self):
         admin_id = str(uuid4())
@@ -204,7 +204,7 @@ class BillTheLizard:
         # recreate tools embeddings
         self.plugin_manager.find_plugins()
 
-        self.reload_embed_procedures()
+        await self.reload_embed_procedures()
 
         return ReplacedNLPConfig(name=language_embedder_name, value=updater.new_setting["value"])
 
@@ -257,7 +257,32 @@ class BillTheLizard:
         if agent_id == DEFAULT_SYSTEM_KEY:
             raise ValueError(f"{DEFAULT_SYSTEM_KEY} is a reserved name for agents")
 
+        if agent_id not in crud.get_agents_main_keys():
+            return None
+
         return CheshireCat(agent_id)
+
+    async def create_cheshire_cat(self, agent_id: str) -> CheshireCat:
+        """
+        Create the Cheshire Cat with the given id, directly from db.
+
+        Args:
+            agent_id: The id of the agent to get
+
+        Returns:
+            The Cheshire Cat with the given id, or None if it doesn't exist
+        """
+
+        if agent_id in [DEFAULT_SYSTEM_KEY]:
+            raise ValueError(f"{DEFAULT_SYSTEM_KEY} is a reserved name for agents")
+
+        if agent_id in crud.get_agents_main_keys():
+            return self.get_cheshire_cat(agent_id)
+
+        result = CheshireCat(agent_id)
+        await result.embed_procedures()
+
+        return result
 
     def get_cheshire_cat_from_db(self, agent_id: str) -> CheshireCat | None:
         """

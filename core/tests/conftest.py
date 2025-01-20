@@ -1,12 +1,13 @@
 import asyncio
 import pytest
+import pytest_asyncio
 import os
 import shutil
 import redis
 from typing import Any, Generator
 import warnings
 from pydantic import PydanticDeprecatedSince20
-from qdrant_client import QdrantClient
+from qdrant_client import AsyncQdrantClient
 from fastapi.testclient import TestClient
 import time
 
@@ -24,6 +25,7 @@ from cat.memory.vector_memory_builder import VectorMemoryBuilder
 from cat.startup import cheshire_cat_api
 import cat.utils as utils
 
+
 from tests.utils import (
     agent_id,
     api_key,
@@ -35,6 +37,7 @@ from tests.utils import (
     fake_timestamp,
 )
 
+pytest_plugins = ['pytest_asyncio']
 redis_client = redis.Redis(host=get_env("CCAT_REDIS_HOST"), db="1", encoding="utf-8", decode_responses=True)
 
 
@@ -42,7 +45,7 @@ redis_client = redis.Redis(host=get_env("CCAT_REDIS_HOST"), db="1", encoding="ut
 def mock_classes(monkeypatch):
     # Use in memory vector db
     def mock_connect_to_vector_memory(self, *args, **kwargs):
-        return QdrantClient(":memory:")
+        return AsyncQdrantClient(":memory:")
     monkeypatch.setattr(
         get_class_from_decorated_singleton(VectorDatabase), "connect_to_vector_memory", mock_connect_to_vector_memory
     )
@@ -100,8 +103,8 @@ def should_skip_encapsulation(request):
     return request.node.get_closest_marker("skip_encapsulation") is not None
 
 
-@pytest.fixture(autouse=True)
-def encapsulate_each_test(request, monkeypatch):
+@pytest_asyncio.fixture(autouse=True)
+async def encapsulate_each_test(request, monkeypatch):
     if should_skip_encapsulation(request):
         # Skip initialization for tests marked with @pytest.mark.skip_initialization
         yield
@@ -126,7 +129,7 @@ def encapsulate_each_test(request, monkeypatch):
     utils.singleton.instances = {}
 
     memory_builder = VectorMemoryBuilder()
-    memory_builder.build()
+    await memory_builder.build()
 
     yield
 
@@ -147,17 +150,28 @@ def encapsulate_each_test(request, monkeypatch):
 
 @pytest.fixture(scope="function")
 def lizard():
-    yield BillTheLizard()
+    l = BillTheLizard()
+    yield l
+    l.shutdown()
 
 
 @pytest.fixture(scope="function")
 def white_rabbit():
-    yield WhiteRabbit()
+    wr = WhiteRabbit()
+    yield wr
+    wr.shutdown()
+
+
+@pytest_asyncio.fixture(scope="function")
+async def cheshire_cat(lizard):
+    cheshire_cat = await lizard.create_cheshire_cat(agent_id)
+
+    yield cheshire_cat
 
 
 # Main fixture for the FastAPI app
-@pytest.fixture(scope="function")
-def client(lizard) -> Generator[TestClient, Any, None]:
+@pytest_asyncio.fixture(scope="function")
+async def client(cheshire_cat) -> Generator[TestClient, Any, None]:
     """
     Create a new FastAPI TestClient.
     """
@@ -168,8 +182,8 @@ def client(lizard) -> Generator[TestClient, Any, None]:
 
 # This fixture sets the CCAT_API_KEY and CCAT_API_KEY_WS environment variables,
 # making mandatory for clients to possess api keys or JWT
-@pytest.fixture(scope="function")
-def secure_client(client):
+@pytest_asyncio.fixture(scope="function")
+async def secure_client(client):
     current_api_key = os.getenv("CCAT_API_KEY")
     current_api_ws = os.getenv("CCAT_API_KEY_WS")
     current_jwt_secret = os.getenv("CCAT_JWT_SECRET")
@@ -197,46 +211,11 @@ def secure_client(client):
 
 
 @pytest.fixture(scope="function")
-def secure_client_headers(secure_client):
+def secure_client_headers():
     yield {"agent_id": agent_id, "Authorization": f"Bearer {api_key}"}
 
 
-# This fixture is useful to write tests in which
-#   a plugin was just uploaded via http.
-#   It wraps any test function having `just_installed_plugin` as an argument
 @pytest.fixture(scope="function")
-def just_installed_plugin(secure_client, secure_client_headers):
-    ### executed before each test function
-
-    # create zip file with a plugin
-    zip_path = create_mock_plugin_zip(flat=True)
-    zip_file_name = zip_path.split("/")[-1]  # mock_plugin.zip in tests/mocks folder
-
-    # upload plugin via endpoint
-    with open(zip_path, "rb") as f:
-        response = secure_client.post(
-            "/admins/plugins/upload/",
-            files={"file": (zip_file_name, f, "application/zip")},
-            headers=secure_client_headers
-        )
-
-    # request was processed
-    assert response.status_code == 200
-    assert response.json()["filename"] == zip_file_name
-
-    yield
-
-    # clean up of zip file and mock_plugin_folder is done for every test automatically (see client fixture)
-
-
-@pytest.fixture
-def cheshire_cat(lizard):
-    cheshire_cat = lizard.get_cheshire_cat(agent_id)
-
-    yield cheshire_cat
-
-
-@pytest.fixture
 def plugin_manager(lizard):
     plugin_manager = lizard.plugin_manager
 
@@ -247,7 +226,7 @@ def plugin_manager(lizard):
     yield plugin_manager
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def agent_plugin_manager(cheshire_cat):
     plugin_manager = cheshire_cat.plugin_manager
 
@@ -261,26 +240,25 @@ def agent_plugin_manager(cheshire_cat):
     yield plugin_manager
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def embedder(lizard):
     yield lizard.embedder
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def llm(cheshire_cat):
     yield cheshire_cat.large_language_model
 
 
-@pytest.fixture
-def memory(client, cheshire_cat):
+@pytest_asyncio.fixture(scope="function")
+async def memory(cheshire_cat):
     yield cheshire_cat.memory
 
 
-@pytest.fixture
-def stray_no_memory(client, cheshire_cat, lizard) -> StrayCat:
+@pytest_asyncio.fixture(scope="function")
+async def stray_no_memory(cheshire_cat, lizard) -> StrayCat:
     stray_cat = StrayCat(
         user_data=AuthUserInfo(id="user_alice", name="Alice", permissions=get_base_permissions()),
-        main_loop=asyncio.new_event_loop(),
         agent_id=cheshire_cat.id
     )
 
@@ -295,8 +273,8 @@ def stray_no_memory(client, cheshire_cat, lizard) -> StrayCat:
 
 
 # fixture to have available an instance of StrayCat
-@pytest.fixture
-def stray(stray_no_memory):
+@pytest_asyncio.fixture(scope="function")
+async def stray(stray_no_memory):
     stray_no_memory.working_memory.user_message = UserMessage(text="meow")
     yield stray_no_memory
 
@@ -309,7 +287,7 @@ def apply_warning_filters():
 
 
 #fixture for mock time.time function
-@pytest.fixture
+@pytest.fixture(scope="function")
 def patch_time_now(monkeypatch):
     def mytime():
         return fake_timestamp
@@ -319,13 +297,13 @@ def patch_time_now(monkeypatch):
 
 # this fixture will give test functions a ready instantiated plugin
 # (and having the `client` fixture, a clean setup every unit)
-@pytest.fixture
-def plugin(client):
+@pytest.fixture(scope="function")
+def plugin():
     p = Plugin(mock_plugin_path)
     yield p
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 def mocked_default_llm_answer_prompt():
     def mock_default_llm_answer_prompt() -> str:
         return "Ops AI: You did not configure a Language Model. Do it in the settings!"

@@ -32,9 +32,10 @@ def test_default_embedder_loaded(embedder):
     assert sample_embed == out
 
 
-def test_procedures_embedded(embedder, memory):
+@pytest.mark.asyncio
+async def test_procedures_embedded(embedder, memory):
     # get embedded tools
-    procedures, _ = memory.vectors.procedural.get_all_points()
+    procedures, _ = await memory.vectors.procedural.get_all_points()
     assert len(procedures) == 3
 
     for p in procedures:
@@ -58,6 +59,7 @@ def test_procedures_embedded(embedder, memory):
         assert len(p.vector) == len(expected_embed)  # same embed
 
 
-def test_cheshire_cat_created_with_system_key(lizard):
+@pytest.mark.asyncio
+async def test_cheshire_cat_created_with_system_key(lizard):
     with pytest.raises(ValueError) as e:
-        lizard.get_cheshire_cat(DEFAULT_SYSTEM_KEY)
+        await lizard.create_cheshire_cat(DEFAULT_SYSTEM_KEY)
