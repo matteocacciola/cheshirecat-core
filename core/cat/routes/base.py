@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, Body
-from fastapi.concurrency import run_in_threadpool
 from typing import Dict
 from pydantic import BaseModel
 
@@ -32,5 +31,5 @@ async def message_with_cat(
     stray = cats.stray_cat
 
     user_message = UserMessage(**payload)
-    answer = await run_in_threadpool(stray.run_http, user_message)
+    answer = await stray.run_http(user_message)
     return answer

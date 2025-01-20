@@ -28,10 +28,10 @@ class VectorMemoryBuilder:
         # connects to Qdrant and creates self.__client attribute
         self.__client: Final = get_vector_db()
 
-    def build(self):
+    async def build(self):
         for collection_name in VectorMemoryCollectionTypes:
             # is collection present in DB?
-            collections_response = self.__client.get_collections()
+            collections_response = await self.__client.get_collections()
             if any(c.name == collection_name for c in collections_response.collections):
                 # collection exists. Do nothing
                 log.info(
@@ -39,10 +39,10 @@ class VectorMemoryBuilder:
                 )
                 continue
 
-            self.__create_collection(str(collection_name))
+            await self.__create_collection(str(collection_name))
 
     # create collection
-    def __create_collection(self, collection_name: str):
+    async def __create_collection(self, collection_name: str):
         """
         Create a new collection in the vector database.
 
@@ -51,7 +51,7 @@ class VectorMemoryBuilder:
         """
 
         log.warning(f"Creating collection \"{collection_name}\" ...")
-        self.__client.create_collection(
+        await self.__client.create_collection(
             collection_name=collection_name,
             vectors_config=VectorParams(
                 size=self.lizard.embedder_size.text, distance=Distance.COSINE
@@ -66,7 +66,7 @@ class VectorMemoryBuilder:
             # shard_number=3,
         )
 
-        self.__client.update_collection_aliases(
+        await self.__client.update_collection_aliases(
             change_aliases_operations=[
                 CreateAliasOperation(
                     create_alias=CreateAlias(
@@ -79,12 +79,12 @@ class VectorMemoryBuilder:
 
         # if the client is remote, create an index on the tenant_id field
         if self.__db_is_remote():
-            self.__create_payload_index("tenant_id", PayloadSchemaType.KEYWORD, collection_name)
+            await self.__create_payload_index("tenant_id", PayloadSchemaType.KEYWORD, collection_name)
 
     def __db_is_remote(self):
         return isinstance(self.__client._client, QdrantRemote)
 
-    def __create_payload_index(self, field_name: str, field_type: PayloadSchemaType, collection_name: str):
+    async def __create_payload_index(self, field_name: str, field_type: PayloadSchemaType, collection_name: str):
         """
         Create a new index on a field of the payload for an existing collection.
 
@@ -94,7 +94,7 @@ class VectorMemoryBuilder:
             collection_name: Name of the collection on which to create the index
         """
         try:
-            self.__client.create_payload_index(
+            await self.__client.create_payload_index(
                 collection_name=collection_name,
                 field_name=field_name,
                 field_schema=field_type
@@ -110,11 +110,11 @@ class VectorMemoryBuilder:
         # having the same size does not necessarily imply being the same embedder
         # having vectors with the same size but from different embedder in the same vector space is wrong
         same_size = (
-            self.__client.get_collection(collection_name).config.params.vectors.size
+            (await self.__client.get_collection(collection_name=collection_name)).config.params.vectors.size
             == self.lizard.embedder_size
         )
         local_alias = self.lizard.embedder_name + "_" + collection_name
-        db_aliases = self.__client.get_collection_aliases(collection_name).aliases
+        db_aliases = (await self.__client.get_collection_aliases(collection_name=collection_name)).aliases
 
         if same_size and local_alias == db_aliases[0].alias_name:
             log.debug(f"Collection \"{collection_name}\" has the same embedder")
@@ -127,9 +127,9 @@ class VectorMemoryBuilder:
             # dump collection on disk before deleting
             await self.__save_dump(collection_name)
 
-        self.__client.delete_collection(collection_name)
+        await self.__client.delete_collection(collection_name=collection_name)
         log.warning(f"Collection \"{collection_name}\" deleted")
-        self.__create_collection(collection_name)
+        await self.__create_collection(collection_name)
 
     # dump collection on disk before deleting
     async def __save_dump(self, collection_name: str, folder="dormouse/"):
@@ -146,7 +146,7 @@ class VectorMemoryBuilder:
             log.warning(f"Directory dormouse does NOT exists, creating it.")
             os.mkdir(folder)
 
-        snapshot_info = self.__client.create_snapshot(collection_name=collection_name)
+        snapshot_info = await self.__client.create_snapshot(collection_name=collection_name)
         snapshot_url_in = (
             "http://"
             + str(host)
@@ -159,7 +159,7 @@ class VectorMemoryBuilder:
         )
         snapshot_url_out = os.path.join(folder, snapshot_info.name)
         # rename snapshots for an easier restore in the future
-        alias = self.__client.get_collection_aliases(collection_name).aliases[0].alias_name
+        alias = (await self.__client.get_collection_aliases(collection_name=collection_name)).aliases[0].alias_name
 
         async with httpx.AsyncClient() as client:
             response = await client.get(snapshot_url_in)
@@ -169,8 +169,8 @@ class VectorMemoryBuilder:
         new_name = os.path.join(folder, alias.replace("/", "-") + ".snapshot")
         os.rename(snapshot_url_out, new_name)
 
-        for s in self.__client.list_snapshots(collection_name):
-            self.__client.delete_snapshot(collection_name=collection_name, snapshot_name=s.name)
+        for s in (await self.__client.list_snapshots(collection_name=collection_name)):
+            await self.__client.delete_snapshot(collection_name=collection_name, snapshot_name=s.name)
         log.warning(f"Dump \"{new_name}\" completed")
 
     @property

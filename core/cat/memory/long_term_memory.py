@@ -18,8 +18,8 @@ class LongTermMemory:
         # Vector based memory (will store embeddings and their metadata)
         self.vectors = VectorMemory(agent_id)
 
-    def destroy(self) -> None:
+    async def destroy(self) -> None:
         """Wipe all data from the long term memory."""
 
-        self.vectors.destroy_collections()
+        await self.vectors.destroy_collections()
         self.vectors = None

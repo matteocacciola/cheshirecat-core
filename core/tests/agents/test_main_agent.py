@@ -1,3 +1,5 @@
+import pytest
+
 from cat.agents.main_agent import MainAgent
 from cat.agents.base_agent import AgentOutput
 from cat.utils import default_llm_answer_prompt
@@ -8,7 +10,8 @@ def test_main_agent_instantiation(stray):
     assert stray.main_agent.verbose in [True, False]
 
 
-def test_execute_main_agent(stray):
+@pytest.mark.asyncio
+async def test_execute_main_agent(stray):
     # empty agent execution
     out = stray.main_agent.execute(stray)
     assert isinstance(out, AgentOutput)

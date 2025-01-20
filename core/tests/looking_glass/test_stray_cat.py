@@ -22,13 +22,14 @@ def test_stray_nlp(stray_no_memory):
     assert isinstance(embedding[0][0], float)
 
 
-def test_stray_call(stray_no_memory):
+@pytest.mark.asyncio
+async def test_stray_call(stray_no_memory):
     msg = {"text": "Where do I go?"}
 
-    reply = stray_no_memory(UserMessage(**msg))
+    reply = await stray_no_memory(UserMessage(**msg))
 
     assert isinstance(reply, CatMessage)
-    assert "You did not configure" in reply.content
+    assert "You did not configure" in reply.text
     assert reply.type == "chat"
     assert isinstance(reply.why, MessageWhy)
 
@@ -41,7 +42,8 @@ def test_stray_classify(stray_no_memory):
     assert label is None
 
 
-def test_recall_to_working_memory(stray_no_memory, mocked_default_llm_answer_prompt):
+@pytest.mark.asyncio
+async def test_recall_to_working_memory(stray_no_memory, mocked_default_llm_answer_prompt):
     # empty working memory / episodic
     assert stray_no_memory.working_memory.episodic_memories == []
 
@@ -49,10 +51,10 @@ def test_recall_to_working_memory(stray_no_memory, mocked_default_llm_answer_pro
     msg = {"text": msg_text}
 
     # send message
-    stray_no_memory(UserMessage(**msg))
+    await stray_no_memory(UserMessage(**msg))
 
     # recall after episodic memory was stored
-    stray_no_memory.recall_relevant_memories_to_working_memory(msg_text)
+    await stray_no_memory.recall_relevant_memories_to_working_memory(msg_text)
 
     assert len(stray_no_memory.working_memory.history) == 2
     assert stray_no_memory.working_memory.user_message.text == msg_text
@@ -64,21 +66,23 @@ def test_recall_to_working_memory(stray_no_memory, mocked_default_llm_answer_pro
     assert stray_no_memory.working_memory.episodic_memories[0].document.page_content == msg_text
 
 
-def test_stray_recall_invalid_collection_name(stray, embedder):
+@pytest.mark.asyncio
+async def test_stray_recall_invalid_collection_name(stray, embedder):
     with pytest.raises(ValueError) as exc_info:
-        stray.recall(embedder.embed_query("Hello, I'm Alice"), "invalid_collection")
+        await stray.recall(embedder.embed_query("Hello, I'm Alice"), "invalid_collection")
     assert "invalid_collection is not a valid collection" in str(exc_info.value)
 
 
-def test_stray_recall_query(stray, embedder, mocked_default_llm_answer_prompt):
+@pytest.mark.asyncio
+async def test_stray_recall_query(stray, embedder, mocked_default_llm_answer_prompt):
     msg_text = "Hello! I'm Alice"
     msg = {"text": msg_text}
 
     # send message
-    stray(UserMessage(**msg))
+    await stray(UserMessage(**msg))
 
     query = embedder.embed_query(msg_text)
-    memories = stray.recall(query, "episodic")
+    memories = await stray.recall(query, "episodic")
 
     assert len(memories) == 1
     assert memories[0].document.page_content == msg_text
@@ -86,19 +90,21 @@ def test_stray_recall_query(stray, embedder, mocked_default_llm_answer_prompt):
     assert isinstance(memories[0].vector, list)
 
 
-def test_stray_recall_with_threshold(stray, embedder):
+@pytest.mark.asyncio
+async def test_stray_recall_with_threshold(stray, embedder):
     msg_text = "Hello! I'm Alice"
     msg = {"text": msg_text}
 
     # send message
-    stray(UserMessage(**msg))
+    await stray(UserMessage(**msg))
 
     query = embedder.embed_query("Alice")
-    memories = stray.recall(query, "episodic", threshold=1)
+    memories = await stray.recall(query, "episodic", threshold=1)
     assert len(memories) == 0
 
 
-def test_stray_recall_all_memories(secure_client, secure_client_headers, stray, embedder):
+@pytest.mark.asyncio
+async def test_stray_recall_all_memories(secure_client, secure_client_headers, stray, embedder):
     expected_chunks = 4
     content_type = "application/pdf"
     file_name = "sample.pdf"
@@ -108,12 +114,13 @@ def test_stray_recall_all_memories(secure_client, secure_client_headers, stray, 
         _ = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
 
     query = embedder.embed_query("")
-    memories = stray.recall(query, "declarative", k=None)
+    memories = await stray.recall(query, "declarative", k=None)
 
     assert len(memories) == expected_chunks
 
 
-def test_stray_recall_override_working_memory(stray, embedder, mocked_default_llm_answer_prompt):
+@pytest.mark.asyncio
+async def test_stray_recall_override_working_memory(stray, embedder, mocked_default_llm_answer_prompt):
     # empty working memory / episodic
     assert stray.working_memory.episodic_memories == []
 
@@ -121,17 +128,18 @@ def test_stray_recall_override_working_memory(stray, embedder, mocked_default_ll
     msg = {"text": msg_text}
 
     # send message
-    stray(UserMessage(**msg))
+    await stray(UserMessage(**msg))
 
     query = embedder.embed_query("Alice")
-    memories = stray.recall(query, "episodic")
+    memories = await stray.recall(query, "episodic")
 
     assert stray.working_memory.episodic_memories == memories
     assert len(stray.working_memory.episodic_memories) == 1
     assert stray.working_memory.episodic_memories[0].document.page_content == msg_text
 
 
-def test_stray_recall_by_metadata(secure_client, secure_client_headers, stray, embedder):
+@pytest.mark.asyncio
+async def test_stray_recall_by_metadata(secure_client, secure_client_headers, stray, embedder):
     expected_chunks = 4
     content_type = "application/pdf"
 
@@ -146,13 +154,14 @@ def test_stray_recall_by_metadata(secure_client, secure_client_headers, stray, e
         _ = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
 
     query = embedder.embed_query("late")
-    memories = stray.recall(query, "declarative", metadata={"source": file_name})
+    memories = await stray.recall(query, "declarative", metadata={"source": file_name})
     assert len(memories) == expected_chunks
     for mem in memories:
         assert mem.document.metadata["source"] == file_name
 
 
-def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray):
+@pytest.mark.asyncio
+async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray):
     ccat = stray.cheshire_cat
     ccat_headers = {"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
 
@@ -172,7 +181,7 @@ def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray):
     msg = {"text": "hello", "user_id": stray.user.id, "agent_id": stray.agent_id}
 
     # send message
-    res = stray(msg)
+    res = await stray(msg)
 
     assert isinstance(res, CatMessage)
     assert res.text == "This is a fast reply"
@@ -180,5 +189,5 @@ def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray):
     # there should be NO side effects
     assert stray.working_memory.user_message.text == "hello"
     assert len(stray.working_memory.history) == 0
-    stray.recall_relevant_memories_to_working_memory("hello")
+    await stray.recall_relevant_memories_to_working_memory("hello")
     assert len(stray.working_memory.episodic_memories) == 0

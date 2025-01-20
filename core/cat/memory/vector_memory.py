@@ -24,6 +24,6 @@ class VectorMemory:
             # (i.e. do things like cat.memory.vectors.declarative.something())
             setattr(self, str(collection_name), collection)
 
-    def destroy_collections(self) -> None:
+    async def destroy_collections(self) -> None:
         for c in VectorMemoryCollectionTypes:
-            self.collections[str(c)].destroy_all_points()
+            await self.collections[str(c)].destroy_all_points()

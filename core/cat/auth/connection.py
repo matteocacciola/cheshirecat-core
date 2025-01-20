@@ -1,4 +1,3 @@
-import asyncio
 from abc import ABC, abstractmethod
 from fastapi import Request, WebSocket, HTTPException, WebSocketException
 from fastapi.requests import HTTPConnection
@@ -123,7 +122,7 @@ class HTTPAuth(ConnectionAuth):
         return user
 
     async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: Request) -> StrayCat:
-        return StrayCat(user_data=user, main_loop=connection.app.state.event_loop, agent_id=ccat.id)
+        return StrayCat(user_data=user, agent_id=ccat.id)
     
     def not_allowed(self, connection: Request, **kwargs):
         raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
@@ -183,7 +182,7 @@ class WebSocketAuth(ConnectionAuth):
         return user
 
     async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: WebSocket) -> StrayCat:
-        return StrayCat(user_data=user, main_loop=asyncio.get_running_loop(), agent_id=ccat.id, ws=connection)
+        return StrayCat(user_data=user, agent_id=ccat.id, ws=connection)
 
     def not_allowed(self, connection: WebSocket, **kwargs):
         raise WebSocketException(code=1004, reason="Invalid Credentials")

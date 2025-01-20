@@ -1,4 +1,3 @@
-import asyncio
 from contextlib import asynccontextmanager
 from scalar_fastapi import get_scalar_api_reference
 from fastapi import FastAPI
@@ -47,7 +46,7 @@ async def lifespan(app: FastAPI):
     # - Not using "Depends" because it only supports callables (not instances)
     # - Starlette allows this: https://www.starlette.io/applications/#storing-state-on-the-app-instance
 
-    startup_app(app)
+    await startup_app(app)
 
     # startup message with admin, public and swagger addresses
     log.welcome()
@@ -57,7 +56,7 @@ async def lifespan(app: FastAPI):
     shutdown_app(app)
 
     get_db().close()
-    get_vector_db().close()
+    await get_vector_db().close()
 
 
 def custom_generate_unique_id(route: APIRoute):
