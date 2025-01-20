@@ -10,7 +10,7 @@ from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.decorators.hook import CatHook
 from cat.mad_hatter.decorators.tool import CatTool
 from cat.experimental.form.cat_form import CatForm
-from cat.utils import inspect_calling_folder
+import cat.utils as utils
 
 
 class MadHatter(ABC):
@@ -179,7 +179,7 @@ class MadHatter(ABC):
     # get plugin object (used from within a plugin)
     # TODO: should we allow to take directly another plugins' obj?
     def get_plugin(self):
-        name = inspect_calling_folder()
+        name = utils.inspect_calling_folder()
         return self.plugins[name]
 
     @property
