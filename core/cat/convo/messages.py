@@ -184,6 +184,11 @@ class ConversationHistoryItem(BaseModelDict):
     when: float | None = time.time()
     content: CatMessage | UserMessage
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        content_dict = self.content.model_dump()
+        self.content = CatMessage(**content_dict) if self.who == Role.AI else UserMessage(**content_dict)
+
     @computed_field
     @property
     @deprecated("This attribute is deprecated. Use `content.text` instead")

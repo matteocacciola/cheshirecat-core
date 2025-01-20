@@ -78,14 +78,15 @@ class BillTheLizard:
         self.main_agent = MainAgent()
 
         self.plugin_manager.on_end_plugin_install_callback = self.notify_plugin_installed
-
         self.plugin_manager.on_start_plugin_uninstall_callback = self.clean_up_agents
-        self.plugin_manager.on_end_plugin_uninstall_callback = lambda plugin_id: crud_plugins.destroy_plugin(plugin_id)
-
+        self.plugin_manager.on_end_plugin_uninstall_callback = self.destroy_plugin
 
         # Initialize the default admin if not present
         if not crud_users.get_users(self.__key):
-            self.__initialize_users()
+            self.initialize_users()
+
+    def __del__(self):
+        self.shutdown()
 
     def notify_plugin_installed(self):
         """
@@ -113,7 +114,21 @@ class BillTheLizard:
             # deactivate plugins in the Cheshire Cats
             ccat.plugin_manager.deactivate_plugin(plugin_id)
 
-    def __initialize_users(self):
+    def destroy_plugin(self, plugin_id: str):
+        crud_plugins.destroy_plugin(plugin_id)
+
+    def reload_embed_procedures(self):
+        """
+        Reload the embedding of the procedures in the procedural memory for each Cheshire Cat.
+        """
+
+        for ccat_id in crud.get_agents_main_keys():
+            ccat = self.get_cheshire_cat(ccat_id)
+
+            # inform the Cheshire Cats about the new plugin available in the system
+            ccat.embed_procedures()
+
+    def initialize_users(self):
         admin_id = str(uuid4())
 
         crud_users.set_users(self.__key, {
@@ -189,6 +204,8 @@ class BillTheLizard:
         # recreate tools embeddings
         self.plugin_manager.find_plugins()
 
+        self.reload_embed_procedures()
+
         return ReplacedNLPConfig(name=language_embedder_name, value=updater.new_setting["value"])
 
     def replace_file_manager(self, file_manager_name: str, settings: Dict) -> ReplacedNLPConfig:
@@ -228,7 +245,7 @@ class BillTheLizard:
 
     def get_cheshire_cat(self, agent_id: str) -> CheshireCat | None:
         """
-        Gets the Cheshire Cat with the given id, directly from db.
+        Get the Cheshire Cat with the given id, directly from db.
 
         Args:
             agent_id: The id of the agent to get
@@ -259,7 +276,7 @@ class BillTheLizard:
 
         return self.get_cheshire_cat(agent_id)
 
-    async def shutdown(self) -> None:
+    def shutdown(self) -> None:
         """
         Shuts down the Bill The Lizard Manager. It closes all the strays' connections and stops the scheduling system.
 

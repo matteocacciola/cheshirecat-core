@@ -14,7 +14,6 @@ class NewTokenHandler(BaseCallbackHandler):
             stray: StrayCat instance
         """
 
-        # cat could be an instance of CheshireCat or StrayCat
         self.stray = stray
 
     def on_llm_new_token(self, token: str, **kwargs) -> None:

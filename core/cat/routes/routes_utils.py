@@ -7,14 +7,19 @@ from fastapi import Query, UploadFile
 from pydantic import BaseModel, Field
 import io
 
+from cat import utils
 from cat.auth.auth_utils import issue_jwt
 from cat.auth.connection import ContextualCats
+from cat.db.database import DEFAULT_AGENT_KEY
 from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
 from cat.factory.base_factory import ReplacedNLPConfig
+from cat.looking_glass.bill_the_lizard import BillTheLizard
+from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.registry import registry_search_plugins
 from cat.memory.utils import VectorMemoryCollectionTypes
 from cat.memory.vector_memory import VectorMemory
+from cat.memory.vector_memory_builder import VectorMemoryBuilder
 
 
 class Plugins(BaseModel):
@@ -214,7 +219,7 @@ def memory_collection_is_accessible(collection_id: str) -> None:
         raise CustomNotFoundException("Collection does not exist.")
 
     # do not touch procedural memory
-    if collection_id == str(VectorMemoryCollectionTypes.PROCEDURAL):
+    if collection_id == VectorMemoryCollectionTypes.PROCEDURAL:
         raise CustomValidationException("Procedural memory is read-only.")
 
 
@@ -280,3 +285,27 @@ def create_dict_parser(param_name: str, description: str | None = None):
 def format_upload_file(upload_file: UploadFile) -> UploadFile:
     file_content = upload_file.file.read()
     return UploadFile(filename=upload_file.filename, file=io.BytesIO(file_content))
+
+
+def startup_app(app):
+    # load the Manager and the Job Handler
+    app.state.lizard = BillTheLizard()
+    app.state.white_rabbit = WhiteRabbit()
+
+    # set a reference to asyncio event loop
+    app.state.event_loop = asyncio.get_running_loop()
+
+    memory_builder = VectorMemoryBuilder()
+    memory_builder.build()
+    app.state.lizard.get_cheshire_cat(DEFAULT_AGENT_KEY)
+
+
+def shutdown_app(app):
+    utils.singleton.instances.clear()
+
+    # shutdown Manager
+    app.state.white_rabbit.shutdown()
+    app.state.lizard.shutdown()
+
+    del app.state.lizard
+    del app.state.white_rabbit

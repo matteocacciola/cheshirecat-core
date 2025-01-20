@@ -32,7 +32,7 @@ class VectorMemoryBuilder:
         for collection_name in VectorMemoryCollectionTypes:
             # is collection present in DB?
             collections_response = self.__client.get_collections()
-            if any(c.name == str(collection_name) for c in collections_response.collections):
+            if any(c.name == collection_name for c in collections_response.collections):
                 # collection exists. Do nothing
                 log.info(
                     f"Collection \"{collection_name}\" already present in vector store"

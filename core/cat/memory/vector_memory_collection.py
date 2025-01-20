@@ -1,3 +1,4 @@
+import time
 import uuid
 from typing import Any, List, Iterable, Dict, Tuple, Final
 from qdrant_client.qdrant_remote import QdrantRemote
@@ -30,10 +31,6 @@ class VectorMemoryCollection:
         # connects to Qdrant and creates self.client attribute
         self.client: Final = get_vector_db()
 
-        # log collection info
-        log.debug(f"Agent {self.agent_id}, Collection {self.collection_name}:")
-        log.debug(self.client.get_collection(self.collection_name))
-
     def _tenant_field_condition(self) -> FieldCondition:
         return FieldCondition(key="tenant_id", match=MatchValue(value=self.agent_id))
 
@@ -60,7 +57,7 @@ class VectorMemoryCollection:
         Returns:
             Dictionary with the configuration of the indexes
         """
-        collection_info = self.client.get_collection(self.collection_name)
+        collection_info = self.client.get_collection(collection_name=self.collection_name)
         return collection_info.payload_schema
 
     def retrieve_points(self, points: List) -> List[Record]:
@@ -125,25 +122,28 @@ class VectorMemoryCollection:
         return None
 
     # add points in collection
-    def add_points(self, ids: List, payloads: List[Payload], vectors: List):
+    def add_points(self, payloads: List[Payload], vectors: List, ids: List | None = None):
         """
         Upsert memories in batch mode
         Args:
-            ids: the ids of the points
             payloads: the payloads of the points
             vectors: the vectors of the points
+            ids: the ids of the points, if not provided, they will be generated automatically using uuid4 hex strings
 
         Returns:
             the response of the upsert operation
         """
 
+        if not ids:
+            ids = [uuid.uuid4().hex for _ in range(len(payloads))]
+
+        if len(ids) != len(payloads) or len(ids) != len(vectors):
+            raise ValueError("ids, payloads and vectors must have the same length")
+
         payloads = [{**p, **{"tenant_id": self.agent_id}} for p in payloads]
         points = Batch(ids=ids, payloads=payloads, vectors=vectors)
 
-        res = self.client.upsert(
-            collection_name=self.collection_name,
-            points=points,
-        )
+        res = self.client.upsert(collection_name=self.collection_name, points=points)
         return res
 
     def delete_points_by_metadata_filter(self, metadata: Dict | None = None) -> UpdateResult:
@@ -153,18 +153,12 @@ class VectorMemoryCollection:
             condition for key, value in metadata.items() for condition in self._build_condition(key, value)
         ])
 
-        res = self.client.delete(
-            collection_name=self.collection_name,
-            points_selector=Filter(must=conditions),
-        )
+        res = self.client.delete(collection_name=self.collection_name, points_selector=Filter(must=conditions))
         return res
 
     # delete point in collection
     def delete_points(self, points_ids: List) -> UpdateResult:
-        res = self.client.delete(
-            collection_name=self.collection_name,
-            points_selector=points_ids,
-        )
+        res = self.client.delete(collection_name=self.collection_name, points_selector=points_ids)
         return res
 
     # retrieve similar memories from embedding

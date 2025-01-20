@@ -44,7 +44,7 @@ def test_factory_reset_success(client, lizard, cheshire_cat):
     assert len(settings) > 0
 
     # check that the vector database is empty
-    assert len(get_vector_db().get_collections().collections) == 0
+    assert len(get_vector_db().get_collections().collections) == 3
 
     histories = get_db().get(crud_history.format_key(cheshire_cat.id, "*"))
     assert histories is None

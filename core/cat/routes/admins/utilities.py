@@ -2,7 +2,6 @@ from typing import List
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
-from cat import utils
 from cat.auth.auth_utils import extract_agent_id_from_request
 from cat.auth.connection import AdminConnectionAuth
 from cat.auth.permissions import AdminAuthResource, AuthPermission
@@ -12,6 +11,7 @@ from cat.db.vector_database import get_vector_db
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.routes.routes_utils import startup_app, shutdown_app
 from cat.utils import empty_plugin_folder
 
 router = APIRouter()
@@ -36,8 +36,8 @@ async def factory_reset(
     """
 
     try:
-        await lizard.shutdown()
-        await get_db().flushdb()
+        lizard.shutdown()
+        get_db().flushdb()
         deleted_settings = True
     except Exception as e:
         log.error(f"Error deleting settings: {e}")
@@ -58,10 +58,8 @@ async def factory_reset(
         log.error(f"Error deleting plugin folders: {e}")
         deleted_plugin_folders = False
 
-    utils.singleton.instances.clear()
-
-    del request.app.state.lizard
-    request.app.state.lizard = BillTheLizard()
+    shutdown_app(request.app)
+    startup_app(request.app)
 
     return ResetResponse(
         deleted_settings=deleted_settings,
@@ -79,7 +77,7 @@ async def get_agents(
     """
 
     try:
-        return crud.get_agents_main_keys()
+        return sorted(crud.get_agents_main_keys())
     except Exception as e:
         log.error(f"Error creating agent: {e}")
         return []
@@ -119,7 +117,7 @@ async def agent_destroy(
         return ResetResponse(deleted_settings=False, deleted_memories=False, deleted_plugin_folders=False)
 
     try:
-        await ccat.destroy()
+        ccat.destroy()
         deleted_settings = True
         deleted_memories = True
     except Exception as e:
