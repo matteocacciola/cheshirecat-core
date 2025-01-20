@@ -78,7 +78,7 @@ class RabbitHole:
             )
 
         # Upsert memories in batch mode
-        ccat.memory.vectors.declarative.add_points(ids, payloads, vectors)
+        ccat.memory.vectors.declarative.add_points(ids=ids, payloads=payloads, vectors=vectors)
 
     def ingest_file(
         self,

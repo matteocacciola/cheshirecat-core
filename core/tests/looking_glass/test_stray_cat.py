@@ -25,7 +25,7 @@ def test_stray_nlp(stray_no_memory):
 def test_stray_call(stray_no_memory):
     msg = {"text": "Where do I go?"}
 
-    reply = stray_no_memory.__call__(UserMessage(**msg))
+    reply = stray_no_memory(UserMessage(**msg))
 
     assert isinstance(reply, CatMessage)
     assert "You did not configure" in reply.content
@@ -49,7 +49,7 @@ def test_recall_to_working_memory(stray_no_memory, mocked_default_llm_answer_pro
     msg = {"text": msg_text}
 
     # send message
-    stray_no_memory.__call__(UserMessage(**msg))
+    stray_no_memory(UserMessage(**msg))
 
     # recall after episodic memory was stored
     stray_no_memory.recall_relevant_memories_to_working_memory(msg_text)
@@ -75,7 +75,7 @@ def test_stray_recall_query(stray, embedder, mocked_default_llm_answer_prompt):
     msg = {"text": msg_text}
 
     # send message
-    stray.__call__(UserMessage(**msg))
+    stray(UserMessage(**msg))
 
     query = embedder.embed_query(msg_text)
     memories = stray.recall(query, "episodic")
@@ -91,7 +91,7 @@ def test_stray_recall_with_threshold(stray, embedder):
     msg = {"text": msg_text}
 
     # send message
-    stray.__call__(UserMessage(**msg))
+    stray(UserMessage(**msg))
 
     query = embedder.embed_query("Alice")
     memories = stray.recall(query, "episodic", threshold=1)
@@ -121,7 +121,7 @@ def test_stray_recall_override_working_memory(stray, embedder, mocked_default_ll
     msg = {"text": msg_text}
 
     # send message
-    stray.__call__(UserMessage(**msg))
+    stray(UserMessage(**msg))
 
     query = embedder.embed_query("Alice")
     memories = stray.recall(query, "episodic")
@@ -172,7 +172,7 @@ def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray):
     msg = {"text": "hello", "user_id": stray.user.id, "agent_id": stray.agent_id}
 
     # send message
-    res = stray.__call__(msg)
+    res = stray(msg)
 
     assert isinstance(res, CatMessage)
     assert res.text == "This is a fast reply"

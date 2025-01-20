@@ -53,9 +53,7 @@ class CheshireCat:
         Bootstrapping is the process of loading the plugins, the LLM, the memories.
         """
 
-        # bootstrap the Cat! ^._.^
         self.id = agent_id
-
         self.large_language_model: BaseLanguageModel | None = None
         self.memory: LongTermMemory | None = None
         self.custom_auth_handler: BaseAuthHandler | None = None
@@ -83,7 +81,7 @@ class CheshireCat:
 
         # Initialize the default user if not present
         if not crud_users.get_users(self.id):
-            self.__initialize_users()
+            self.initialize_users()
 
         # allows plugins to do something after the cat bootstrap is complete
         self.plugin_manager.execute_hook("after_cat_bootstrap", cat=self)
@@ -102,9 +100,9 @@ class CheshireCat:
 
     def __del__(self):
         """Cat destructor."""
-        asyncio.run(self.shutdown())
+        self.shutdown()
 
-    def __initialize_users(self):
+    def initialize_users(self):
         user_id = str(uuid4())
 
         crud_users.set_users(self.id, {
@@ -117,17 +115,17 @@ class CheshireCat:
             }
         })
 
-    async def shutdown(self) -> None:
+    def shutdown(self) -> None:
         self.memory = None
         self.custom_auth_handler = None
         self.plugin_manager = None
         self.large_language_model = None
 
-    async def destroy(self):
+    def destroy(self):
         """Destroy all data from the cat."""
 
         self.memory.destroy()
-        await self.shutdown()
+        self.shutdown()
 
         crud_settings.destroy_all(self.id)
         crud_history.destroy_all(self.id)
@@ -159,56 +157,39 @@ class CheshireCat:
         self.memory = LongTermMemory(agent_id=self.id)
 
     def embed_procedures(self):
-        def get_key_embedded_procedures_hashes(ep):
-            # log.warning(ep)
-            metadata = ep.payload["metadata"]
-            content = ep.payload["page_content"]
-            source = metadata["source"]
-            # there may be legacy points with no trigger_type
-            trigger_type = metadata.get("trigger_type", "unsupported")
-            return f"{source}.{trigger_type}.{content}"
-
-        def get_key_active_procedures_hashes(ap, trigger_type, trigger_content):
-            return f"{ap.name}.{trigger_type}.{trigger_content}"
-
-        # Retrieve from vectorDB all procedural embeddings
-        embedded_procedures, _ = self.memory.vectors.procedural.get_all_points()
-        embedded_procedures_hashes = {get_key_embedded_procedures_hashes(ep): ep.id for ep in embedded_procedures}
+        # Destroy all procedural embeddings
+        self.memory.vectors.procedural.destroy_all_points()
 
         # Easy access to active procedures in plugin_manager (source of truth!)
-        active_procedures_hashes = {get_key_active_procedures_hashes(ap, trigger_type, trigger_content): {
-            "obj": ap,
-            "source": ap.name,
-            "type": ap.procedure_type,
-            "trigger_type": trigger_type,
-            "content": trigger_content,
-        } for ap in self.plugin_manager.procedures for trigger_type, trigger_list in ap.triggers_map.items() for
-            trigger_content in trigger_list}
+        active_procedures_hashes = [
+            {
+                "obj": ap,
+                "source": ap.name,
+                "type": ap.procedure_type,
+                "trigger_type": trigger_type,
+                "content": trigger_content,
+            }
+            for ap in self.plugin_manager.procedures
+            for trigger_type, trigger_list in ap.triggers_map.items()
+            for trigger_content in trigger_list
+        ]
 
-        # points_to_be_kept = set(active_procedures_hashes.keys()) and set(embedded_procedures_hashes.keys()) not necessary
-        points_to_be_deleted = set(embedded_procedures_hashes.keys()) - set(active_procedures_hashes.keys())
-        points_to_be_embedded = set(active_procedures_hashes.keys()) - set(embedded_procedures_hashes.keys())
-
-        if points_to_be_deleted_ids := [embedded_procedures_hashes[p] for p in points_to_be_deleted]:
-            log.warning(f"Agent id: {self.id}. Deleting triggers: {points_to_be_deleted}")
-            self.memory.vectors.procedural.delete_points(points_to_be_deleted_ids)
-
-        active_triggers_to_be_embedded = [active_procedures_hashes[p] for p in points_to_be_embedded]
-        for t in active_triggers_to_be_embedded:
-            trigger_embedding = self.lizard.embedder.embed_documents([t["content"]])
-            self.memory.vectors.procedural.add_point(
-                t["content"],
-                trigger_embedding[0],
-                {
+        payloads = []
+        vectors = []
+        for t in active_procedures_hashes:
+            payloads.append({
+                "page_content": t["content"],
+                "metadata": {
                     "source": t["source"],
                     "type": t["type"],
                     "trigger_type": t["trigger_type"],
                     "when": time.time(),
-                },
-            )
+                }
+            })
+            vectors.append(self.lizard.embedder.embed_documents([t["content"]])[0])
 
-            log.warning(f"Agent id: {self.id}. "
-                        f"Newly embedded {t['type']} trigger: {t['source']}, {t['trigger_type']}, {t['content']}")
+        self.memory.vectors.procedural.add_points(payloads=payloads, vectors=vectors)
+        log.info(f"Agent id: {self.id}. Embedded {len(active_procedures_hashes)} triggers in procedural vector memory")
 
     def send_ws_message(self, content: str, msg_type="notification"):
         log.error(f"Agent id: {self.id}. No websocket connection open")

@@ -112,6 +112,11 @@ class Enum(BaseEnum, metaclass=MetaEnum):
     def __str__(self):
         return self.value
 
+    def __eq__(self, other):
+        if isinstance(other, Enum):
+            return self.value == other.value
+        return self.value == other
+
 
 def to_camel_case(text: str) -> str:
     """Format string to camel case.

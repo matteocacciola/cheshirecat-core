@@ -68,7 +68,17 @@ class StrayCat:
         return f"StrayCat(user_id={self.__user.id}, agent_id={self.__agent_id})"
 
     def __del__(self):
-        asyncio.run(self.__close_connection())
+        if not self.__ws:
+            return
+        try:
+            asyncio.run_coroutine_threadsafe(self.__ws.close(), loop=self.__main_loop).result()
+        except RuntimeError as ex:
+            log.warning(f"Agent id: {self.__agent_id}. Warning {ex}")
+            self.__ws = None
+        del self.working_memory
+        del self.__user
+        del self.__ws
+        del self.__agent_id
 
     def _send_ws_json(self, data: Any):
         # Run the coroutine in the main event loop in the main thread
@@ -232,13 +242,12 @@ class StrayCat:
             raise ValueError(error_message)
 
         vector_memory: VectorMemoryCollection = cheshire_cat.memory.vectors.collections[collection_name]
-
-        memories = vector_memory.recall_memories_from_embedding(
-            query, metadata, k, threshold
-        ) if k else vector_memory.recall_all_memories()
+        if k:
+            memories = vector_memory.recall_memories_from_embedding(query, metadata, k, threshold)
+        else:
+            memories = vector_memory.recall_all_memories()
 
         setattr(self.working_memory, f"{collection_name}_memories", memories)
-
         return memories
 
     def recall_relevant_memories_to_working_memory(self, query: str | None = None):
@@ -395,11 +404,11 @@ class StrayCat:
         log.info(f"Agent id: {self.__agent_id}. Agent output returned to stray:")
         log.info(agent_output)
 
-        return self._on_agent_output_built(agent_output)
+        return self._on_agent_output_built(agent_output=agent_output)
 
     def run_http(self, user_message: UserMessage) -> CatMessage:
         try:
-            return self.__call__(user_message)
+            return self(user_message)
         except Exception as e:
             # Log any unexpected errors
             log.error(f"Agent id: {self.__agent_id}. Error {e}")
@@ -408,7 +417,7 @@ class StrayCat:
 
     def run_websocket(self, user_message: UserMessage) -> None:
         try:
-            cat_message = self.__call__(user_message)
+            cat_message = self(user_message)
             # send message back to client via WS
             self.send_chat_message(cat_message)
         except Exception as e:
@@ -420,7 +429,6 @@ class StrayCat:
                 self.send_error(e)
             except ConnectionClosedOK as ex:
                 log.warning(f"Agent id: {self.__agent_id}. Warning {ex}")
-                # self.nullify_connection()
 
     def classify(self, sentence: str, labels: List[str] | Dict[str, List[str]]) -> str | None:
         """
@@ -482,18 +490,6 @@ Allowed classes are:
 
         # set 0.5 as threshold - let's see if it works properly
         return best_label if score < 0.5 else None
-
-    async def __close_connection(self):
-        if not self.__ws:
-            return
-        try:
-            await self.__ws.close()
-        except RuntimeError as ex:
-            log.warning(f"Agent id: {self.__agent_id}. Warning {ex}")
-            self.nullify_connection()
-
-    def nullify_connection(self):
-        self.__ws = None
 
     def _build_agent_output(self) -> AgentOutput:
         # reply with agent

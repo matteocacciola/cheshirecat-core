@@ -1,5 +1,3 @@
-import pytest
-
 from cat.agents.main_agent import MainAgent
 from cat.factory.custom_auth_handler import CoreAuthHandler
 from cat.factory.custom_file_manager import BaseFileManager
@@ -17,9 +15,8 @@ def test_main_modules_loaded(lizard):
     assert isinstance(lizard.main_agent, MainAgent)
 
 
-@pytest.mark.asyncio  # to test async functions
-async def test_shutdown(lizard, white_rabbit):
-    await lizard.shutdown()
+def test_shutdown(lizard, white_rabbit):
+    lizard.shutdown()
     white_rabbit.shutdown()
 
     assert lizard.plugin_manager is None

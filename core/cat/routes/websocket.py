@@ -4,24 +4,9 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from fastapi.concurrency import run_in_threadpool
 
 from cat.convo.messages import UserMessage
-from cat.looking_glass.stray_cat import StrayCat
 from cat.log import log
 
 router = APIRouter()
-
-
-async def receive_message(websocket: WebSocket, stray: StrayCat):
-    """
-    Continuously receive messages from the WebSocket and forward them to the `ccat` object for processing.
-    """
-
-    while True:
-        # Receive the next message from the WebSocket.
-        user_message_text = await websocket.receive_json()
-        user_message = UserMessage(**user_message_text)
-
-        # Run the `stray` object's method in a threadpool since it might be a CPU-bound operation.
-        await run_in_threadpool(stray.run_websocket, user_message)
 
 
 @router.websocket("/ws")
@@ -41,8 +26,14 @@ async def websocket_endpoint(
     await websocket.accept()
     try:
         # Process messages
-        await receive_message(websocket, stray)
+        while True:
+            # Receive the next message from the WebSocket.
+            user_message_text = await websocket.receive_json()
+            user_message = UserMessage(**user_message_text)
+
+            # Run the `stray` object's method in a threadpool since it might be a CPU-bound operation.
+            await run_in_threadpool(stray.run_websocket, user_message)
     except WebSocketDisconnect:
         # Handle the event where the user disconnects their WebSocket.
-        stray.nullify_connection()
+        del stray
         log.info("WebSocket connection closed")

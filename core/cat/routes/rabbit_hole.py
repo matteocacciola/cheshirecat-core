@@ -127,12 +127,12 @@ async def upload_file(
 
     # upload file to long term memory, in the background
     uploaded_file = deepcopy(format_upload_file(file))
+    # we deepcopy the file because FastAPI does not keep the file in memory after the response returns to the client
+    # https://github.com/tiangolo/fastapi/discussions/10936
     background_tasks.add_task(
-        # we deepcopy the file because FastAPI does not keep the file in memory after the response returns to the client
-        # https://github.com/tiangolo/fastapi/discussions/10936
         lizard.rabbit_hole.ingest_file,
-        cats.stray_cat,
-        uploaded_file,
+        stray=cats.stray_cat,
+        file=uploaded_file,
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
         metadata=json.loads(metadata)
@@ -254,8 +254,8 @@ async def upload_url(
             # upload file to long term memory, in the background
             background_tasks.add_task(
                 request.app.state.lizard.rabbit_hole.ingest_file,
-                cats.stray_cat,
-                upload_config.url,
+                stray=cats.stray_cat,
+                file=upload_config.url,
                 **upload_config.model_dump(exclude={"url"})
             )
             return UploadUrlResponse(url=upload_config.url, info="URL is being ingested asynchronously")
@@ -284,9 +284,7 @@ async def upload_memory(
 
     # Ingest memories in background and notify client
     background_tasks.add_task(
-        request.app.state.lizard.rabbit_hole.ingest_memory,
-        cats.cheshire_cat,
-        deepcopy(file)
+        request.app.state.lizard.rabbit_hole.ingest_memory, ccat=cats.cheshire_cat, file=deepcopy(file)
     )
 
     # reply to client
