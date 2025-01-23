@@ -76,5 +76,4 @@ async def registry_download_plugin(url: str):
             await f.write(response.content)  # Write the content asynchronously
 
     log.info(f"Saved plugin as {plugin_zip_path}")
-
     return plugin_zip_path

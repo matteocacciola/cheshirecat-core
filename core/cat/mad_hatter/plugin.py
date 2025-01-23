@@ -14,6 +14,7 @@ from packaging.requirements import Requirement
 from cat.db.cruds import plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.experimental.form.cat_form import CatForm
+from cat.mad_hatter.decorators.endpoint import CustomEndpoint
 from cat.mad_hatter.decorators.hook import CatHook
 from cat.mad_hatter.decorators.plugin_decorator import CatPluginDecorator
 from cat.mad_hatter.decorators.tool import CatTool
@@ -63,6 +64,7 @@ class Plugin:
         self._hooks: List[CatHook] = []  # list of plugin hooks
         self._tools: List[CatTool] = []  # list of plugin tools
         self._forms: List[CatForm] = []  # list of plugin forms
+        self._endpoints: List[CustomEndpoint] = [] # list of plugin endpoints
 
         # list of @plugin decorated functions overriding default plugin behaviour
         self._plugin_overrides: Dict[str, CatPluginDecorator] = {}
@@ -113,6 +115,7 @@ class Plugin:
         self._hooks = []
         self._tools = []
         self._forms = []
+        self._deactivate_endpoints()
         self._plugin_overrides = {}
         self._active = False
 
@@ -311,6 +314,7 @@ class Plugin:
         hooks = []
         tools = []
         forms = []
+        endpoints = []
         plugin_overrides = []
 
         for py_file in self._py_files:
@@ -325,6 +329,7 @@ class Plugin:
                 hooks += getmembers(plugin_module, self.is_cat_hook)
                 tools += getmembers(plugin_module, self.is_cat_tool)
                 forms += getmembers(plugin_module, self.is_cat_form)
+                endpoints += getmembers(plugin_module, self._is_custom_endpoint)
                 plugin_overrides += getmembers(
                     plugin_module, self._is_cat_plugin_override
                 )
@@ -339,6 +344,7 @@ class Plugin:
         self._hooks = list(map(self._clean_hook, hooks))
         self._tools = list(map(self._clean_tool, tools))
         self._forms = list(map(self._clean_form, forms))
+        self._endpoints = list(map(self._clean_endpoint, endpoints))
         self._plugin_overrides = {override.name: override for _, override in plugin_overrides}
 
     def plugin_specific_error_message(self):
@@ -363,6 +369,17 @@ class Plugin:
         f = form[1]
         f.plugin_id = self._id
         return f
+
+    def _clean_endpoint(self, endpoint: CustomEndpoint):
+        # getmembers returns a tuple
+        f = endpoint[1]
+        f.plugin_id = self._id
+        return f
+
+    def _deactivate_endpoints(self):
+        for endpoint in self._endpoints:
+            endpoint.deactivate()
+        self._endpoints = []
 
     # a plugin hook function has to be decorated with @hook
     # (which returns an instance of CatHook)
@@ -392,6 +409,12 @@ class Plugin:
     def _is_cat_plugin_override(obj):
         return isinstance(obj, CatPluginDecorator)
 
+    # a plugin custom endpoint has to be decorated with @endpoint
+    # (which returns an instance of CustomEndpoint)
+    @staticmethod
+    def _is_custom_endpoint(obj):
+        return isinstance(obj, CustomEndpoint)
+
     @property
     def path(self):
         return self._path
@@ -419,6 +442,10 @@ class Plugin:
     @property
     def forms(self):
         return self._forms
+
+    @property
+    def endpoints(self):
+        return self._endpoints
 
     @property
     def plugin_overrides(self):
