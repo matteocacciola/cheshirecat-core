@@ -126,17 +126,8 @@ class VectorMemoryBuilder:
         collection_info = await self.__client.get_collection(collection_name=collection_name)
         embedder_sizes = self.lizard.embedder_size
 
-        # Check if the collection exists and has the correct vector configurations
-        # Single vector configuration (legacy)
-        if (
-                hasattr(collection_info.config.params, "vectors")
-                and collection_info.config.params.vectors.size != embedder_sizes.text
-        ):
-            await self.__recreate_collection(collection_name=collection_name)
-            return
-
         # Multiple vector configurations
-        vectors_config = collection_info.config.params.vectors_config
+        vectors_config = collection_info.config.params.vectors
         needs_update = False
 
         text_lbl = str(ContentType.TEXT)

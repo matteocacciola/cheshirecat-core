@@ -1,9 +1,8 @@
-import json
-from typing import Dict, List
+from typing import Dict, TypeAlias
 
-from pydantic import BaseModel, Field
-from qdrant_client.http.models import Record, ScoredPoint
-from langchain.docstore.document import Document
+from pydantic import BaseModel
+from qdrant_client.http.models import Record, ScoredPoint, VectorStruct
+from langchain_core.documents.base import Document, Blob
 
 from cat.utils import Enum as BaseEnum, BaseModelDict
 
@@ -36,19 +35,21 @@ class MultimodalContent(BaseModel):
     text: str | None = None
     image_path: str | None = None
     audio_path: str | None = None
-    content_type: ContentType = Field(default=ContentType.TEXT)
 
 
-class DocumentRecall(BaseModelDict):
+class DocumentRecallItem(BaseModelDict):
     """
-    Langchain `Document` retrieved from the episodic memory, with the similarity score, the vectors for each modality
-    and the id of the memory.
+    Langchain `Document` or `Blob` retrieved from the episodic memory, with the similarity score, the vectors for each
+    modality and the id of the memory.
     """
 
-    document: Document
+    document: Document | Blob
     score: float | None = None
-    vectors: Dict[ContentType, List[float]] = Field(default_factory=dict)  # Mapping of modality to vector
+    vector: VectorStruct
     id: str | None = None
+
+
+DocumentRecall: TypeAlias = Dict[ContentType, DocumentRecallItem]
 
 
 def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
@@ -62,16 +63,22 @@ def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
         DocumentRecall: The converted DocumentRecall object
     """
 
-    document = DocumentRecall(
-        document=Document(
-            page_content=json.dumps(m.payload.get("page_content", {})),
+    result = {}
+    for k, v in m.vector.items():
+        doc = Document(
+            page_content=m.payload.get("page_content")[str(k)],
             metadata=m.payload.get("metadata", {})
-        ),
-        vectors={ContentType(k): v for k, v in m.vector.items()},
-        id=m.id,
-    )
+        ) if k == ContentType.TEXT else Blob(
+            data=m.payload.get("page_content")[str(k)],
+            metadata=m.payload.get("metadata", {})
+        )
+        item = DocumentRecallItem(
+            document=doc,
+            vector=v,
+            id=m.id,
+        )
+        if isinstance(m, ScoredPoint):
+            item.score = m.score
+        result[ContentType(k)] = item
 
-    if isinstance(m, ScoredPoint):
-        document.score = m.score
-
-    return document
+    return result

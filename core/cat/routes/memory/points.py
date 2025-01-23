@@ -90,11 +90,12 @@ async def recall_memory_points_from_text(
     """
 
     def build_memory_dict(document_recall: DocumentRecall) -> Dict[str, Any]:
-        memory_dict = dict(document_recall.document)
+        doc = document_recall[ContentType.TEXT]
+        memory_dict = dict(doc.document)
         memory_dict.pop("lc_kwargs", None)  # langchain stuff, not needed
-        memory_dict["id"] = document_recall.id
-        memory_dict["score"] = float(document_recall.score) if document_recall.score else None
-        memory_dict["vector"] = document_recall.vector
+        memory_dict["id"] = doc.id
+        memory_dict["score"] = float(doc.score) if doc.score else None
+        memory_dict["vector"] = doc.vector
         return memory_dict
 
     async def get_memories(c: VectorMemoryCollectionTypes) -> List:

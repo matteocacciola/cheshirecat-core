@@ -135,10 +135,16 @@ def get_fake_memory_export(embedder_name="DumbEmbedder", dim=2367):
         "collections": {
             "declarative": [
                 {
-                    "page_content": "test_memory",
+                    "page_content": {
+                        "text": "test_memory"
+                    },
                     "metadata": {"source": user["id"], "when": time.time()},
                     "id": str(uuid.uuid4()),
-                    "vector": [random.random() for _ in range(dim)],
+                    "vector": {
+                        "text": [random.random() for _ in range(dim)],
+                        "image": [random.random() for _ in range(dim)],
+                        "audio": [random.random() for _ in range(dim)],
+                    }
                 }
             ]
         },
