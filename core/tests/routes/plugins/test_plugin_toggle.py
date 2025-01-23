@@ -1,4 +1,4 @@
-from tests.utils import get_procedural_memory_contents
+from tests.utils import get_procedural_memory_contents, just_installed_plugin
 
 
 def check_active_plugin_properties(plugin):
@@ -15,7 +15,9 @@ def check_inactive_plugin_properties(plugin):
     assert len(plugin["forms"]) == 0
 
 
-def test_toggle_non_existent_plugin(secure_client, secure_client_headers, just_installed_plugin):
+def test_toggle_non_existent_plugin(secure_client, secure_client_headers):
+    just_installed_plugin(secure_client, secure_client_headers)
+
     response = secure_client.put("/plugins/toggle/no_plugin", headers=secure_client_headers)
     response_json = response.json()
 
@@ -23,7 +25,9 @@ def test_toggle_non_existent_plugin(secure_client, secure_client_headers, just_i
     assert response_json["detail"]["error"] == "Plugin not found"
 
 
-def test_activate_plugin(secure_client, secure_client_headers, just_installed_plugin):
+def test_activate_plugin(secure_client, secure_client_headers):
+    just_installed_plugin(secure_client, secure_client_headers)
+
     # activate
     secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
 
@@ -52,7 +56,9 @@ def test_activate_plugin(secure_client, secure_client_headers, just_installed_pl
     assert procedures_triggers.count("description") == 3
 
 
-def test_deactivate_plugin(secure_client, secure_client_headers, just_installed_plugin):
+def test_deactivate_plugin(secure_client, secure_client_headers):
+    just_installed_plugin(secure_client, secure_client_headers)
+
     # activate
     secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
 
@@ -86,7 +92,9 @@ def test_deactivate_plugin(secure_client, secure_client_headers, just_installed_
     assert procedures_triggers.count("description") == 1
 
 
-def test_reactivate_plugin(secure_client, secure_client_headers, just_installed_plugin):
+def test_reactivate_plugin(secure_client, secure_client_headers):
+    just_installed_plugin(secure_client, secure_client_headers)
+
     # activate
     secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
 
@@ -94,4 +102,4 @@ def test_reactivate_plugin(secure_client, secure_client_headers, just_installed_
     secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
 
     # re-activate
-    test_activate_plugin(secure_client, secure_client_headers, just_installed_plugin)
+    test_activate_plugin(secure_client, secure_client_headers)

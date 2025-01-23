@@ -1,15 +1,18 @@
 import os
+import pytest
 
 from cat.db import crud
 from cat.db.cruds import plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
 
-from tests.utils import api_key, create_mock_plugin_zip, agent_id, mock_plugin_settings_file
+from tests.utils import api_key, create_mock_plugin_zip, agent_id, mock_plugin_settings_file, just_installed_plugin
 
 
 # NOTE: here we test zip upload and install
 # installation from registry is in `./test_plugins_registry.py`
-def test_plugin_install_from_zip(secure_client, secure_client_headers, just_installed_plugin, cheshire_cat):
+def test_plugin_install_from_zip(secure_client, secure_client_headers, cheshire_cat):
+    just_installed_plugin(secure_client, secure_client_headers)
+
     # during tests, the cat uses a different folder for plugins
     mock_plugin_final_folder = "tests/mocks/mock_plugin_folder/mock_plugin"
 
@@ -54,9 +57,10 @@ def test_plugin_install_from_zip(secure_client, secure_client_headers, just_inst
     assert response.json()["data"]["active"]
 
 
-def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client, secure_client_headers):
+@pytest.mark.asyncio
+async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client, secure_client_headers):
     # create a new agent
-    ccat = lizard.get_cheshire_cat("agent_test_test")
+    ccat = await lizard.create_cheshire_cat("agent_test_test")
 
     # list the plugins as an agent (new plugins are deactivated, initially): mock_plugin is not installed
     response = secure_client.get(
@@ -95,7 +99,9 @@ def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client, secur
         assert p["active"] if p["id"] == "core_plugin" else not p["active"]
 
 
-def test_plugin_uninstall(secure_client, secure_client_headers, just_installed_plugin):
+def test_plugin_uninstall(secure_client, secure_client_headers):
+    just_installed_plugin(secure_client, secure_client_headers)
+
     # The plugin is active, now let's activate for the agent too
     secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
     agent_settings = crud.read(crud_plugins.format_key(agent_id, "mock_plugin"))
@@ -128,9 +134,10 @@ def test_plugin_uninstall(secure_client, secure_client_headers, just_installed_p
     assert system_settings is None
 
 
-def test_plugin_recurrent_installs(lizard, secure_client, secure_client_headers):
+@pytest.mark.asyncio
+async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_headers):
     # create a new agent
-    ccat = lizard.get_cheshire_cat("agent_test_test")
+    ccat = await lizard.create_cheshire_cat("agent_test_test")
     ccat_headers = {"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
 
     # manually install the plugin
@@ -164,9 +171,10 @@ def test_plugin_recurrent_installs(lizard, secure_client, secure_client_headers)
         assert p["active"]
 
 
-def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_client, secure_client_headers):
+@pytest.mark.asyncio
+async def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_client, secure_client_headers):
     # create a new agent
-    ccat = lizard.get_cheshire_cat("agent_test_test")
+    ccat = await lizard.create_cheshire_cat("agent_test_test")
     ccat_headers = {"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
 
     # manually install the plugin

@@ -23,7 +23,7 @@ from cat.utils import singleton
 class RabbitHole:
     """Manages content ingestion. I'm late... I'm late!"""
 
-    def ingest_memory(self, ccat: CheshireCat, file: UploadFile):
+    async def ingest_memory(self, ccat: CheshireCat, file: UploadFile):
         """Upload memories to the declarative memory from a JSON file.
 
         Args:
@@ -78,9 +78,9 @@ class RabbitHole:
             )
 
         # Upsert memories in batch mode
-        ccat.memory.vectors.declarative.add_points(ids=ids, payloads=payloads, vectors=vectors)
+        await ccat.memory.vectors.declarative.add_points(ids=ids, payloads=payloads, vectors=vectors)
 
-    def ingest_file(
+    async def ingest_file(
         self,
         stray: "StrayCat",
         file: str | UploadFile,
@@ -116,7 +116,7 @@ class RabbitHole:
         """
 
         # split file into a list of docs
-        file_bytes, content_type, docs = self.file_to_docs(
+        file_bytes, content_type, docs = await self.file_to_docs(
             stray=stray, file=file, chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
         metadata = metadata or {}
@@ -124,10 +124,10 @@ class RabbitHole:
         # store in memory
         filename = file if isinstance(file, str) else file.filename
 
-        self.store_documents(stray=stray, docs=docs, source=filename, metadata=metadata)
+        await self.store_documents(stray=stray, docs=docs, source=filename, metadata=metadata)
         self.save_file(stray, file_bytes, content_type)
 
-    def file_to_docs(
+    async def file_to_docs(
         self,
         stray: "StrayCat",
         file: str | UploadFile,
@@ -203,16 +203,16 @@ class RabbitHole:
         if not file_bytes:
             raise ValueError(f"Something went wrong with the file {source}")
 
-        return file_bytes, content_type, self.string_to_docs(
+        return file_bytes, content_type, (await self.string_to_docs(
             stray=stray,
             file_bytes=file_bytes,
             source=source,
             content_type=content_type,
             chunk_size=chunk_size,
             chunk_overlap=chunk_overlap
-        )
+        ))
 
-    def string_to_docs(
+    async def string_to_docs(
         self,
         stray: "StrayCat",
         file_bytes: bytes,
@@ -253,17 +253,17 @@ class RabbitHole:
         parser = MimeTypeBasedParser(handlers=stray.file_handlers)
 
         # Parse the text
-        stray.send_ws_message(
+        await stray.send_ws_message(
             "I'm parsing the content. Big content could require some minutes..."
         )
         super_docs = parser.parse(blob)
 
         # Split
-        stray.send_ws_message("Parsing completed. Now let's go with reading process...")
+        await stray.send_ws_message("Parsing completed. Now let's go with reading process...")
         docs = self.__split_text(stray=stray, text=super_docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
         return docs
 
-    def store_documents(
+    async def store_documents(
         self,
         stray: "StrayCat",
         docs: List[Document],
@@ -317,7 +317,7 @@ class RabbitHole:
                 time_last_notification = time.time()
                 perc_read = int(d / len(docs) * 100)
                 read_message = f"Read {perc_read}% of {source}"
-                stray.send_ws_message(read_message)
+                await stray.send_ws_message(read_message)
 
             # add default metadata
             doc.metadata["source"] = source
@@ -331,7 +331,7 @@ class RabbitHole:
             inserting_info = f"{d + 1}/{len(docs)}):    {doc.page_content}"
             if doc.page_content != "":
                 doc_embedding = embedder.embed_documents([doc.page_content])
-                stored_point = memory.vectors.declarative.add_point(
+                stored_point = await memory.vectors.declarative.add_point(
                     doc.page_content,
                     doc_embedding[0],
                     doc.metadata,
@@ -355,7 +355,7 @@ class RabbitHole:
             f"Finished reading {source}, I made {len(docs)} thoughts on it."
         )
 
-        stray.send_ws_message(finished_reading_message)
+        await stray.send_ws_message(finished_reading_message)
 
         log.warning(f"Agent id: {ccat.id}. Done uploading {source}")
 

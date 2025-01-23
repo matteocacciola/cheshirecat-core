@@ -175,7 +175,7 @@ def test_points_deleted_by_metadata(secure_client, secure_client_headers):
 
 
 def test_get_collection_points_wrong_collection(secure_client, secure_client_headers):
-    # unexisting collection
+    # not existing collection
     res = secure_client.get("/memory/collections/unexistent/points", headers=secure_client_headers)
     assert res.status_code == 404
     assert "Collection does not exist" in res.json()["detail"]["error"]

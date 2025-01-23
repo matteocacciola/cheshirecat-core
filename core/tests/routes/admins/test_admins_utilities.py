@@ -1,5 +1,6 @@
 import uuid
 from qdrant_client.http.models import Filter, FieldCondition, MatchValue
+import pytest
 
 from cat.db.cruds import (
     settings as crud_settings,
@@ -16,9 +17,10 @@ from cat.memory.utils import VectorMemoryCollectionTypes
 from tests.utils import create_new_user, get_client_admin_headers, new_user_password
 
 
-def test_factory_reset_success(client, lizard, cheshire_cat):
+@pytest.mark.asyncio
+async def test_factory_reset_success(client, lizard, cheshire_cat):
     # check that the vector database is not empty
-    assert len(get_vector_db().get_collections().collections) > 0
+    assert len((await get_vector_db().get_collections()).collections) > 0
 
     creds = {
         "username": "admin",
@@ -44,7 +46,7 @@ def test_factory_reset_success(client, lizard, cheshire_cat):
     assert len(settings) > 0
 
     # check that the vector database is empty
-    assert len(get_vector_db().get_collections().collections) == 3
+    assert len((await get_vector_db().get_collections()).collections) == 3
 
     histories = get_db().get(crud_history.format_key(cheshire_cat.id, "*"))
     assert histories is None
@@ -56,7 +58,8 @@ def test_factory_reset_success(client, lizard, cheshire_cat):
     assert users is None
 
 
-def test_agent_destroy_success(client, lizard, cheshire_cat):
+@pytest.mark.asyncio
+async def test_agent_destroy_success(client, lizard, cheshire_cat):
     creds = {
         "username": "admin",
         "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
@@ -87,10 +90,11 @@ def test_agent_destroy_success(client, lizard, cheshire_cat):
 
     qdrant_filter = Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=cheshire_cat.id))])
     for c in VectorMemoryCollectionTypes:
-        assert get_vector_db().count(collection_name=str(c), count_filter=qdrant_filter).count == 0
+        assert (await get_vector_db().count(collection_name=str(c), count_filter=qdrant_filter)).count == 0
 
 
-def test_agent_reset_success(client, lizard, cheshire_cat):
+@pytest.mark.asyncio
+async def test_agent_reset_success(client, lizard, cheshire_cat):
     creds = {
         "username": "admin",
         "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
@@ -121,13 +125,14 @@ def test_agent_reset_success(client, lizard, cheshire_cat):
 
     ccat = lizard.get_cheshire_cat(cheshire_cat.id)
     for c in VectorMemoryCollectionTypes:
-        num_vectors = ccat.memory.vectors.collections[str(c)].get_vectors_count()
-        points, _ = ccat.memory.vectors.collections[str(c)].get_all_points()
+        num_vectors = await ccat.memory.vectors.collections[str(c)].get_vectors_count()
+        points, _ = await ccat.memory.vectors.collections[str(c)].get_all_points()
         assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
         assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
 
 
-def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard, cheshire_cat):
+@pytest.mark.asyncio
+async def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard, cheshire_cat):
     # create new admin with wrong permissions
     data = create_new_user(
         client, "/admins/users", headers=get_client_admin_headers(client), permissions={"EMBEDDER": ["READ"]}
@@ -150,13 +155,14 @@ def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard, ches
     assert len(cheshire_cat.memory.vectors.collections) > 0
 
     for c in VectorMemoryCollectionTypes:
-        num_vectors = cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
-        points, _ = cheshire_cat.memory.vectors.collections[str(c)].get_all_points()
+        num_vectors = await cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
+        points, _ = await cheshire_cat.memory.vectors.collections[str(c)].get_all_points()
         assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
         assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
 
 
-def test_agent_destroy_error_because_of_lack_not_existing_agent(client, lizard, cheshire_cat):
+@pytest.mark.asyncio
+async def test_agent_destroy_error_because_of_lack_not_existing_agent(client, lizard, cheshire_cat):
     creds = {
         "username": "admin",
         "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
@@ -179,13 +185,14 @@ def test_agent_destroy_error_because_of_lack_not_existing_agent(client, lizard, 
     assert len(cheshire_cat.memory.vectors.collections) > 0
 
     for c in VectorMemoryCollectionTypes:
-        num_vectors = cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
-        points, _ = cheshire_cat.memory.vectors.collections[str(c)].get_all_points()
+        num_vectors = await cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
+        points, _ = await cheshire_cat.memory.vectors.collections[str(c)].get_all_points()
         assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
         assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
 
 
-def test_agent_create_success(client, lizard):
+@pytest.mark.asyncio
+async def test_agent_create_success(client, lizard):
     creds = {
         "username": "admin",
         "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
@@ -218,7 +225,7 @@ def test_agent_create_success(client, lizard):
 
     ccat = lizard.get_cheshire_cat(new_agent_id)
     for c in VectorMemoryCollectionTypes:
-        num_vectors = ccat.memory.vectors.collections[str(c)].get_vectors_count()
-        points, _ = ccat.memory.vectors.collections[str(c)].get_all_points()
+        num_vectors = await ccat.memory.vectors.collections[str(c)].get_vectors_count()
+        points, _ = await ccat.memory.vectors.collections[str(c)].get_all_points()
         assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
         assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1

@@ -1,10 +1,8 @@
-import asyncio
 import shutil
 import time
 import uuid
 import random
 from urllib.parse import urlencode
-from concurrent.futures import ThreadPoolExecutor
 
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
@@ -29,12 +27,10 @@ def send_websocket_message(msg, client, query_params):
     url = f"/ws/{agent_id}?" + urlencode(query_params)
 
     with client.websocket_connect(url) as websocket:
-        # sed ws message
+        # Send ws message
         websocket.send_json(msg)
         # get reply
-        reply = websocket.receive_json()
-
-    return reply
+        return websocket.receive_json()
 
 
 # utility to send n messages via chat
@@ -132,27 +128,6 @@ def check_user_fields(u):
         assert False, "Not a UUID"
 
 
-def run_in_thread(fnc, *args):
-    """
-    Helper function to run functions in a separate thread.
-    """
-
-    with ThreadPoolExecutor() as executor:
-        future = executor.submit(fnc, *args)
-        return future.result()
-
-
-async def async_run(loop, fnc, *args):
-    """
-    Asynchronously run a function (sync or async) in a separate thread.
-    """
-
-    if asyncio.iscoroutinefunction(fnc):
-        return await fnc(*args)
-
-    return await loop.run_in_executor(None, run_in_thread, fnc, *args)
-
-
 def get_fake_memory_export(embedder_name="DumbEmbedder", dim=2367):
     user = crud_users.get_user_by_username(agent_id, "user")
     return {
@@ -201,3 +176,21 @@ def settings_model():
 
     with open(file_path, "w") as file:
         file.write(content)
+
+
+def just_installed_plugin(client, headers):
+    # create zip file with a plugin
+    zip_path = create_mock_plugin_zip(flat=True)
+    zip_file_name = zip_path.split("/")[-1]  # mock_plugin.zip in tests/mocks folder
+
+    # upload plugin via endpoint
+    with open(zip_path, "rb") as f:
+        response = client.post(
+            "/admins/plugins/upload/",
+            files={"file": (zip_file_name, f, "application/zip")},
+            headers=headers
+        )
+
+    # request was processed
+    assert response.status_code == 200
+    assert response.json()["filename"] == zip_file_name

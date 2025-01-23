@@ -1,9 +1,8 @@
 import os
 import sys
 import socket
-
 import portalocker
-from qdrant_client import QdrantClient
+from qdrant_client import AsyncQdrantClient
 
 from cat.log import log
 from cat.env import get_env
@@ -18,7 +17,7 @@ class VectorDatabase:
         self.local_vector_db = None
         self.db = self.connect_to_vector_memory()
 
-    def connect_to_vector_memory(self) -> QdrantClient:
+    def connect_to_vector_memory(self) -> AsyncQdrantClient:
         qdrant_host = get_env("CCAT_QDRANT_HOST")
         if qdrant_host:
             # Qdrant remote or in other container
@@ -39,11 +38,13 @@ class VectorDatabase:
                     s.close()
 
             # Qdrant vector DB client
-            return QdrantClient(
+            return AsyncQdrantClient(
                 host=qdrant_host,
                 port=qdrant_port,
                 https=qdrant_https,
                 api_key=qdrant_api_key or None,
+                prefer_grpc=True,
+                force_disable_check_same_thread=True,
             )
 
         # Qdrant local vector DB client
@@ -52,12 +53,16 @@ class VectorDatabase:
 
         # reconnect only if it's the first boot and not a reload
         if self.local_vector_db is None:
-            self.local_vector_db = QdrantClient(path=db_path, force_disable_check_same_thread=True)
+            self.local_vector_db = AsyncQdrantClient(
+                path=db_path,
+                prefer_grpc=True,
+                force_disable_check_same_thread=True,
+            )
 
         return self.local_vector_db
 
 
-def get_vector_db() -> QdrantClient:
+def get_vector_db() -> AsyncQdrantClient:
     return VectorDatabase().db
 
 

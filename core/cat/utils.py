@@ -1,3 +1,4 @@
+import asyncio
 import aiofiles
 from datetime import timedelta
 from enum import Enum as BaseEnum, EnumMeta
@@ -14,7 +15,7 @@ import os
 import shutil
 import tomli
 import traceback
-from typing import Dict, Tuple, List, Type, TypeVar
+from typing import Dict, Tuple, List, Type, TypeVar, Any, Callable
 from urllib.parse import urlparse
 
 from cat.env import get_env
@@ -446,3 +447,19 @@ def get_embedder_name(embedder: Embeddings) -> str:
         embedder_name = embedder_name.replace(v, "_")
 
     return embedder_name.lower()
+
+
+def dispatch_event(func: Callable[..., Any], *args, **kwargs) -> Any:
+    if not asyncio.iscoroutinefunction(func) and not asyncio.iscoroutine(func):
+        return func(*args, **kwargs)
+
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    coro = func(*args, **kwargs) if asyncio.iscoroutinefunction(func) else func
+    if loop.is_running():
+        return loop.create_task(coro)
+    return loop.run_until_complete(coro)

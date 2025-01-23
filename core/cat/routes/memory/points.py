@@ -97,13 +97,13 @@ async def recall_memory_points_from_text(
         memory_dict["vector"] = document_recall.vector
         return memory_dict
 
-    def get_memories(c: VectorMemoryCollectionTypes) -> List:
+    async def get_memories(c: VectorMemoryCollectionTypes) -> List:
         # only episodic collection has users, and then a source
         if c == VectorMemoryCollectionTypes.EPISODIC:
             metadata["source"] = cats.stray_cat.user.id
         else:
             metadata.pop("source", None)
-        return ccat.memory.vectors.collections[str(c)].recall_memories_from_embedding(
+        return await ccat.memory.vectors.collections[str(c)].recall_memories_from_embedding(
             query_embedding, k=k, metadata=metadata
         )
 
@@ -114,7 +114,7 @@ async def recall_memory_points_from_text(
 
     # Loop over collections and retrieve nearby memories
     recalled = {
-        str(c): [build_memory_dict(document_recall) for document_recall in get_memories(c)]
+        str(c): [build_memory_dict(document_recall) for document_recall in (await get_memories(c))]
         for c in VectorMemoryCollectionTypes
     }
 
@@ -139,7 +139,7 @@ async def create_memory_point(
 
     memory_collection_is_accessible(collection_id)
 
-    return upsert_memory_point(collection_id, point, cats)
+    return await upsert_memory_point(collection_id, point, cats)
 
 
 @router.put("/collections/{collection_id}/points/{point_id}", response_model=MemoryPoint)
@@ -186,9 +186,9 @@ async def edit_memory_point(
     """
 
     memory_collection_is_accessible(collection_id)
-    verify_memory_point_existence(collection_id, point_id, cats.cheshire_cat.memory.vectors)
+    await verify_memory_point_existence(collection_id, point_id, cats.cheshire_cat.memory.vectors)
 
-    return upsert_memory_point(collection_id, point, cats, point_id)
+    return await upsert_memory_point(collection_id, point, cats, point_id)
 
 
 @router.delete("/collections/{collection_id}/points/{point_id}", response_model=DeleteMemoryPointResponse)
@@ -202,10 +202,10 @@ async def delete_memory_point(
     memory_collection_is_accessible(collection_id)
 
     vector_memory = cats.cheshire_cat.memory.vectors
-    verify_memory_point_existence(collection_id, point_id, vector_memory)
+    await verify_memory_point_existence(collection_id, point_id, vector_memory)
 
     # delete point
-    vector_memory.collections[collection_id].delete_points([point_id])
+    await vector_memory.collections[collection_id].delete_points([point_id])
 
     return DeleteMemoryPointResponse(deleted=point_id)
 
@@ -223,7 +223,7 @@ async def delete_memory_points_by_metadata(
     metadata = metadata or {}
 
     # delete points
-    ret = cats.cheshire_cat.memory.vectors.collections[collection_id].delete_points_by_metadata_filter(metadata)
+    ret = await cats.cheshire_cat.memory.vectors.collections[collection_id].delete_points_by_metadata_filter(metadata)
 
     return DeleteMemoryPointsByMetadataResponse(deleted=ret)
 
@@ -295,6 +295,6 @@ async def get_points_in_collection(
         offset = None
 
     memory_collection = cats.cheshire_cat.memory.vectors.collections[collection_id]
-    points, next_offset = memory_collection.get_all_points(limit=limit, offset=offset)
+    points, next_offset = await memory_collection.get_all_points(limit=limit, offset=offset)
 
     return GetPointsInCollectionResponse(points=points, next_offset=next_offset)
