@@ -15,6 +15,7 @@ from cat.mad_hatter.plugin import Plugin
 from cat.log import log
 from cat.looking_glass.callbacks import ModelInteractionHandler
 from cat import utils
+from cat.memory.utils import ContentType
 
 
 class ProceduresAgent(BaseAgent):
@@ -73,10 +74,12 @@ class ProceduresAgent(BaseAgent):
 
         # Gather recalled procedures
         recalled_procedures_names = {
-            p.document.metadata["source"] for p in stray.working_memory.procedural_memories if
-            p.document.metadata["type"] in ["tool", "form"] and p.document.metadata["trigger_type"] in [
-                "description", "start_example"
-            ]
+            p[ContentType.TEXT].document.metadata["source"]
+            for p in stray.working_memory.procedural_memories
+            if (
+                    p[ContentType.TEXT].document.metadata["type"] in ["tool", "form"]
+                    and p[ContentType.TEXT].document.metadata["trigger_type"] in ["description", "start_example"]
+            )
         }
         recalled_procedures_names = plugin_manager.execute_hook(
             "agent_allowed_tools", recalled_procedures_names, cat=stray

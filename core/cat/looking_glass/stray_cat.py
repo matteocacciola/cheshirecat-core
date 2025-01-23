@@ -83,10 +83,14 @@ class StrayCat:
         await self.__ws.send_json(data)
 
     def _build_why(self, agent_output: AgentOutput | None = None) -> MessageWhy:
-        memory = {str(c): [dict(d.document) | {
-            "score": float(d.score) if d.score else None,
-            "id": d.id,
-        } for d in getattr(self.working_memory, f"{c}_memories")] for c in VectorMemoryCollectionTypes}
+        memory = {str(c): [
+            dict(d[t].document) | {
+                "score": float(d[t].score) if d[t].score else None,
+                "id": d[t].id,
+            }
+            for d in getattr(self.working_memory, f"{c}_memories")
+            for t in ContentType if t in d
+        ] for c in VectorMemoryCollectionTypes}
 
         # why this response?
         return MessageWhy(

@@ -3,6 +3,7 @@ import tempfile
 import time
 import json
 import mimetypes
+from collections import defaultdict
 import httpx
 from typing import List, Dict, Tuple
 from urllib.parse import urlparse
@@ -60,21 +61,21 @@ class RabbitHole:
 
         # Store data to upload the memories in batch
         ids = [m["id"] for m in declarative_memories]
-        payloads = [
-            {"page_content": m["page_content"], "metadata": m["metadata"]}
-            for m in declarative_memories
-        ]
-        vectors = [m["vector"] for m in declarative_memories]
+        payloads = [{"page_content": m["page_content"], "metadata": m["metadata"]} for m in declarative_memories]
+        vectors = dict(defaultdict(list, {
+            ContentType(k): [v for m in declarative_memories for k_inner, v in m["vector"].items() if k == k_inner]
+            for k in {k for m in declarative_memories for k in m["vector"]}
+        }))
 
-        log.info(f"Agent id: {ccat.id}. Preparing to load {len(vectors)} vector memories")
+        log.info(f"Agent id: {ccat.id}. Preparing to load {len(ids)} vector memories")
 
         # Check embedding size is correct
-        embedder_size = ccat.lizard.embedder_size.text
-        len_mismatch = [len(v) == embedder_size for v in vectors]
+        embedder_size = ccat.lizard.embedder_size
+        len_mismatch = [len(v_inner) == getattr(embedder_size, str(k)) for k, v in vectors.items() for v_inner in v]
 
         if not any(len_mismatch):
             raise Exception(
-                f"Embedding size mismatch: vectors length should be {embedder_size}"
+                f"Embedding size mismatch: vectors lengths should be {embedder_size}"
             )
 
         # Upsert memories in batch mode

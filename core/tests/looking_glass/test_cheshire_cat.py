@@ -46,17 +46,17 @@ async def test_procedures_embedded(embedder, memory):
         assert trigger_type in ["start_example", "description"]
 
         if trigger_type == "start_example":
-            assert content in ["what time is it", "get the time"]
+            assert content["text"] in ["what time is it", "get the time"]
         if trigger_type == "description":
             assert (
-                content
+                content["text"]
                 == "get_the_time: Useful to get the current time when asked. Input is always None."
             )
 
         # some check on the embedding
-        assert isinstance(p.vector, list)
-        expected_embed = embedder.embed_query(content)
-        assert len(p.vector) == len(expected_embed)  # same embed
+        assert isinstance(p.vector, dict)
+        expected_embed = embedder.embed_query(content["text"])
+        assert len(p.vector["text"]) == len(expected_embed)  # same embed
 
 
 @pytest.mark.asyncio

@@ -13,6 +13,8 @@ from qdrant_client.http.models import (
     UpdateResult,
     HasIdCondition,
     Payload,
+    NamedVector,
+    Vector
 )
 
 from cat.db.vector_database import get_vector_db
@@ -121,9 +123,12 @@ class VectorMemoryCollection:
         return None
 
     # add points in collection
-    async def add_points(self, payloads: List[Payload], vectors: List, ids: List | None = None) -> UpdateResult:
+    async def add_points(
+        self, payloads: List[Payload], vectors: Dict[ContentType, List[Vector]], ids: List | None = None
+    ) -> UpdateResult:
         """
         Upsert memories in batch mode
+
         Args:
             payloads: the payloads of the points
             vectors: the vectors of the points
@@ -136,11 +141,8 @@ class VectorMemoryCollection:
         if not ids:
             ids = [uuid.uuid4().hex for _ in range(len(payloads))]
 
-        if len(ids) != len(payloads) or len(ids) != len(vectors):
-            raise ValueError("ids, payloads and vectors must have the same length")
-
         payloads = [{**p, **{"tenant_id": self.agent_id}} for p in payloads]
-        points = Batch(ids=ids, payloads=payloads, vectors=vectors)
+        points = Batch(ids=ids, payloads=payloads, vectors={str(k): v for k, v in vectors.items()})
 
         return await self.client.upsert(collection_name=self.collection_name, points=points)
 
@@ -193,22 +195,26 @@ class VectorMemoryCollection:
             ])
 
         # retrieve memories
-        memories = await self.client.search(
-            collection_name=self.collection_name,
-            query_vector={str(k): v for k, v in query_vectors.items()},  # Using named vectors for search
-            query_filter=Filter(must=conditions),
-            with_payload=True,
-            with_vectors=True,
-            limit=k,
-            score_threshold=threshold,
-            search_params=SearchParams(
-                quantization=QuantizationSearchParams(
-                    ignore=False,
-                    rescore=True,
-                    oversampling=2.0,
-                )
-            ),
-        )
+        memories = [
+            m
+            for t, v in query_vectors.items()
+            for m in (await self.client.search(
+                collection_name=self.collection_name,
+                query_vector=NamedVector(name=str(t), vector=v),  # Using named vectors for search
+                query_filter=Filter(must=conditions),
+                with_payload=True,
+                with_vectors=True,
+                limit=k,
+                score_threshold=threshold,
+                search_params=SearchParams(
+                    quantization=QuantizationSearchParams(
+                        ignore=False,
+                        rescore=True,
+                        oversampling=2.0,
+                    )
+                ),
+            ))
+        ]
 
         # convert Qdrant points to a structure containing langchain.Document and its information
         return [to_document_recall(m) for m in memories]
@@ -234,7 +240,9 @@ class VectorMemoryCollection:
         return memories
 
     # retrieve all the points in the collection
-    async def get_all_points(self, limit: int = 10000, offset: str | None = None) -> Tuple[List[Record], int | str | None]:
+    async def get_all_points(
+        self, limit: int = 10000, offset: str | None = None
+    ) -> Tuple[List[Record], int | str | None]:
         """
         Retrieve all the points in the collection with an optional offset and limit.
 
