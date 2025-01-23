@@ -3,103 +3,75 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <h2>Cheshire-Cat (Stregatto)</h2>
+  <h2>Cheshire Cat AI</h2>
+  <h3>🇮🇹 Stregatto - 🇨🇳 柴郡貓 - 🇮🇳 चेशायर बिल्ली - 🇷🇺 Чеширский кот</h3>
 <br/>
-  <a href="https://github.com/matteocacciola/cheshirecat-core">
-  <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/matteocacciola/cheshirecat-core?style=social">
+  <a href="https://github.com/cheshire-cat-ai/core">
+  <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/cheshire-cat-ai/core?style=social">
 </a>
   <a href="https://discord.gg/bHX5sNFCYU">
         <img src="https://img.shields.io/discord/1092359754917089350?logo=discord"
             alt="chat on Discord"></a>
-  <a href="https://github.com/matteocacciola/cheshirecat-core/issues">
-  <img alt="GitHub issues" src="https://img.shields.io/github/issues/matteocacciola/cheshirecat-core">
+  <a href="https://github.com/cheshire-cat-ai/core/issues">
+  <img alt="GitHub issues" src="https://img.shields.io/github/issues/cheshire-cat-ai/core">
   </a>
-  <a href="https://github.com/matteocacciola/cheshirecat-core/tags">
-  <img alt="GitHub tag (with filter)" src="https://img.shields.io/github/v/tag/matteocacciola/cheshirecat-core">
+  <a href="https://github.com/cheshire-cat-ai/core/tags">
+  <img alt="GitHub tag (with filter)" src="https://img.shields.io/github/v/tag/cheshire-cat-ai/core">
   </a>
-  <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/matteocacciola/cheshirecat-core">
+  <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/cheshire-cat-ai/core">
 
   <br/>
   <video src="https://github.com/cheshire-cat-ai/core/assets/6328377/7bc4acff-34bf-4b8a-be61-4d8967fbd60f"></video>
 </div>
 
-## Production ready AI assistant framework
+## AI agent as a microservice
 
-The Cheshire Cat is a framework to build custom AIs on top of any language model. 
-If you have ever used systems like WordPress or Django to build web apps, imagine the Cat as a similar tool, but specific for AI.
+The Cheshire Cat is a framework to build custom AI agents:
 
-## Key differences
+- ⚡️ API first, to easily add a conversational layer to your app
+- 💬 Chat via WebSocket and manage your agent with an customizable REST API
+- 🐘 Built-in RAG with Qdrant
+- 🚀 Extensible via plugins
+- 🪛 Event callbacks, function calling (tools), conversational forms
+- 🏛 Easy to use admin panel
+- 🌍 Supports any language model via langchain
+- 👥 Multiuser with granular permissions, compatible with any identity provider
+- 🐋 100% dockerized
+- 🦄 Active [Discord community](https://discord.gg/bHX5sNFCYU) and easy to understand [docs](https://cheshire-cat-ai.github.io/docs/)
 
-The current version is a multi-tenant fork of the original [Cheshire Cat](https://github.com/cheshire-cat-ai/core).
+### Key differences
 
-### Security
+The current version is a multi-tenant fork of the original [Cheshire Cat](https://github.com/cheshire-cat-ai/core). Here are the main differences:
 
-The original project is developed as a framework that could be used for a personal use as well as for single-tenant production.
+- **New features**: here, I have introduced some new features and improvements, such as:
+  - The `Embedder` is centralized and can be used by multiple RAGs and other language models.
+  - A new `File Manager` that allows you to store files, injected to the RAG, into a remote storage.
+  - New admin endpoints allowing to configure the `Embedder` and `File Manager`.
+  - A new event system that allows you to get fine-grained control over the AI.
+  - **The ability to manage multiple RAGs and other language models at the same time**.
+- **Customizable multi-chatbots**: the current version proposes a platform where each chatbot is fully customizable in terms of
+plugjns, settings, LLM, etc.
+**The way of "injecting" the identification of the Chatbot (RAG) is simple**:
+  - **in case of the HTTP API endpoints, use the `agent_id` key into the request headers or as a querystring parameter;**
+  - **in case of the WebSocket API, use the `agent_id` into the URL, e.g., `/ws/{agent_id}`.**
+- **Cloud ready**: this version can be deployed in a cluster environment. Whilst the original version stored the settings into
+JSON files, **this version requires a Redis database** to store the  settings, the conversation histories, the plugins and so
+forth. You can **configure the Redis database by environment variables**. The [`compose.yml`](./compose.yml) file is provided as an example.
+The Cat is still stateless, so it can be easily scaled.
+In case of a cluster environment, we suggest to use a shared storage, mounted in the `cat/plugins` folder, to share the plugins.
+Hence, the current version is multi-tenant, meaning that you can manage multiple RAGs and other language models at the same time.
+- **Security**: the original project is developed as a framework that could be used for a personal use as well as for single-tenant production.
 In the latter case, the original [documentation](https://cheshire-cat-ai.github.io/docs/) clearly states to set up a secure environment
 by using an API Key. **If not configured properly (e.g. by setting up an API Key), the current version will not work, indeed**.
 In this way, I tried to make the Cat more secure and production-ready.
+- **Additional implementations**: here, the structure used for configuring `Embedder`, `LLMs`, `Authorization Handler` and `File Manager`
+is different from the original version: interfaces and factories have been used for the scope.
 
-### Customizable multi-chatbots
-
-The current version proposes a platform where each chatbot is fully customizable in terms of plugjns, settings, LLM, etc.
-
-**The way of "injecting" the identification of the Chatbot (RAG) is simple**:
-- **in case of the HTTP API endpoints, use the `agent_id` key into the request headers or as a querystring parameter;**
-- **in case of the WebSocket API, use the `agent_id` into the URL, e.g., `/ws/{agent_id}`.**
-
-### Cloud ready
-
-Moreover, this version can be deployed in a cluster environment. Whilst the original version stored the settings into
-JSON files, **this version requires a Redis database** to store the  settings, the conversation histories, the plugins and so
-forth. You can **configure the Redis database by environment variables**. The [`compose.yml`](./compose.yml) file is provided as an example.
-
-The Cat is still stateless, so it can be easily scaled.
-In case of a cluster environment, we suggest to use a shared storage, mounted in the `cat/plugins` folder, to share the plugins.
-
-Hence, the current version is multi-tenant, meaning that you can manage multiple RAGs and other language models at the same time.
-
-### Additional implementations
-
-Here, the structure used for configuring `Embedder`, `LLMs`, `Authorization Handler` and `File Manager` is different from the original version:
-interfaces and factories have been used for the scope.
-
-### New features
-
-Here, I have introduced some new features and improvements, such as:
-- The `Embedder` is centralized and can be used by multiple RAGs and other language models.
-- A new `File Manager` that allows you to store files, injected to the RAG, into a remote storage.
-- New admin endpoints allowing to configure the `Embedder` and `File Manager`.
-- A new event system that allows you to get fine-grained control over the AI.
-- **The ability to manage multiple RAGs and other language models at the same time**.
-
-### Compatibility with plugins
+## Compatibility with plugins
 
 This new version is completely compatible with the original version, so you can easily migrate your existing plugins
 and settings to the new version. It is still in development, but you can already try it out by running the Docker image.
 New features will be added in the future. Please contact us if you want to contribute.
-
-## Software Development Kit
-
-**For your PHP-based projects**, I have developed a [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk) that allows you to
-easily interact with the Cat. You can already add it by setting
-
-```bash
-"matteocacciola/ccatphp-sdk": "dev-master",
-```
-
-into the `require` section of your `composer.json` file, together with:
-
-```json
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/matteocacciola/ccatphp-sdk"
-        }
-    ],
-```
-into the same `composer.json` file.
-
-Node.js and Python SDKs are coming soon.
 
 ## Quickstart
 
@@ -121,8 +93,13 @@ Follow instructions on how to run it with [docker compose and volumes](https://c
 
 ## Minimal plugin example
 
+<details>
+    <summary>
+        Hooks (events)
+    </summary>
+
 ```python
-from cat.mad_hatter.decorators import tool, hook
+from cat.mad_hatter.decorators import hook
 
 # hooks are an event system to get finegraned control over your assistant
 @hook
@@ -131,6 +108,16 @@ def agent_prompt_prefix(prefix, cat):
 You are an expert in socks, and you reply with exactly one rhyme.
 """
     return prefix
+```
+</details>
+
+<details>
+    <summary>
+        Tools
+    </summary>
+
+```python
+from cat.mad_hatter.decorators import tool
 
 # langchain inspired tools (function calling)
 @tool(return_direct=True)
@@ -145,8 +132,12 @@ def socks_prices(color, cat):
     price = prices.get(color, 0)
     return f"{price} bucks, meeeow!" 
 ```
+</details>
 
-## Conversational form example
+<details>
+    <summary>
+        Conversational Forms
+    </summary>
 
 ```python
 from pydantic import BaseModel
@@ -181,13 +172,36 @@ class PizzaForm(CatForm):
             "output": f"Pizza order on its way: {form_data}"
         }
 ```
+</details>
+
+## Software Development Kit
+
+**For your PHP-based projects**, I have developed a [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk) that allows you to
+easily interact with the Cat. You can already add it by setting
+
+```bash
+"matteocacciola/ccatphp-sdk": "dev-master",
+```
+
+into the `require` section of your `composer.json` file, together with:
+
+```json
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/matteocacciola/ccatphp-sdk"
+        }
+    ],
+```
+into the same `composer.json` file.
+
+Node.js and Python SDKs are coming soon.
 
 ## Docs and Resources
 
 - [Official Documentation](https://cheshire-cat-ai.github.io/docs/)
 - [Discord Server](https://discord.gg/bHX5sNFCYU)
 - [Website](https://cheshirecat.ai/)
-- [YouTube tutorial - How to install](https://youtu.be/Rvx19TZBCrw)
 - [Tutorial - Write your first plugin](https://cheshirecat.ai/write-your-first-plugin/)
 
 ## Why use the Cat
@@ -202,8 +216,7 @@ class PizzaForm(CatForm):
 - 👩‍👧‍👦 Active [Discord community](https://discord.gg/bHX5sNFCYU) and easy to understand [docs](https://cheshire-cat-ai.github.io/docs/)
  
 We are committed to openness, privacy and creativity, we want to bring AI to the long tail. If you want to know more
-about our vision and values, read the [Code of Ethics](./CODE-OF-ETHICS.md). 
-
+about our vision and values, read the [Code of Ethics](./CODE-OF-ETHICS.md).
 
 ## Roadmap & Contributing
 
@@ -211,6 +224,11 @@ Send your pull request to the `develop` branch. Here is a [full guide to contrib
 
 Join our [community on Discord](https://discord.gg/bHX5sNFCYU) and give the project a star ⭐!
 Thanks again!🙏
+
+## License and trademark
+
+Code is licensed under [GPL3](./LICENSE).  
+The Cheshire Cat AI logo and name are property of Piero Savastano (founder and maintainer).
 
 ## Which way to go?
 
