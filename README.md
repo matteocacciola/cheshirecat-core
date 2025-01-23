@@ -6,19 +6,19 @@
   <h2>Cheshire Cat AI</h2>
   <h3>🇮🇹 Stregatto - 🇨🇳 柴郡貓 - 🇮🇳 चेशायर बिल्ली - 🇷🇺 Чеширский кот</h3>
 <br/>
-  <a href="https://github.com/matteocacciola/cheshirecat-core">
-  <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/matteocacciola/cheshirecat-core?style=social">
+  <a href="https://github.com/cheshire-cat-ai/core">
+  <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/cheshire-cat-ai/core?style=social">
 </a>
   <a href="https://discord.gg/bHX5sNFCYU">
         <img src="https://img.shields.io/discord/1092359754917089350?logo=discord"
             alt="chat on Discord"></a>
-  <a href="https://github.com/matteocacciola/cheshirecat-core/issues">
-  <img alt="GitHub issues" src="https://img.shields.io/github/issues/matteocacciola/cheshirecat-core">
+  <a href="https://github.com/cheshire-cat-ai/core/issues">
+  <img alt="GitHub issues" src="https://img.shields.io/github/issues/cheshire-cat-ai/core">
   </a>
-  <a href="https://github.com/matteocacciola/cheshirecat-core/tags">
-  <img alt="GitHub tag (with filter)" src="https://img.shields.io/github/v/tag/matteocacciola/cheshirecat-core">
+  <a href="https://github.com/cheshire-cat-ai/core/tags">
+  <img alt="GitHub tag (with filter)" src="https://img.shields.io/github/v/tag/cheshire-cat-ai/core">
   </a>
-  <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/matteocacciola/cheshirecat-core">
+  <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/cheshire-cat-ai/core">
 
   <br/>
   <video src="https://github.com/matteocacciola/cheshirecat-core/assets/6328377/7bc4acff-34bf-4b8a-be61-4d8967fbd60f"></video>
