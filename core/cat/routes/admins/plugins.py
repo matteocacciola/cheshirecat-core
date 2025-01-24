@@ -1,11 +1,9 @@
-
 from copy import deepcopy
 from typing import Dict
-from fastapi import Body, APIRouter, UploadFile, Depends
+from fastapi import Body, APIRouter, UploadFile
 from slugify import slugify
 
-from cat.auth.connection import AdminConnectionAuth
-from cat.auth.permissions import AuthPermission, AdminAuthResource
+from cat.auth.permissions import AuthPermission, AdminAuthResource, check_admin_permissions
 from cat.exceptions import CustomValidationException, CustomNotFoundException
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.mad_hatter.registry import registry_download_plugin
@@ -30,7 +28,7 @@ router = APIRouter()
 @router.get("/", response_model=GetAvailablePluginsResponse)
 async def get_lizard_available_plugins(
     query: str = None,
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.PLUGINS, AuthPermission.LIST)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.LIST),
     # author: str = None, to be activated in case of more granular search
     # tag: str = None, to be activated in case of more granular search
 ) -> GetAvailablePluginsResponse:
@@ -45,7 +43,7 @@ async def get_lizard_available_plugins(
 @router.post("/upload", response_model=InstallPluginResponse)
 async def install_plugin(
     file: UploadFile,
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.PLUGINS, AuthPermission.WRITE)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.WRITE),
 ) -> InstallPluginResponse:
     """Install a new plugin from a zip file"""
 
@@ -62,7 +60,7 @@ async def install_plugin(
 @router.post("/upload/registry", response_model=InstallPluginFromRegistryResponse)
 async def install_plugin_from_registry(
     payload: Dict = Body({"url": "https://github.com/plugin-dev-account/plugin-repo"}),
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.PLUGINS, AuthPermission.WRITE)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.WRITE),
 ) -> InstallPluginFromRegistryResponse:
     """Install a new plugin from registry"""
 
@@ -78,7 +76,7 @@ async def install_plugin_from_registry(
 
 @router.get("/settings", response_model=PluginsSettingsResponse)
 async def get_lizard_plugins_settings(
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.PLUGINS, AuthPermission.READ)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.READ),
 ) -> PluginsSettingsResponse:
     """Returns the default settings of all the plugins"""
 
@@ -88,7 +86,7 @@ async def get_lizard_plugins_settings(
 @router.get("/settings/{plugin_id}", response_model=GetSettingResponse)
 async def get_lizard_plugin_settings(
     plugin_id: str,
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.PLUGINS, AuthPermission.READ)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Returns the default settings of a specific plugin"""
 
@@ -98,7 +96,7 @@ async def get_lizard_plugin_settings(
 @router.get("/{plugin_id}", response_model=GetPluginDetailsResponse)
 async def get_plugin_details(
     plugin_id: str,
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.PLUGINS, AuthPermission.READ)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.READ),
 ) -> GetPluginDetailsResponse:
     """Returns information on a single plugin, at a system level"""
 
@@ -126,7 +124,7 @@ async def get_plugin_details(
 @router.delete("/{plugin_id}", response_model=DeletePluginResponse)
 async def uninstall_plugin(
     plugin_id: str,
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.PLUGINS, AuthPermission.DELETE)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.DELETE),
 ) -> DeletePluginResponse:
     """Physically remove plugin at a system level."""
 

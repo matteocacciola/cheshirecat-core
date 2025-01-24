@@ -1,6 +1,6 @@
-from cat.auth.permissions import AuthPermission, AuthResource
-from cat.auth.connection import WebSocketAuth, ContextualCats
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from cat.auth.permissions import AuthPermission, AuthResource, check_websocket_permissions
+from cat.auth.connection import ContextualCats
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from cat.convo.messages import UserMessage
 from cat.log import log
@@ -12,7 +12,7 @@ router = APIRouter()
 @router.websocket("/ws/{agent_id}")
 async def websocket_endpoint(
     websocket: WebSocket,
-    cats: ContextualCats = Depends(WebSocketAuth(AuthResource.CONVERSATION, AuthPermission.WRITE)),
+    cats: ContextualCats = check_websocket_permissions(AuthResource.CONVERSATION, AuthPermission.WRITE),
 ):
     """
     Endpoint to handle incoming WebSocket connections by user id, process messages, and check for messages.

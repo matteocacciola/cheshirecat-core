@@ -1,9 +1,9 @@
 from typing import Dict, List
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from pydantic import BaseModel
 
-from cat.auth.connection import HTTPAuth, ContextualCats
-from cat.auth.permissions import AuthPermission, AuthResource
+from cat.auth.connection import ContextualCats
+from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomNotFoundException
 from cat.memory.utils import VectorMemoryCollectionTypes
 
@@ -26,7 +26,7 @@ class WipeCollectionsResponse(BaseModel):
 # GET collection list with some metadata
 @router.get("/collections", response_model=GetCollectionsResponse)
 async def get_collections(
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ))
+    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> GetCollectionsResponse:
     """Get list of available collections"""
 
@@ -41,7 +41,7 @@ async def get_collections(
 # DELETE all collections
 @router.delete("/collections", response_model=WipeCollectionsResponse)
 async def destroy_all_collection_points(
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
+    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> WipeCollectionsResponse:
     """Delete and create all collections"""
 
@@ -64,7 +64,7 @@ async def destroy_all_collection_points(
 @router.delete("/collections/{collection_id}", response_model=WipeCollectionsResponse)
 async def destroy_all_single_collection_points(
     collection_id: str,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
+    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> WipeCollectionsResponse:
     """Delete and recreate a collection"""
 

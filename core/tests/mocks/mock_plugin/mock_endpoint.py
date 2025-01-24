@@ -1,9 +1,8 @@
-from fastapi import Depends
 from pydantic import BaseModel
 
 from cat.mad_hatter.decorators import endpoint
-from cat.auth.connection import HTTPAuth
-from cat.auth.permissions import AuthPermission, AuthResource
+from cat.auth.connection import ContextualCats
+from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 
 
 class Item(BaseModel):
@@ -22,8 +21,8 @@ def test_endpoint_prefix():
 
 
 @endpoint.get(path="/crud", prefix="/tests", tags=["Tests"])
-def test_get(stray=Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.LIST))):
-    return {"result": "ok", "stray_user_id": stray.user_id}
+def test_get(cats: ContextualCats = check_permissions(AuthResource.PLUGINS, AuthPermission.LIST)):
+    return {"result": "ok", "stray_user_id": cats.stray_cat.user.id}
 
 
 @endpoint.post(path="/crud", prefix="/tests", tags=["Tests"])

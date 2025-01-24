@@ -1,8 +1,7 @@
 from typing import Dict
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body
 
-from cat.auth.connection import AdminConnectionAuth
-from cat.auth.permissions import AdminAuthResource, AuthPermission
+from cat.auth.permissions import AdminAuthResource, AuthPermission, check_admin_permissions
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomValidationException
 from cat.factory.base_factory import ReplacedNLPConfig
@@ -16,7 +15,7 @@ router = APIRouter()
 # get configured Plugin File Managers and configuration schemas
 @router.get("/settings", response_model=GetSettingsResponse)
 async def get_file_managers_settings(
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.FILE_MANAGER, AuthPermission.LIST)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.FILE_MANAGER, AuthPermission.LIST),
 ) -> GetSettingsResponse:
     """Get the list of the Plugin File Managers and their settings"""
 
@@ -41,7 +40,7 @@ async def get_file_managers_settings(
 @router.get("/settings/{file_manager_name}", response_model=GetSettingResponse)
 async def get_file_manager_settings(
     file_manager_name: str,
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.FILE_MANAGER, AuthPermission.READ)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.FILE_MANAGER, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Plugin File Manager"""
 
@@ -65,7 +64,7 @@ async def get_file_manager_settings(
 async def upsert_file_manager_setting(
     file_manager_name: str,
     payload: Dict = Body(...),
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.FILE_MANAGER, AuthPermission.EDIT)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.FILE_MANAGER, AuthPermission.EDIT),
 ) -> ReplacedNLPConfig:
     """Upsert the Plugin File Manager setting"""
 

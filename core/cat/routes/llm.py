@@ -1,8 +1,8 @@
 from typing import Dict
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body
 
-from cat.auth.connection import HTTPAuth, ContextualCats
-from cat.auth.permissions import AuthPermission, AuthResource
+from cat.auth.connection import ContextualCats
+from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.llm import LLMFactory
@@ -15,7 +15,7 @@ router = APIRouter()
 # get configured LLMs and configuration schemas
 @router.get("/settings", response_model=GetSettingsResponse)
 def get_llms_settings(
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.LIST)),
+    cats: ContextualCats = check_permissions(AuthResource.LLM, AuthPermission.LIST),
 ) -> GetSettingsResponse:
     """Get the list of the Large Language Models"""
 
@@ -42,7 +42,7 @@ def get_llms_settings(
 @router.get("/settings/{language_model_name}", response_model=GetSettingResponse)
 def get_llm_settings(
     language_model_name: str,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.READ)),
+    cats: ContextualCats = check_permissions(AuthResource.LLM, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Large Language Model"""
 
@@ -66,7 +66,7 @@ def get_llm_settings(
 def upsert_llm_setting(
     language_model_name: str,
     payload: Dict = Body({"openai_api_key": "your-key-here"}),
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.LLM, AuthPermission.EDIT)),
+    cats: ContextualCats = check_permissions(AuthResource.LLM, AuthPermission.EDIT),
 ) -> ReplacedNLPConfig:
     """Upsert the Large Language Model setting"""
 

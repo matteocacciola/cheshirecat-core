@@ -1,10 +1,8 @@
-from typing import List
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from pydantic import BaseModel
 
-from cat.auth.connection import HTTPAuth, ContextualCats
-from cat.auth.permissions import AuthPermission, AuthResource
+from cat.auth.connection import ContextualCats
+from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.convo.messages import ConversationHistory, MessageWhy, CatMessage, UserMessage, Role
 
 router = APIRouter()
@@ -29,7 +27,7 @@ class PostConversationHistoryPayload(BaseModel):
 # DELETE conversation history from working memory
 @router.delete("/conversation_history", response_model=DeleteConversationHistoryResponse)
 async def destroy_conversation_history(
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
+    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteConversationHistoryResponse:
     """Delete the specified user's conversation history from working memory"""
 
@@ -41,7 +39,7 @@ async def destroy_conversation_history(
 # GET conversation history from working memory
 @router.get("/conversation_history", response_model=GetConversationHistoryResponse)
 async def get_conversation_history(
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ)),
+    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> GetConversationHistoryResponse:
     """Get the specified user's conversation history from working memory"""
 
@@ -52,7 +50,7 @@ async def get_conversation_history(
 @router.post("/conversation_history", response_model=GetConversationHistoryResponse)
 async def add_conversation_history(
     payload: PostConversationHistoryPayload,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
+    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
 ) -> GetConversationHistoryResponse:
     """Insert the specified conversation item into the working memory"""
 

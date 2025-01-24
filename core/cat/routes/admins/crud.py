@@ -1,10 +1,9 @@
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import List, Dict
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 
-from cat.auth.permissions import AdminAuthResource, AuthPermission, get_full_admin_permissions
+from cat.auth.permissions import AdminAuthResource, AuthPermission, get_full_admin_permissions, check_admin_permissions
 from cat.auth.auth_utils import hash_password
-from cat.auth.connection import AdminConnectionAuth
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException
 from cat.looking_glass.bill_the_lizard import BillTheLizard
@@ -56,7 +55,7 @@ class AdminResponse(AdminBase):
 @router.post("/", response_model=AdminResponse)
 async def create_admin(
     new_user: AdminCreate,
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.ADMINS, AuthPermission.WRITE)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.ADMINS, AuthPermission.WRITE),
 ):
     created_user = crud_users.create_user(lizard.config_key, new_user.model_dump())
     if not created_user:
@@ -69,7 +68,7 @@ async def create_admin(
 async def read_admins(
     skip: int = Query(default=0, description="How many admins to skip."),
     limit: int = Query(default=100, description="How many admins to return."),
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.ADMINS, AuthPermission.LIST)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.ADMINS, AuthPermission.LIST),
 ):
     users_db = crud_users.get_users(lizard.config_key)
 
@@ -80,7 +79,7 @@ async def read_admins(
 @router.get("/{user_id}", response_model=AdminResponse)
 async def read_admin(
     user_id: str,
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.ADMINS, AuthPermission.READ)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.ADMINS, AuthPermission.READ),
 ):
     users_db = crud_users.get_users(lizard.config_key)
 
@@ -93,7 +92,7 @@ async def read_admin(
 async def update_admin(
     user_id: str,
     user: AdminUpdate,
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.ADMINS, AuthPermission.EDIT)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.ADMINS, AuthPermission.EDIT),
 ):
     stored_user = crud_users.get_user(lizard.config_key, user_id)
     if not stored_user:
@@ -110,7 +109,7 @@ async def update_admin(
 @router.delete("/{user_id}", response_model=AdminResponse)
 async def delete_admin(
     user_id: str,
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.ADMINS, AuthPermission.DELETE)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.ADMINS, AuthPermission.DELETE),
 ):
     deleted_user = crud_users.delete_user(lizard.config_key, user_id)
     if not deleted_user:

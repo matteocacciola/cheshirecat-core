@@ -3,8 +3,8 @@ from pydantic import BaseModel
 from fastapi import Query, APIRouter, Depends
 from qdrant_client.http.models import UpdateResult, Record
 
-from cat.auth.connection import HTTPAuth, ContextualCats
-from cat.auth.permissions import AuthPermission, AuthResource
+from cat.auth.connection import ContextualCats
+from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.factory.embedder import EmbedderFactory
 from cat.routes.routes_utils import (
     MemoryPointBase,
@@ -56,7 +56,7 @@ async def recall_memory_points_from_text(
         description="Flat dictionary where each key-value pair represents a filter."
                     "The memory points returned will match the specified metadata criteria."
     )),
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.READ)),
+    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> RecallResponse:
     """
     Search k memories similar to given text with specified metadata criteria.
@@ -133,7 +133,7 @@ async def recall_memory_points_from_text(
 async def create_memory_point(
     collection_id: str,
     point: MemoryPointBase,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
+    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
 ) -> MemoryPoint:
     """Create a point in memory"""
 
@@ -147,7 +147,7 @@ async def edit_memory_point(
     collection_id: str,
     point_id: str,
     point: MemoryPointBase,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.EDIT)),
+    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.EDIT),
 ) -> MemoryPoint:
     """Edit a point in memory
 
@@ -195,7 +195,7 @@ async def edit_memory_point(
 async def delete_memory_point(
     collection_id: str,
     point_id: str,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
+    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteMemoryPointResponse:
     """Delete a specific point in memory"""
 
@@ -214,7 +214,7 @@ async def delete_memory_point(
 async def delete_memory_points_by_metadata(
     collection_id: str,
     metadata: Dict = None,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
+    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteMemoryPointsByMetadataResponse:
     """Delete points in memory by filter"""
 
@@ -240,7 +240,7 @@ async def get_points_in_collection(
         default=None,
         description="If provided (or not empty string) - skip points with ids less than given `offset`"
     ),
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.DELETE)),
+    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> GetPointsInCollectionResponse:
     """Retrieve all the points from a single collection
 

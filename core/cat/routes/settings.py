@@ -1,10 +1,9 @@
 from typing import Dict, List
-
-from fastapi import Depends, APIRouter
+from fastapi import APIRouter
 from pydantic import BaseModel
 
-from cat.auth.permissions import AuthPermission, AuthResource
-from cat.auth.connection import HTTPAuth, ContextualCats
+from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
+from cat.auth.connection import ContextualCats
 from cat.db import models
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomNotFoundException
@@ -27,7 +26,7 @@ class DeleteSettingResponse(BaseModel):
 @router.get("/", response_model=GetSettingsResponse)
 def get_settings(
     search: str = "",
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.LIST)),
+    cats: ContextualCats = check_permissions(AuthResource.SETTINGS, AuthPermission.LIST),
 ) -> GetSettingsResponse:
     """Get the entire list of settings available in the database"""
 
@@ -39,7 +38,7 @@ def get_settings(
 @router.post("/", response_model=SettingResponse)
 def create_setting(
     payload: models.SettingBody,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.WRITE)),
+    cats: ContextualCats = check_permissions(AuthResource.SETTINGS, AuthPermission.WRITE),
 ) -> SettingResponse:
     """Create a new setting in the database"""
 
@@ -55,7 +54,7 @@ def create_setting(
 @router.get("/{setting_id}", response_model=SettingResponse)
 def get_setting(
     setting_id: str,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.READ))
+    cats: ContextualCats = check_permissions(AuthResource.SETTINGS, AuthPermission.READ),
 ) -> SettingResponse:
     """Get the specific setting from the database"""
 
@@ -69,7 +68,7 @@ def get_setting(
 def update_setting(
     setting_id: str,
     payload: models.SettingBody,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.EDIT)),
+    cats: ContextualCats = check_permissions(AuthResource.SETTINGS, AuthPermission.EDIT),
 ) -> SettingResponse:
     """Update a specific setting in the database if it exists"""
 
@@ -93,7 +92,7 @@ def update_setting(
 @router.delete("/{setting_id}", response_model=DeleteSettingResponse)
 def delete_setting(
     setting_id: str,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.SETTINGS, AuthPermission.DELETE)),
+    cats: ContextualCats = check_permissions(AuthResource.SETTINGS, AuthPermission.DELETE),
 ) -> DeleteSettingResponse:
     """Delete a specific setting in the database"""
 

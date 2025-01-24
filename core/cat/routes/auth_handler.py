@@ -1,8 +1,8 @@
 from typing import Dict
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body
 
-from cat.auth.connection import HTTPAuth, ContextualCats
-from cat.auth.permissions import AuthPermission, AuthResource
+from cat.auth.connection import ContextualCats
+from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomValidationException
 from cat.factory.auth_handler import AuthHandlerFactory
@@ -14,7 +14,7 @@ router = APIRouter()
 
 @router.get("/settings", response_model=GetSettingsResponse)
 async def get_auth_handler_settings(
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))
+    cats: ContextualCats = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.LIST),
 ) -> GetSettingsResponse:
     """Get the list of the AuthHandlers"""
 
@@ -41,7 +41,7 @@ async def get_auth_handler_settings(
 @router.get("/settings/{auth_handler_name}", response_model=GetSettingResponse)
 async def get_auth_handler_setting(
     auth_handler_name: str,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST))
+    cats: ContextualCats = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.LIST),
 ) -> GetSettingResponse:
     """Get the settings of a specific AuthHandler"""
 
@@ -62,7 +62,7 @@ async def get_auth_handler_setting(
 @router.put("/settings/{auth_handler_name}", response_model=UpsertSettingResponse)
 async def upsert_authenticator_setting(
     auth_handler_name: str,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.AUTH_HANDLER, AuthPermission.LIST)),
+    cats: ContextualCats = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.LIST),
     payload: Dict = Body(...),
 ) -> ReplacedNLPConfig:
     """Upsert the settings of a specific AuthHandler"""

@@ -1,10 +1,9 @@
 from typing import List
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from cat.auth.auth_utils import extract_agent_id_from_request
-from cat.auth.connection import AdminConnectionAuth
-from cat.auth.permissions import AdminAuthResource, AuthPermission
+from cat.auth.permissions import AdminAuthResource, AuthPermission, check_admin_permissions
 from cat.db import crud
 from cat.db.database import get_db
 from cat.db.vector_database import get_vector_db
@@ -29,7 +28,7 @@ class CreatedResponse(BaseModel):
 @router.post("/factory/reset", response_model=ResetResponse)
 async def factory_reset(
     request: Request,
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE),
 ) -> ResetResponse:
     """
     Factory reset the entire application. This will delete all settings, memories, and metadata.
@@ -68,10 +67,8 @@ async def factory_reset(
     )
 
 
-@router.get("/agents")
-async def get_agents(
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.CHESHIRE_CATS, AuthPermission.LIST)),
-) -> List[str]:
+@router.get("/agents", dependencies=[check_admin_permissions(AdminAuthResource.CHESHIRE_CATS, AuthPermission.LIST)])
+async def get_agents() -> List[str]:
     """
     Get all agents.
     """
@@ -86,7 +83,7 @@ async def get_agents(
 @router.post("/agent/create", response_model=CreatedResponse)
 async def agent_create(
     request: Request,
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE),
 ) -> CreatedResponse:
     """
     Reset a single agent. This will delete all settings, memories, and metadata, for the agent.
@@ -105,7 +102,7 @@ async def agent_create(
 @router.post("/agent/destroy", response_model=ResetResponse)
 async def agent_destroy(
     request: Request,
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE),
 ) -> ResetResponse:
     """
     Reset a single agent. This will delete all settings, memories, and metadata, for the agent.
@@ -135,7 +132,7 @@ async def agent_destroy(
 @router.post("/agent/reset", response_model=ResetResponse)
 async def agent_reset(
     request: Request,
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE),
 ) -> ResetResponse:
     """
     Reset a single agent. This will delete all settings, memories, and metadata, for the agent.

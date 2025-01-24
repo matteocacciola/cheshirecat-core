@@ -1,10 +1,10 @@
 from typing import Dict
-from fastapi import Body, APIRouter, Depends
+from fastapi import Body, APIRouter
 from pydantic import ValidationError
 from slugify import slugify
 
-from cat.auth.connection import HTTPAuth, ContextualCats
-from cat.auth.permissions import AuthPermission, AuthResource
+from cat.auth.connection import ContextualCats
+from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException, CustomNotFoundException
 from cat.routes.routes_utils import (
     GetAvailablePluginsResponse,
@@ -23,7 +23,7 @@ router = APIRouter()
 @router.get("/", response_model=GetAvailablePluginsResponse)
 async def get_cheshirecat_available_plugins(
     query: str = None,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.LIST)),
+    cats: ContextualCats = check_permissions(AuthResource.PLUGINS, AuthPermission.LIST),
     # author: str = None, to be activated in case of more granular search
     # tag: str = None, to be activated in case of more granular search
 ) -> GetAvailablePluginsResponse:
@@ -38,7 +38,7 @@ async def get_cheshirecat_available_plugins(
 @router.put("/toggle/{plugin_id}", status_code=200, response_model=TogglePluginResponse)
 async def toggle_plugin(
     plugin_id: str,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.WRITE)),
+    cats: ContextualCats = check_permissions(AuthResource.PLUGINS, AuthPermission.WRITE),
 ) -> TogglePluginResponse:
     """Enable or disable a single plugin"""
 
@@ -58,7 +58,7 @@ async def toggle_plugin(
 
 @router.get("/settings", response_model=PluginsSettingsResponse)
 async def get_cheshirecat_plugins_settings(
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
+    cats: ContextualCats = check_permissions(AuthResource.PLUGINS, AuthPermission.READ),
 ) -> PluginsSettingsResponse:
     """Returns the settings of all the plugins"""
 
@@ -68,7 +68,7 @@ async def get_cheshirecat_plugins_settings(
 @router.get("/settings/{plugin_id}", response_model=GetSettingResponse)
 async def get_cheshirecat_plugin_settings(
     plugin_id: str,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.READ)),
+    cats: ContextualCats = check_permissions(AuthResource.PLUGINS, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Returns the settings of a specific plugin"""
 
@@ -81,7 +81,7 @@ async def get_cheshirecat_plugin_settings(
 async def upsert_cheshirecat_plugin_settings(
     plugin_id: str,
     payload: Dict = Body({"setting_a": "some value", "setting_b": "another value"}),
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.PLUGINS, AuthPermission.EDIT)),
+    cats: ContextualCats = check_permissions(AuthResource.PLUGINS, AuthPermission.EDIT),
 ) -> GetSettingResponse:
     """Updates the settings of a specific plugin"""
 

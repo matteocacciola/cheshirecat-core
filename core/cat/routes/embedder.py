@@ -1,8 +1,7 @@
 from typing import Dict
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body
 
-from cat.auth.connection import AdminConnectionAuth
-from cat.auth.permissions import AdminAuthResource, AuthPermission
+from cat.auth.permissions import AdminAuthResource, AuthPermission, check_admin_permissions
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomValidationException
 from cat.factory.base_factory import ReplacedNLPConfig
@@ -16,7 +15,7 @@ router = APIRouter()
 # get configured Embedders and configuration schemas
 @router.get("/settings", response_model=GetSettingsResponse)
 async def get_embedders_settings(
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.EMBEDDER, AuthPermission.LIST)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.EMBEDDER, AuthPermission.LIST),
 ) -> GetSettingsResponse:
     """Get the list of the Embedders"""
 
@@ -41,7 +40,7 @@ async def get_embedders_settings(
 @router.get("/settings/{embedder_name}", response_model=GetSettingResponse)
 async def get_embedder_settings(
     embedder_name: str,
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.EMBEDDER, AuthPermission.READ)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.EMBEDDER, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Embedder"""
 
@@ -63,7 +62,7 @@ async def get_embedder_settings(
 async def upsert_embedder_setting(
     embedder_name: str,
     payload: Dict = Body({"openai_api_key": "your-key-here"}),
-    lizard: BillTheLizard = Depends(AdminConnectionAuth(AdminAuthResource.EMBEDDER, AuthPermission.EDIT)),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.EMBEDDER, AuthPermission.EDIT),
 ) -> ReplacedNLPConfig:
     """Upsert the Embedder setting"""
 

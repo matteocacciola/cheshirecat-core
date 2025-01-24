@@ -1,10 +1,10 @@
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import List, Dict
-from fastapi import Depends, APIRouter
+from fastapi import APIRouter
 
-from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions
+from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions, check_permissions
 from cat.auth.auth_utils import hash_password
-from cat.auth.connection import HTTPAuth, ContextualCats
+from cat.auth.connection import ContextualCats
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException
 
@@ -56,7 +56,7 @@ class UserResponse(UserBase):
 @router.post("/", response_model=UserResponse)
 def create_user(
     new_user: UserCreate,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.WRITE)),
+    cats: ContextualCats = check_permissions(AuthResource.USERS, AuthPermission.WRITE),
 ) -> UserResponse:
     agent_id = cats.cheshire_cat.id
     created_user = crud_users.create_user(agent_id, new_user.model_dump())
@@ -70,7 +70,7 @@ def create_user(
 def read_users(
     skip: int = 0,
     limit: int = 100,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.LIST)),
+    cats: ContextualCats = check_permissions(AuthResource.USERS, AuthPermission.LIST),
 ) -> List[UserResponse]:
     users_db = crud_users.get_users(cats.cheshire_cat.id)
 
@@ -81,7 +81,7 @@ def read_users(
 @router.get("/{user_id}", response_model=UserResponse)
 def read_user(
     user_id: str,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.READ)),
+    cats: ContextualCats = check_permissions(AuthResource.USERS, AuthPermission.READ),
 ) -> UserResponse:
     users_db = crud_users.get_users(cats.cheshire_cat.id)
 
@@ -94,7 +94,7 @@ def read_user(
 def update_user(
     user_id: str,
     user: UserUpdate,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.EDIT)),
+    cats: ContextualCats = check_permissions(AuthResource.USERS, AuthPermission.EDIT),
 ) -> UserResponse:
     agent_id = cats.cheshire_cat.id
     stored_user = crud_users.get_user(agent_id, user_id)
@@ -112,7 +112,7 @@ def update_user(
 @router.delete("/{user_id}", response_model=UserResponse)
 def delete_user(
     user_id: str,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.USERS, AuthPermission.DELETE)),
+    cats: ContextualCats = check_permissions(AuthResource.USERS, AuthPermission.DELETE),
 ) -> UserResponse:
     agent_id = cats.cheshire_cat.id
     deleted_user = crud_users.delete_user(agent_id, user_id)

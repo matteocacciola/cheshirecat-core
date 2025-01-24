@@ -4,10 +4,10 @@ import json
 from typing import Dict, List
 from copy import deepcopy
 from pydantic import BaseModel, Field, ConfigDict
-from fastapi import Form, Depends, APIRouter, UploadFile, BackgroundTasks, Request
+from fastapi import Form, APIRouter, UploadFile, BackgroundTasks, Request
 
-from cat.auth.connection import HTTPAuth, ContextualCats
-from cat.auth.permissions import AuthPermission, AuthResource
+from cat.auth.connection import ContextualCats
+from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
@@ -70,7 +70,7 @@ async def upload_file(
         description="Metadata to be stored with each chunk (e.g. author, category, etc.). "
                     "Since we are passing this along side form data, must be a JSON string (use `json.dumps(metadata)`)."
     ),
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
+    cats: ContextualCats = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
 ) -> UploadSingleFileResponse:
     """Upload a file containing text (.txt, .md, .pdf, etc.). File content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory.
@@ -163,7 +163,7 @@ async def upload_files(
         description="Metadata to be stored where each key is the name of a file being uploaded, and the corresponding value is another dictionary containing metadata specific to that file. "
                     "Since we are passing this along side form data, metadata must be a JSON string (use `json.dumps(metadata)`)."
     ),
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
+    cats: ContextualCats = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
 ) -> Dict[str, UploadSingleFileResponse]:
     """Batch upload multiple files containing text (.txt, .md, .pdf, etc.). File content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory.
@@ -172,6 +172,7 @@ async def upload_files(
     ----------
     `chunk_size`, `chunk_overlap` and `metadata` must be passed as form data.
     This is necessary because the HTTP protocol does not allow file uploads to be sent as JSON.
+    The maximum number of files you can upload is 1000.
 
     Example
     ----------
@@ -237,7 +238,7 @@ async def upload_url(
     request: Request,
     background_tasks: BackgroundTasks,
     upload_config: UploadURLConfig,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
+    cats: ContextualCats = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
 ) -> UploadUrlResponse:
     """Upload an url. Website content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory."""
@@ -270,7 +271,7 @@ async def upload_memory(
     request: Request,
     file: UploadFile,
     background_tasks: BackgroundTasks,
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.MEMORY, AuthPermission.WRITE)),
+    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
 ) -> UploadSingleFileResponse:
     """Upload a memory json file to the cat memory"""
 
@@ -295,7 +296,7 @@ async def upload_memory(
 
 @router.get("/allowed-mimetypes", response_model=AllowedMimeTypesResponse)
 async def get_allowed_mimetypes(
-    cats: ContextualCats = Depends(HTTPAuth(AuthResource.UPLOAD, AuthPermission.WRITE)),
+    cats: ContextualCats = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
 ) -> AllowedMimeTypesResponse:
     """Retrieve the allowed mimetypes that can be ingested by the Rabbit Hole"""
 
