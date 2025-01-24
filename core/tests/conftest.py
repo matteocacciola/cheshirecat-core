@@ -150,7 +150,7 @@ async def encapsulate_each_test(request, monkeypatch):
 
 @pytest.fixture(scope="function")
 def lizard():
-    l = BillTheLizard()
+    l = BillTheLizard().set_fastapi_app(cheshire_cat_api)
     yield l
     l.shutdown()
 
@@ -224,6 +224,8 @@ def plugin_manager(lizard):
     plugin_manager.install_plugin(new_plugin_zip_path)
 
     yield plugin_manager
+
+    plugin_manager.uninstall_plugin("mock_plugin")
 
 
 @pytest.fixture(scope="function")
@@ -314,6 +316,7 @@ def mocked_default_llm_answer_prompt():
     yield
 
     utils.default_llm_answer_prompt = fnc
+
 
 # Define the custom marker
 pytest.mark.skip_encapsulation = pytest.mark.skip_encapsulation

@@ -14,10 +14,7 @@ from packaging.requirements import Requirement
 from cat.db.cruds import plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.experimental.form.cat_form import CatForm
-from cat.mad_hatter.decorators.endpoint import CustomEndpoint
-from cat.mad_hatter.decorators.hook import CatHook
-from cat.mad_hatter.decorators.plugin_decorator import CatPluginDecorator
-from cat.mad_hatter.decorators.tool import CatTool
+from cat.mad_hatter.decorators import CustomEndpoint, CatHook, CatPluginDecorator, CatTool
 from cat.utils import to_camel_case, inspect_calling_agent
 from cat.log import log
 
@@ -115,7 +112,11 @@ class Plugin:
         self._hooks = []
         self._tools = []
         self._forms = []
-        self._deactivate_endpoints()
+
+        for endpoint in self._endpoints:
+            endpoint.deactivate()
+        self._endpoints = []
+
         self._plugin_overrides = {}
         self._active = False
 
@@ -354,32 +355,27 @@ class Plugin:
 
     def _clean_hook(self, hook: Tuple[str, CatHook]):
         # getmembers returns a tuple
-        h = hook[1]
+        _, h = hook
         h.plugin_id = self._id
         return h
 
     def _clean_tool(self, tool: Tuple[str, CatTool]):
         # getmembers returns a tuple
-        t = tool[1]
+        _, t = tool
         t.plugin_id = self._id
         return t
 
     def _clean_form(self, form: Tuple[str, CatForm]):
         # getmembers returns a tuple
-        f = form[1]
+        _, f = form
         f.plugin_id = self._id
         return f
 
-    def _clean_endpoint(self, endpoint: CustomEndpoint):
+    def _clean_endpoint(self, endpoint: Tuple[str, CustomEndpoint]):
         # getmembers returns a tuple
-        f = endpoint[1]
-        f.plugin_id = self._id
-        return f
-
-    def _deactivate_endpoints(self):
-        for endpoint in self._endpoints:
-            endpoint.deactivate()
-        self._endpoints = []
+        _, e = endpoint
+        e.plugin_id = self._id
+        return e
 
     # a plugin hook function has to be decorated with @hook
     # (which returns an instance of CatHook)

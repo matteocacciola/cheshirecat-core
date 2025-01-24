@@ -23,6 +23,7 @@ class CatForm:  # base model of forms
     stop_examples: List[str] = []
     ask_confirm: bool = False
     triggers_map = None
+    plugin_id = None
     _autopilot = False
 
     def __init__(self, cat) -> None:

@@ -289,7 +289,7 @@ def format_upload_file(upload_file: UploadFile) -> UploadFile:
 
 async def startup_app(app):
     # load the Manager and the Job Handler
-    app.state.lizard = BillTheLizard()
+    app.state.lizard = BillTheLizard().set_fastapi_app(app)
     app.state.white_rabbit = WhiteRabbit()
 
     memory_builder = VectorMemoryBuilder()

@@ -1,6 +1,7 @@
 from typing import Dict
 from uuid import uuid4
 from langchain_core.embeddings import Embeddings
+from fastapi import FastAPI
 
 from cat import utils
 from cat.adapters.factory_adapter import FactoryAdapter
@@ -55,6 +56,8 @@ class BillTheLizard:
 
         self.__key = DEFAULT_SYSTEM_KEY
 
+        self.fastapi_app = None
+
         self.embedder: Embeddings | None = None
         self.embedder_name: str | None = None
         self.embedder_size: VectorEmbedderSize | None = None
@@ -77,9 +80,9 @@ class BillTheLizard:
         # Main agent instance (for reasoning)
         self.main_agent = MainAgent()
 
-        self.plugin_manager.on_end_plugin_install_callback = self.notify_plugin_installed
-        self.plugin_manager.on_start_plugin_uninstall_callback = self.clean_up_agents
-        self.plugin_manager.on_end_plugin_uninstall_callback = self.destroy_plugin
+        self.plugin_manager.on_end_plugin_install_callback = self.on_end_plugin_install_callback
+        self.plugin_manager.on_start_plugin_uninstall_callback = self.on_start_plugin_uninstall_callback
+        self.plugin_manager.on_end_plugin_uninstall_callback = self.on_end_plugin_uninstall_callback
 
         # Initialize the default admin if not present
         if not crud_users.get_users(self.__key):
@@ -88,11 +91,18 @@ class BillTheLizard:
     def __del__(self):
         self.shutdown()
 
-    def notify_plugin_installed(self):
+    def set_fastapi_app(self, app: FastAPI) -> "BillTheLizard":
+        self.fastapi_app = app
+        return self
+
+    def on_end_plugin_install_callback(self):
         """
-        Notify the existing Cheshire cats that a plugin was installed, thus reloading the available plugins into the
-        cats.
+        Callback executed when a plugin is installed. It informs the Cheshire Cats about the new plugin available in the
+        system. It also activates the endpoints of the plugin in the Mad Hatter.
         """
+
+        for endpoint in self.endpoints:
+            endpoint.activate(self.fastapi_app)
 
         for ccat_id in crud.get_agents_main_keys():
             ccat = self.get_cheshire_cat(ccat_id)
@@ -100,7 +110,7 @@ class BillTheLizard:
             # inform the Cheshire Cats about the new plugin available in the system
             ccat.plugin_manager.find_plugins()
 
-    def clean_up_agents(self, plugin_id: str):
+    def on_start_plugin_uninstall_callback(self, plugin_id: str):
         """
         Clean up the plugin uninstallation. It removes the plugin settings from the database for the different agents.
 
@@ -114,7 +124,10 @@ class BillTheLizard:
             # deactivate plugins in the Cheshire Cats
             ccat.plugin_manager.deactivate_plugin(plugin_id)
 
-    def destroy_plugin(self, plugin_id: str):
+    def on_end_plugin_uninstall_callback(self, plugin_id: str):
+        for endpoint in self.endpoints:
+            endpoint.deactivate()
+
         crud_plugins.destroy_plugin(plugin_id)
 
     async def reload_embed_procedures(self):
@@ -317,6 +330,7 @@ class BillTheLizard:
         self.embedder_name = None
         self.embedder_size = None
         self.file_manager = None
+        self.fastapi_app = None
 
     @property
     def config_key(self):
@@ -329,3 +343,14 @@ class BillTheLizard:
     @property
     def memory_builder(self) -> VectorMemoryBuilder:
         return VectorMemoryBuilder()
+
+    @property
+    def endpoints(self):
+        if not self.fastapi_app:
+            return []
+
+        return [
+            endpoint
+            for endpoint in self.plugin_manager.endpoints
+            if endpoint.plugin_id in self.plugin_manager.active_plugins
+        ]

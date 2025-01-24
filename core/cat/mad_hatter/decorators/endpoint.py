@@ -1,7 +1,9 @@
-from typing import Callable
+from enum import Enum
+from typing import Callable, List, Any
 from fastapi import APIRouter
 
 from cat.log import log
+
 
 # class to represent a @endpoint
 class CustomEndpoint:
@@ -10,10 +12,12 @@ class CustomEndpoint:
         prefix: str,
         path: str,
         function: Callable,
-        methods,
-        tags,
+        methods: set[str] | List[str] | None = None,
+        tags: List[str | Enum] | None = None,
+        plugin_id: str | None = None,
         **kwargs,
     ):
+        self.api_route = None
         self.prefix = prefix
         self.path = path
         self.function = function
@@ -21,6 +25,7 @@ class CustomEndpoint:
         self.methods = methods
         self.kwargs = kwargs
         self.name = self.prefix + self.path
+        self.plugin_id = plugin_id
 
         # fastAPI instance, will be set by the activate method
         self.cheshire_cat_api = None
@@ -29,16 +34,14 @@ class CustomEndpoint:
         return f"CustomEndpoint(path={self.name} methods={self.methods})"
 
     def activate(self, cheshire_cat_api):
-
         log.info(f"Activating custom endpoint {self.methods} {self.name}")
 
         self.cheshire_cat_api = cheshire_cat_api
 
         # Set the fastapi api_route into the Custom Endpoint
-        for api_route in self.cheshire_cat_api.routes:
-            if api_route.path == self.name and api_route.methods == self.methods:
-                log.info(f"There is already an active {self.methods} endpoint with path {self.name}")
-                return
+        if any(api_route.path == self.name and api_route.methods == self.methods for api_route in self.cheshire_cat_api.routes):
+            log.info(f"There is already an active {self.methods} endpoint with path {self.name}")
+            return
 
         plugins_router = APIRouter()
         plugins_router.add_api_route(
@@ -63,44 +66,39 @@ class CustomEndpoint:
                 self.api_route = api_route
                 break
         
-        assert api_route.path == self.name
+        assert self.api_route.path == self.name
 
     def deactivate(self):
-
         log.info(f"Deactivating custom endpoint {self.methods} {self.name}")
 
         # Seems there is no official way to remove a route:
         # https://github.com/fastapi/fastapi/discussions/8088
         # https://github.com/fastapi/fastapi/discussions/9855
-        if self.cheshire_cat_api:
-            to_remove = None
-            for api_route in self.cheshire_cat_api.routes:
-                if api_route.path == self.name and api_route.methods == self.methods:
-                    to_remove = api_route
-                    break
+        if not self.cheshire_cat_api:
+            return
 
-            if to_remove:
-                self.cheshire_cat_api.routes.remove(api_route)
-                self.cheshire_cat_api.openapi_schema = None  # Flush the cached openapi schema
+        to_remove = None
+        for api_route in self.cheshire_cat_api.routes:
+            if api_route.path == self.name and api_route.methods == self.methods:
+                to_remove = api_route
+                break
+
+        if to_remove:
+            self.cheshire_cat_api.routes.remove(to_remove)
+            self.cheshire_cat_api.openapi_schema = None  # Flush the cached openapi schema
+
 
 class Endpoint:
-
-    cheshire_cat_api = None
-
     default_prefix = "/custom"
     default_tags = ["Custom Endpoints"]
 
-    # Called from madhatter to inject the fastapi app instance
-    def _init_decorators(cls, new_cheshire_cat_api):
-        cls.cheshire_cat_api = new_cheshire_cat_api
-
     # @endpoint decorator. Any function in a plugin decorated by @endpoint.endpoint will be exposed as FastAPI operation
     def endpoint(
-        cls,
-        path,
-        methods,
-        prefix=default_prefix,
-        tags=default_tags,
+        self,
+        path: str,
+        methods: set[str] | List[str] | None = None,
+        prefix: str | None = default_prefix,
+        tags: List[str | Enum] | None = None,
         **kwargs,
     ) -> Callable:
         """
@@ -114,11 +112,13 @@ class Endpoint:
                     return {"Hello":"Alice"}
         """
 
-        def _make_endpoint(endpoint):
+        tags = tags or self.default_tags
+
+        def _make_endpoint(endpoint_function: Callable):
             custom_endpoint = CustomEndpoint(
                 prefix=prefix,
                 path=path,
-                function=endpoint,
+                function=endpoint_function,
                 methods=set(methods),
                 tags=tags,
                 **kwargs,
@@ -130,11 +130,11 @@ class Endpoint:
 
     # Any function in a plugin decorated by @endpoint.get will be exposed as FastAPI GET operation
     def get(
-        cls,
-        path,
-        prefix=default_prefix,
-        response_model=None,
-        tags=default_tags,
+        self,
+        path: str,
+        prefix: str | None = default_prefix,
+        response_model: Any = None,
+        tags: List[str | Enum] | None = None,
         **kwargs,
     ) -> Callable:
         """
@@ -148,7 +148,9 @@ class Endpoint:
                     return {"Hello":"Alice"}
         """
 
-        return cls.endpoint(
+        tags = tags or self.default_tags
+
+        return self.endpoint(
             path=path,
             methods={"GET"},
             prefix=prefix,
@@ -159,11 +161,11 @@ class Endpoint:
 
     # Any function in a plugin decorated by @endpoint.post will be exposed as FastAPI POST operation
     def post(
-        cls,
-        path,
-        prefix=default_prefix,
-        response_model=None,
-        tags=default_tags,
+        self,
+        path: str,
+        prefix: str | None = default_prefix,
+        response_model: Any = None,
+        tags: List[str | Enum] | None = None,
         **kwargs,
     ) -> Callable:
         """
@@ -182,9 +184,86 @@ class Endpoint:
                 def my_post_endpoint(item: Item):
                     return {"Hello": item.name, "Description": item.description}
         """
-        return cls.endpoint(
+
+        tags = tags or self.default_tags
+
+        return self.endpoint(
             path=path,
             methods={"POST"},
+            prefix=prefix,
+            response_model=response_model,
+            tags=tags,
+            **kwargs,
+        )
+
+    # Any function in a plugin decorated by @endpoint.put will be exposed as FastAPI PUT operation
+    def put(
+        self,
+        path: str,
+        prefix: str | None = default_prefix,
+        response_model: Any = None,
+        tags: List[str | Enum] | None = None,
+        **kwargs,
+    ) -> Callable:
+        """
+        Define a custom API endpoint for PUT operation, parameters are the same as FastAPI path operation.
+        Examples:
+            .. code-block:: python
+
+                from cat.mad_hatter.decorators import endpoint
+                from pydantic import BaseModel
+
+                class Item(BaseModel):
+                    name: str
+                    description: str
+
+                @endpoint.put(path="/hello")
+                def my_put_endpoint(item: Item):
+                    return {"Hello": item.name, "Description": item.description}
+        """
+
+        tags = tags or self.default_tags
+
+        return self.endpoint(
+            path=path,
+            methods={"PUT"},
+            prefix=prefix,
+            response_model=response_model,
+            tags=tags,
+            **kwargs,
+        )
+
+    # Any function in a plugin decorated by @endpoint.delete will be exposed as FastAPI DELETE operation
+    def delete(
+        self,
+        path: str,
+        prefix: str | None = default_prefix,
+        response_model: Any = None,
+        tags: List[str | Enum] | None = None,
+        **kwargs,
+    ) -> Callable:
+        """
+        Define a custom API endpoint for DELETE operation, parameters are the same as FastAPI path operation.
+        Examples:
+            .. code-block:: python
+
+                from cat.mad_hatter.decorators import endpoint
+                from pydantic import BaseModel
+
+                class Item(BaseModel):
+                    name: str
+                    description: str
+
+                @endpoint.delete(path="/hello")
+                def my_delete_endpoint(item: Item):
+                    return {"Hello": item.name, "Description": item.description}
+        """
+
+        tags = tags or self.default_tags
+
+        return self.endpoint(
+            path=path,
+            methods={"DELETE"},
             prefix=prefix,
             response_model=response_model,
             tags=tags,

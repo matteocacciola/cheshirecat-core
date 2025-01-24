@@ -13,6 +13,7 @@ class CatTool:
         func: Callable,
         return_direct: bool = False,
         examples: List[str] = None,
+        plugin_id: str | None = None
     ):
         examples = examples or []
 
@@ -23,6 +24,7 @@ class CatTool:
         self.name = name
         self.description = description
         self.return_direct = return_direct
+        self.plugin_id = plugin_id
 
         self.triggers_map = {
             "description": [f"{name}: {description}"],

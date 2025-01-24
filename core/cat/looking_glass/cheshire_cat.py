@@ -1,4 +1,3 @@
-import asyncio
 import time
 from typing import Dict
 from uuid import uuid4

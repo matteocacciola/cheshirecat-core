@@ -7,9 +7,7 @@ from cat.db.cruds import settings as crud_settings
 from cat.db.models import Setting
 from cat.log import log
 from cat.mad_hatter.plugin import Plugin
-from cat.mad_hatter.decorators.endpoint import CustomEndpoint
-from cat.mad_hatter.decorators.hook import CatHook
-from cat.mad_hatter.decorators.tool import CatTool
+from cat.mad_hatter.decorators import CustomEndpoint, CatHook, CatTool
 from cat.experimental.form.cat_form import CatForm
 import cat.utils as utils
 
