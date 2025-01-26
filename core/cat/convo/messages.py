@@ -1,11 +1,12 @@
 import time
 from abc import ABC
-from typing import List, Literal, Dict, TypeAlias
+from typing import List, Dict, TypeAlias
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage as BaseLangchainMessage
-from pydantic import BaseModel, Field, ConfigDict, computed_field
+from pydantic import computed_field
 from typing_extensions import deprecated
 
 from cat.agents import AgentOutput
+from cat.convo.model_interactions import LLMModelInteraction, EmbedderModelInteraction
 from cat.utils import BaseModelDict, Enum
 
 
@@ -19,60 +20,6 @@ class Role(Enum):
     """
     AI = "AI"
     HUMAN = "Human"
-
-
-class ModelInteraction(BaseModel):
-    """
-    Class for wrapping model interaction in the conversation history info. It can be either LLMModelInteraction or
-    EmbedderModelInteraction.
-
-    Variables:
-        model_type (Literal["llm", "embedder"]): model type
-        source (str): source of the model interaction
-        prompt (str): prompt for the model interaction
-        input_tokens (int): input tokens
-        started_at (float): started at time in seconds since epoch (default: time.time())
-    """
-
-    model_type: Literal["llm", "embedder"]
-    source: str
-    prompt: str
-    input_tokens: int
-    started_at: float = Field(default_factory=lambda: time.time())
-
-    model_config = ConfigDict(protected_namespaces=())
-
-
-class LLMModelInteraction(ModelInteraction):
-    """
-    Class for wrapping LLM model interaction in the conversation history info. It is a subclass of ModelInteraction.
-
-    Variables:
-        model_type (Literal["llm"]): model type
-        reply (str): reply to the input
-        output_tokens (int): output tokens
-        ended_at (float): ended at time in seconds since epoch (default: time.time())
-    """
-
-    model_type: Literal["llm"] = Field(default="llm")
-    reply: str
-    output_tokens: int
-    ended_at: float
-
-
-class EmbedderModelInteraction(ModelInteraction):
-    """
-    Class for wrapping Embedder model interaction in the conversation history info. It is a subclass of ModelInteraction.
-
-    Variables:
-        model_type (Literal["embedder"]): model type
-        source (str): source of the model interaction
-        reply (List[float]): reply
-    """
-
-    model_type: Literal["embedder"] = Field(default="embedder")
-    source: str = Field(default="recall")
-    reply: List[float]
 
 
 class MessageWhy(BaseModelDict):
@@ -90,7 +37,6 @@ class MessageWhy(BaseModelDict):
     intermediate_steps: List
     memory: Dict
     model_interactions: List[LLMModelInteraction | EmbedderModelInteraction]
-    agent_output: AgentOutput | None = None
 
 
 class BaseMessage(BaseModelDict, ABC):

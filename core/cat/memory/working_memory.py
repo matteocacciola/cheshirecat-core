@@ -8,14 +8,13 @@ from cat.convo.messages import (
     BaseMessage,
     CatMessage,
     UserMessage,
-    LLMModelInteraction,
-    EmbedderModelInteraction,
     MessageWhy,
     ConversationHistoryItem,
     ConversationHistory,
     convert_to_conversation_history,
     convert_to_langchain_message,
 )
+from cat.convo.model_interactions import LLMModelInteraction, EmbedderModelInteraction
 from cat.db.cruds import history as crud_history
 from cat.experimental.form.cat_form import CatForm
 from cat.looking_glass.bill_the_lizard import BillTheLizard

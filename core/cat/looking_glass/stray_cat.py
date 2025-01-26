@@ -1,5 +1,4 @@
 import time
-import asyncio
 import traceback
 import tiktoken
 from typing import Literal, List, Dict, Any, get_args
@@ -14,7 +13,8 @@ from cat import utils
 from cat.agents.base_agent import AgentOutput
 from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
-from cat.convo.messages import EmbedderModelInteraction, CatMessage, Role, MessageWhy, UserMessage
+from cat.convo.messages import CatMessage, Role, MessageWhy, UserMessage
+from cat.convo.model_interactions import EmbedderModelInteraction
 from cat.exceptions import VectorMemoryError
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
@@ -96,7 +96,6 @@ class StrayCat:
             intermediate_steps=agent_output.intermediate_steps if agent_output else [],
             memory=memory,
             model_interactions=self.working_memory.model_interactions,
-            agent_output=agent_output.model_dump() if agent_output else None
         )
 
     async def send_ws_message(self, content: str, msg_type: MSG_TYPES = "notification"):

@@ -4,7 +4,7 @@ from langchain_core.outputs.llm_result import LLMResult
 import tiktoken
 import time
 
-from cat.convo.messages import LLMModelInteraction
+from cat.convo.model_interactions import LLMModelInteraction
 
 
 class NewTokenHandler(BaseCallbackHandler):

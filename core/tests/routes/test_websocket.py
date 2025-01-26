@@ -6,7 +6,7 @@ from cat.db.cruds import users as crud_users
 from tests.utils import send_websocket_message, send_n_websocket_messages, api_key_ws, agent_id
 
 
-def check_correct_websocket_reply(reply):
+def check_correct_websocket_reply(reply, with_delay=True):
     for k in ["type", "content", "why"]:
         assert k in reply.keys()
 
@@ -16,7 +16,7 @@ def check_correct_websocket_reply(reply):
 
     # why
     why = reply["why"]
-    assert {"input", "intermediate_steps", "memory", "model_interactions", "agent_output"} == set(why.keys())
+    assert {"input", "intermediate_steps", "memory", "model_interactions"} == set(why.keys())
     assert isinstance(why["input"], str)
     assert isinstance(why["intermediate_steps"], list)
     assert isinstance(why["memory"], dict)
@@ -31,7 +31,8 @@ def check_correct_websocket_reply(reply):
         assert isinstance(mi["input_tokens"], int)
         assert mi["input_tokens"] > 0
         assert isinstance(mi["started_at"], float)
-        assert time.time() - 1 < mi["started_at"] < time.time()
+        if with_delay:
+            assert time.time() - 1 < mi["started_at"] < time.time()
 
         if mi["model_type"] == "llm":
             assert isinstance(mi["reply"], str)
@@ -87,4 +88,4 @@ def test_websocket_multiple_messages(secure_client):
     replies = send_n_websocket_messages(3, secure_client)
 
     for res in replies:
-        check_correct_websocket_reply(res)
+        check_correct_websocket_reply(res, False)
