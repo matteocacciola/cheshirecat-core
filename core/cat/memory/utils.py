@@ -33,8 +33,8 @@ class VectorMemoryConfig(BaseModelDict):
 class MultimodalContent(BaseModel):
     """Represents multimodal content with optional text, image and audio data"""
     text: str | None = None
-    image_path: str | None = None
-    audio_path: str | None = None
+    image_url: str | None = None
+    audio_url: str | None = None
 
 
 class DocumentRecallItem(BaseModelDict):

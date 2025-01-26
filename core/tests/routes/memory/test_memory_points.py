@@ -214,8 +214,8 @@ def test_get_collection_points(secure_client, secure_client_headers, cheshire_ca
         {
             "page_content": {
                 "text": p["content"],
-                "image_path": None,
-                "audio_path": None,
+                "image_url": None,
+                "audio_url": None,
             },
             "metadata": {
                 "when": fake_timestamp,
@@ -281,8 +281,8 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, ches
         {
             "page_content": {
                 "text": p["content"],
-                "image_path": None,
-                "audio_path": None,
+                "image_url": None,
+                "audio_url": None,
             },
             "metadata": {
                 "when": fake_timestamp,

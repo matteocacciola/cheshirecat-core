@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
+from cat.memory.utils import ContentType
 
 agent_id = "agent_test"
 api_key = "meow_http"
@@ -136,14 +137,14 @@ def get_fake_memory_export(embedder_name="DumbEmbedder", dim=2367):
             "declarative": [
                 {
                     "page_content": {
-                        "text": "test_memory"
+                        str(ContentType.TEXT): "test_memory"
                     },
                     "metadata": {"source": user["id"], "when": time.time()},
                     "id": str(uuid.uuid4()),
                     "vector": {
-                        "text": [random.random() for _ in range(dim)],
-                        "image": [random.random() for _ in range(dim)],
-                        "audio": [random.random() for _ in range(dim)],
+                        str(ContentType.TEXT): [random.random() for _ in range(dim)],
+                        str(ContentType.IMAGE): [random.random() for _ in range(dim)],
+                        str(ContentType.AUDIO): [random.random() for _ in range(dim)],
                     }
                 }
             ]

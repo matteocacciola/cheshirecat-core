@@ -258,7 +258,7 @@ async def upsert_memory_point(
 
     return MemoryPoint(
         metadata=qdrant_point.payload["metadata"],
-        content=qdrant_point.payload["page_content"]["text"],
+        content=qdrant_point.payload["page_content"][str(ContentType.TEXT)],
         vector=qdrant_point.vector[str(ContentType.TEXT)],
         id=qdrant_point.id
     )
