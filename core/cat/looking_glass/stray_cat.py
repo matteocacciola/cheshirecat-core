@@ -64,23 +64,25 @@ class StrayCat:
     def __repr__(self):
         return f"StrayCat(user_id={self.__user.id}, agent_id={self.__agent_id})"
 
-    def __del__(self):
+    async def close(self):
         if not self.__ws:
             return
         try:
-            asyncio.run(self.__ws.close())
+            await self.__ws.close()
         except RuntimeError as ex:
             log.warning(f"Agent id: {self.__agent_id}. Warning {ex}")
-            self.__ws = None
-        del self.working_memory
-        del self.__user
-        del self.__ws
-        del self.__agent_id
+        self.working_memory = None
+        self.__user = None
+        self.__ws = None
+        self.__agent_id = None
 
     async def _send_ws_json(self, data: Any):
         # Run the coroutine in the main event loop in the main thread
         # and wait for the result
-        await self.__ws.send_json(data)
+        try:
+            await self.__ws.send_json(data)
+        except RuntimeError as e:
+            log.error(f"Runtime error occurred while sending data: {e}")
 
     def _build_why(self, agent_output: AgentOutput | None = None) -> MessageWhy:
         memory = {str(c): [dict(d.document) | {
