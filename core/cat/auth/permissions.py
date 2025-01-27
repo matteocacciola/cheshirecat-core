@@ -4,6 +4,7 @@ from fastapi import Depends
 
 from cat.utils import BaseModelDict, Enum
 
+from fastapi import Depends
 
 class AuthResource(Enum):
     CRUD = "CRUD"
@@ -144,3 +145,29 @@ class AuthUserInfo(BaseModelDict):
     # - roles
     extra: BaseModelDict = Field(default_factory=dict)
 
+
+def check_permissions(resource: AuthResource, permission: AuthPermission):
+    """
+    Helper function to inject stray into endpoints after checking for required permissions.
+
+    Parameters
+    ----------
+    resource: AuthResource | str
+        The resource that the user must have permission for.
+    permission: AuthPermission | str
+        The permission that the user must have for the resource.
+
+    Returns
+    ----------
+    stray: StrayCat | None
+        User session object if auth is successfull, None otherwise.
+    """
+
+
+    # import here to avoid circular imports
+    from cat.auth.connection import HTTPAuth
+    return Depends(HTTPAuth(
+        # explicit convert to Enum
+        resource = AuthResource(resource),
+        permission = AuthPermission(permission),
+    ))
