@@ -41,7 +41,7 @@ async def get_auth_handler_settings(
 @router.get("/settings/{auth_handler_name}", response_model=GetSettingResponse)
 async def get_auth_handler_setting(
     auth_handler_name: str,
-    cats: ContextualCats = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.LIST),
+    cats: ContextualCats = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Get the settings of a specific AuthHandler"""
 

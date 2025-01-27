@@ -9,7 +9,7 @@ from langchain_community.document_loaders.parsers.msword import MsWordParser
 from langchain_core.embeddings import Embeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.language_models import BaseLanguageModel
-from langchain_core.messages import SystemMessage
+from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers.string import StrOutputParser
@@ -210,8 +210,8 @@ class CheshireCat:
         # Add a token counter to the callbacks
         caller = get_caller_info()
 
-        # here we deal with motherfucking langchain
-        prompt = ChatPromptTemplate(messages=[SystemMessage(content=prompt)])
+        # here we deal with Langchain
+        prompt = ChatPromptTemplate(messages=[HumanMessage(content=prompt)])  # HumanMessage for wide-range compatibility even if it could bring some problem with tokenizers
 
         chain = (
             prompt

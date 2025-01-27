@@ -156,10 +156,12 @@ class WorkingMemory(BaseModelDict):
             self.agent_id, self.user_id, [message.model_dump() for message in self.history]
         )
 
-    def stringify_chat_history(self, latest_n: int = 5) -> str:
+    def stringify_chat_history(self, latest_n: int = 10) -> str:
         """
         Serialize chat history.
         Converts to text the recent conversation turns.
+        Useful for backward compatibility with old non-chat models, and to easily insert convo into a prompt without
+        using dedicated objects and libraries.
 
         Args:
             latest_n (int. optional): How many latest turns to stringify. Defaults to 5.
@@ -184,7 +186,7 @@ class WorkingMemory(BaseModelDict):
 
     def langchainfy_chat_history(self, latest_n: int = 5) -> List[BaseMessage]:
         """
-        Get the chat history in Langchain format.
+        Convert chat history in working memory to Langchain objects.
 
         Args:
             latest_n (int, optional): Number of latest messages to get. Defaults to 5.

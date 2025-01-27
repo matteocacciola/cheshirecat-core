@@ -4,6 +4,7 @@ import logging
 import sys
 import inspect
 import json
+import time
 from pprint import pformat
 from loguru import logger
 
@@ -214,6 +215,7 @@ class CatLogEngine:
 
         with open("cat/welcome.txt", "r") as f:
             print(f.read())
+            time.sleep(0.01)
 
         print("\n=============== ^._.^ ===============\n")
         print(f"Cat REST API:   {cat_address}/docs")

@@ -5,20 +5,7 @@ ENV PYTHONUNBUFFERED=1
 ENV WATCHFILES_FORCE_POLLING=true
 
 ### SYSTEM SETUP ###
-RUN apt-get -y update && apt-get install -y \
-    curl \
-    build-essential \
-    fastjar \
-    libmagic-mgc \
-    libmagic1 \
-    mime-support \
-    # Packages required by Rust (from required by py_rust_stemmers from fastembed library)
-    pkg-config \
-    gcc \
-    && \
-    # Install Rust by rustup
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
-    # Clean APT cache
+RUN apt-get -y update && apt-get install -y curl build-essential fastjar libmagic-mgc libmagic1 mime-support && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

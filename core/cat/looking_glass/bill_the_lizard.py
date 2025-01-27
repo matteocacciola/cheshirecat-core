@@ -201,8 +201,7 @@ class BillTheLizard:
         self.load_language_embedder()
 
         try:
-            # create new collections (different embedder!)
-            await self.memory_builder.rebuild()
+            await self.memory_builder.build()  # create new collections (different embedder!)
         except Exception as e:  # restore the original Embedder
             log.error(e)
 
