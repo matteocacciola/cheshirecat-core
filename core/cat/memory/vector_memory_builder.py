@@ -31,7 +31,7 @@ class VectorMemoryBuilder:
     async def build(self):
         for collection_name in VectorMemoryCollectionTypes:
             is_collection_existing = await self.__check_collection_existence(str(collection_name))
-            has_same_size = await self.__check_embedding_size(str(collection_name)) if is_collection_existing else False
+            has_same_size = self.__check_embedding_size(str(collection_name)) if is_collection_existing else False
             if is_collection_existing and has_same_size:
                 continue
 
@@ -45,23 +45,6 @@ class VectorMemoryBuilder:
             log.warning(f"Collection \"{collection_name}\" deleted")
             await self.__create_collection(str(collection_name))
 
-    async def __check_embedding_size(self, collection_name: str) -> bool:
-        # having the same size does not necessarily imply being the same embedder
-        # having vectors with the same size but from different embedder in the same vector space is wrong
-        same_size = (
-            (await self.__client.get_collection(collection_name=collection_name)).config.params.vectors.size
-            == self.lizard.embedder_size.text
-        )
-        local_alias = self.lizard.embedder_name + "_" + collection_name
-        db_alias = (await self.__client.get_collection_aliases(collection_name=collection_name)).aliases[0].alias_name
-
-        if same_size and local_alias == db_alias:
-            log.debug(f"Collection \"{collection_name}\" has the same embedder")
-            return True
-
-        log.warning(f"Collection \"{collection_name}\" has different embedder")
-        return False
-
     async def __check_collection_existence(self, collection_name: str) -> bool:
         collections_response = await self.__client.get_collections()
         if any(c.name == collection_name for c in collections_response.collections):
@@ -70,6 +53,27 @@ class VectorMemoryBuilder:
             return True
 
         return False
+
+    async def __check_embedding_size(self, collection_name: str) -> bool:
+        collection_info = await self.__client.get_collection(collection_name=collection_name)
+        embedder_sizes = self.lizard.embedder_size
+
+        # Multiple vector configurations
+        vectors_config = collection_info.config.params.vectors
+
+        text_lbl = str(ContentType.TEXT)
+        image_lbl = str(ContentType.IMAGE)
+        audio_lbl = str(ContentType.AUDIO)
+
+        text_condition = text_lbl in vectors_config and vectors_config[text_lbl].size == embedder_sizes.text
+        image_condition = (
+            image_lbl in vectors_config and vectors_config[image_lbl].size == embedder_sizes.image
+        ) if embedder_sizes.image else True
+        audio_condition = (
+            audio_lbl in vectors_config and vectors_config[audio_lbl].size == embedder_sizes.audio
+        ) if embedder_sizes.audio else True
+
+        return text_condition and image_condition and audio_condition
 
     # create collection
     async def __create_collection(self, collection_name: str):
