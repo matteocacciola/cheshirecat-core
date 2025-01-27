@@ -30,16 +30,46 @@ class VectorMemoryBuilder:
 
     async def build(self):
         for collection_name in VectorMemoryCollectionTypes:
-            # is collection present in DB?
-            collections_response = await self.__client.get_collections()
-            if any(c.name == collection_name for c in collections_response.collections):
-                # collection exists. Do nothing
-                log.info(
-                    f"Collection \"{collection_name}\" already present in vector store"
-                )
+            is_collection_existing = await self.__check_collection_existence(str(collection_name))
+            has_same_size = await self.__check_embedding_size(str(collection_name)) if is_collection_existing else False
+            if is_collection_existing and has_same_size:
                 continue
 
+            # Memory snapshot saving can be turned off in the .env file with:
+            # SAVE_MEMORY_SNAPSHOTS=false
+            if get_env("CCAT_SAVE_MEMORY_SNAPSHOTS") == "true":
+                # dump collection on disk before deleting
+                await self.__save_dump(str(collection_name))
+
+            await self.__client.delete_collection(collection_name=str(collection_name))
+            log.warning(f"Collection \"{collection_name}\" deleted")
             await self.__create_collection(str(collection_name))
+
+    async def __check_embedding_size(self, collection_name: str) -> bool:
+        # having the same size does not necessarily imply being the same embedder
+        # having vectors with the same size but from different embedder in the same vector space is wrong
+        same_size = (
+            (await self.__client.get_collection(collection_name=collection_name)).config.params.vectors.size
+            == self.lizard.embedder_size.text
+        )
+        local_alias = self.lizard.embedder_name + "_" + collection_name
+        db_alias = (await self.__client.get_collection_aliases(collection_name=collection_name)).aliases[0].alias_name
+
+        if same_size and local_alias == db_alias:
+            log.debug(f"Collection \"{collection_name}\" has the same embedder")
+            return True
+
+        log.warning(f"Collection \"{collection_name}\" has different embedder")
+        return False
+
+    async def __check_collection_existence(self, collection_name: str) -> bool:
+        collections_response = await self.__client.get_collections()
+        if any(c.name == collection_name for c in collections_response.collections):
+            # collection exists. Do nothing
+            log.info(f"Collection \"{collection_name}\" already present in vector store")
+            return True
+
+        return False
 
     # create collection
     async def __create_collection(self, collection_name: str):
@@ -101,35 +131,6 @@ class VectorMemoryBuilder:
             )
         except Exception as e:
             log.error(f"Error when creating a schema index: {e}")
-
-    async def rebuild(self):
-        for collection_name in VectorMemoryCollectionTypes:
-            await self.__check_embedding_size(str(collection_name))
-
-    async def __check_embedding_size(self, collection_name: str):
-        # having the same size does not necessarily imply being the same embedder
-        # having vectors with the same size but from different embedder in the same vector space is wrong
-        same_size = (
-            (await self.__client.get_collection(collection_name=collection_name)).config.params.vectors.size
-            == self.lizard.embedder_size
-        )
-        local_alias = self.lizard.embedder_name + "_" + collection_name
-        db_aliases = (await self.__client.get_collection_aliases(collection_name=collection_name)).aliases
-
-        if same_size and local_alias == db_aliases[0].alias_name:
-            log.debug(f"Collection \"{collection_name}\" has the same embedder")
-            return
-
-        log.warning(f"Collection \"{collection_name}\" has different embedder")
-        # Memory snapshot saving can be turned off in the .env file with:
-        # SAVE_MEMORY_SNAPSHOTS=false
-        if get_env("CCAT_SAVE_MEMORY_SNAPSHOTS") == "true":
-            # dump collection on disk before deleting
-            await self.__save_dump(collection_name)
-
-        await self.__client.delete_collection(collection_name=collection_name)
-        log.warning(f"Collection \"{collection_name}\" deleted")
-        await self.__create_collection(collection_name)
 
     # dump collection on disk before deleting
     async def __save_dump(self, collection_name: str, folder="dormouse/"):

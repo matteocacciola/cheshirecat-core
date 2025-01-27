@@ -1,21 +1,25 @@
 from langchain_core.messages import AIMessage, HumanMessage
 
-from cat.convo.messages import Role, UserMessage, CatMessage
+from cat.convo.messages import Role, UserMessage, CatMessage, ConversationHistoryItem
+from cat.db.models import generate_uuid
 from cat.memory.working_memory import WorkingMemory
+
+from tests.utils import agent_id
+
 
 def create_working_memory_with_convo_history():
     """Utility to create a working memory and populate its convo history."""
 
-    working_memory = WorkingMemory()
-    human_message = UserMessage(user_id="123", who="Human", text="Hi")
-    working_memory.update_history(human_message)
-    cat_message = CatMessage(user_id="123", who="AI", text="Meow")
-    working_memory.update_history(cat_message)
+    working_memory = WorkingMemory(agent_id=agent_id, user_id=generate_uuid())
+    human_message = UserMessage(text="Hi")
+    working_memory.update_history(who=Role.HUMAN, content=human_message)
+    cat_message = CatMessage(text="Meow")
+    working_memory.update_history(who=Role.AI, content=cat_message)
     return working_memory
 
-def test_create_working_memory():
 
-    wm = WorkingMemory()
+def test_create_working_memory():
+    wm = WorkingMemory(agent_id=agent_id, user_id=generate_uuid())
     assert wm.history == []
     assert wm.user_message_json is None
     assert wm.active_form is None
@@ -27,30 +31,28 @@ def test_create_working_memory():
 
 
 def test_update_history():
-
     wm = create_working_memory_with_convo_history()
 
     assert len(wm.history) == 2
+    for message in wm.history:
+        assert isinstance(message, ConversationHistoryItem)
+        assert isinstance(message.content, (UserMessage, CatMessage))
 
-    assert isinstance(wm.history[0], UserMessage)
-    assert wm.history[0].who == "Human"
-    assert wm.history[0].role == Role.Human
-    assert wm.history[0].text == "Hi"
+    assert wm.history[0].who == Role.HUMAN
+    assert wm.history[0].role == "Human"
+    assert wm.history[0].content.text == "Hi"
 
-    assert isinstance(wm.history[1], CatMessage)
-    assert wm.history[1].who == "AI"
-    assert wm.history[1].role == Role.AI
-    assert wm.history[1].text == "Meow"
+    assert wm.history[1].who == Role.AI
+    assert wm.history[1].role == "AI"
+    assert wm.history[1].content.text == "Meow"
 
 
 def test_stringify_chat_history():
-
     wm = create_working_memory_with_convo_history()
     assert wm.stringify_chat_history() == "\n - Human: Hi\n - AI: Meow"
 
 
 def test_langchainfy_chat_history():
-
     wm = create_working_memory_with_convo_history()
     langchain_convo = wm.langchainfy_chat_history()
 
@@ -67,14 +69,12 @@ def test_langchainfy_chat_history():
 
 
 def test_working_memory_as_dictionary_object():
-
-    wm = WorkingMemory()
+    wm = WorkingMemory(agent_id=agent_id, user_id=generate_uuid())
     wm.a = "a"
     wm["b"] = "b"
     assert wm.a == "a"
     assert wm["a"] == "a"
     assert wm.b == "b"
     assert wm["b"] == "b"
-    # assert wm.c is None # too dangerous
 
-# TODOV2: add tests for multimodal messages!
+# TODO V2: add tests for multimodal messages!
