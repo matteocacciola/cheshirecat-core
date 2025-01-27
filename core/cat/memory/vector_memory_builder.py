@@ -45,6 +45,15 @@ class VectorMemoryBuilder:
             log.warning(f"Collection \"{collection_name}\" deleted")
             await self.__create_collection(str(collection_name))
 
+    async def __check_collection_existence(self, collection_name: str) -> bool:
+        collections_response = await self.__client.get_collections()
+        if any(c.name == collection_name for c in collections_response.collections):
+            # collection exists. Do nothing
+            log.info(f"Collection \"{collection_name}\" already present in vector store")
+            return True
+
+        return False
+
     async def __check_embedding_size(self, collection_name: str) -> bool:
         # having the same size does not necessarily imply being the same embedder
         # having vectors with the same size but from different embedder in the same vector space is wrong
@@ -60,15 +69,6 @@ class VectorMemoryBuilder:
             return True
 
         log.warning(f"Collection \"{collection_name}\" has different embedder")
-        return False
-
-    async def __check_collection_existence(self, collection_name: str) -> bool:
-        collections_response = await self.__client.get_collections()
-        if any(c.name == collection_name for c in collections_response.collections):
-            # collection exists. Do nothing
-            log.info(f"Collection \"{collection_name}\" already present in vector store")
-            return True
-
         return False
 
     # create collection
