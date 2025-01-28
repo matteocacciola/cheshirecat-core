@@ -55,11 +55,9 @@ class VectorMemoryBuilder:
         return False
 
     async def __check_embedding_size(self, collection_name: str) -> bool:
-        collection_info = await self.__client.get_collection(collection_name=collection_name)
-        embedder_sizes = self.lizard.embedder_size
-
         # Multiple vector configurations
-        vectors_config = collection_info.config.params.vectors
+        vectors_config = (await self.__client.get_collection(collection_name=collection_name)).config.params.vectors
+        embedder_sizes = self.lizard.embedder_size
 
         text_lbl = str(ContentType.TEXT)
         image_lbl = str(ContentType.IMAGE)
@@ -73,7 +71,16 @@ class VectorMemoryBuilder:
             audio_lbl in vectors_config and vectors_config[audio_lbl].size == embedder_sizes.audio
         ) if embedder_sizes.audio else True
 
-        return text_condition and image_condition and audio_condition
+        same_size = text_condition and image_condition and audio_condition
+        local_alias = self.lizard.embedder_name + "_" + collection_name
+        db_alias = (await self.__client.get_collection_aliases(collection_name=collection_name)).aliases[0].alias_name
+
+        if same_size and local_alias == db_alias:
+            log.debug(f"Collection \"{collection_name}\" has the same embedder")
+            return True
+
+        log.warning(f"Collection \"{collection_name}\" has different embedder")
+        return False
 
     # create collection
     async def __create_collection(self, collection_name: str):
