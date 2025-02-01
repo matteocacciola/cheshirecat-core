@@ -78,7 +78,7 @@ New features will be added in the future. Please contact us if you want to contr
 To make Cheshire Cat run on your machine, you just need [`docker`](https://docs.docker.com/get-docker/) installed:
 
 ```bash
-docker run --rm -it -p 1865:80 ghcr.io/matteocacciola/cheshirecat-core:latest
+docker run --rm -it -p 1865:80 ghcr.io/matteocacciola/cheshirecat-core:2.0.1
 ```
 - Chat with the Cheshire Cat on [localhost:1865/docs](http://localhost:1865/docs).
 
@@ -174,35 +174,23 @@ class PizzaForm(CatForm):
 ```
 </details>
 
-## Software Development Kit
-
-**For your PHP-based projects**, I have developed a [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk) that allows you to
-easily interact with the Cat. You can already add it by setting
-
-```bash
-"matteocacciola/ccatphp-sdk": "dev-master",
-```
-
-into the `require` section of your `composer.json` file, together with:
-
-```json
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/matteocacciola/ccatphp-sdk"
-        }
-    ],
-```
-into the same `composer.json` file.
-
-Node.js and Python SDKs are coming soon.
-
 ## Docs and Resources
 
+**For your PHP based projects**, I developed a [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk) that allows you to
+easily interact with the Cat. Please, refer to the [SDK documentation](https://www.github.com/matteocacciola/cheshirecat-php-sdk/blob/master/README.md) for more information.
+
+**For your Node.js based projects**, I developed a [Node.js SDK](https://www.github.com/matteocacciola/cheshirecat-nodejs-sdk) that allows you to
+easily interact with the Cat. Please, refer to the [SDK documentation](https://www.github.com/matteocacciola/cheshirecat-nodejs-sdk/blob/master/README.md) for more information.
+
+List of resources:
 - [Official Documentation](https://cheshire-cat-ai.github.io/docs/)
+- [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk)
+- [Node.js SDK](https://www.github.com/matteocacciola/cheshirecat-nodejs-sdk)
 - [Discord Server](https://discord.gg/bHX5sNFCYU)
 - [Website](https://cheshirecat.ai/)
 - [Tutorial - Write your first plugin](https://cheshirecat.ai/write-your-first-plugin/)
+
+A Python SDK is coming soon.
 
 ## Why use the Cat
 
@@ -220,15 +208,16 @@ about our vision and values, read the [Code of Ethics](./CODE-OF-ETHICS.md).
 
 ## Roadmap & Contributing
 
-Send your pull request to the `develop` branch. Here is a [full guide to contributing](CONTRIBUTING.md).
+All contributions are welcome! Fork the project, create a branch, and make your changes.
+Then, follow the [contribution guidelines](CONTRIBUTING.md) to submit your pull request.
 
-Join our [community on Discord](https://discord.gg/bHX5sNFCYU) and give the project a star ⭐!
-Thanks again!🙏
+If you like this project, give it a star ⭐! It is very important to have your support. Thanks again!🙏
 
 ## License and trademark
 
 Code is licensed under [GPL3](./LICENSE).  
-The Cheshire Cat AI logo and name are property of Piero Savastano (founder and maintainer).
+The Cheshire Cat AI logo and name are property of Piero Savastano (founder and maintainer). The current fork is created,
+refactored and maintained by [Matteo Cacciola](mailto:matteo.cacciola@gmail.com).
 
 ## Which way to go?
 
