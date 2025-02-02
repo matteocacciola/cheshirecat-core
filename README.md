@@ -36,6 +36,8 @@ The Cheshire Cat is a framework to build custom AI agents:
 - 🏛 Easy to use admin panel
 - 🌍 Supports any language model via langchain
 - 👥 Multiuser with granular permissions, compatible with any identity provider
+- 💬 Multi-chatbots, with configurable (even different) LLM per chatbot, plus specific knowledge per chatbot
+- ☁️ Cloud Ready, working even with horizontal autoscaling
 - 🐋 100% dockerized
 - 🦄 Active [Discord community](https://discord.gg/bHX5sNFCYU) and easy to understand [docs](https://cheshire-cat-ai.github.io/docs/)
 
@@ -185,7 +187,7 @@ easily interact with the Cat. Please, refer to the [SDK documentation](https://w
 List of resources:
 - [Official Documentation](https://cheshire-cat-ai.github.io/docs/)
 - [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk)
-- [Node.js SDK](https://www.github.com/matteocacciola/cheshirecat-nodejs-sdk)
+- [Typescript SDK](https://www.github.com/matteocacciola/cheshirecat-typescript-sdk)
 - [Discord Server](https://discord.gg/bHX5sNFCYU)
 - [Website](https://cheshirecat.ai/)
 - [Tutorial - Write your first plugin](https://cheshirecat.ai/write-your-first-plugin/)
@@ -200,11 +202,13 @@ A Python SDK is coming soon.
 - 🎚 Event callbacks, function calling (tools), conversational forms
 - 🏛 Easy to use admin panel (chat, visualize memory and plugins, adjust settings)
 - 🌍 Supports any language model (works with OpenAI, Google, Ollama, HuggingFace, custom services)
+- 💬 Multi-chatbots, with configurable (even different) LLM per chatbot, plus specific knowledge per chatbot
+- ☁️ Cloud Ready, working even with horizontal autoscaling
 - 🐋 Production ready - 100% [dockerized](https://docs.docker.com/get-docker/)
 - 👩‍👧‍👦 Active [Discord community](https://discord.gg/bHX5sNFCYU) and easy to understand [docs](https://cheshire-cat-ai.github.io/docs/)
  
 We are committed to openness, privacy and creativity, we want to bring AI to the long tail. If you want to know more
-about our vision and values, read the [Code of Ethics](./CODE-OF-ETHICS.md).
+about our vision and values, read the [Code of Ethics](CODE-OF-ETHICS.md).
 
 ## Roadmap & Contributing
 
@@ -215,7 +219,7 @@ If you like this project, give it a star ⭐! It is very important to have your 
 
 ## License and trademark
 
-Code is licensed under [GPL3](./LICENSE).  
+Code is licensed under [GPL3](LICENSE).  
 The Cheshire Cat AI logo and name are property of Piero Savastano (founder and maintainer). The current fork is created,
 refactored and maintained by [Matteo Cacciola](mailto:matteo.cacciola@gmail.com).
 
