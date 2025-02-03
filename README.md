@@ -187,12 +187,11 @@ easily interact with the Cat. Please, refer to the [SDK documentation](https://w
 List of resources:
 - [Official Documentation](https://cheshire-cat-ai.github.io/docs/)
 - [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk)
-- [Typescript SDK](https://www.github.com/matteocacciola/cheshirecat-typescript-sdk)
+- [Typescript SDK](https://www.github.com/matteocacciola/cheshirecat-typescript-client)
+- [Python SDK](https://www.github.com/matteocacciola/cheshirecat-python-sdk)
 - [Discord Server](https://discord.gg/bHX5sNFCYU)
 - [Website](https://cheshirecat.ai/)
 - [Tutorial - Write your first plugin](https://cheshirecat.ai/write-your-first-plugin/)
-
-A Python SDK is coming soon.
 
 ## Why use the Cat
 
