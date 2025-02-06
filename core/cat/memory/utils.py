@@ -43,7 +43,14 @@ def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
         DocumentRecall: The converted DocumentRecall object
     """
 
-    document = DocumentRecall(document=Document(**m.payload), vector=m.vector, id=m.id)
+    document = DocumentRecall(
+        document=Document(
+            page_content=m.payload.get("page_content", "") if m.payload else "",
+            metadata=m.payload.get("metadata", {}) if m.payload else {},
+        ),
+        vector=m.vector,
+        id=m.id,
+    )
 
     if isinstance(m, ScoredPoint):
         document.score = m.score

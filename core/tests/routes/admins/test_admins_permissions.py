@@ -4,7 +4,7 @@ from cat.env import get_env
 
 # test endpoints with different user permissions
 # NOTE: we are using here the secure_client:
-# - CCAT_API_KEY and CCAT_API_KEY_WS are active
+# - CCAT_API_KEY is active
 # - we will auth with JWT
 
 

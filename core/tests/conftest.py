@@ -1,4 +1,3 @@
-import asyncio
 import pytest
 import pytest_asyncio
 import os
@@ -29,7 +28,6 @@ import cat.utils as utils
 from tests.utils import (
     agent_id,
     api_key,
-    api_key_ws,
     jwt_secret,
     create_mock_plugin_zip,
     get_class_from_decorated_singleton,
@@ -180,17 +178,15 @@ async def client(cheshire_cat) -> Generator[TestClient, Any, None]:
         yield client
 
 
-# This fixture sets the CCAT_API_KEY and CCAT_API_KEY_WS environment variables,
-# making mandatory for clients to possess api keys or JWT
+# This fixture sets the CCAT_API_KEY environment variable,
+# making mandatory for clients to possess api key or JWT
 @pytest_asyncio.fixture(scope="function")
 async def secure_client(client):
     current_api_key = os.getenv("CCAT_API_KEY")
-    current_api_ws = os.getenv("CCAT_API_KEY_WS")
     current_jwt_secret = os.getenv("CCAT_JWT_SECRET")
 
     # set ENV variables
     os.environ["CCAT_API_KEY"] = api_key
-    os.environ["CCAT_API_KEY_WS"] = api_key_ws
     os.environ["CCAT_JWT_SECRET"] = jwt_secret
 
     yield client
@@ -200,10 +196,6 @@ async def secure_client(client):
         os.environ["CCAT_API_KEY"] = current_api_key
     else:
         del os.environ["CCAT_API_KEY"]
-    if current_api_ws:
-        os.environ["CCAT_API_KEY_WS"] = current_api_ws
-    else:
-        del os.environ["CCAT_API_KEY_WS"]
     if current_jwt_secret:
         os.environ["CCAT_JWT_SECRET"] = current_jwt_secret
     else:

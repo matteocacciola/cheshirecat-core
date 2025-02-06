@@ -365,7 +365,7 @@ class StrayCat:
         answer. This is formatted in a dictionary to be sent as a JSON via Websocket to the client.
         """
 
-        ### setup working memory
+        ### setup working memory for this convo turn
         # keeping track of model interactions
         self.working_memory.model_interactions = []
         # latest user message

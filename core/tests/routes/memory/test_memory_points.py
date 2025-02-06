@@ -7,7 +7,7 @@ from tests.utils import (
     get_declarative_memory_contents,
     agent_id,
     fake_timestamp,
-    api_key_ws,
+    api_key,
 )
 
 
@@ -61,7 +61,7 @@ def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat,
 
 def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     # send websocket message
-    send_websocket_message({"text": "Hello Mad Hatter"}, secure_client, {"apikey": api_key_ws})
+    send_websocket_message({"text": "Hello Mad Hatter"}, secure_client, {"apikey": api_key})
 
     user = crud_users.get_user_by_username(agent_id, "user")
 

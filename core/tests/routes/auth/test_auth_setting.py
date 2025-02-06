@@ -4,7 +4,7 @@ from fastapi.encoders import jsonable_encoder
 
 from cat.factory.auth_handler import AuthHandlerFactory
 
-from tests.utils import api_key, api_key_ws
+from tests.utils import api_key
 
 
 def test_get_all_auth_handler_settings(secure_client, secure_client_headers, agent_plugin_manager):
@@ -54,10 +54,7 @@ def test_get_auth_handler_settings(secure_client, secure_client_headers):
 def test_upsert_auth_handler_settings(secure_client, secure_client_headers):
     # set a different auth_handler from default one (same class different size)
     new_auth_handler = "AuthApiKeyConfig"
-    auth_handler_config = {
-        "api_key_http": api_key,
-        "api_key_ws": api_key_ws,
-    }
+    auth_handler_config = {"api_key": api_key}
     response = secure_client.put(
         f"/auth_handler/settings/{new_auth_handler}", json=auth_handler_config, headers=secure_client_headers
     )

@@ -249,35 +249,30 @@ class CoreAuthHandler(BaseAuthHandler):
         request_user_id: str | None = None,
         **kwargs,
     ) -> AuthUserInfo | None:
-        http_key = get_env("CCAT_API_KEY")
-        ws_key = get_env("CCAT_API_KEY_WS")
-
-        if not http_key and not ws_key:
+        if not (current_api_key := get_env("CCAT_API_KEY")):
+            return None
+        if api_key != current_api_key:
             return None
 
         key_id = kwargs.get("key_id")
-        user_info = extract_user_info_on_api_key(key_id, request_user_id)
-        if not user_info:
+        if not (user_info := extract_user_info_on_api_key(key_id, request_user_id)):
             return None
 
-        if protocol == "websocket" and api_key == ws_key:
-            permissions: Dict[str, List[str]] = kwargs.get("websocket_permissions", user_info.permissions)
-            return AuthUserInfo(
-                id=user_info.user_id,
-                name=user_info.username,
-                permissions=permissions
-            )
-
-        if protocol == "http" and api_key == http_key:
-            permissions: Dict[str, List[str]] = kwargs.get("http_permissions", user_info.permissions)
-            return AuthUserInfo(
-                id=user_info.user_id,
-                name=user_info.username,
-                permissions=permissions
-            )
+        permissions: Dict[str, List[str]] | None = None
+        if protocol == "websocket":
+            permissions = kwargs.get("websocket_permissions", user_info.permissions)
+        elif protocol == "http":
+            permissions = kwargs.get("http_permissions", user_info.permissions)
 
         # No match -> deny access
-        return None
+        if not permissions:
+            return None
+
+        return AuthUserInfo(
+            id=user_info.user_id,
+            name=user_info.username,
+            permissions=permissions
+        )
 
 
 # Default Auth, always deny auth by default (only core auth decides).

@@ -4,7 +4,7 @@ from fastapi import WebSocketDisconnect
 
 from cat.env import get_env
 
-from tests.conftest import api_key, api_key_ws
+from tests.conftest import api_key
 from tests.utils import send_websocket_message
 
 
@@ -42,7 +42,7 @@ def test_api_key_http(secure_client, header_name):
     wrong_headers = [
         {}, # no key
         {header_name: f"{key_prefix}wrong"}, # wrong key
-        {header_name: f"{key_prefix}{api_key_ws}"}, # websocket key
+        {header_name: f"{key_prefix}{api_key}"}, # websocket key
     ]
 
     # all the previous headers result in a 403
@@ -61,8 +61,8 @@ def test_api_key_http(secure_client, header_name):
 
 
 def test_api_key_ws(secure_client, secure_client_headers):
-    # set CCAT_API_KEY_WS
-    old_api_key = set_api_key("CCAT_API_KEY_WS", api_key_ws)
+    # set CCAT_API_KEY
+    old_api_key = set_api_key("CCAT_API_KEY", api_key)
 
     mex = {"text": "Where do I go?"}
 
@@ -76,9 +76,9 @@ def test_api_key_ws(secure_client, secure_client_headers):
         with pytest.raises(WebSocketDisconnect):
             send_websocket_message(mex, secure_client, query_params=params)
 
-    # allow access if CCAT_API_KEY_WS is right
-    query_params = {"apikey": api_key_ws}
+    # allow access if CCAT_API_KEY is right
+    query_params = {"apikey": api_key}
     res = send_websocket_message(mex, secure_client, query_params=query_params)
     assert "You did not configure" in res["content"]
 
-    reset_api_key("CCAT_API_KEY_WS", old_api_key)
+    reset_api_key("CCAT_API_KEY", old_api_key)
