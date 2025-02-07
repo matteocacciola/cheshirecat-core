@@ -43,10 +43,21 @@ def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
         DocumentRecall: The converted DocumentRecall object
     """
 
+    page_content = m.payload.get("page_content", "") if m.payload else ""
+    if isinstance(page_content, dict):
+        page_content = json.dumps(page_content)
+
+    metadata = m.payload.get("metadata", {}) if m.payload else {}
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except json.JSONDecodeError:
+            metadata = {}
+
     document = DocumentRecall(
         document=Document(
-            page_content=m.payload.get("page_content", "") if m.payload else "",
-            metadata=m.payload.get("metadata", {}) if m.payload else {},
+            page_content=page_content,
+            metadata=metadata,
         ),
         vector=m.vector,
         id=m.id,
