@@ -3,7 +3,7 @@ import uuid
 
 from cat.db.cruds import users as crud_users
 
-from tests.utils import send_websocket_message, send_n_websocket_messages, api_key_ws, agent_id
+from tests.utils import send_websocket_message, send_n_websocket_messages, agent_id, api_key
 
 
 def check_correct_websocket_reply(reply, with_delay=True):
@@ -51,7 +51,7 @@ def check_correct_websocket_reply(reply, with_delay=True):
 def test_websocket(secure_client):
     msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
     # send websocket message
-    res = send_websocket_message(msg, secure_client, {"apikey": api_key_ws})
+    res = send_websocket_message(msg, secure_client, {"apikey": api_key})
 
     check_correct_websocket_reply(res)
 
@@ -63,7 +63,7 @@ def test_websocket_with_additional_items_in_message(secure_client):
         "prompt_settings": {"temperature": 0.5}
     }
     # send websocket message
-    res = send_websocket_message(msg, secure_client, {"apikey": api_key_ws})
+    res = send_websocket_message(msg, secure_client, {"apikey": api_key})
 
     check_correct_websocket_reply(res)
 
@@ -75,7 +75,7 @@ def test_websocket_with_new_user(secure_client):
     assert user is None
 
     msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
-    res = send_websocket_message(msg, secure_client, {"apikey": api_key_ws, "user_id": mocked_user_id})
+    res = send_websocket_message(msg, secure_client, {"apikey": api_key, "user_id": mocked_user_id})
 
     check_correct_websocket_reply(res)
 

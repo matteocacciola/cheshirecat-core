@@ -40,12 +40,12 @@ class VectorMemoryCollection:
     def _build_condition(self, key: str, value: Any) -> List[FieldCondition]:
         out = []
 
-        if isinstance(value, Dict):
-            out.extend(self._build_condition(f"{key}.{k}", v) for k, v in value.items())
-        elif isinstance(value, List):
-            out.extend(
-                self._build_condition(f"{key}[]" if isinstance(v, Dict) else f"{key}", v) for v in value
-            )
+        if isinstance(value, dict):
+            for k, v in value.items():
+                out.extend(self._build_condition(f"{key}.{k}", v))
+        elif isinstance(value, list):
+            for v in value:
+                out.extend(self._build_condition(f"{key}[]" if isinstance(v, dict) else f"{key}", v))
         else:
             out.append(FieldCondition(key=f"metadata.{key}", match=MatchValue(value=value)))
 

@@ -36,6 +36,8 @@ The Cheshire Cat is a framework to build custom AI agents:
 - 🏛 Easy to use admin panel
 - 🌍 Supports any language model via langchain
 - 👥 Multiuser with granular permissions, compatible with any identity provider
+- 💬 Multi-chatbots, with configurable (even different) LLM per chatbot, plus specific knowledge per chatbot
+- ☁️ Cloud Ready, working even with horizontal autoscaling
 - 🐋 100% dockerized
 - 🦄 Active [Discord community](https://discord.gg/bHX5sNFCYU) and easy to understand [docs](https://cheshire-cat-ai.github.io/docs/)
 
@@ -78,7 +80,7 @@ New features will be added in the future. Please contact us if you want to contr
 To make Cheshire Cat run on your machine, you just need [`docker`](https://docs.docker.com/get-docker/) installed:
 
 ```bash
-docker run --rm -it -p 1865:80 ghcr.io/matteocacciola/cheshirecat-core:latest
+docker run --rm -it -p 1865:80 ghcr.io/matteocacciola/cheshirecat-core:2.0.3
 ```
 - Chat with the Cheshire Cat on [localhost:1865/docs](http://localhost:1865/docs).
 
@@ -101,7 +103,7 @@ Follow instructions on how to run it with [docker compose and volumes](https://c
 ```python
 from cat.mad_hatter.decorators import hook
 
-# hooks are an event system to get finegraned control over your assistant
+# hooks are an event system to get fine-grained control over your assistant
 @hook
 def agent_prompt_prefix(prefix, cat):
     prefix = """You are Marvin the socks seller, a poetic vendor of socks.
@@ -174,32 +176,19 @@ class PizzaForm(CatForm):
 ```
 </details>
 
-## Software Development Kit
-
-**For your PHP-based projects**, I have developed a [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk) that allows you to
-easily interact with the Cat. You can already add it by setting
-
-```bash
-"matteocacciola/ccatphp-sdk": "dev-master",
-```
-
-into the `require` section of your `composer.json` file, together with:
-
-```json
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/matteocacciola/ccatphp-sdk"
-        }
-    ],
-```
-into the same `composer.json` file.
-
-Node.js and Python SDKs are coming soon.
-
 ## Docs and Resources
 
+**For your PHP based projects**, I developed a [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk) that allows you to
+easily interact with the Cat. Please, refer to the [SDK documentation](https://www.github.com/matteocacciola/cheshirecat-php-sdk/blob/master/README.md) for more information.
+
+**For your Node.js based projects**, I developed a [Node.js SDK](https://www.github.com/matteocacciola/cheshirecat-nodejs-sdk) that allows you to
+easily interact with the Cat. Please, refer to the [SDK documentation](https://www.github.com/matteocacciola/cheshirecat-nodejs-sdk/blob/master/README.md) for more information.
+
+List of resources:
 - [Official Documentation](https://cheshire-cat-ai.github.io/docs/)
+- [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk)
+- [Typescript SDK](https://www.github.com/matteocacciola/cheshirecat-typescript-client)
+- [Python SDK](https://www.github.com/matteocacciola/cheshirecat-python-sdk)
 - [Discord Server](https://discord.gg/bHX5sNFCYU)
 - [Website](https://cheshirecat.ai/)
 - [Tutorial - Write your first plugin](https://cheshirecat.ai/write-your-first-plugin/)
@@ -212,23 +201,26 @@ Node.js and Python SDKs are coming soon.
 - 🎚 Event callbacks, function calling (tools), conversational forms
 - 🏛 Easy to use admin panel (chat, visualize memory and plugins, adjust settings)
 - 🌍 Supports any language model (works with OpenAI, Google, Ollama, HuggingFace, custom services)
+- 💬 Multi-chatbots, with configurable (even different) LLM per chatbot, plus specific knowledge per chatbot
+- ☁️ Cloud Ready, working even with horizontal autoscaling
 - 🐋 Production ready - 100% [dockerized](https://docs.docker.com/get-docker/)
 - 👩‍👧‍👦 Active [Discord community](https://discord.gg/bHX5sNFCYU) and easy to understand [docs](https://cheshire-cat-ai.github.io/docs/)
  
 We are committed to openness, privacy and creativity, we want to bring AI to the long tail. If you want to know more
-about our vision and values, read the [Code of Ethics](./CODE-OF-ETHICS.md).
+about our vision and values, read the [Code of Ethics](CODE-OF-ETHICS.md).
 
 ## Roadmap & Contributing
 
-Send your pull request to the `develop` branch. Here is a [full guide to contributing](CONTRIBUTING.md).
+All contributions are welcome! Fork the project, create a branch, and make your changes.
+Then, follow the [contribution guidelines](CONTRIBUTING.md) to submit your pull request.
 
-Join our [community on Discord](https://discord.gg/bHX5sNFCYU) and give the project a star ⭐!
-Thanks again!🙏
+If you like this project, give it a star ⭐! It is very important to have your support. Thanks again!🙏
 
 ## License and trademark
 
-Code is licensed under [GPL3](./LICENSE).  
-The Cheshire Cat AI logo and name are property of Piero Savastano (founder and maintainer).
+Code is licensed under [GPL3](LICENSE).  
+The Cheshire Cat AI logo and name are property of Piero Savastano (founder and maintainer). The current fork is created,
+refactored and maintained by [Matteo Cacciola](mailto:matteo.cacciola@gmail.com).
 
 ## Which way to go?
 

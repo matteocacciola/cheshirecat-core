@@ -6,7 +6,7 @@ from tests.utils import agent_id
 
 # test endpoints with different user permissions
 # NOTE: we are using here the secure_client:
-# - CCAT_API_KEY, CCAT_API_KEY_WS and CCAT_JWT_SECRET are active
+# - CCAT_API_KEY and CCAT_JWT_SECRET are active
 # - we will auth with JWT
 
 @pytest.mark.parametrize("endpoint", [

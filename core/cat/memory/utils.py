@@ -1,3 +1,4 @@
+import json
 from typing import Dict, TypeAlias
 
 from pydantic import BaseModel
@@ -65,18 +66,31 @@ def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
 
     result = {}
     for k, v in m.vector.items():
+        page_content = m.payload.get("page_content", "") if m.payload else ""
+        if isinstance(page_content, dict):
+            page_content = json.dumps(page_content[str(k)] if str(k) in page_content else page_content)
+
+        metadata = m.payload.get("metadata", {}) if m.payload else {}
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except json.JSONDecodeError:
+                metadata = {}
+        metadata = metadata[str(k)] if str(k) in metadata else metadata
+
         doc = Document(
-            page_content=m.payload.get("page_content")[str(k)],
-            metadata=m.payload.get("metadata", {})
+            page_content=page_content,
+            metadata=metadata,
         ) if k == ContentType.TEXT else Blob(
-            data=m.payload.get("page_content")[str(k)],
-            metadata=m.payload.get("metadata", {})
+            data=page_content,
+            metadata=metadata
         )
         item = DocumentRecallItem(
             document=doc,
             vector=v,
             id=m.id,
         )
+
         if isinstance(m, ScoredPoint):
             item.score = m.score
         result[ContentType(k)] = item

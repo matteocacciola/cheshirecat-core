@@ -3,7 +3,7 @@ import time
 from cat.convo.messages import Role
 from cat.db.cruds import users as crud_users
 
-from tests.utils import send_websocket_message, agent_id, api_key, create_new_user, new_user_password, api_key_ws
+from tests.utils import send_websocket_message, agent_id, api_key, create_new_user, new_user_password
 
 
 def test_convo_history_absent(secure_client, secure_client_headers):
@@ -19,7 +19,7 @@ def test_convo_history_no_update_invalid_llm(secure_client, secure_client_header
     message = "It's late! It's late!"
 
     # send websocket messages
-    send_websocket_message({"text": message}, secure_client, {"apikey": api_key_ws})
+    send_websocket_message({"text": message}, secure_client, {"apikey": api_key})
 
     # check working memory update
     response = secure_client.get("/memory/conversation_history", headers=secure_client_headers)
@@ -33,7 +33,7 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
     message = "It's late! It's late!"
 
     # send websocket messages
-    send_websocket_message({"text": message}, secure_client, {"apikey": api_key_ws})
+    send_websocket_message({"text": message}, secure_client, {"apikey": api_key})
     user = crud_users.get_user_by_username(agent_id, "user")
 
     # check working memory update
@@ -55,7 +55,7 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
 
 def test_convo_history_reset(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     # send websocket messages
-    send_websocket_message({"text": "It's late! It's late!"}, secure_client, {"apikey": api_key_ws})
+    send_websocket_message({"text": "It's late! It's late!"}, secure_client, {"apikey": api_key})
     user = crud_users.get_user_by_username(agent_id, "user")
 
     # delete convo history

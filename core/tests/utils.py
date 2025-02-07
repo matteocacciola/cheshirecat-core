@@ -10,7 +10,6 @@ from cat.memory.utils import ContentType
 
 agent_id = "agent_test"
 api_key = "meow_http"
-api_key_ws = "meow_ws"
 jwt_secret = "meow_jwt"
 
 new_user_password = "wandering_in_wonderland"
@@ -38,7 +37,7 @@ def send_websocket_message(msg, client, query_params):
 def send_n_websocket_messages(num_messages, client, image=None):
     responses = []
 
-    url = f"/ws/{agent_id}?" + urlencode({"token": api_key_ws})
+    url = f"/ws/{agent_id}?" + urlencode({"token": api_key})
 
     with client.websocket_connect(url) as websocket:
         for m in range(num_messages):

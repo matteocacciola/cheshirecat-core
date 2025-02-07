@@ -8,7 +8,6 @@ def get_supported_env_variables():
         "CCAT_CORE_USE_SECURE_PROTOCOLS": "",
         "CCAT_ADMIN_DEFAULT_PASSWORD": "AIBlackBirdWithCheshireCat",
         "CCAT_API_KEY": None,
-        "CCAT_API_KEY_WS": None,
         "CCAT_DEBUG": "true",
         "CCAT_LOG_LEVEL": "INFO",
         "CCAT_CORS_ALLOWED_ORIGINS": None,
