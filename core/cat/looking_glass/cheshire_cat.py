@@ -40,7 +40,10 @@ class CheshireCat:
     """
     The Cheshire Cat.
 
-    This is the main class that manages everything for a single agent.
+    This is the main class that manages the whole AI application.
+    It contains references to all the main modules and is responsible for the bootstrapping of the application.
+
+    In most cases you will not need to interact with this class directly, but rather with class `StrayCat` which will be available in your plugin's hooks, tools, forms end endpoints.
     """
 
     def __init__(self, agent_id: str):
@@ -210,7 +213,7 @@ class CheshireCat:
         caller = get_caller_info()
 
         # here we deal with Langchain
-        prompt = ChatPromptTemplate(messages=[HumanMessage(content=prompt)])  # HumanMessage for wide-range compatibility even if it could bring some problem with tokenizers
+        prompt = ChatPromptTemplate(messages=[HumanMessage(content=prompt)])
 
         chain = (
             prompt

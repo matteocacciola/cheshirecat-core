@@ -123,7 +123,7 @@ class HTTPAuth(ConnectionAuth):
 
     async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: Request) -> StrayCat:
         return StrayCat(user_data=user, agent_id=ccat.id)
-    
+
     def not_allowed(self, connection: Request, **kwargs):
         raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
 

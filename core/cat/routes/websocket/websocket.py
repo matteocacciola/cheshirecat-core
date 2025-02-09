@@ -21,8 +21,13 @@ async def websocket_endpoint(
     # Extract the StrayCat object from the DependingCats object.
     stray = cats.stray_cat
 
-    # Add the new WebSocket connection to the manager.
+    # Establish connection
     await websocket.accept()
+
+    # Add the new WebSocket connection to the manager.
+    websocket_manager = websocket.scope["app"].state.websocket_manager
+    websocket_manager.add_connection(stray.user_id, websocket)
+
     try:
         # Process messages
         while True:
@@ -33,6 +38,5 @@ async def websocket_endpoint(
             # Run the `stray` object's method in a threadpool since it might be a CPU-bound operation.
             await stray.run_websocket(user_message)
     except WebSocketDisconnect:
-        # Handle the event where the user disconnects their WebSocket.
-        await stray.close()
-        log.info("WebSocket connection closed")
+        # Remove connection on disconnect
+        websocket_manager.remove_connection(stray.user.id)

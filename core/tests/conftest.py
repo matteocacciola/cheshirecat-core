@@ -274,7 +274,7 @@ async def stray(stray_no_memory):
 
 
 # autouse fixture will be applied to *all* the tests
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="function")
 def apply_warning_filters():
     # ignore deprecation warnings due to langchain not updating to pydantic v2
     warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
