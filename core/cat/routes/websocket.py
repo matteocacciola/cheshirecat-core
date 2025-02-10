@@ -3,7 +3,6 @@ from cat.auth.connection import ContextualCats
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from cat.convo.messages import UserMessage
-from cat.log import log
 
 router = APIRouter()
 
@@ -25,8 +24,8 @@ async def websocket_endpoint(
     await websocket.accept()
 
     # Add the new WebSocket connection to the manager.
-    websocket_manager = websocket.scope["app"].state.websocket_manager
-    websocket_manager.add_connection(stray.user_id, websocket)
+    websocket_manager = cats.cheshire_cat.websocket_manager
+    websocket_manager.add_connection(stray.user.id, websocket)
 
     try:
         # Process messages

@@ -140,6 +140,7 @@ async def get_plugins(plugin_manager: MadHatter, query: str | None = None) -> Pl
         manifest["hooks"] = [{"name": hook.name, "priority": hook.priority} for hook in p.hooks]
         manifest["tools"] = [{"name": tool.name} for tool in p.tools]
         manifest["forms"] = [{"name": form.name} for form in p.forms]
+        manifest["endpoints"] = [{"name": endpoint.name, "tags": endpoint.tags} for endpoint in p.endpoints]
 
         # filter by query
         plugin_text = [str(field) for field in manifest.values()]

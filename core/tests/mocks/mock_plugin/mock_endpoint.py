@@ -30,11 +30,11 @@ def test_post(item: Item):
     return {"name": item.name, "description": item.description}
 
 
-@endpoint.put(path="/crud", prefix="/tests", tags=["Tests"])
-def test_put(item: Item):
-    return {"name": item.name, "description": item.description}
+@endpoint.put(path="/crud/{item_id}", prefix="/tests", tags=["Tests"])
+def test_put(item_id: int, item: Item):
+    return {"id": item_id, "name": item.name, "description": item.description}
 
 
-@endpoint.delete(path="/crud", prefix="/tests", tags=["Tests"])
-def test_delete(item: Item):
-    return {"name": item.name, "description": item.description}
+@endpoint.delete(path="/crud/{item_id}", prefix="/tests", tags=["Tests"])
+def test_delete(item_id: int):
+    return {"id": item_id, "result": "ok"}

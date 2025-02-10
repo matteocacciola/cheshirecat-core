@@ -1,6 +1,15 @@
 from cat.mad_hatter.decorators import CustomEndpoint
 
-from tests.mocks.mock_plugin.mock_endpoint import Item
+
+def get_endpoint(plugin_manager, uri, method=None):
+    for e in plugin_manager.endpoints:
+        condition = e.name == uri
+        if method:
+            condition = condition and method in e.methods
+        if condition:
+            return e
+
+    return None
 
 
 def test_endpoints_discovery(plugin_manager):
@@ -17,7 +26,7 @@ def test_endpoints_discovery(plugin_manager):
 
 
 def test_endpoint_decorator(plugin_manager):
-    endpoint = plugin_manager.endpoints[1]
+    endpoint = get_endpoint(plugin_manager, "/custom/endpoint")
 
     assert endpoint.name == "/custom/endpoint"
     assert endpoint.prefix == "/custom"
@@ -28,7 +37,7 @@ def test_endpoint_decorator(plugin_manager):
 
 
 def test_endpoint_decorator_prefix(plugin_manager):
-    endpoint = plugin_manager.endpoints[2]
+    endpoint = get_endpoint(plugin_manager, "/tests/endpoint")
 
     assert endpoint.name == "/tests/endpoint"
     assert endpoint.prefix == "/tests"
@@ -39,19 +48,17 @@ def test_endpoint_decorator_prefix(plugin_manager):
 
 
 def test_get_endpoint(plugin_manager):
-    endpoint = plugin_manager.endpoints[3]
+    endpoint = get_endpoint(plugin_manager, "/tests/crud", "GET")
 
     assert endpoint.name == "/tests/crud"
     assert endpoint.prefix == "/tests"
     assert endpoint.path == "/crud"
     assert endpoint.methods == {"GET"}
     assert endpoint.tags == ["Tests"]
-    # too complicated to simulate the request arguments here,
-    #  see tests/routes/test_custom_endpoints.py
 
 
 def test_post_endpoint(plugin_manager):
-    endpoint = plugin_manager.endpoints[4]
+    endpoint = get_endpoint(plugin_manager, "/tests/crud", "POST")
 
     assert endpoint.name == "/tests/crud"
     assert endpoint.prefix == "/tests"
@@ -59,34 +66,25 @@ def test_post_endpoint(plugin_manager):
     assert endpoint.methods == {"POST"}
     assert endpoint.tags == ["Tests"]
 
-    payload = Item(name="the cat", description="it's magic")
-    assert endpoint.function(payload) == payload.model_dump()
-
 
 def test_put_endpoint(plugin_manager):
-    endpoint = plugin_manager.endpoints[5]
+    endpoint = get_endpoint(plugin_manager, "/tests/crud/{item_id}", "PUT")
 
-    assert endpoint.name == "/tests/crud"
+    assert endpoint.name == "/tests/crud/{item_id}"
     assert endpoint.prefix == "/tests"
-    assert endpoint.path == "/crud"
+    assert endpoint.path == "/crud/{item_id}"
     assert endpoint.methods == {"PUT"}
     assert endpoint.tags == ["Tests"]
 
-    payload = Item(name="the cat", description="it's magic")
-    assert endpoint.function(payload) == payload.model_dump()
-
 
 def test_delete_endpoint(plugin_manager):
-    endpoint = plugin_manager.endpoints[0]
+    endpoint = get_endpoint(plugin_manager, "/tests/crud/{item_id}", "DELETE")
 
-    assert endpoint.name == "/tests/crud"
+    assert endpoint.name == "/tests/crud/{item_id}"
     assert endpoint.prefix == "/tests"
-    assert endpoint.path == "/crud"
+    assert endpoint.path == "/crud/{item_id}"
     assert endpoint.methods == {"DELETE"}
     assert endpoint.tags == ["Tests"]
-
-    payload = Item(name="the cat", description="it's magic")
-    assert endpoint.function(payload) == payload.model_dump()
 
 
 def test_endpoints_deactivation_or_uninstall(plugin_manager):

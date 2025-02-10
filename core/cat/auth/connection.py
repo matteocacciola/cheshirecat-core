@@ -41,10 +41,11 @@ class AdminConnectionAuth:
             key_id=lizard.config_key,
             http_permissions=get_full_admin_permissions(),
         )
-        if user:
-            return lizard
+        if not user:
+            # if no user was obtained, raise exception
+            self.not_allowed(request)
 
-        self.not_allowed(request)
+        return lizard
 
     def not_allowed(self, connection: Request, **kwargs):
         raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
@@ -55,22 +56,39 @@ class ConnectionAuth(ABC):
         self.resource = resource
         self.permission = permission
 
-    async def __call__(self, connection: HTTPConnection) -> ContextualCats:
+    def __call__(self, connection: HTTPConnection) -> ContextualCats:
         agent_id = extract_agent_id_from_request(connection)
         lizard: BillTheLizard = connection.app.state.lizard
         ccat = lizard.get_cheshire_cat(agent_id)
 
         user = self.get_user_from_auth_handlers(connection, lizard, ccat)
-
         if not user:
             # if no user was obtained, raise exception
             self.not_allowed(connection)
 
-        stray = await self.get_user_stray(ccat, user, connection)
+        stray = StrayCat(user_data=user, agent_id=ccat.id)
         return ContextualCats(cheshire_cat=ccat, stray_cat=stray)
 
+    @abstractmethod
     def get_user_from_auth_handlers(
         self, connection: HTTPConnection, lizard: BillTheLizard, ccat: CheshireCat
+    ) -> AuthUserInfo | None:
+        pass
+
+    @abstractmethod
+    def get_agent_user_info(
+        self, connection: HTTPConnection, auth_handler: BaseAuthHandler, agent_id: str
+    ) -> AuthUserInfo | None:
+        pass
+
+    @abstractmethod
+    def not_allowed(self, connection: HTTPConnection, **kwargs):
+        pass
+        
+
+class HTTPAuth(ConnectionAuth):
+    def get_user_from_auth_handlers(
+        self, connection: Request, lizard: BillTheLizard, ccat: CheshireCat
     ) -> AuthUserInfo | None:
         auth_handlers = [
             lizard.core_auth_handler,  # try to get user from local id
@@ -94,22 +112,6 @@ class ConnectionAuth(ABC):
 
         return user
 
-    @abstractmethod
-    def get_agent_user_info(
-        self, connection: HTTPConnection, auth_handler: BaseAuthHandler, agent_id: str
-    ) -> AuthUserInfo | None:
-        pass
-
-    @abstractmethod
-    async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: HTTPConnection) -> StrayCat:
-        pass
-
-    @abstractmethod
-    def not_allowed(self, connection: HTTPConnection, **kwargs):
-        pass
-        
-
-class HTTPAuth(ConnectionAuth):
     def get_agent_user_info(
         self, connection: Request, auth_handler: BaseAuthHandler, agent_id: str
     ) -> AuthUserInfo | None:
@@ -120,9 +122,6 @@ class HTTPAuth(ConnectionAuth):
             key_id=agent_id,
         )
         return user
-
-    async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: Request) -> StrayCat:
-        return StrayCat(user_data=user, agent_id=ccat.id)
 
     def not_allowed(self, connection: Request, **kwargs):
         raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
@@ -180,9 +179,6 @@ class WebSocketAuth(ConnectionAuth):
             key_id=agent_id,
         )
         return user
-
-    async def get_user_stray(self, ccat: CheshireCat, user: AuthUserInfo, connection: WebSocket) -> StrayCat:
-        return StrayCat(user_data=user, agent_id=ccat.id, ws=connection)
 
     def not_allowed(self, connection: WebSocket, **kwargs):
         raise WebSocketException(code=1004, reason="Invalid Credentials")

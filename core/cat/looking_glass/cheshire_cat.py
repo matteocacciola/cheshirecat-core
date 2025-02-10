@@ -14,7 +14,6 @@ from langchain_core.runnables import RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers.string import StrOutputParser
 
-from cat.adapters.factory_adapter import FactoryAdapter
 from cat.auth.auth_utils import hash_password, DEFAULT_USER_USERNAME
 from cat.auth.permissions import get_base_permissions
 from cat.db.cruds import (
@@ -28,10 +27,10 @@ from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.custom_auth_handler import BaseAuthHandler
 from cat.factory.llm import LLMFactory
 from cat.log import log
-from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
 from cat.parsers import YoutubeParser, TableParser, JSONParser
+from cat.services.factory_adapter import FactoryAdapter
 from cat.utils import langchain_log_prompt, langchain_log_output, get_caller_info
 
 
@@ -280,31 +279,111 @@ class CheshireCat:
 
     @property
     def lizard(self) -> "BillTheLizard":
+        """
+        Instance of langchain `BillTheLizard`. Use it to access the main components of the Cat.
+
+        Returns:
+            lizard: BillTheLizard
+                Instance of langchain `BillTheLizard`.
+        """
+
         from cat.looking_glass.bill_the_lizard import BillTheLizard
         return BillTheLizard()
 
     @property
+    def websocket_manager(self) -> "BillTheLizard":
+        """
+        Instance of `WebsocketManager`. Use it to access the manager of the Websocket connections.
+
+        Returns:
+            websocket_manager: WebsocketManager
+                Instance of `WebsocketManager`.
+        """
+        return self.lizard.websocket_manager
+
+    @property
     def embedder(self) -> Embeddings:
+        """
+        Langchain `Embeddings` object.
+        Returns:
+            embedder: Langchain `Embeddings`
+                Langchain embedder to turn text into a vector.
+
+        Examples
+        --------
+        >>> cat.embedder.embed_query("Oh dear!")
+        [0.2, 0.02, 0.4, ...]
+        """
+
         return self.lizard.embedder
 
     @property
     def rabbit_hole(self) -> "RabbitHole":
+        """
+        Gives access to the `RabbitHole`, to upload documents and URLs into the vector DB.
+
+        Returns:
+            rabbit_hole: RabbitHole
+            Module to ingest documents and URLs for RAG.
+        Examples
+        --------
+        >>> cat.rabbit_hole.ingest_file(...)
+        """
+
         return self.lizard.rabbit_hole
 
     @property
     def core_auth_handler(self) -> "CoreAuthHandler":
+        """
+        Gives access to the `CoreAuthHandler` object. Use it to interact with the Cat's authentication handler.
+
+        Returns:
+            core_auth_handler: CoreAuthHandler
+                Core authentication handler of the Cat
+        """
+
         return self.lizard.core_auth_handler
 
     @property
     def main_agent(self) -> "MainAgent":
+        """
+        Gives access to the `MainAgent` object. Use it to interact with the Cat's main agent.
+
+        Returns:
+            main_agent: MainAgent
+                Main agent of the Cat
+        """
+
         return self.lizard.main_agent
 
     @property
-    def mad_hatter(self) -> MadHatter:
+    def mad_hatter(self) -> Tweedledee:
+        """
+        Gives access to the `Tweedledee` plugin manager.
+
+        Returns:
+            mad_hatter: Tweedledee
+                Module to manage plugins.
+
+        Examples
+        --------
+        Obtain the path in which your plugin is located
+        >>> cat.mad_hatter.get_plugin().path
+        /app/cat/plugins/my_plugin
+        Obtain plugin settings
+        >>> cat.mad_hatter.get_plugin().load_settings()
+        {"num_cats": 44, "rows": 6, "remainder": 0}
+        """
+
         return self.plugin_manager
 
     @property
-    def _llm(self) -> MadHatter:
+    def _llm(self) -> BaseLanguageModel:
+        """
+        Instance of langchain `LLM`.
+        Only use it if you directly want to deal with langchain, prefer method `cat.llm(prompt)` otherwise.
+        """
+
         return self.large_language_model
 
     # each time we access the file handlers, plugins can intervene

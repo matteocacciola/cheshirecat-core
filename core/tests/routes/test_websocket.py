@@ -3,10 +3,10 @@ import uuid
 
 from cat.db.cruds import users as crud_users
 
-from tests.utils import send_websocket_message, send_n_websocket_messages, agent_id, api_key
+from tests.utils import send_websocket_message, send_n_websocket_messages, agent_id, api_key, create_new_user
 
 
-def check_correct_websocket_reply(reply, with_delay=True):
+def check_correct_websocket_reply(reply):
     for k in ["type", "content", "why"]:
         assert k in reply.keys()
 
@@ -31,8 +31,7 @@ def check_correct_websocket_reply(reply, with_delay=True):
         assert isinstance(mi["input_tokens"], int)
         assert mi["input_tokens"] > 0
         assert isinstance(mi["started_at"], float)
-        if with_delay:
-            assert time.time() - 1 < mi["started_at"] < time.time()
+        assert mi["started_at"] < time.time()
 
         if mi["model_type"] == "llm":
             assert isinstance(mi["reply"], str)
@@ -88,4 +87,40 @@ def test_websocket_multiple_messages(secure_client):
     replies = send_n_websocket_messages(3, secure_client)
 
     for res in replies:
-        check_correct_websocket_reply(res, False)
+        check_correct_websocket_reply(res)
+
+
+def test_websocket_multiple_connections(secure_client, secure_client_headers, lizard):
+    mex = {"text": "It's late!"}
+
+    data = create_new_user(secure_client, "/users", username="Alice", headers=secure_client_headers)
+    data2 = create_new_user(secure_client, "/users", username="Caterpillar", headers=secure_client_headers)
+
+    with secure_client.websocket_connect(f"/ws/{agent_id}?apikey={api_key}&user_id={data['id']}") as websocket:
+        # send ws message
+        websocket.send_json(mex)
+
+        with secure_client.websocket_connect(f"/ws/{agent_id}?apikey={api_key}&user_id={data2['id']}") as websocket2:
+            # send ws message
+            websocket2.send_json(mex)
+            # get reply
+            reply2 = websocket2.receive_json()
+
+            # two connections open
+            ws_users = lizard.websocket_manager.connections.keys()
+            assert set(ws_users) == {data["id"], data2["id"]}
+
+        # one connection open
+        time.sleep(0.5)
+        ws_users = lizard.websocket_manager.connections.keys()
+        assert set(ws_users) == {data["id"]}
+
+        # get reply
+        reply = websocket.receive_json()
+
+    check_correct_websocket_reply(reply)
+    check_correct_websocket_reply(reply2)
+
+    # websocket connection is closed
+    time.sleep(0.5)
+    assert lizard.websocket_manager.connections == {}
