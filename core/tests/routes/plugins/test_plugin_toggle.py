@@ -1,20 +1,6 @@
 from tests.utils import get_procedural_memory_contents, just_installed_plugin
 
 
-def check_active_plugin_properties(plugin):
-    assert plugin["id"] == "mock_plugin"
-    assert len(plugin["hooks"]) == 3
-    assert len(plugin["tools"]) == 1
-    assert len(plugin["forms"]) == 1
-
-
-def check_inactive_plugin_properties(plugin):
-    assert plugin["id"] == "mock_plugin"
-    assert len(plugin["hooks"]) == 0
-    assert len(plugin["tools"]) == 0
-    assert len(plugin["forms"]) == 0
-
-
 def test_toggle_non_existent_plugin(secure_client, secure_client_headers):
     just_installed_plugin(secure_client, secure_client_headers)
 
@@ -37,7 +23,12 @@ def test_activate_plugin(secure_client, secure_client_headers):
     mock_plugin = [p for p in installed_plugins if p["id"] == "mock_plugin"][0]
     assert isinstance(mock_plugin["active"], bool)
     assert mock_plugin["active"]  # plugin active
-    check_active_plugin_properties(mock_plugin)
+
+    assert mock_plugin["id"] == "mock_plugin"
+    assert len(mock_plugin["hooks"]) == 3
+    assert len(mock_plugin["tools"]) == 1
+    assert len(mock_plugin["forms"]) == 1
+    assert len(mock_plugin["endpoints"]) == 6
 
     # check whether procedures have been embedded
     procedures = get_procedural_memory_contents(secure_client, headers=secure_client_headers)
@@ -73,7 +64,12 @@ def test_deactivate_plugin(secure_client, secure_client_headers):
     mock_plugin = [p for p in installed_plugins if p["id"] == "mock_plugin"][0]
     assert isinstance(mock_plugin["active"], bool)
     assert not mock_plugin["active"]  # plugin NOT active
-    check_inactive_plugin_properties(mock_plugin)
+
+    assert mock_plugin["id"] == "mock_plugin"
+    assert len(mock_plugin["hooks"]) == 0
+    assert len(mock_plugin["tools"]) == 0
+    assert len(mock_plugin["forms"]) == 0
+    assert len(mock_plugin["endpoints"]) == 0
 
     # tool has been taken away
     procedures = get_procedural_memory_contents(secure_client, headers=secure_client_headers)

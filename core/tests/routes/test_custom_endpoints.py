@@ -49,6 +49,31 @@ def test_custom_endpoint_post(client, secure_client, secure_client_headers):
     assert response.json()["description"] == "it's magic"
 
 
+def test_custom_endpoint_put(client, secure_client, secure_client_headers):
+    just_installed_plugin(secure_client, secure_client_headers)
+    # activate the plugin
+    secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
+
+    payload = {"name": "the cat", "description": "it's magic"}
+    response = client.put("/tests/crud/123", json=payload)
+    
+    assert response.status_code == 200
+    assert response.json()["id"] == 123
+    assert response.json()["name"] == "the cat"
+    assert response.json()["description"] == "it's magic"
+
+def test_custom_endpoint_delete(client, secure_client, secure_client_headers):
+    just_installed_plugin(secure_client, secure_client_headers)
+    # activate the plugin
+    secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
+
+    response = client.delete("/tests/crud/123")
+    
+    assert response.status_code == 200
+    assert response.json()["result"] == "ok"
+    assert response.json()["id"] == 123
+
+
 @pytest.mark.parametrize("switch_type", ["deactivation", "uninstall"])
 def test_custom_endpoints_on_plugin_deactivation_or_uninstall(switch_type, secure_client, secure_client_headers):
     just_installed_plugin(secure_client, secure_client_headers)
@@ -61,6 +86,8 @@ def test_custom_endpoints_on_plugin_deactivation_or_uninstall(switch_type, secur
         ("GET", "/tests/endpoint", None),
         ("GET", "/tests/crud", None),
         ("POST", "/tests/crud", {"name": "the cat", "description": "it's magic"}),
+        ("PUT", "/tests/crud/123", {"name": "the cat", "description": "it's magic"}),
+        ("DELETE", "/tests/crud/123", None),
     ]
 
     # custom endpoints are active

@@ -42,7 +42,6 @@ def test_api_key_http(secure_client, header_name):
     wrong_headers = [
         {}, # no key
         {header_name: f"{key_prefix}wrong"}, # wrong key
-        {header_name: f"{key_prefix}{api_key}"}, # websocket key
     ]
 
     # all the previous headers result in a 403

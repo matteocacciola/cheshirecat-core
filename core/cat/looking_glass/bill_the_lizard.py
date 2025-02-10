@@ -4,7 +4,6 @@ from langchain_core.embeddings import Embeddings
 from fastapi import FastAPI
 
 from cat import utils
-from cat.adapters.factory_adapter import FactoryAdapter
 from cat.agents.main_agent import MainAgent
 from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
 from cat.auth.permissions import get_full_admin_permissions
@@ -25,7 +24,9 @@ from cat.mad_hatter.tweedledum import Tweedledum
 from cat.memory.utils import VectorEmbedderSize
 from cat.memory.vector_memory_builder import VectorMemoryBuilder
 from cat.rabbit_hole import RabbitHole
-from cat.utils import singleton, get_embedder_name
+from cat.services.factory_adapter import FactoryAdapter
+from cat.services.websocket_manager import WebsocketManager
+from cat.utils import singleton, get_embedder_name, dispatch_event
 
 
 @singleton
@@ -65,6 +66,7 @@ class BillTheLizard:
         self.file_manager: BaseFileManager | None = None
 
         self.plugin_manager = Tweedledum()
+        self.websocket_manager = WebsocketManager()
 
         # load embedder
         self.load_language_embedder()
@@ -89,7 +91,7 @@ class BillTheLizard:
             self.initialize_users()
 
     def __del__(self):
-        self.shutdown()
+        dispatch_event(self.shutdown)
 
     def set_fastapi_app(self, app: FastAPI) -> "BillTheLizard":
         self.fastapi_app = app
@@ -313,13 +315,16 @@ class BillTheLizard:
 
         return self.get_cheshire_cat(agent_id)
 
-    def shutdown(self) -> None:
+    async def shutdown(self) -> None:
         """
         Shuts down the Bill The Lizard Manager. It closes all the strays' connections and stops the scheduling system.
 
         Returns:
             None
         """
+
+        if self.websocket_manager:
+            await self.websocket_manager.close_all_connections()
 
         self.core_auth_handler = None
         self.plugin_manager = None
@@ -329,6 +334,7 @@ class BillTheLizard:
         self.embedder_name = None
         self.embedder_size = None
         self.file_manager = None
+        self.websocket_manager = None
         self.fastapi_app = None
 
     @property

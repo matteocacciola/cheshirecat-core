@@ -146,11 +146,11 @@ async def encapsulate_each_test(request, monkeypatch):
     clean_up_qdrant()
 
 
-@pytest.fixture(scope="function")
-def lizard():
+@pytest_asyncio.fixture(scope="function")
+async def lizard():
     l = BillTheLizard().set_fastapi_app(cheshire_cat_api)
     yield l
-    l.shutdown()
+    await l.shutdown()
 
 
 @pytest.fixture(scope="function")
@@ -274,7 +274,7 @@ async def stray(stray_no_memory):
 
 
 # autouse fixture will be applied to *all* the tests
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True, scope="function")
 def apply_warning_filters():
     # ignore deprecation warnings due to langchain not updating to pydantic v2
     warnings.filterwarnings("ignore", category=PydanticDeprecatedSince20)
