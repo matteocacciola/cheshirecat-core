@@ -18,7 +18,7 @@ from qdrant_client.http.models import (
 from cat.db.vector_database import get_vector_db
 from cat.env import get_env
 from cat.log import log
-from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.memory.utils import ContentType, VectorMemoryCollectionTypes
 from cat.utils import singleton
 
 
@@ -31,7 +31,7 @@ class VectorMemoryBuilder:
     async def build(self):
         for collection_name in VectorMemoryCollectionTypes:
             is_collection_existing = await self.__check_collection_existence(str(collection_name))
-            has_same_size = await self.__check_embedding_size(str(collection_name)) if is_collection_existing else False
+            has_same_size = self.__check_embedding_size(str(collection_name)) if is_collection_existing else False
             if is_collection_existing and has_same_size:
                 continue
 
@@ -55,12 +55,23 @@ class VectorMemoryBuilder:
         return False
 
     async def __check_embedding_size(self, collection_name: str) -> bool:
-        # having the same size does not necessarily imply being the same embedder
-        # having vectors with the same size but from different embedder in the same vector space is wrong
-        same_size = (
-            (await self.__client.get_collection(collection_name=collection_name)).config.params.vectors.size
-            == self.lizard.embedder_size.text
-        )
+        # Multiple vector configurations
+        vectors_config = (await self.__client.get_collection(collection_name=collection_name)).config.params.vectors
+        embedder_sizes = self.lizard.embedder_size
+
+        text_lbl = str(ContentType.TEXT)
+        image_lbl = str(ContentType.IMAGE)
+        audio_lbl = str(ContentType.AUDIO)
+
+        text_condition = text_lbl in vectors_config and vectors_config[text_lbl].size == embedder_sizes.text
+        image_condition = (
+            image_lbl in vectors_config and vectors_config[image_lbl].size == embedder_sizes.image
+        ) if embedder_sizes.image else True
+        audio_condition = (
+            audio_lbl in vectors_config and vectors_config[audio_lbl].size == embedder_sizes.audio
+        ) if embedder_sizes.audio else True
+
+        same_size = text_condition and image_condition and audio_condition
         local_alias = self.lizard.embedder_name + "_" + collection_name
         db_alias = (await self.__client.get_collection_aliases(collection_name=collection_name)).aliases[0].alias_name
 
@@ -81,13 +92,28 @@ class VectorMemoryBuilder:
         """
 
         log.warning(f"Creating collection \"{collection_name}\" ...")
+
+        embedder_sizes = self.lizard.embedder_size
+
+        # Create vector config for each modality
+        vectors_config = {
+            str(ContentType.TEXT): VectorParams(size=embedder_sizes.text, distance=Distance.COSINE)
+        }
+
+        if embedder_sizes.image:
+            vectors_config[str(ContentType.IMAGE)] = VectorParams(
+                size=embedder_sizes.image, distance=Distance.COSINE
+            )
+
+        if embedder_sizes.audio:
+            vectors_config[str(ContentType.AUDIO)] = VectorParams(
+                size=embedder_sizes.audio, distance=Distance.COSINE
+            )
+
         await self.__client.create_collection(
             collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=self.lizard.embedder_size.text, distance=Distance.COSINE
-            ),
-            # hybrid mode: original vector on Disk, quantized vector in RAM
-            optimizers_config=OptimizersConfigDiff(memmap_threshold=20000),
+            vectors_config=vectors_config,
+            optimizers_config=OptimizersConfigDiff(memmap_threshold=20000, indexing_threshold=20000),
             quantization_config=ScalarQuantization(
                 scalar=ScalarQuantizationConfig(
                     type=ScalarType.INT8, quantile=0.95, always_ram=True
@@ -101,7 +127,7 @@ class VectorMemoryBuilder:
                 CreateAliasOperation(
                     create_alias=CreateAlias(
                         collection_name=collection_name,
-                        alias_name=self.lizard.embedder_name + "_" +collection_name,
+                        alias_name=self.lizard.embedder_name + "_" + collection_name,
                     )
                 )
             ]
@@ -123,6 +149,7 @@ class VectorMemoryBuilder:
             field_type: Type of the index (es. PayloadSchemaType.KEYWORD)
             collection_name: Name of the collection on which to create the index
         """
+
         try:
             await self.__client.create_payload_index(
                 collection_name=collection_name,
