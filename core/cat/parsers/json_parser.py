@@ -1,7 +1,7 @@
 import json
 from abc import ABC
 from typing import Iterator
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 from langchain.document_loaders.base import BaseBlobParser
 from langchain.document_loaders.blob_loaders.schema import Blob
 

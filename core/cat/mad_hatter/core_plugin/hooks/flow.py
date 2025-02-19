@@ -4,10 +4,8 @@ Here is a collection of methods to hook into the Cat execution pipeline.
 
 """
 from typing import Dict
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 
-from cat.convo.messages import CatMessage
-from cat.looking_glass.stray_cat import RecallSettings
 from cat.mad_hatter.decorators import hook
 
 

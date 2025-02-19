@@ -1,9 +1,8 @@
 import json
-from typing import Dict, List
-
+from typing import List
+from langchain_core.documents import Document
 from pydantic import BaseModel, Field
 from qdrant_client.http.models import Record, ScoredPoint
-from langchain.docstore.document import Document
 
 from cat.utils import Enum as BaseEnum, BaseModelDict
 
