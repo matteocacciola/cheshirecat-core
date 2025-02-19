@@ -9,7 +9,7 @@ from typing import List, Dict, Tuple
 from urllib.parse import urlparse
 from urllib.error import HTTPError
 from starlette.datastructures import UploadFile
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
 from langchain.document_loaders.blob_loaders.schema import Blob
 

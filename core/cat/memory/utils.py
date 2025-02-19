@@ -1,9 +1,8 @@
 import json
 from typing import Dict, TypeAlias
-
+from langchain_core.documents.base import Document, Blob
 from pydantic import BaseModel
 from qdrant_client.http.models import Record, ScoredPoint, VectorStruct
-from langchain_core.documents.base import Document, Blob
 
 from cat.utils import Enum as BaseEnum, BaseModelDict
 

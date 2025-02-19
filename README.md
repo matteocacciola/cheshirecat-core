@@ -19,9 +19,6 @@
   <img alt="GitHub tag (with filter)" src="https://img.shields.io/github/v/tag/matteocacciola/cheshirecat-core">
   </a>
   <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/matteocacciola/cheshirecat-core">
-
-  <br/>
-  <video src="https://github.com/matteocacciola/cheshirecat-core/assets/6328377/7bc4acff-34bf-4b8a-be61-4d8967fbd60f"></video>
 </div>
 
 ## AI agent as a microservice

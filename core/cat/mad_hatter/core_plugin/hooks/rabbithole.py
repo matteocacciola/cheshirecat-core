@@ -8,7 +8,7 @@ These hooks allow to intercept the uploaded documents at different places before
 
 from typing import List, Dict
 from langchain.text_splitter import TextSplitter
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 from qdrant_client.http.models import PointStruct
 
 from cat.mad_hatter.decorators import hook

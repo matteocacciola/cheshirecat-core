@@ -2,7 +2,7 @@ import time
 import traceback
 import tiktoken
 from typing import Literal, List, Dict, Any, get_args
-from langchain.docstore.document import Document
+from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.runnables import RunnableConfig
