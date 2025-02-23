@@ -1,4 +1,5 @@
 from tests.utils import just_installed_plugin
+from tests.mocks.mock_plugin.mock_plugin_overrides import MockPluginSettings
 
 
 def test_get_all_plugin_settings(secure_client, secure_client_headers):
@@ -15,8 +16,13 @@ def test_get_all_plugin_settings(secure_client, secure_client_headers):
 
     for setting in json["settings"]:
         assert setting["name"] in installed_plugins
-        assert setting["value"] == {}
-        assert setting["scheme"] == {}
+        if setting["name"] == "core_plugin":
+            assert setting["value"] == {}
+            assert setting["scheme"] == {}
+        elif setting["name"] == "mock_plugin":
+            assert setting["name"] == "mock_plugin"
+            assert setting["value"] == {}
+            assert setting["scheme"] == MockPluginSettings.model_json_schema()
 
 
 def test_get_plugin_settings_non_existent(secure_client, secure_client_headers):
@@ -40,38 +46,61 @@ def test_get_plugin_settings(secure_client, secure_client_headers):
     assert response.status_code == 200
     assert response_json["name"] == "mock_plugin"
     assert response_json["value"] == {}
-    assert response_json["scheme"] == {}
+    assert response_json["scheme"] == MockPluginSettings.model_json_schema()
 
 
-# endpoint to save settings
+def test_save_wrong_plugin_settings(secure_client, secure_client_headers):
+    just_installed_plugin(secure_client, secure_client_headers)
+
+    # save settings (empty)
+    fake_settings = {}
+    response = secure_client.put("/plugins/settings/mock_plugin", json=fake_settings, headers=secure_client_headers)
+    assert response.status_code == 400
+
+    # save settings (wrong schema)
+    fake_settings = {"a": "a", "c": 1}
+    response = secure_client.put("/plugins/settings/mock_plugin", json=fake_settings, headers=secure_client_headers)
+    assert response.status_code == 400
+
+    # save settings (missing required field)
+    fake_settings = {"a": "a"}
+    response = secure_client.put("/plugins/settings/mock_plugin", json=fake_settings, headers=secure_client_headers)
+    assert response.status_code == 400
+
+    # check default settings did not change
+    response = secure_client.get("/plugins/settings/mock_plugin", headers=secure_client_headers)
+    assert response.status_code == 200
+    json = response.json()
+    assert json["name"] == "mock_plugin"
+    assert json["value"] == {}
+
+
 def test_save_plugin_settings(secure_client, secure_client_headers):
     just_installed_plugin(secure_client, secure_client_headers)
 
-    # write a new setting, and then overwrite it
-    for fake_value in ["a", "b"]:
-        # save settings
-        fake_settings = {"fake_setting": fake_value}
-        response = secure_client.put("/plugins/settings/mock_plugin", json=fake_settings, headers=secure_client_headers)
+    # save settings
+    fake_settings = {"a": "a", "b": 1}
+    response = secure_client.put("/plugins/settings/mock_plugin", json=fake_settings, headers=secure_client_headers)
 
-        # check immediate response
-        assert response.status_code == 200
-        json = response.json()
-        assert json["name"] == "mock_plugin"
-        assert json["value"]["fake_setting"] == fake_value
+    # check immediate response
+    assert response.status_code == 200
+    json = response.json()
+    assert json["name"] == "mock_plugin"
+    assert json["value"] == fake_settings
 
-        # retrieve all plugins settings to check if it was saved in DB
-        response = secure_client.get("/plugins/settings", headers=secure_client_headers)
-        json = response.json()
-        assert response.status_code == 200
-        saved_config = [c for c in json["settings"] if c["name"] == "mock_plugin"]
-        assert saved_config[0]["value"]["fake_setting"] == fake_value
+    # get settings back for this specific plugin
+    response = secure_client.get("/plugins/settings", headers=secure_client_headers)
+    json = response.json()
+    assert response.status_code == 200
+    assert json["name"] == "mock_plugin"
+    assert json["value"] == fake_settings
 
-        # get settings back for this specific plugin
-        response = secure_client.get("/plugins/settings/mock_plugin", headers=secure_client_headers)
-        json = response.json()
-        assert response.status_code == 200
-        assert json["name"] == "mock_plugin"
-        assert json["value"]["fake_setting"] == fake_value
+    # retrieve all plugins settings to check if it was saved in DB
+    response = secure_client.get("/plugins/settings/mock_plugin", headers=secure_client_headers)
+    json = response.json()
+    assert response.status_code == 200
+    saved_config = [c for c in json["settings"] if c["name"] == "mock_plugin"]
+    assert saved_config[0]["value"] == fake_settings
 
 
 # core_plugin has no settings and ignores them when saved (for the moment)

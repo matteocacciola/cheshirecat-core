@@ -82,12 +82,6 @@ class MadHatter(ABC):
         # Deactivate the plugin
         log.warning(f"Toggle plugin {plugin_id}: Deactivate")
 
-        # Execute hook on plugin deactivation
-        # Deactivation hook must happen before actual deactivation,
-        # otherwise the hook will not be available in _plugin_overrides anymore
-        if "deactivated" in self.plugins[plugin_id].plugin_overrides:
-            self.plugins[plugin_id].plugin_overrides["deactivated"].function(self.plugins[plugin_id])
-
         # Remove the plugin from the list of active plugins
         self.active_plugins.remove(plugin_id)
 
@@ -105,11 +99,6 @@ class MadHatter(ABC):
         log.warning(f"Toggle plugin {plugin_id}: Activate")
 
         self.on_plugin_activation(plugin_id=plugin_id)
-
-        # execute hook on plugin activation; activating hook must happen before actual activation,
-        # otherwise the hook will still not be available in _plugin_overrides
-        if "activated" in self.plugins[plugin_id].plugin_overrides:
-            self.plugins[plugin_id].plugin_overrides["activated"].function(self.plugins[plugin_id])
 
         # Add the plugin in the list of active plugins
         self.active_plugins.append(plugin_id)

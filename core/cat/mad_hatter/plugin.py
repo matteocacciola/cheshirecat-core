@@ -61,7 +61,7 @@ class Plugin:
         self._hooks: List[CatHook] = []  # list of plugin hooks
         self._tools: List[CatTool] = []  # list of plugin tools
         self._forms: List[CatForm] = []  # list of plugin forms
-        self._endpoints: List[CustomEndpoint] = [] # list of plugin endpoints
+        self._endpoints: List[CustomEndpoint] = []  # list of plugin endpoints
 
         # list of @plugin decorated functions overriding default plugin behaviour
         self._plugin_overrides: Dict[str, CatPluginDecorator] = {}
@@ -77,6 +77,10 @@ class Plugin:
             raise e
 
         self.activate_settings(agent_id, False)
+
+        # run custom activation from @plugin
+        if "activated" in self.overrides:
+            self.overrides["activated"].function(self)
 
     def activate_settings(self, agent_id: str, incremental: bool = True):
         # load hooks and tools
@@ -96,6 +100,10 @@ class Plugin:
         self._active = True
 
     def deactivate(self, agent_id: str):
+        # run custom deactivation from @plugin
+        if "deactivated" in self.overrides:
+            self.overrides["deactivated"].function(self)
+
         # Remove the imported modules
         for py_file in self._py_files:
             py_filename = py_file.replace("/", ".").replace(".py", "")
@@ -126,12 +134,12 @@ class Plugin:
     # get plugin settings JSON schema
     def settings_schema(self):
         # is "settings_schema" hook defined in the plugin?
-        if "settings_schema" in self._plugin_overrides:
-            return self._plugin_overrides["settings_schema"].function()
+        if "settings_schema" in self.overrides:
+            return self.overrides["settings_schema"].function()
 
         # otherwise, if the "settings_schema" is not defined but "settings_model" is it get the schema from the model
-        if "settings_model" in self._plugin_overrides:
-            return self._plugin_overrides["settings_model"].function().model_json_schema()
+        if "settings_model" in self.overrides:
+            return self.overrides["settings_model"].function().model_json_schema()
 
         # default schema (empty)
         return PluginSettingsModel.model_json_schema()
@@ -139,8 +147,8 @@ class Plugin:
     # get plugin settings Pydantic model
     def settings_model(self):
         # is "settings_model" hook defined in the plugin?
-        if "settings_model" in self._plugin_overrides:
-            return self._plugin_overrides["settings_model"].function()
+        if "settings_model" in self.overrides:
+            return self.overrides["settings_model"].function()
 
         # default schema (empty)
         return PluginSettingsModel
@@ -157,8 +165,8 @@ class Plugin:
                 agent_id = DEFAULT_SYSTEM_KEY
 
         # is "settings_load" hook defined in the plugin?
-        if "load_settings" in self._plugin_overrides:
-            return self._plugin_overrides["load_settings"].function()
+        if "load_settings" in self.overrides:
+            return self.overrides["load_settings"].function()
 
         # by default, plugin settings are saved inside the Redis database
         settings = crud_plugins.get_setting(agent_id, self._id)
@@ -179,8 +187,8 @@ class Plugin:
     # save plugin settings
     def save_settings(self, settings: Dict, agent_id: str):
         # is "settings_save" hook defined in the plugin?
-        if "save_settings" in self._plugin_overrides:
-            return self._plugin_overrides["save_settings"].function(settings)
+        if "save_settings" in self.overrides:
+            return self.overrides["save_settings"].function(settings)
 
         try:
             # overwrite settings over old ones
@@ -388,7 +396,7 @@ class Plugin:
         if not isclass(obj) or obj is CatForm:
             return False
 
-        if not issubclass(obj, CatForm) or not obj.autopilot:
+        if not issubclass(obj, CatForm) or not obj._autopilot:
             return False
 
         return True
@@ -444,5 +452,5 @@ class Plugin:
         return self._endpoints
 
     @property
-    def plugin_overrides(self):
+    def overrides(self):
         return self._plugin_overrides
