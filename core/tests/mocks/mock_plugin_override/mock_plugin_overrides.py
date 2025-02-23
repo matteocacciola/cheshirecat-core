@@ -6,8 +6,7 @@ from cat.mad_hatter.decorators import plugin
 class MockPluginSettings(BaseModel):
     model_config = {"extra": "forbid"}
 
-    a: str = "a"
-    b: int = 0
+    a: str = "new_a"
 
 
 @plugin

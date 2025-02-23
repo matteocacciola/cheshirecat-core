@@ -1,4 +1,5 @@
 from tests.utils import just_installed_plugin
+from tests.mocks.mock_plugin.mock_plugin_overrides import MockPluginSettings
 
 
 # endpoint to get settings and settings schema
@@ -15,8 +16,13 @@ def test_get_all_plugin_settings(secure_client, secure_client_headers):
 
     for setting in json["settings"]:
         assert setting["name"] in installed_plugins
-        assert setting["value"] == {}
-        assert setting["scheme"] == {}
+        if setting["name"] == "core_plugin":
+            assert setting["value"] == {}
+            assert setting["scheme"] == {}
+        elif setting["name"] == "mock_plugin":
+            assert setting["name"] == "mock_plugin"
+            assert setting["value"] == {"a": "a", "b": 0}
+            assert setting["scheme"] == MockPluginSettings.model_json_schema()
 
 
 def test_get_plugin_settings_non_existent(secure_client, secure_client_headers):
@@ -39,5 +45,5 @@ def test_get_plugin_settings(secure_client, secure_client_headers):
 
     assert response.status_code == 200
     assert response_json["name"] == "mock_plugin"
-    assert response_json["value"] == {}
-    assert response_json["scheme"] == {}
+    assert response_json["value"] == {"a": "a", "b": 0}
+    assert response_json["scheme"] == MockPluginSettings.model_json_schema()
