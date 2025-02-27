@@ -21,7 +21,7 @@ from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
-from cat.memory.utils import DocumentRecall, VectorMemoryCollectionTypes
+from cat.memory.utils import ContentType, DocumentRecall, MultimodalContent, VectorMemoryCollectionTypes
 from cat.memory.vector_memory_collection import VectorMemoryCollection
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
@@ -73,10 +73,14 @@ class StrayCat:
             log.error(f"Runtime error occurred while sending data: {e}")
 
     def _build_why(self, agent_output: AgentOutput | None = None) -> MessageWhy:
-        memory = {str(c): [dict(d.document) | {
-            "score": float(d.score) if d.score else None,
-            "id": d.id,
-        } for d in getattr(self.working_memory, f"{c}_memories")] for c in VectorMemoryCollectionTypes}
+        memory = {str(c): [
+            dict(d[t].document) | {
+                "score": float(d[t].score) if d[t].score else None,
+                "id": d[t].id,
+            }
+            for d in getattr(self.working_memory, f"{c}_memories")
+            for t in ContentType if t in d
+        ] for c in VectorMemoryCollectionTypes}
 
         # why this response?
         return MessageWhy(
@@ -250,7 +254,9 @@ class StrayCat:
 
         vector_memory: VectorMemoryCollection = cheshire_cat.memory.vectors.collections[collection_name]
         if k:
-            memories = await vector_memory.recall_memories_from_embedding(query, metadata, k, threshold)
+            memories = await vector_memory.recall_memories_from_embedding(
+                query_vectors={ContentType.TEXT: query}, metadata=metadata, k=k, threshold=threshold
+            )
         else:
             memories = await vector_memory.recall_all_memories()
 
@@ -570,9 +576,9 @@ Allowed classes are:
         cheshire_cat = self.cheshire_cat
         user_message_embedding = cheshire_cat.embedder.embed_documents([user_message.text])
         await cheshire_cat.memory.vectors.episodic.add_point(
-            doc.page_content,
-            user_message_embedding[0],
-            doc.metadata,
+            content=MultimodalContent(text=doc.page_content),
+            vectors={ContentType.TEXT: user_message_embedding[0]},
+            metadata=doc.metadata,
         )
 
     @property
