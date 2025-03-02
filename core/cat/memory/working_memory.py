@@ -25,17 +25,30 @@ from cat.utils import BaseModelDict
 
 class WorkingMemory(BaseModelDict):
     """
-    Cat's volatile memory.
+    Represents the volatile memory of a cat, functioning similarly to a dictionary to store temporary custom data.
 
-    Handy class that behaves like a `Dict` to store temporary custom data.
-
-    Returns:
-        Dict[str, List]: Default instance is a dictionary with `history` key set to an empty list.
-
-    Notes
-    -----
-    The constructor instantiates a dictionary with a `history` key set to an empty list that is further used to store
-    the conversation turns between the Human and the AI.
+    Attributes
+    ----------
+    agent_id: str
+        The identifier of the agent
+    user_id: str
+        The identifier of the user
+    history: List[ConversationMessage]
+        A list that maintains the conversation history between the Human and the AI.
+    user_message: Optional[UserMessage], default=None
+        An optional UserMessage object representing the last user message.
+    active_form: Optional[CatForm], default=None
+        An optional reference to a CatForm currently in use.
+    recall_query: str, default=""
+        A string that stores the last recall query.
+    episodic_memories: List
+        A list for storing episodic memories.
+    declarative_memories: List
+        A list for storing declarative memories.
+    procedural_memories: List
+        A list for storing procedural memories.
+    model_interactions: List[ModelInteraction]
+        A list of interactions with models.
     """
 
     agent_id: str

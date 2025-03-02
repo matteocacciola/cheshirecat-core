@@ -16,8 +16,9 @@ class ChooseProcedureOutputParser(BaseCumulativeTransformOutputParser):
     def parse(self, llm_output: str) -> LLMAction:
         try:
             llm_action = parse_json(llm_output, pydantic_model=LLMAction)
-        except Exception as e:
-            log.error(e)
+        except Exception:
+            log.warning("LLM did not produce a valid JSON")
+            log.warning(llm_output)
             llm_action = LLMAction()
 
         # Extract action input

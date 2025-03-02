@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import traceback
 from copy import deepcopy
 from typing import List, Dict
 
@@ -82,12 +81,6 @@ class MadHatter(ABC):
         # Deactivate the plugin
         log.warning(f"Toggle plugin {plugin_id}: Deactivate")
 
-        # Execute hook on plugin deactivation
-        # Deactivation hook must happen before actual deactivation,
-        # otherwise the hook will not be available in _plugin_overrides anymore
-        if "deactivated" in self.plugins[plugin_id].plugin_overrides:
-            self.plugins[plugin_id].plugin_overrides["deactivated"].function(self.plugins[plugin_id])
-
         # Remove the plugin from the list of active plugins
         self.active_plugins.remove(plugin_id)
 
@@ -105,11 +98,6 @@ class MadHatter(ABC):
         log.warning(f"Toggle plugin {plugin_id}: Activate")
 
         self.on_plugin_activation(plugin_id=plugin_id)
-
-        # execute hook on plugin activation; activating hook must happen before actual activation,
-        # otherwise the hook will still not be available in _plugin_overrides
-        if "activated" in self.plugins[plugin_id].plugin_overrides:
-            self.plugins[plugin_id].plugin_overrides["activated"].function(self.plugins[plugin_id])
 
         # Add the plugin in the list of active plugins
         self.active_plugins.append(plugin_id)
@@ -140,11 +128,9 @@ class MadHatter(ABC):
                     )
                     hook.function(cat=cat)
                 except Exception as e:
-                    log.error(f"Error in plugin {hook.plugin_id}::{hook.name}")
-                    log.error(e)
+                    log.error(f"Error in plugin {hook.plugin_id}::{hook.name}: {e}")
                     plugin_obj = self.plugins[hook.plugin_id]
                     log.warning(plugin_obj.plugin_specific_error_message())
-                    traceback.print_exc()
             return
 
         # Hook with arguments.
@@ -168,11 +154,9 @@ class MadHatter(ABC):
                 if tea_spoon is not None:
                     tea_cup = tea_spoon
             except Exception as e:
-                log.error(f"Error in plugin {hook.plugin_id}::{hook.name}")
-                log.error(e)
+                log.error(f"Error in plugin {hook.plugin_id}::{hook.name}: {e}")
                 plugin_obj = self.plugins[hook.plugin_id]
                 log.warning(plugin_obj.plugin_specific_error_message())
-                traceback.print_exc()
 
         # tea_cup has passed through all hooks. Return final output
         return tea_cup

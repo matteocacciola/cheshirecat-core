@@ -39,9 +39,9 @@ class MemoryAgent(BaseAgent):
         output = chain.invoke(
             # convert to dict before passing to langchain
             prompt_variables,
-            config=RunnableConfig(
-                callbacks=[NewTokenHandler(stray), ModelInteractionHandler(stray, self.name)]
-            )
+            config=RunnableConfig(callbacks=[
+                NewTokenHandler(stray), ModelInteractionHandler(stray, utils.get_caller_info(skip=1))
+            ])
         )
 
         return AgentOutput(output=output)

@@ -65,14 +65,9 @@ class BaseFactory(ABC):
         # obtain configuration and instantiate the finalized object by the factory
         selected_config = crud_settings.get_setting_by_name(agent_id, config_name)
         try:
-            object = factory_class.get_from_config(selected_config["value"])
+            return factory_class.get_from_config(selected_config["value"])
         except Exception:
-            import traceback
-            traceback.print_exc()
-
-            object = self.default_config_class.get_from_config(self.default_config)
-
-        return object
+            return self.default_config_class.get_from_config(self.default_config)
 
     @abstractmethod
     def get_allowed_classes(self) -> List[Type[BaseFactoryConfigModel]]:

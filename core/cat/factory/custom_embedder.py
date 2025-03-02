@@ -58,3 +58,21 @@ class CustomOpenAIEmbeddings(Embeddings):
         ret = httpx.post(self.url, data={"input": text}, timeout=None)
         ret.raise_for_status()
         return ret.json()["data"][0]["embedding"]
+
+
+class CustomOllamaEmbeddings(Embeddings):
+    """Use Ollama to serve embedding models."""
+
+    def __init__(self, base_url, model):
+        self.url = os.path.join(base_url, "api/embed")
+        self.model = model
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        ret = httpx.post(self.url, data={"model": self.model , "input": texts}, timeout=None)
+        ret.raise_for_status()
+        return ret.json()["embeddings"]
+
+    def embed_query(self, text: str) -> List[float]:
+        ret = httpx.post(self.url, data={"model": self.model , "input": text}, timeout=None)
+        ret.raise_for_status()
+        return ret.json()["embeddings"][0]

@@ -1,4 +1,3 @@
-import traceback
 import random
 from typing import Dict, Any
 from langchain.prompts import ChatPromptTemplate
@@ -50,8 +49,7 @@ class ProceduresAgent(BaseAgent):
                     ])
                 return procedures_result
             except Exception as e:
-                log.error(e)
-                traceback.print_exc()
+                log.error(f"Error while executing procedures: {e}")
 
         return AgentOutput()
 
@@ -144,7 +142,9 @@ class ProceduresAgent(BaseAgent):
 
         llm_action: LLMAction = chain.invoke(
             prompt_variables,
-            config=RunnableConfig(callbacks=[ModelInteractionHandler(stray, self.name)])
+            config=RunnableConfig(callbacks=[
+                ModelInteractionHandler(stray, utils.get_caller_info(skip=1))
+            ])
         )
 
         return llm_action
@@ -188,9 +188,7 @@ class ProceduresAgent(BaseAgent):
                 # execute form
                 return self.form_agent.execute(stray)
         except Exception as e:
-            log.error(f"Error executing {chosen_procedure.procedure_type} `{chosen_procedure.name}`")
-            log.error(e)
-            traceback.print_exc()
+            log.error(f"Error executing {chosen_procedure.procedure_type} `{chosen_procedure.name}`: {e}")
 
         return AgentOutput(output="")
 

@@ -3,7 +3,6 @@ import sys
 import json
 import glob
 import tempfile
-import traceback
 import importlib
 import subprocess
 from typing import Dict, List, Tuple
@@ -61,7 +60,7 @@ class Plugin:
         self._hooks: List[CatHook] = []  # list of plugin hooks
         self._tools: List[CatTool] = []  # list of plugin tools
         self._forms: List[CatForm] = []  # list of plugin forms
-        self._endpoints: List[CustomEndpoint] = [] # list of plugin endpoints
+        self._endpoints: List[CustomEndpoint] = []  # list of plugin endpoints
 
         # list of @plugin decorated functions overriding default plugin behaviour
         self._plugin_overrides: Dict[str, CatPluginDecorator] = {}
@@ -77,6 +76,10 @@ class Plugin:
             raise e
 
         self.activate_settings(agent_id, False)
+
+        # run custom activation from @plugin
+        if "activated" in self.overrides:
+            self.overrides["activated"].function(self)
 
     def activate_settings(self, agent_id: str, incremental: bool = True):
         # load hooks and tools
@@ -96,6 +99,10 @@ class Plugin:
         self._active = True
 
     def deactivate(self, agent_id: str):
+        # run custom deactivation from @plugin
+        if "deactivated" in self.overrides:
+            self.overrides["deactivated"].function(self)
+
         # Remove the imported modules
         for py_file in self._py_files:
             py_filename = py_file.replace("/", ".").replace(".py", "")
@@ -126,12 +133,12 @@ class Plugin:
     # get plugin settings JSON schema
     def settings_schema(self):
         # is "settings_schema" hook defined in the plugin?
-        if "settings_schema" in self._plugin_overrides:
-            return self._plugin_overrides["settings_schema"].function()
+        if "settings_schema" in self.overrides:
+            return self.overrides["settings_schema"].function()
 
         # otherwise, if the "settings_schema" is not defined but "settings_model" is it get the schema from the model
-        if "settings_model" in self._plugin_overrides:
-            return self._plugin_overrides["settings_model"].function().model_json_schema()
+        if "settings_model" in self.overrides:
+            return self.overrides["settings_model"].function().model_json_schema()
 
         # default schema (empty)
         return PluginSettingsModel.model_json_schema()
@@ -139,8 +146,8 @@ class Plugin:
     # get plugin settings Pydantic model
     def settings_model(self):
         # is "settings_model" hook defined in the plugin?
-        if "settings_model" in self._plugin_overrides:
-            return self._plugin_overrides["settings_model"].function()
+        if "settings_model" in self.overrides:
+            return self.overrides["settings_model"].function()
 
         # default schema (empty)
         return PluginSettingsModel
@@ -157,8 +164,8 @@ class Plugin:
                 agent_id = DEFAULT_SYSTEM_KEY
 
         # is "settings_load" hook defined in the plugin?
-        if "load_settings" in self._plugin_overrides:
-            return self._plugin_overrides["load_settings"].function()
+        if "load_settings" in self.overrides:
+            return self.overrides["load_settings"].function()
 
         # by default, plugin settings are saved inside the Redis database
         settings = crud_plugins.get_setting(agent_id, self._id)
@@ -179,8 +186,8 @@ class Plugin:
     # save plugin settings
     def save_settings(self, settings: Dict, agent_id: str):
         # is "settings_save" hook defined in the plugin?
-        if "save_settings" in self._plugin_overrides:
-            return self._plugin_overrides["save_settings"].function(settings)
+        if "save_settings" in self.overrides:
+            return self.overrides["save_settings"].function(settings)
 
         try:
             # overwrite settings over old ones
@@ -189,7 +196,6 @@ class Plugin:
         except Exception as e:
             log.error(f"Unable to save plugin {self._id} settings: {e}")
             log.warning(self.plugin_specific_error_message())
-            traceback.print_exc()
             return {}
 
     def _get_settings_from_model(self) -> Dict | None:
@@ -240,7 +246,7 @@ class Plugin:
                 json_file_data = json.load(json_file)
                 json_file.close()
             except Exception:
-                log.info(
+                log.debug(
                     f"Loading plugin {self._path} metadata, defaulting to generated values"
                 )
 
@@ -276,7 +282,7 @@ class Plugin:
                 requirements = read_file.readlines()
 
             for req in requirements:
-                log.info(f"Installing requirements for: {self.id}")
+                log.info(f"Installing requirements for plugin {self.id}")
 
                 # get package name
                 package_name = Requirement(req).name
@@ -284,8 +290,9 @@ class Plugin:
                 # check if package is installed
                 if package_name not in installed_packages:
                     filtered_requirements.append(req)
-                else:
-                    log.debug(f"{package_name} is already installed")
+                    continue
+
+                log.debug(f"{package_name} is already installed")
         except Exception as e:
             log.error(f"Error during requirements check: {e}, for {self.id}")
 
@@ -302,13 +309,13 @@ class Plugin:
                     ["pip", "install", "--no-cache-dir", "-r", tmp.name], check=True
                 )
             except subprocess.CalledProcessError as e:
-                log.error(f"Error during installing {self.id} requirements: {e}")
+                log.error(f"Error while installing plugin {self.id} requirements: {e}")
 
                 # Uninstall the previously installed packages
                 log.info(f"Uninstalling requirements for: {self.id}")
                 subprocess.run(["pip", "uninstall", "-r", tmp.name], check=True)
 
-                raise Exception(f"Error during {self.id} requirements installation")
+                raise Exception(f"Error during plugin {self.id} requirements installation")
 
     # lists of hooks and tools
     def _load_decorated_functions(self):
@@ -339,7 +346,6 @@ class Plugin:
                     f"Error in {py_filename}: {str(e)}. Unable to load plugin {self._id}"
                 )
                 log.warning(self.plugin_specific_error_message())
-                traceback.print_exc()
 
         # clean and enrich instances
         self._hooks = list(map(self._clean_hook, hooks))
@@ -351,7 +357,9 @@ class Plugin:
     def plugin_specific_error_message(self):
         name = self.manifest.get("name")
         url = self.manifest.get("plugin_url")
-        return f"To resolve any problem related to {name} plugin, contact the creator using github issue at the link {url}"
+        if url:
+            return f"To resolve any problem related to {name} plugin, contact the creator using github issue at the link {url}"
+        return f"Error in {name} plugin, contact the creator"
 
     def _clean_hook(self, hook: Tuple[str, CatHook]):
         # getmembers returns a tuple
@@ -388,7 +396,7 @@ class Plugin:
         if not isclass(obj) or obj is CatForm:
             return False
 
-        if not issubclass(obj, CatForm) or not obj.autopilot:
+        if not issubclass(obj, CatForm) or not obj._autopilot:
             return False
 
         return True
@@ -444,5 +452,5 @@ class Plugin:
         return self._endpoints
 
     @property
-    def plugin_overrides(self):
+    def overrides(self):
         return self._plugin_overrides

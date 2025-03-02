@@ -12,7 +12,7 @@ class ModelInteraction(BaseModel):
         The type of model involved in the interaction, either a large language model (LLM) or an embedder.
     source : str
         The source from which the interaction originates.
-    prompt : str
+    prompt: List[str]
         The prompt or input provided to the model.
     input_tokens : int
         The number of input tokens processed by the model.
@@ -22,7 +22,7 @@ class ModelInteraction(BaseModel):
 
     model_type: Literal["llm", "embedder"]
     source: str
-    prompt: str
+    prompt: List[str]
     input_tokens: int
     started_at: float = Field(default_factory=lambda: time.time())
 

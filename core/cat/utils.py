@@ -14,7 +14,6 @@ import mimetypes
 import os
 import shutil
 import tomli
-import traceback
 from typing import Dict, Tuple, List, Type, TypeVar, Any, Callable
 from urllib.parse import urlparse
 
@@ -48,24 +47,18 @@ class BaseModelDict(BaseModel):
 
     def __getitem__(self, key):
         # deprecate dictionary usage
-        stack = traceback.extract_stack(limit=2)
-        line_code = traceback.format_list(stack)[0].split("\n")[1].strip()
         log.warning(
             f"Deprecation Warning: to get '{key}' use dot notation instead of dictionary keys, example: `obj.{key}` instead of `obj['{key}']`"
         )
-        log.warning(line_code)
 
         # return attribute
         return getattr(self, key)
 
     def __setitem__(self, key, value):
         # deprecate dictionary usage
-        stack = traceback.extract_stack(limit=2)
-        line_code = traceback.format_list(stack)[0].split("\n")[1].strip()
         log.warning(
             f'Deprecation Warning: to set {key} use dot notation instead of dictionary keys, example: `obj.{key} = x` instead of `obj["{key}"] = x`'
         )
-        log.warning(line_code)
 
         # set attribute
         setattr(self, key, value)
@@ -292,49 +285,117 @@ def match_prompt_variables(prompt_variables: Dict, prompt_template: str) -> Tupl
     # clean up
     for m in prompt_mismatches:
         if m in prompt_variables.keys():
-            log.warning(f"Prompt variable '{m}' not found in prompt template, removed")
+            log.debug(f"Prompt variable '{m}' not found in prompt template, removed")
             del prompt_variables[m]
         if m in tmp_prompt.input_variables:
             prompt_template = prompt_template.replace("{" + m + "}", "")
-            log.warning(f"Placeholder '{m}' not found in prompt variables, removed")
+            log.debug(f"Placeholder '{m}' not found in prompt variables, removed")
 
     return prompt_variables, prompt_template
 
 
-def get_caller_info():
-    # go 2 steps up the stack
-    try:
-        calling_frame = inspect.currentframe()
-        grand_father_frame = calling_frame.f_back.f_back
-        grand_father_name = grand_father_frame.f_code.co_name
+def get_caller_info(skip: int | None = 2, return_short: bool = True, return_string: bool = True):
+    """Get the name of a caller in the format module.class.method.
 
-        # check if the grand_father_frame is in a class method
-        if 'self' in grand_father_frame.f_locals:
-            return grand_father_frame.f_locals['self'].__class__.__name__ + "." + grand_father_name
-        return grand_father_name
-    except Exception as e:
-        log.error(e)
+    Adapted from: https://gist.github.com/techtonik/2151727
+
+    Parameters
+    ----------
+    skip: int
+        Specifies how many levels of stack to skip while getting caller name.
+    return_short: bool
+        If True, returns only the caller class and method, otherwise the full path.
+    return_string: bool
+        If True, returns the caller info as a string, otherwise as a tuple.
+
+    Returns
+    -------
+    package: str
+        Caller package.
+    module: str
+        Caller module.
+    klass: str
+        Caller class name if one otherwise None.
+    caller: str
+        Caller function or method (if a class exist).
+    line: int
+        The line of the call.
+
+    Notes
+    -----
+    skip=1 means "who calls me",
+    skip=2 "who calls my caller" etc.
+
+    None is returned if skipped levels exceed stack height.
+    """
+
+    stack = inspect.stack()
+    start = 0 + skip
+    if len(stack) < start + 1:
         return None
+
+    parentframe = stack[start][0]
+
+    # module and packagename.
+    package = ""
+    module = ""
+    module_info = inspect.getmodule(parentframe)
+    if module_info:
+        mod = module_info.__name__.split(".")
+        package = mod[0]
+        module = ".".join(mod[1:])
+
+    # class name.
+    klass = ""
+    if "self" in parentframe.f_locals:
+        klass = parentframe.f_locals["self"].__class__.__name__
+
+    # method or function name.
+    caller = None
+    if parentframe.f_code.co_name != "<module>":  # top level usually
+        caller = parentframe.f_code.co_name
+
+    # call line.
+    line = parentframe.f_lineno
+
+    # Remove reference to frame
+    # See: https://docs.python.org/3/library/inspect.html#the-interpreter-stack
+    del parentframe
+
+    if return_string:
+        return f"{klass}.{caller}" if return_short else f"{package}.{module}.{klass}.{caller}::{line}"
+    return package, module, klass, caller, line
 
 
 def langchain_log_prompt(langchain_prompt, title):
-    print("\n")
-    print(get_colored_text(f"==================== {title} ====================", "green"))
-    for m in langchain_prompt.messages:
-        print(get_colored_text(type(m).__name__, "green"))
-        print(m.content)
-    print(get_colored_text("========================================", "green"))
+    if get_env("CCAT_DEBUG") == "true":
+        print("\n")
+        print(get_colored_text(f"===== {title} =====", "green"))
+        for m in langchain_prompt.messages:
+            print(get_colored_text(type(m).__name__, "green"))
+            if isinstance(m.content, list):
+                for sub_m in m.content:
+                    if sub_m.get("type") == "text":
+                        print(sub_m["text"])
+                    elif sub_m.get("type") == "image_url":
+                        print("(image)")
+                    else:
+                        print(" -- Could not log content:", sub_m.keys())
+            else:
+                print(m.content)
+        print(get_colored_text("========================================", "green"))
     return langchain_prompt
 
 
 def langchain_log_output(langchain_output, title):
-    print("\n")
-    print(get_colored_text(f"==================== {title} ====================", "blue"))
-    if hasattr(langchain_output, 'content'):
-        print(langchain_output.content)
-    else:
-        print(langchain_output)
-    print(get_colored_text("========================================", "blue"))
+    if get_env("CCAT_DEBUG") == "true":
+        print("\n")
+        print(get_colored_text(f"===== {title} =====", "blue"))
+        if hasattr(langchain_output, 'content'):
+            print(langchain_output.content)
+        else:
+            print(langchain_output)
+        print(get_colored_text("========================================", "blue"))
     return langchain_output
 
 

@@ -5,7 +5,6 @@ from langchain_core.messages import AIMessage, HumanMessage, BaseMessage as Base
 from pydantic import computed_field
 from typing_extensions import deprecated
 
-from cat.agents import AgentOutput
 from cat.convo.model_interactions import LLMModelInteraction, EmbedderModelInteraction
 from cat.utils import BaseModelDict, Enum
 

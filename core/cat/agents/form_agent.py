@@ -28,8 +28,5 @@ class FormAgent(BaseAgent):
                 ]
             )
         except Exception as e:
-            import traceback
-
-            log.error(e)
-            traceback.print_exc()
+            log.error(f"Error while executing form: {e}")
             return AgentOutput()

@@ -11,7 +11,7 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from fastembed import TextEmbedding
 
 from cat.factory.base_factory import BaseFactory, BaseFactoryConfigModel
-from cat.factory.custom_embedder import DumbEmbedder, CustomOpenAIEmbeddings
+from cat.factory.custom_embedder import DumbEmbedder, CustomOpenAIEmbeddings, CustomOllamaEmbeddings
 from cat.utils import Enum
 
 
@@ -223,6 +223,21 @@ class EmbedderVoyageAIChatConfig(EmbedderSettings):
     )
 
 
+class EmbedderOllamaConfig(EmbedderSettings):
+    base_url: str
+    model: str = "mxbai-embed-large"
+    _pyclass: Type = CustomOllamaEmbeddings
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "Ollama embedding models",
+            "description": "Configuration for Ollama embeddings API",
+            "link": "",
+            "model": "mxbai-embed-large",
+        }
+    )
+
+
 class EmbedderFactory(BaseFactory):
     def get_allowed_classes(self) -> List[Type[EmbedderSettings]]:
         list_embedder_default = [
@@ -236,6 +251,7 @@ class EmbedderFactory(BaseFactory):
             EmbedderFakeConfig,
             EmbedderMistralAIChatConfig,
             EmbedderVoyageAIChatConfig,
+            EmbedderOllamaConfig,
         ]
 
         list_embedder = self._hook_manager.execute_hook(

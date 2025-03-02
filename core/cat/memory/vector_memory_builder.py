@@ -169,9 +169,9 @@ class VectorMemoryBuilder:
         port = self.__client._client._port
 
         if os.path.isdir(folder):
-            log.info(f"Directory dormouse exists")
+            log.debug("Directory dormouse exists")
         else:
-            log.warning(f"Directory dormouse does NOT exists, creating it.")
+            log.info("Directory dormouse does NOT exists, creating it.")
             os.mkdir(folder)
 
         snapshot_info = await self.__client.create_snapshot(collection_name=collection_name)

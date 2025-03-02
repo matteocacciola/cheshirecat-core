@@ -73,7 +73,6 @@ def clean_up():
         "tests/mocks/mock_plugin/settings.json",
         "tests/mocks/mock_plugin_folder/mock_plugin",
         "tests/mocks/mock_plugin_folder/mock_plugin_fast_reply",
-        "tests/mocks/mock_plugin/settings.py",
         "tests/mocks/empty_folder",
         "tests/data",
     ]
