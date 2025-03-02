@@ -14,7 +14,6 @@ import mimetypes
 import os
 import shutil
 import tomli
-import traceback
 from typing import Dict, Tuple, List, Type, TypeVar, Any, Callable
 from urllib.parse import urlparse
 
@@ -292,29 +291,31 @@ def match_prompt_variables(prompt_variables: Dict, prompt_template: str) -> Tupl
     return prompt_variables, prompt_template
 
 
-def get_caller_info(skip=2, return_short=True, return_string=True):
+def get_caller_info(skip: int | None = 2, return_short: bool = True, return_string: bool = True):
     """Get the name of a caller in the format module.class.method.
 
     Adapted from: https://gist.github.com/techtonik/2151727
 
     Parameters
     ----------
-    skip :  int
+    skip: int
         Specifies how many levels of stack to skip while getting caller name.
-    return_string : bool
+    return_short: bool
+        If True, returns only the caller class and method, otherwise the full path.
+    return_string: bool
         If True, returns the caller info as a string, otherwise as a tuple.
 
     Returns
     -------
-    package : str
+    package: str
         Caller package.
-    module : str
+    module: str
         Caller module.
-    klass : str
-        Caller classname if one otherwise None.
-    caller : str
+    klass: str
+        Caller class name if one otherwise None.
+    caller: str
         Caller function or method (if a class exist).
-    line : int
+    line: int
         The line of the call.
 
     Notes
@@ -333,6 +334,8 @@ def get_caller_info(skip=2, return_short=True, return_string=True):
     parentframe = stack[start][0]
 
     # module and packagename.
+    package = ""
+    module = ""
     module_info = inspect.getmodule(parentframe)
     if module_info:
         mod = module_info.__name__.split(".")
@@ -357,10 +360,7 @@ def get_caller_info(skip=2, return_short=True, return_string=True):
     del parentframe
 
     if return_string:
-        if return_short:
-            return f"{klass}.{caller}"
-        else:
-            return f"{package}.{module}.{klass}.{caller}::{line}"
+        return f"{klass}.{caller}" if return_short else f"{package}.{module}.{klass}.{caller}::{line}"
     return package, module, klass, caller, line
 
 

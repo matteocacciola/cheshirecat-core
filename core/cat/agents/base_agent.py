@@ -39,7 +39,3 @@ class BaseAgent(ABC):
 
     def __str__(self):
         return self.__class__.__name__
-
-    @property
-    def name(self):
-        return str(self)

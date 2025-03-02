@@ -65,6 +65,8 @@ class WorkingMemory(BaseModelDict):
     declarative_memories: List[DocumentRecall] = Field(default_factory=list)
     procedural_memories: List[DocumentRecall] = Field(default_factory=list)
 
+    agent_input: AgentInput | None = None
+
     # track models usage
     model_interactions: List[LLMModelInteraction | EmbedderModelInteraction] = Field(default_factory=list)
 

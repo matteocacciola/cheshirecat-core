@@ -38,7 +38,7 @@ async def websocket_endpoint(
             # Run the `stray` object's method in a threadpool since it might be a CPU-bound operation.
             await stray.run_websocket(user_message)
     except WebSocketDisconnect:
-        log.warning(f"WebSocket connection closed for user {stray.user.id}")
+        log.info(f"WebSocket connection closed for user {stray.user.id}")
     finally:
         # Remove connection on disconnect
         websocket_manager.remove_connection(stray.user.id)

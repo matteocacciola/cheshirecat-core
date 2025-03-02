@@ -1,5 +1,6 @@
 from typing import Any, Dict, List
 from langchain.callbacks.base import BaseCallbackHandler
+from langchain_core.messages import BaseMessage
 from langchain_core.outputs.llm_result import LLMResult
 import tiktoken
 import time
@@ -50,33 +51,32 @@ class ModelInteractionHandler(BaseCallbackHandler):
         encoding = tiktoken.get_encoding("cl100k_base")
         return len(encoding.encode(text))
 
-    def on_chat_model_start(self, serialized: Dict[str, Any], prompts: List[str], **kwargs) -> None:
-
+    def on_chat_model_start(self, serialized: Dict[str, Any], messages: List[List[BaseMessage]], **kwargs) -> None:
         input_tokens = 0
         input_prompt = []
         # TODO V2: how the hell do we count image tokens? is it a separate count because they have a different pricing?
         # guide here: https://platform.openai.com/docs/guides/vision/calculating-costs#calculating-costs
-        messages = prompts[0]
-        for m in messages:
+        for m in messages[0]:
             if isinstance(m.content, str):
                 input_tokens += self._count_tokens(m.content)
                 input_prompt.append(m.content)
-
                 continue
+
             if isinstance(m.content, list):
                 for c in m.content:
                     if c["type"] == "text":
                         input_tokens += self._count_tokens(c["text"])
                         input_prompt.append(c["text"])
                         continue
+
                     if c["type"] == "image_url":
                         # TODO V2: how do we count image tokens?
                         log.warning("Could not count tokens for image message")
                         # do not send back to the client the whole base64 image
                         input_prompt.append("(image, tokens not counted)")
-                continue
+                        continue
 
-            log.warning(f"Could not count tokens for message type {c['type']}")
+                    log.warning(f"Could not count tokens for message type {c['type']}")
 
         self.last_interaction.input_tokens = int(input_tokens * 1.2) # You never know
         self.last_interaction.prompt = input_prompt
