@@ -318,6 +318,7 @@ class RabbitHole:
                 perc_read = int(d / len(docs) * 100)
                 read_message = f"Read {perc_read}% of {source}"
                 await stray.send_ws_message(read_message)
+                log.info(read_message)
 
             # add default metadata
             doc.metadata["source"] = source

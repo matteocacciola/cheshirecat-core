@@ -9,9 +9,6 @@ RUN apt-get -y update && apt-get install -y curl build-essential fastjar libmagi
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Add Cargo to PATH
-ENV PATH="/root/.cargo/bin:${PATH}"
-
 FROM system AS libraries
 
 ### PREPARE BUILD WITH NECESSARY FILES AND FOLDERS ###

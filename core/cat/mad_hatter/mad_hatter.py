@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import traceback
 from copy import deepcopy
 from typing import List, Dict
 
@@ -129,11 +128,9 @@ class MadHatter(ABC):
                     )
                     hook.function(cat=cat)
                 except Exception as e:
-                    log.error(f"Error in plugin {hook.plugin_id}::{hook.name}")
-                    log.error(e)
+                    log.error(f"Error in plugin {hook.plugin_id}::{hook.name}: {e}")
                     plugin_obj = self.plugins[hook.plugin_id]
                     log.warning(plugin_obj.plugin_specific_error_message())
-                    traceback.print_exc()
             return
 
         # Hook with arguments.
@@ -157,11 +154,9 @@ class MadHatter(ABC):
                 if tea_spoon is not None:
                     tea_cup = tea_spoon
             except Exception as e:
-                log.error(f"Error in plugin {hook.plugin_id}::{hook.name}")
-                log.error(e)
+                log.error(f"Error in plugin {hook.plugin_id}::{hook.name}: {e}")
                 plugin_obj = self.plugins[hook.plugin_id]
                 log.warning(plugin_obj.plugin_specific_error_message())
-                traceback.print_exc()
 
         # tea_cup has passed through all hooks. Return final output
         return tea_cup

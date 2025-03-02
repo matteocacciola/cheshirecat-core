@@ -54,8 +54,8 @@ class CustomEndpoint:
 
         try:
             self.cheshire_cat_api.include_router(plugins_router, prefix=self.prefix)
-        except BaseException as e:
-            log.error(f"Error activating custom endpoint [{self.methods} {self.name}]: {e}")
+        except Exception as e:
+            log.error(f"Error activating custom endpoint {self.methods} {self.name}: {e}")
             return
 
         self.cheshire_cat_api.openapi_schema = None  # Flush the cache of openapi schema

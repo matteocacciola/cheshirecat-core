@@ -1,5 +1,4 @@
 import time
-import traceback
 import tiktoken
 from typing import Literal, List, Dict, Any, get_args
 from langchain_core.documents import Document
@@ -64,7 +63,7 @@ class StrayCat:
     async def _send_ws_json(self, data: Any):
         ws_connection = self.websocket_manager.get_connection(self.user.id)
         if not ws_connection:
-            log.info(f"No websocket connection is open for user {self.user.id}")
+            log.debug(f"No websocket connection is open for user {self.user.id}")
             return
 
         try:
@@ -304,8 +303,9 @@ class StrayCat:
         self.working_memory.recall_query = recall_query
         self.working_memory.model_interactions.append(
             EmbedderModelInteraction(
-                prompt=recall_query,
-                reply=recall_query_embedding,
+                prompt=[recall_query],
+                source=utils.get_caller_info(skip=1),
+                reply=recall_query_embedding, # TODO: should we avoid storing the embedding?
                 input_tokens=len(tiktoken.get_encoding("cl100k_base").encode(recall_query)),
             )
         )
@@ -364,7 +364,7 @@ class StrayCat:
         callbacks = [] if not stream else NewTokenHandler(self)
 
         # Add a token counter to the callbacks
-        caller = utils.get_caller_info()
+        caller = utils.get_caller_info(return_short=False)
         callbacks.append(ModelInteractionHandler(self, caller or "StrayCat"))
 
         return self.cheshire_cat.llm(prompt, caller=caller, config=RunnableConfig(callbacks=callbacks))
@@ -418,8 +418,7 @@ class StrayCat:
         try:
             await self.recall_relevant_memories_to_working_memory()
         except Exception as e:
-            log.error(f"Agent id: {self.__agent_id}. Error {e}")
-            traceback.print_exc()
+            log.error(f"Agent id: {self.__agent_id}. Error during recall {e}")
 
             raise VectorMemoryError("An error occurred while recalling relevant memories.")
 
@@ -446,7 +445,6 @@ class StrayCat:
         except Exception as e:
             # Log any unexpected errors
             log.error(f"Agent id: {self.__agent_id}. Error {e}")
-            traceback.print_exc()
             try:
                 # Send error as websocket message
                 await self.send_error(e)
@@ -503,7 +501,6 @@ Allowed classes are:
 "{sentence}" -> """
 
         response = self.llm(prompt)
-        log.info(response)
 
         # find the closest match and its score with levenshtein distance
         best_label, score = min(

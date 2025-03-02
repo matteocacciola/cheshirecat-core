@@ -56,7 +56,7 @@ async def registry_search_plugins(
         )
         return []
     except Exception as e:
-        log.error(e)
+        log.error(f"Error with registry: {e}")
         return []
 
 

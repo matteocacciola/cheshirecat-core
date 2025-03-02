@@ -214,6 +214,7 @@ async def upload_files(
     )
     ```
     """
+    log.info(f"Uploading {len(files)} files down the rabbit hole")
 
     response = {}
     metadata_dict = json.loads(metadata)
@@ -277,7 +278,7 @@ async def upload_memory(
 
     # Get file mime type
     content_type, _ = mimetypes.guess_type(file.filename)
-    log.info(f"Uploaded {content_type} down the rabbit hole")
+    log.info(f"Uploading {content_type} down the rabbit hole")
     if content_type != "application/json":
         raise CustomValidationException(
             f'MIME type {content_type} not supported. Admitted types: "application/json"'

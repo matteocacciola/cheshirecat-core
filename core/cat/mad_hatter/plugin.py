@@ -3,7 +3,6 @@ import sys
 import json
 import glob
 import tempfile
-import traceback
 import importlib
 import subprocess
 from typing import Dict, List, Tuple
@@ -197,7 +196,6 @@ class Plugin:
         except Exception as e:
             log.error(f"Unable to save plugin {self._id} settings: {e}")
             log.warning(self.plugin_specific_error_message())
-            traceback.print_exc()
             return {}
 
     def _get_settings_from_model(self) -> Dict | None:
@@ -248,7 +246,7 @@ class Plugin:
                 json_file_data = json.load(json_file)
                 json_file.close()
             except Exception:
-                log.info(
+                log.debug(
                     f"Loading plugin {self._path} metadata, defaulting to generated values"
                 )
 
@@ -284,7 +282,7 @@ class Plugin:
                 requirements = read_file.readlines()
 
             for req in requirements:
-                log.info(f"Installing requirements for: {self.id}")
+                log.info(f"Installing requirements for plugin {self.id}")
 
                 # get package name
                 package_name = Requirement(req).name
@@ -292,8 +290,9 @@ class Plugin:
                 # check if package is installed
                 if package_name not in installed_packages:
                     filtered_requirements.append(req)
-                else:
-                    log.debug(f"{package_name} is already installed")
+                    continue
+
+                log.debug(f"{package_name} is already installed")
         except Exception as e:
             log.error(f"Error during requirements check: {e}, for {self.id}")
 
@@ -310,13 +309,13 @@ class Plugin:
                     ["pip", "install", "--no-cache-dir", "-r", tmp.name], check=True
                 )
             except subprocess.CalledProcessError as e:
-                log.error(f"Error during installing {self.id} requirements: {e}")
+                log.error(f"Error while installing plugin {self.id} requirements: {e}")
 
                 # Uninstall the previously installed packages
                 log.info(f"Uninstalling requirements for: {self.id}")
                 subprocess.run(["pip", "uninstall", "-r", tmp.name], check=True)
 
-                raise Exception(f"Error during {self.id} requirements installation")
+                raise Exception(f"Error during plugin {self.id} requirements installation")
 
     # lists of hooks and tools
     def _load_decorated_functions(self):
@@ -347,7 +346,6 @@ class Plugin:
                     f"Error in {py_filename}: {str(e)}. Unable to load plugin {self._id}"
                 )
                 log.warning(self.plugin_specific_error_message())
-                traceback.print_exc()
 
         # clean and enrich instances
         self._hooks = list(map(self._clean_hook, hooks))
@@ -359,7 +357,9 @@ class Plugin:
     def plugin_specific_error_message(self):
         name = self.manifest.get("name")
         url = self.manifest.get("plugin_url")
-        return f"To resolve any problem related to {name} plugin, contact the creator using github issue at the link {url}"
+        if url:
+            return f"To resolve any problem related to {name} plugin, contact the creator using github issue at the link {url}"
+        return f"Error in {name} plugin, contact the creator"
 
     def _clean_hook(self, hook: Tuple[str, CatHook]):
         # getmembers returns a tuple
