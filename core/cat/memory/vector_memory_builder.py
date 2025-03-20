@@ -123,6 +123,7 @@ class VectorMemoryBuilder:
             field_type: Type of the index (es. PayloadSchemaType.KEYWORD)
             collection_name: Name of the collection on which to create the index
         """
+
         try:
             await self.__client.create_payload_index(
                 collection_name=collection_name,

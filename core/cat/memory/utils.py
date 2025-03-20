@@ -16,7 +16,6 @@ class VectorMemoryCollectionTypes(BaseEnum):
 class VectorEmbedderSize(BaseModel):
     text: int
     image: int | None = None
-    audio: int | None = None
 
 
 class DocumentRecall(BaseModelDict):
