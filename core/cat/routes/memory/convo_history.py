@@ -20,7 +20,6 @@ class PostConversationHistoryPayload(BaseModel):
     who: str
     text: str
     image: str | None = None
-    audio: str | None = None
     why: MessageWhy | None = None
 
 

@@ -112,7 +112,6 @@ class WorkingMemory(BaseModelDict):
         who: Role,
         message: str,
         image: str | None = None,
-        audio: str | None = None,
         why: MessageWhy | None = None,
     ):
         """
@@ -127,15 +126,13 @@ class WorkingMemory(BaseModelDict):
                 The message said.
             image: (Optional[str], default=None): image file URL or base64 data URI that represent image associated with
                 the message.
-            audio: (Optional[str], default=None): audio file URL or base64 data URI that represent audio associated with
-                the message.
             why: MessageWhy, optional
                 The reason why the message was said. Default is None.
         """
 
-        message = CatMessage(text=message, image=image, audio=audio, why=why) if who == Role.AI else UserMessage(
-            text=message, image=image, audio=audio,
-        )
+        message = CatMessage(
+            text=message, image=image, why=why
+        ) if who == Role.AI else UserMessage(text=message, image=image)
 
         return self.update_history(who, message)
 

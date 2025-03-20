@@ -1,6 +1,7 @@
 import time
 from typing import Dict
 from uuid import uuid4
+from langchain_community.document_loaders.parsers.audio import FasterWhisperParser
 from langchain_community.document_loaders.parsers.pdf import PDFMinerParser
 from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
 from langchain_community.document_loaders.parsers.txt import TextParser
@@ -404,6 +405,11 @@ class CheshireCat:
             "text/plain": TextParser(),
             "text/x-python": LanguageParser(language="python"),
             "video/mp4": YoutubeParser(),
+            "audio/mpeg": FasterWhisperParser(),
+            "audio/mp3": FasterWhisperParser(),
+            "audio/ogg": FasterWhisperParser(),
+            "audio/wav": FasterWhisperParser(),
+            "audio/webm": FasterWhisperParser(),
         }
 
         # no access to stray
