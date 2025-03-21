@@ -104,7 +104,7 @@ async def recall_memory_points_from_text(
         else:
             metadata.pop("source", None)
         return await ccat.memory.vectors.collections[str(c)].recall_memories_from_embedding(
-            query_embedding, k=k, metadata=metadata
+            embedding=query_embedding, k=k, metadata=metadata
         )
 
     ccat = cats.cheshire_cat

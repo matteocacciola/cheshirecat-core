@@ -249,7 +249,9 @@ class StrayCat:
 
         vector_memory: VectorMemoryCollection = cheshire_cat.memory.vectors.collections[collection_name]
         if k:
-            memories = await vector_memory.recall_memories_from_embedding(query, metadata, k, threshold)
+            memories = await vector_memory.recall_memories_from_embedding(
+                embedding=query, metadata=metadata, k=k, threshold=threshold
+            )
         else:
             memories = await vector_memory.recall_all_memories()
 
@@ -567,9 +569,9 @@ Allowed classes are:
         cheshire_cat = self.cheshire_cat
         user_message_embedding = cheshire_cat.embedder.embed_documents([user_message.text])
         await cheshire_cat.memory.vectors.episodic.add_point(
-            doc.page_content,
-            user_message_embedding[0],
-            doc.metadata,
+            content=doc.page_content,
+            vector=user_message_embedding[0],
+            metadata=doc.metadata,
         )
 
     @property

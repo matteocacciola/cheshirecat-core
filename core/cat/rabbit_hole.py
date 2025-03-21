@@ -66,10 +66,10 @@ class RabbitHole:
         ]
         vectors = [m["vector"] for m in declarative_memories]
 
-        log.info(f"Agent id: {ccat.id}. Preparing to load {len(vectors)} vector memories")
+        log.info(f"Agent id: {ccat.id}. Preparing to load {len(ids)} vector memories")
 
         # Check embedding size is correct
-        embedder_size = ccat.lizard.embedder_size.text
+        embedder_size = ccat.lizard.embedder_size
         len_mismatch = [len(v) == embedder_size for v in vectors]
 
         if not any(len_mismatch):
@@ -333,9 +333,9 @@ class RabbitHole:
             if doc.page_content != "":
                 doc_embedding = embedder.embed_documents([doc.page_content])
                 stored_point = await memory.vectors.declarative.add_point(
-                    doc.page_content,
-                    doc_embedding[0],
-                    doc.metadata,
+                    content=doc.page_content,
+                    vector=doc_embedding[0],
+                    metadata=doc.metadata,
                 )
                 stored_points.append(stored_point)
 

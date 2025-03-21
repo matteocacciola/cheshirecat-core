@@ -16,8 +16,6 @@ from cat.utils import Enum
 
 
 class EmbedderSettings(BaseFactoryConfigModel, ABC):
-    _is_multimodal: bool = False
-
     # class instantiating the embedder
     _pyclass: Type[Embeddings] = None
 
@@ -28,14 +26,6 @@ class EmbedderSettings(BaseFactoryConfigModel, ABC):
     @classmethod
     def base_class(cls) -> Type:
         return Embeddings
-
-    @classmethod
-    def is_multimodal(cls) -> bool:
-        return cls._is_multimodal.default
-
-
-class EmbedderMultimodalSettings(EmbedderSettings, ABC):
-    _is_multimodal: bool = True
 
 
 class EmbedderFakeConfig(EmbedderSettings):

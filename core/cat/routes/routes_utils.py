@@ -237,7 +237,6 @@ async def upsert_memory_point(
     collection_id: str, point: MemoryPointBase, cats: ContextualCats, point_id: str = None
 ) -> MemoryPoint:
     ccat = cats.cheshire_cat
-    vector_memory = ccat.memory.vectors
 
     # embed content
     embedding = ccat.embedder.embed_query(point.content)
@@ -251,7 +250,7 @@ async def upsert_memory_point(
         point.metadata["when"] = time.time()  # if when is not in the metadata set the current time
 
     # create point
-    qdrant_point = await vector_memory.collections[collection_id].add_point(
+    qdrant_point = await ccat.memory.vectors.collections[collection_id].add_point(
         content=point.content,
         vector=embedding,
         metadata=point.metadata,

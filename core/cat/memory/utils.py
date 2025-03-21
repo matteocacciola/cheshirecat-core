@@ -1,7 +1,7 @@
 import json
 from typing import List
 from langchain_core.documents import Document
-from pydantic import BaseModel, Field
+from pydantic import Field
 from qdrant_client.http.models import Record, ScoredPoint
 
 from cat.utils import Enum as BaseEnum, BaseModelDict
@@ -11,11 +11,6 @@ class VectorMemoryCollectionTypes(BaseEnum):
     EPISODIC = "episodic"
     DECLARATIVE = "declarative"
     PROCEDURAL = "procedural"
-
-
-class VectorEmbedderSize(BaseModel):
-    text: int
-    image: int | None = None
 
 
 class DocumentRecall(BaseModelDict):

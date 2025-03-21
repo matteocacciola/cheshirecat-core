@@ -21,7 +21,6 @@ from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.tweedledum import Tweedledum
-from cat.memory.utils import VectorEmbedderSize
 from cat.memory.vector_memory_builder import VectorMemoryBuilder
 from cat.rabbit_hole import RabbitHole
 from cat.services.factory_adapter import FactoryAdapter
@@ -61,7 +60,7 @@ class BillTheLizard:
 
         self.embedder: Embeddings | None = None
         self.embedder_name: str | None = None
-        self.embedder_size: VectorEmbedderSize | None = None
+        self.embedder_size: int | None = None
 
         self.file_manager: BaseFileManager | None = None
 
@@ -169,8 +168,7 @@ class BillTheLizard:
         self.embedder_name = get_embedder_name(self.embedder)
 
         # Get embedder size (langchain classes do not store it)
-        embedder_size = len(self.embedder.embed_query("hello world"))
-        self.embedder_size = VectorEmbedderSize(text=embedder_size)
+        self.embedder_size = len(self.embedder.embed_query("hello world"))
 
     def load_filemanager(self):
         """

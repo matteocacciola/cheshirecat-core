@@ -62,7 +62,7 @@ class VectorMemoryBuilder:
         # having vectors with the same size but from different embedder in the same vector space is wrong
         same_size = (
             (await self.__client.get_collection(collection_name=collection_name)).config.params.vectors.size
-            == self.lizard.embedder_size.text
+            == self.lizard.embedder_size
         )
         local_alias = self.lizard.embedder_name + "_" + collection_name
         db_alias = (await self.__client.get_collection_aliases(collection_name=collection_name)).aliases[0].alias_name
@@ -86,9 +86,7 @@ class VectorMemoryBuilder:
         log.warning(f"Creating collection \"{collection_name}\" ...")
         await self.__client.create_collection(
             collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=self.lizard.embedder_size.text, distance=Distance.COSINE
-            ),
+            vectors_config=VectorParams(size=self.lizard.embedder_size, distance=Distance.COSINE),
             # hybrid mode: original vector on Disk, quantized vector in RAM
             optimizers_config=OptimizersConfigDiff(memmap_threshold=20000, indexing_threshold=20000),
             quantization_config=ScalarQuantization(

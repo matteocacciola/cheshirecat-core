@@ -14,6 +14,7 @@ from qdrant_client.http.models import (
     UpdateResult,
     HasIdCondition,
     Payload,
+    Vector,
 )
 
 from cat.db.vector_database import get_vector_db
@@ -110,7 +111,7 @@ class VectorMemoryCollection:
                 "metadata": metadata,
                 "tenant_id": self.agent_id,
             },
-            vector=vector,
+            vector=list(vector),
         )
 
         update_status = await self.client.upsert(collection_name=self.collection_name, points=[point], **kwargs)
@@ -122,7 +123,7 @@ class VectorMemoryCollection:
         return None
 
     # add points in collection
-    async def add_points(self, payloads: List[Payload], vectors: List, ids: List | None = None):
+    async def add_points(self, payloads: List[Payload], vectors: List[Vector], ids: List | None = None):
         """
         Upsert memories in batch mode
         Args:
@@ -137,14 +138,10 @@ class VectorMemoryCollection:
         if not ids:
             ids = [uuid.uuid4().hex for _ in range(len(payloads))]
 
-        if len(ids) != len(payloads) or len(ids) != len(vectors):
-            raise ValueError("ids, payloads and vectors must have the same length")
-
         payloads = [{**p, **{"tenant_id": self.agent_id}} for p in payloads]
         points = Batch(ids=ids, payloads=payloads, vectors=vectors)
 
-        res = await self.client.upsert(collection_name=self.collection_name, points=points)
-        return res
+        return await self.client.upsert(collection_name=self.collection_name, points=points)
 
     async def delete_points_by_metadata_filter(self, metadata: Dict | None = None) -> UpdateResult:
         conditions = [self._tenant_field_condition()]
@@ -158,8 +155,7 @@ class VectorMemoryCollection:
 
     # delete point in collection
     async def delete_points(self, points_ids: List) -> UpdateResult:
-        res = await self.client.delete(collection_name=self.collection_name, points_selector=points_ids)
-        return res
+        return await self.client.delete(collection_name=self.collection_name, points_selector=points_ids)
 
     # retrieve similar memories from embedding
     async def recall_memories_from_embedding(
@@ -233,7 +229,9 @@ class VectorMemoryCollection:
         return memories
 
     # retrieve all the points in the collection
-    async def get_all_points(self, limit: int = 10000, offset: str | None = None) -> Tuple[List[Record], int | str | None]:
+    async def get_all_points(
+        self, limit: int = 10000, offset: str | None = None
+    ) -> Tuple[List[Record], int | str | None]:
         """
         Retrieve all the points in the collection with an optional offset and limit.
 
