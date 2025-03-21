@@ -2,7 +2,7 @@ import os
 from typing import Final
 import aiofiles
 import httpx
-from qdrant_client.qdrant_remote import QdrantRemote
+from qdrant_client.async_qdrant_remote import AsyncQdrantRemote
 from qdrant_client.http.models import (
     Distance,
     VectorParams,
@@ -31,7 +31,10 @@ class VectorMemoryBuilder:
     async def build(self):
         for collection_name in VectorMemoryCollectionTypes:
             is_collection_existing = await self.__check_collection_existence(str(collection_name))
-            has_same_size = await self.__check_embedding_size(str(collection_name)) if is_collection_existing else False
+            has_same_size = False
+            if is_collection_existing:
+                has_same_size = await self.__check_embedding_size(str(collection_name))
+
             if is_collection_existing and has_same_size:
                 continue
 
@@ -108,11 +111,11 @@ class VectorMemoryBuilder:
         )
 
         # if the client is remote, create an index on the tenant_id field
-        if self.__db_is_remote():
+        if self.__is_db_remote():
             await self.__create_payload_index("tenant_id", PayloadSchemaType.KEYWORD, collection_name)
 
-    def __db_is_remote(self):
-        return isinstance(self.__client._client, QdrantRemote)
+    def __is_db_remote(self):
+        return isinstance(self.__client._client, AsyncQdrantRemote)
 
     async def __create_payload_index(self, field_name: str, field_type: PayloadSchemaType, collection_name: str):
         """
@@ -136,7 +139,7 @@ class VectorMemoryBuilder:
     # dump collection on disk before deleting
     async def __save_dump(self, collection_name: str, folder="dormouse/"):
         # only do snapshotting if using remote Qdrant
-        if not self.__db_is_remote():
+        if not self.__is_db_remote():
             return
 
         host = self.__client._client._host
