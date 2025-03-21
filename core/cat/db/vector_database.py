@@ -14,7 +14,7 @@ LOCAL_FOLDER_PATH = "cat/data/local_vector_memory/"
 @singleton
 class VectorDatabase:
     def __init__(self):
-        self.local_vector_db = None
+        self.local_vector_db: AsyncQdrantClient | None = None
         self.db = self.connect_to_vector_memory()
 
     def connect_to_vector_memory(self) -> AsyncQdrantClient:
@@ -32,7 +32,7 @@ class VectorDatabase:
                 s.connect((qdrant_host, qdrant_port))
             except Exception:
                 log.error(f"QDrant does not respond to {qdrant_host}:{qdrant_port}")
-                sys.exit()
+                sys.exit(-1)
             finally:
                 if s:
                     s.close()
@@ -53,7 +53,7 @@ class VectorDatabase:
 
         # reconnect only if it's the first boot and not a reload
         if self.local_vector_db is None:
-            self.local_vector_db = AsyncQdrantClient(
+            self.local_vector_db: AsyncQdrantClient = AsyncQdrantClient(
                 path=db_path,
                 prefer_grpc=True,
                 force_disable_check_same_thread=True,
