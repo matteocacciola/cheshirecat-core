@@ -90,7 +90,7 @@ class VectorMemoryBuilder:
                 size=self.lizard.embedder_size.text, distance=Distance.COSINE
             ),
             # hybrid mode: original vector on Disk, quantized vector in RAM
-            optimizers_config=OptimizersConfigDiff(memmap_threshold=20000),
+            optimizers_config=OptimizersConfigDiff(memmap_threshold=20000, indexing_threshold=20000),
             quantization_config=ScalarQuantization(
                 scalar=ScalarQuantizationConfig(
                     type=ScalarType.INT8, quantile=0.95, always_ram=True
@@ -104,7 +104,7 @@ class VectorMemoryBuilder:
                 CreateAliasOperation(
                     create_alias=CreateAlias(
                         collection_name=collection_name,
-                        alias_name=self.lizard.embedder_name + "_" +collection_name,
+                        alias_name=f"{self.lizard.embedder_name}_{collection_name}",
                     )
                 )
             ]
