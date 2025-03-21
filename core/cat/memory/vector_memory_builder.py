@@ -121,7 +121,7 @@ class VectorMemoryBuilder:
                 CreateAliasOperation(
                     create_alias=CreateAlias(
                         collection_name=collection_name,
-                        alias_name=self.lizard.embedder_name + "_" + collection_name,
+                        alias_name=f"{self.lizard.embedder_name}_{collection_name}",
                     )
                 )
             ]
