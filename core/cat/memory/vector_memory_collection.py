@@ -95,7 +95,7 @@ class VectorMemoryCollection:
         Add a multimodal point to the vectorstore.
 
         Args:
-            content: MultimodalContent object containing text, image and/or audio data
+            content: MultimodalContent object containing text and/or image data
             vectors: Dictionary mapping modality to its vector representation
             metadata: Optional metadata dictionary
             id: Optional unique identifier

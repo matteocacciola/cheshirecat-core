@@ -64,17 +64,13 @@ class VectorMemoryBuilder:
 
         text_lbl = str(ContentType.TEXT)
         image_lbl = str(ContentType.IMAGE)
-        audio_lbl = str(ContentType.AUDIO)
 
         text_condition = text_lbl in vectors_config and vectors_config[text_lbl].size == embedder_sizes.text
         image_condition = (
             image_lbl in vectors_config and vectors_config[image_lbl].size == embedder_sizes.image
         ) if embedder_sizes.image else True
-        audio_condition = (
-            audio_lbl in vectors_config and vectors_config[audio_lbl].size == embedder_sizes.audio
-        ) if embedder_sizes.audio else True
 
-        same_size = text_condition and image_condition and audio_condition
+        same_size = text_condition and image_condition
         local_alias = self.lizard.embedder_name + "_" + collection_name
         db_alias = (await self.__client.get_collection_aliases(collection_name=collection_name)).aliases[0].alias_name
 
@@ -106,11 +102,6 @@ class VectorMemoryBuilder:
         if embedder_sizes.image:
             vectors_config[str(ContentType.IMAGE)] = VectorParams(
                 size=embedder_sizes.image, distance=Distance.COSINE
-            )
-
-        if embedder_sizes.audio:
-            vectors_config[str(ContentType.AUDIO)] = VectorParams(
-                size=embedder_sizes.audio, distance=Distance.COSINE
             )
 
         await self.__client.create_collection(

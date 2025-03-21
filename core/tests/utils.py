@@ -143,7 +143,6 @@ def get_fake_memory_export(embedder_name="DumbEmbedder", dim=2367):
                     "vector": {
                         str(ContentType.TEXT): [random.random() for _ in range(dim)],
                         str(ContentType.IMAGE): [random.random() for _ in range(dim)],
-                        str(ContentType.AUDIO): [random.random() for _ in range(dim)],
                     }
                 }
             ]

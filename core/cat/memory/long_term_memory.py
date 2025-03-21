@@ -1,4 +1,3 @@
-from cat.memory.utils import VectorMemoryConfig
 from cat.memory.vector_memory import VectorMemory
 
 

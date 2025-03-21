@@ -10,7 +10,6 @@ from cat.utils import Enum as BaseEnum, BaseModelDict
 class ContentType(BaseEnum):
     TEXT = "text"
     IMAGE = "image"
-    AUDIO = "audio"
 
 
 class VectorMemoryCollectionTypes(BaseEnum):
@@ -30,10 +29,9 @@ class VectorMemoryConfig(BaseModelDict):
 
 
 class MultimodalContent(BaseModel):
-    """Represents multimodal content with optional text, image and audio data"""
+    """Represents multimodal content with optional text and image data"""
     text: str | None = None
     image_url: str | None = None
-    audio_url: str | None = None
 
 
 class DocumentRecallItem(BaseModelDict):
