@@ -30,6 +30,7 @@ from cat.factory.llm import LLMFactory
 from cat.log import log
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
+from cat.memory.utils import ContentType, MultimodalContent
 from cat.parsers import YoutubeParser, TableParser, JSONParser
 from cat.services.factory_adapter import FactoryAdapter
 from cat.utils import langchain_log_prompt, langchain_log_output, get_caller_info
@@ -179,7 +180,7 @@ class CheshireCat:
         vectors = []
         for t in active_procedures_hashes:
             payloads.append({
-                "page_content": t["content"],
+                "page_content": MultimodalContent(text=t["content"]),
                 "metadata": {
                     "source": t["source"],
                     "type": t["type"],
@@ -189,7 +190,7 @@ class CheshireCat:
             })
             vectors.append(self.lizard.embedder.embed_documents([t["content"]])[0])
 
-        await self.memory.vectors.procedural.add_points(payloads=payloads, vectors=vectors)
+        await self.memory.vectors.procedural.add_points(payloads=payloads, vectors={ContentType.TEXT: vectors})
         log.info(f"Agent id: {self.id}. Embedded {len(active_procedures_hashes)} triggers in procedural vector memory")
 
     def send_ws_message(self, content: str, msg_type="notification"):
