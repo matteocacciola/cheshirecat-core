@@ -451,7 +451,9 @@ class StrayCat:
             except ConnectionClosedOK as ex:
                 log.warning(f"Agent id: {self.__agent_id}. Warning {ex}")
 
-    def classify(self, sentence: str, labels: List[str] | Dict[str, List[str]]) -> str | None:
+    def classify(
+        self, sentence: str, labels: List[str] | Dict[str, List[str]], score_threshold: float = 0.5
+    ) -> str | None:
         """
         Classify a sentence.
 
@@ -508,8 +510,7 @@ Allowed classes are:
             key=lambda x: x[1],
         )
 
-        # set 0.5 as threshold - let's see if it works properly
-        return best_label if score < 0.5 else None
+        return best_label if score < score_threshold else None
 
     def _build_agent_output(self) -> AgentOutput:
         # reply with agent
