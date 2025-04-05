@@ -272,7 +272,7 @@ class BillTheLizard:
             raise ValueError(f"{DEFAULT_SYSTEM_KEY} is a reserved name for agents")
 
         if agent_id not in crud.get_agents_main_keys():
-            return None
+            raise ValueError(f"{agent_id} is not a valid agent id")
 
         return CheshireCat(agent_id)
 

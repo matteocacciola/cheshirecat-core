@@ -1,7 +1,7 @@
 [project]
 name = "Cheshire-Cat"
 description = "Production ready AI assistant framework"
-version = "2.0.6"
+version = "2.0.7"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [
@@ -27,7 +27,6 @@ dependencies = [
     "langchain-anthropic",
     "langchain-cohere",
     "langchain-google-genai",
-    "langchain-google-genai[images]",
     "langchain-groq",
     "langchain-mistralai",
     "langchain-ollama",

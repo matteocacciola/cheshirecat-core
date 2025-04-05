@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    shutdown_app(app)
+    await shutdown_app(app)
 
     get_db().close()
     await get_vector_db().close()

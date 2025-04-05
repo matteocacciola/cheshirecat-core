@@ -77,7 +77,7 @@ New features will be added in the future. Please contact us if you want to contr
 To make Cheshire Cat run on your machine, you just need [`docker`](https://docs.docker.com/get-docker/) installed:
 
 ```bash
-docker run --rm -it -p 1865:80 ghcr.io/matteocacciola/cheshirecat-core:2.0.6
+docker run --rm -it -p 1865:80 ghcr.io/matteocacciola/cheshirecat-core:2.0.7
 ```
 - Chat with the Cheshire Cat on [localhost:1865/docs](http://localhost:1865/docs).
 
