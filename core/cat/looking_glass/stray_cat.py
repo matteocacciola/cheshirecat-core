@@ -434,7 +434,6 @@ class StrayCat:
         except Exception as e:
             # Log any unexpected errors
             log.error(f"Agent id: {self.__agent_id}. Error {e}")
-            traceback.print_exc()
             return CatMessage(text="", error=str(e))
 
     async def run_websocket(self, user_message: UserMessage) -> None:
