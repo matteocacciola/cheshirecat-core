@@ -97,10 +97,13 @@ class BillTheLizard:
         self.fastapi_app = app
         return self
 
-    def on_end_plugin_install_callback(self):
+    def on_end_plugin_install_callback(self, plugin_id: str):
         """
         Callback executed when a plugin is installed. It informs the Cheshire Cats about the new plugin available in the
         system. It also activates the endpoints of the plugin in the Mad Hatter.
+
+        Args:
+            plugin_id: The id of the installed plugin
         """
 
         for endpoint in self.endpoints:

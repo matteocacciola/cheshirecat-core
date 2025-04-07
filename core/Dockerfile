@@ -1,4 +1,4 @@
-FROM python:3.10.11-slim-bullseye AS system
+FROM python:3.11.11-slim-bullseye AS system
 
 ### ENVIRONMENT VARIABLES ###
 ENV PYTHONUNBUFFERED=1

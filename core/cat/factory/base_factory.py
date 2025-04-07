@@ -66,7 +66,7 @@ class BaseFactory(ABC):
         selected_config = crud_settings.get_setting_by_name(agent_id, config_name)
         try:
             return factory_class.get_from_config(selected_config["value"])
-        except Exception:
+        except:
             return self.default_config_class.get_from_config(self.default_config)
 
     @abstractmethod

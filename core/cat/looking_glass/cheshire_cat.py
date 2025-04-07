@@ -2,7 +2,7 @@ import time
 from typing import Dict
 from uuid import uuid4
 from langchain_community.document_loaders.parsers.audio import FasterWhisperParser
-from langchain_community.document_loaders.parsers.pdf import PDFMinerParser
+from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
 from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
 from langchain_community.document_loaders.parsers.txt import TextParser
 from langchain_community.document_loaders.parsers.language.language_parser import LanguageParser
@@ -394,7 +394,7 @@ class CheshireCat:
         file_handlers = {
             "application/json": JSONParser(),
             "application/msword": MsWordParser(),
-            "application/pdf": PDFMinerParser(),
+            "application/pdf": PyMuPDFParser(),
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": TableParser(),
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document": MsWordParser(),
             "text/csv": TableParser(),

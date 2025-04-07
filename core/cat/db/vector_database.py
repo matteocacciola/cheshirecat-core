@@ -30,8 +30,8 @@ class VectorDatabase:
             try:
                 s = socket.socket()
                 s.connect((qdrant_host, qdrant_port))
-            except Exception:
-                log.error(f"QDrant does not respond to {qdrant_host}:{qdrant_port}")
+            except:
+                log.error(f"Qdrant does not respond to {qdrant_host}:{qdrant_port}")
                 sys.exit(-1)
             finally:
                 if s:
