@@ -13,8 +13,7 @@ from qdrant_client.http.models import (
     UpdateResult,
     HasIdCondition,
     Payload,
-    NamedVector,
-    Vector
+    Vector,
 )
 
 from cat.db.vector_database import get_vector_db
@@ -194,30 +193,28 @@ class VectorMemoryCollection:
                 condition for key, value in metadata.items() for condition in self._build_condition(key, value)
             ])
 
+        embedding = [v for v in query_vectors.values()]
+
         # retrieve memories
-        query_responses = [
-            r
-            for t, v in query_vectors.items()
-            for r in (await self.client.query_points(
-                collection_name=self.collection_name,
-                query=NamedVector(name=str(t), vector=v),  # Using named vectors for search
-                query_filter=Filter(must=conditions),
-                with_payload=True,
-                with_vectors=True,
-                limit=k,
-                score_threshold=threshold,
-                search_params=SearchParams(
-                    quantization=QuantizationSearchParams(
-                        ignore=False,
-                        rescore=True,
-                        oversampling=2.0,
-                    )
-                ),
-            ))
-        ]
+        query_response = await self.client.query_points(
+            collection_name=self.collection_name,
+            query=embedding,
+            query_filter=Filter(must=conditions),
+            with_payload=True,
+            with_vectors=True,
+            limit=k,
+            score_threshold=threshold,
+            search_params=SearchParams(
+                quantization=QuantizationSearchParams(
+                    ignore=False,
+                    rescore=True,
+                    oversampling=2.0,  # Available as of v1.3.0
+                )
+            ),
+        )
 
         # convert Qdrant points to a structure containing langchain.Document and its information
-        return [to_document_recall(m) for query_response in query_responses for m in query_response.points]
+        return [to_document_recall(m) for m in query_response.points]
 
     async def recall_all_memories(self) -> List[DocumentRecall]:
         """
