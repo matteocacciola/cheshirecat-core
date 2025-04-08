@@ -195,12 +195,12 @@ class VectorMemoryCollection:
             ])
 
         # retrieve memories
-        memories = [
-            m
+        query_responses = [
+            r
             for t, v in query_vectors.items()
-            for m in (await self.client.search(
+            for r in (await self.client.query_points(
                 collection_name=self.collection_name,
-                query_vector=NamedVector(name=str(t), vector=v),  # Using named vectors for search
+                query=NamedVector(name=str(t), vector=v),  # Using named vectors for search
                 query_filter=Filter(must=conditions),
                 with_payload=True,
                 with_vectors=True,
@@ -217,7 +217,7 @@ class VectorMemoryCollection:
         ]
 
         # convert Qdrant points to a structure containing langchain.Document and its information
-        return [to_document_recall(m) for m in memories]
+        return [to_document_recall(m) for query_response in query_responses for m in query_response.points]
 
     async def recall_all_memories(self) -> List[DocumentRecall]:
         """

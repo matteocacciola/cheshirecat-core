@@ -1,8 +1,8 @@
 [project]
 name = "Cheshire-Cat"
 description = "Production ready AI assistant framework"
-version = "2.0.6"
-requires-python = ">=3.10"
+version = "2.0.7"
+requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
     { name = "Matteo Cacciola" },
@@ -27,7 +27,6 @@ dependencies = [
     "langchain-anthropic",
     "langchain-cohere",
     "langchain-google-genai",
-    "langchain-google-genai[images]",
     "langchain-groq",
     "langchain-mistralai",
     "langchain-ollama",
@@ -41,6 +40,7 @@ dependencies = [
     "PyJWT",
     "pylint",
     "pylint-actions",
+    "pymupdf",
     "pytest",
     "pytest-asyncio",
     "python-multipart",
@@ -55,6 +55,7 @@ dependencies = [
     "text_generation",
     "tiktoken",
     "tomli",
+    "torch==2.4.1",
     "unstructured",
     "uvicorn[standard]",
     "websockets",

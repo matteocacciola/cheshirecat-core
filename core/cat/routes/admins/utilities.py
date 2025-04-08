@@ -57,7 +57,7 @@ async def factory_reset(
         log.error(f"Error deleting plugin folders: {e}")
         deleted_plugin_folders = False
 
-    shutdown_app(request.app)
+    await shutdown_app(request.app)
     await startup_app(request.app)
 
     return ResetResponse(

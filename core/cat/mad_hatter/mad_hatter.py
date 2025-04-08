@@ -79,7 +79,7 @@ class MadHatter(ABC):
             return
 
         # Deactivate the plugin
-        log.warning(f"Toggle plugin {plugin_id}: Deactivate")
+        log.warning(f"Toggle plugin '{plugin_id}' for agent '{self.agent_key}': Deactivate")
 
         # Remove the plugin from the list of active plugins
         self.active_plugins.remove(plugin_id)
@@ -95,7 +95,7 @@ class MadHatter(ABC):
         if plugin_is_active:
             return
 
-        log.warning(f"Toggle plugin {plugin_id}: Activate")
+        log.warning(f"Toggle plugin '{plugin_id}' for agent '{self.agent_key}': Activate")
 
         self.on_plugin_activation(plugin_id=plugin_id)
 

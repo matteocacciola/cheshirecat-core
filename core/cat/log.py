@@ -126,7 +126,7 @@ class CatLogEngine:
         elif type(msg) in [dict, list]:  # TODO: should be recursive
             try:
                 msg = json.dumps(msg, indent=4)
-            except Exception:
+            except:
                 pass
         else:
             msg = pformat(msg)
@@ -168,7 +168,7 @@ class CatLogEngine:
             print(42/0)
         try:
             intentional_error()
-        except Exception:
+        except:
             self.error("This error is just for demonstration purposes.")
 
 

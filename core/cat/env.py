@@ -19,6 +19,7 @@ def get_supported_env_variables():
         "CCAT_REDIS_PORT": "6379",
         "CCAT_REDIS_PASSWORD": "",
         "CCAT_REDIS_DB": "0",
+        "CCAT_REDIS_TLS": False,
         "CCAT_JWT_SECRET": "secret",
         "CCAT_JWT_ALGORITHM": "HS256",
         "CCAT_JWT_EXPIRE_MINUTES": str(60 * 24),  # JWT expires after 1 day

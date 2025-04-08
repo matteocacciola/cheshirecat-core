@@ -291,7 +291,7 @@ def patch_time_now(monkeypatch):
 # this fixture will give test functions a ready instantiated plugin
 # (and having the `client` fixture, a clean setup every unit)
 @pytest.fixture(scope="function")
-def plugin():
+def plugin(lizard):
     p = Plugin(mock_plugin_path)
     yield p
 

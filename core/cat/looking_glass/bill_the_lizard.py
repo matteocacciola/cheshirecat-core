@@ -97,14 +97,17 @@ class BillTheLizard:
         self.fastapi_app = app
         return self
 
-    def on_end_plugin_install_callback(self):
+    def on_end_plugin_install_callback(self, plugin_id: str):
         """
         Callback executed when a plugin is installed. It informs the Cheshire Cats about the new plugin available in the
         system. It also activates the endpoints of the plugin in the Mad Hatter.
+
+        Args:
+            plugin_id: The id of the installed plugin
         """
 
         for endpoint in self.endpoints:
-            endpoint.activate(self.fastapi_app)
+            endpoint.activate()
 
         for ccat_id in crud.get_agents_main_keys():
             ccat = self.get_cheshire_cat(ccat_id)
@@ -272,7 +275,7 @@ class BillTheLizard:
             raise ValueError(f"{DEFAULT_SYSTEM_KEY} is a reserved name for agents")
 
         if agent_id not in crud.get_agents_main_keys():
-            return None
+            raise ValueError(f"{agent_id} is not a valid agent id")
 
         return CheshireCat(agent_id)
 
