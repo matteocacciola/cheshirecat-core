@@ -297,12 +297,12 @@ async def startup_app(app):
     await app.state.lizard.create_cheshire_cat(DEFAULT_AGENT_KEY)
 
 
-def shutdown_app(app):
+async def shutdown_app(app):
     utils.singleton.instances.clear()
 
     # shutdown Manager
     app.state.white_rabbit.shutdown()
-    app.state.lizard.shutdown()
+    await app.state.lizard.shutdown()
 
     del app.state.lizard
     del app.state.white_rabbit

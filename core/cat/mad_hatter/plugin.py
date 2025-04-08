@@ -224,7 +224,14 @@ class Plugin:
         # the new setting coming from the model to be activated
         new_setting = self._get_settings_from_model()
 
-        finalized_setting = {k: settings.get(k, v) for k, v in new_setting.items()} if settings else new_setting
+        try:
+            # store the new settings incrementally, without losing the values of the configurations still supported
+            finalized_setting = {k: settings.get(k, v) for k, v in new_setting.items()} if settings else new_setting
+
+            # Validate the settings
+            self.settings_model().model_validate(finalized_setting)
+        except:
+            finalized_setting = new_setting
 
         # try to create the new incremental settings into the Redis database
         crud_plugins.set_setting(agent_id, self._id, finalized_setting)
@@ -245,7 +252,7 @@ class Plugin:
                 json_file = open(plugin_json_metadata_file_path)
                 json_file_data = json.load(json_file)
                 json_file.close()
-            except Exception:
+            except:
                 log.debug(
                     f"Loading plugin {self._path} metadata, defaulting to generated values"
                 )
@@ -333,6 +340,7 @@ class Plugin:
             # save a reference to decorated functions
             try:
                 plugin_module = importlib.import_module(py_filename)
+                importlib.reload(plugin_module)
 
                 hooks += getmembers(plugin_module, self.is_cat_hook)
                 tools += getmembers(plugin_module, self.is_cat_tool)

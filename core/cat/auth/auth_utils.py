@@ -40,7 +40,7 @@ def hash_password(password: str) -> str:
         # Hash the password
         hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
         return hashed.decode("utf-8")
-    except Exception:
+    except:
         # if you try something strange, you'll stay out
         return bcrypt.gensalt().decode("utf-8")
 
@@ -49,7 +49,7 @@ def check_password(password: str, hashed: str) -> bool:
     try:
         # Check if the password matches the hashed password
         return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
-    except Exception:
+    except:
         return False
 
 

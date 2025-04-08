@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    shutdown_app(app)
+    await shutdown_app(app)
 
     get_db().close()
     await get_vector_db().close()
@@ -153,10 +153,11 @@ async def custom_forbidden_exception_handler(request, exc):
 # openapi customization
 cheshire_cat_api.openapi = get_openapi_configuration_function(cheshire_cat_api)
 
-@cheshire_cat_api.get("/docs", include_in_schema=False)
-async def scalar_docs():
-    return get_scalar_api_reference(
-        openapi_url=cheshire_cat_api.openapi_url,
-        title=cheshire_cat_api.title,
-        scalar_favicon_url="https://cheshirecat.ai/wp-content/uploads/2023/10/Logo-Cheshire-Cat.svg",
-    )
+if get_env("CCAT_DEBUG") == "true":
+    @cheshire_cat_api.get("/docs", include_in_schema=False)
+    async def scalar_docs():
+        return get_scalar_api_reference(
+            openapi_url=cheshire_cat_api.openapi_url,
+            title=cheshire_cat_api.title,
+            scalar_favicon_url="https://cheshirecat.ai/wp-content/uploads/2023/10/Logo-Cheshire-Cat.svg",
+        )

@@ -1,4 +1,3 @@
-import time
 import uuid
 from typing import Any, List, Iterable, Dict, Tuple, Final
 from qdrant_client.qdrant_remote import QdrantRemote
@@ -188,9 +187,9 @@ class VectorMemoryCollection:
             ])
 
         # retrieve memories
-        memories = await self.client.search(
+        query_response = await self.client.query_points(
             collection_name=self.collection_name,
-            query_vector=embedding,
+            query=embedding,
             query_filter=Filter(must=conditions),
             with_payload=True,
             with_vectors=True,
@@ -206,7 +205,7 @@ class VectorMemoryCollection:
         )
 
         # convert Qdrant points to a structure containing langchain.Document and its information
-        return [to_document_recall(m) for m in memories]
+        return [to_document_recall(m) for m in query_response.points]
 
     async def recall_all_memories(self) -> List[DocumentRecall]:
         """

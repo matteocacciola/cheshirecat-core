@@ -14,6 +14,7 @@ class Database:
 
     def get_redis_client(self) -> redis.Redis:
         password = get_env("CCAT_REDIS_PASSWORD")
+        tls = get_env("CCAT_REDIS_TLS")
 
         if password:
             return redis.Redis(
@@ -22,7 +23,8 @@ class Database:
                 db=get_env("CCAT_REDIS_DB"),
                 password=password,
                 encoding="utf-8",
-                decode_responses=True
+                decode_responses=True,
+                ssl=tls,
             )
 
         return redis.Redis(
@@ -30,7 +32,8 @@ class Database:
             port=int(get_env("CCAT_REDIS_PORT")),
             db=get_env("CCAT_REDIS_DB"),
             encoding="utf-8",
-            decode_responses=True
+            decode_responses=True,
+            ssl=tls,
         )
 
 

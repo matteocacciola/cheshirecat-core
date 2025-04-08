@@ -2,7 +2,7 @@ import time
 from typing import Dict
 from uuid import uuid4
 from langchain_community.document_loaders.parsers.audio import FasterWhisperParser
-from langchain_community.document_loaders.parsers.pdf import PDFMinerParser
+from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
 from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
 from langchain_community.document_loaders.parsers.txt import TextParser
 from langchain_community.document_loaders.parsers.language.language_parser import LanguageParser
@@ -394,7 +394,7 @@ class CheshireCat:
         file_handlers = {
             "application/json": JSONParser(),
             "application/msword": MsWordParser(),
-            "application/pdf": PDFMinerParser(),
+            "application/pdf": PyMuPDFParser(),
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": TableParser(),
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document": MsWordParser(),
             "text/csv": TableParser(),
@@ -429,6 +429,8 @@ class CheshireCat:
             encoding_name="cl100k_base",
             keep_separator=True,
             strip_whitespace=True,
+            allowed_special={"\n"},  # Explicitly allow the special token ‘\n’
+            disallowed_special=(),  # Disallow control for other special tokens
         )
 
         # no access to stray
