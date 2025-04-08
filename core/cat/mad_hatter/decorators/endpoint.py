@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import Callable, List, Any
-from fastapi import APIRouter
+from fastapi import APIRouter, FastAPI
 
 from cat.log import log
 
@@ -27,19 +27,16 @@ class CustomEndpoint:
         self.name = self.prefix + self.path
         self.plugin_id = plugin_id
 
-        # fastAPI instance, will be set by the activate method
-        self.cheshire_cat_api = None
-
     def __repr__(self) -> str:
         return f"CustomEndpoint(path={self.name} methods={self.methods})"
 
-    def activate(self, cheshire_cat_api):
+    def activate(self):
         log.info(f"Activating custom endpoint {self.methods} {self.name}")
 
-        self.cheshire_cat_api = cheshire_cat_api
+        cheshire_cat_api = self.cheshire_cat_api
 
         # Set the fastapi api_route into the Custom Endpoint
-        if any(api_route.path == self.name and api_route.methods == self.methods for api_route in self.cheshire_cat_api.routes):
+        if any(api_route.path == self.name and api_route.methods == self.methods for api_route in cheshire_cat_api.routes):
             log.info(f"There is already an active {self.methods} endpoint with path {self.name}")
             return
 
@@ -53,15 +50,15 @@ class CustomEndpoint:
         )
 
         try:
-            self.cheshire_cat_api.include_router(plugins_router, prefix=self.prefix)
+            cheshire_cat_api.include_router(plugins_router, prefix=self.prefix)
         except Exception as e:
             log.error(f"Error activating custom endpoint {self.methods} {self.name}: {e}")
             return
 
-        self.cheshire_cat_api.openapi_schema = None  # Flush the cache of openapi schema
+        cheshire_cat_api.openapi_schema = None  # Flush the cache of openapi schema
 
         # Set the fastapi api_route into the Custom Endpoint
-        for api_route in self.cheshire_cat_api.routes:
+        for api_route in cheshire_cat_api.routes:
             if api_route.path == self.name and api_route.methods == self.methods:
                 self.api_route = api_route
                 break
@@ -71,22 +68,25 @@ class CustomEndpoint:
     def deactivate(self):
         log.info(f"Deactivating custom endpoint {self.methods} {self.name}")
 
+        cheshire_cat_api = self.cheshire_cat_api
+
         # Seems there is no official way to remove a route:
         # https://github.com/fastapi/fastapi/discussions/8088
         # https://github.com/fastapi/fastapi/discussions/9855
-        if not self.cheshire_cat_api:
-            return
-
         to_remove = None
-        for api_route in self.cheshire_cat_api.routes:
+        for api_route in cheshire_cat_api.routes:
             if api_route.path == self.name and api_route.methods == self.methods:
                 to_remove = api_route
                 break
 
         if to_remove:
-            self.cheshire_cat_api.routes.remove(to_remove)
-            self.cheshire_cat_api.openapi_schema = None  # Flush the cached openapi schema
+            cheshire_cat_api.routes.remove(to_remove)
+            cheshire_cat_api.openapi_schema = None  # Flush the cached openapi schema
 
+    @property
+    def cheshire_cat_api(self) -> FastAPI:
+        from cat.looking_glass.bill_the_lizard import BillTheLizard
+        return BillTheLizard().fastapi_app
 
 class Endpoint:
     default_prefix = "/custom"

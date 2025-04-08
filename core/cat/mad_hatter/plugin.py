@@ -93,7 +93,8 @@ class Plugin:
             self._migrate_settings(agent_id, setting)
         else:
             # try to create the setting into the Redis database
-            self._create_settings_from_model(agent_id)
+            if not setting:
+                self._create_settings_from_model(agent_id)
 
         self._active = True
 

@@ -107,7 +107,7 @@ class BillTheLizard:
         """
 
         for endpoint in self.endpoints:
-            endpoint.activate(self.fastapi_app)
+            endpoint.activate()
 
         for ccat_id in crud.get_agents_main_keys():
             ccat = self.get_cheshire_cat(ccat_id)
