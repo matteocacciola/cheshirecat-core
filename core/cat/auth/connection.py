@@ -91,8 +91,8 @@ class HTTPAuth(ConnectionAuth):
         self, connection: Request, lizard: BillTheLizard, ccat: CheshireCat
     ) -> AuthUserInfo | None:
         auth_handlers = [
-            lizard.core_auth_handler,  # try to get user from local id
             ccat.custom_auth_handler,  # try to get user from auth_handler
+            lizard.core_auth_handler,  # try to get user from local id
         ]
 
         # is that an admin able to manage agents?
@@ -132,8 +132,8 @@ class HTTPAuthMessage(HTTPAuth):
         self, connection: Request, lizard: BillTheLizard, ccat: CheshireCat
     ) -> AuthUserInfo | None:
         auth_handlers = [
-            lizard.core_auth_handler,  # try to get user from local id
             ccat.custom_auth_handler,  # try to get user from auth_handler
+            lizard.core_auth_handler,  # try to get user from local id
         ]
 
         user = None
@@ -150,8 +150,8 @@ class WebSocketAuth(ConnectionAuth):
         self, connection: WebSocket, lizard: BillTheLizard, ccat: CheshireCat
     ) -> AuthUserInfo | None:
         auth_handlers = [
-            lizard.core_auth_handler,  # try to get user from local id
             ccat.custom_auth_handler,  # try to get user from auth_handler
+            lizard.core_auth_handler,  # try to get user from local id
         ]
 
         user = None

@@ -57,6 +57,9 @@ class VectorMemoryBuilder:
 
         return False
 
+    def __get_local_alias(self, collection_name: str) -> str:
+        return f"{self.lizard.embedder_name}_{collection_name}"
+
     async def __check_embedding_size(self, collection_name: str) -> bool:
         # having the same size does not necessarily imply being the same embedder
         # having vectors with the same size but from different embedder in the same vector space is wrong
@@ -64,10 +67,11 @@ class VectorMemoryBuilder:
             (await self.__client.get_collection(collection_name=collection_name)).config.params.vectors.size
             == self.lizard.embedder_size
         )
-        local_alias = self.lizard.embedder_name + "_" + collection_name
-        db_alias = (await self.__client.get_collection_aliases(collection_name=collection_name)).aliases[0].alias_name
+        local_alias = self.__get_local_alias(collection_name)
 
-        if same_size and local_alias == db_alias:
+        existing_aliases = (await self.__client.get_collection_aliases(collection_name=collection_name)).aliases
+
+        if same_size and existing_aliases and local_alias == existing_aliases[0].alias_name:
             log.debug(f"Collection \"{collection_name}\" has the same embedder")
             return True
 
@@ -83,56 +87,60 @@ class VectorMemoryBuilder:
             collection_name: Name of the collection to create
         """
 
-        log.warning(f"Creating collection \"{collection_name}\" ...")
-        await self.__client.create_collection(
-            collection_name=collection_name,
-            vectors_config=VectorParams(size=self.lizard.embedder_size, distance=Distance.COSINE),
-            # hybrid mode: original vector on Disk, quantized vector in RAM
-            optimizers_config=OptimizersConfigDiff(memmap_threshold=20000, indexing_threshold=20000),
-            quantization_config=ScalarQuantization(
-                scalar=ScalarQuantizationConfig(
-                    type=ScalarType.INT8, quantile=0.95, always_ram=True
-                )
-            ),
-            # shard_number=3,
-        )
+        log.warning(f"Creating collection \"{collection_name}\"...")
 
-        await self.__client.update_collection_aliases(
-            change_aliases_operations=[
-                CreateAliasOperation(
-                    create_alias=CreateAlias(
-                        collection_name=collection_name,
-                        alias_name=f"{self.lizard.embedder_name}_{collection_name}",
+        try:
+            await self.__client.create_collection(
+                collection_name=collection_name,
+                vectors_config=VectorParams(size=self.lizard.embedder_size, distance=Distance.COSINE),
+                # hybrid mode: original vector on Disk, quantized vector in RAM
+                optimizers_config=OptimizersConfigDiff(memmap_threshold=20000, indexing_threshold=20000),
+                quantization_config=ScalarQuantization(
+                    scalar=ScalarQuantizationConfig(
+                        type=ScalarType.INT8, quantile=0.95, always_ram=True
                     )
-                )
-            ]
-        )
+                ),
+                # shard_number=3,
+            )
+        except Exception as e:
+            log.error(
+                f"Error creating collection {collection_name}. Try setting a higher timeout value in CCAT_QDRANT_CLIENT_TIMEOUT: {e}"
+            )
+            raise
+
+        alias_name = self.__get_local_alias(collection_name)
+        log.warning(f"Creating alias {alias_name} for collection \"{collection_name}\"...")
+        try:
+            await self.__client.update_collection_aliases(
+                change_aliases_operations=[
+                    CreateAliasOperation(
+                        create_alias=CreateAlias(
+                            collection_name=collection_name,
+                            alias_name=alias_name,
+                        )
+                    )
+                ]
+            )
+        except Exception as e:
+            log.error(f"Error creating collection alias {alias_name} for collection {collection_name}: {e}")
+            await self.__client.delete_collection(collection_name)
+            log.error(f"Collection {collection_name} deleted")
+            raise
 
         # if the client is remote, create an index on the tenant_id field
         if self.__is_db_remote():
-            await self.__create_payload_index("tenant_id", PayloadSchemaType.KEYWORD, collection_name)
+            log.warning(f"Creating payload index for collection \"{collection_name}\"...")
+            try:
+                await self.__client.create_payload_index(
+                    collection_name=collection_name,
+                    field_name="tenant_id",
+                    field_schema=PayloadSchemaType.KEYWORD
+                )
+            except Exception as e:
+                log.error(f"Error when creating a schema index: {e}")
 
     def __is_db_remote(self):
         return isinstance(self.__client._client, AsyncQdrantRemote)
-
-    async def __create_payload_index(self, field_name: str, field_type: PayloadSchemaType, collection_name: str):
-        """
-        Create a new index on a field of the payload for an existing collection.
-
-        Args:
-            field_name: Name of the field on which to create the index
-            field_type: Type of the index (es. PayloadSchemaType.KEYWORD)
-            collection_name: Name of the collection on which to create the index
-        """
-
-        try:
-            await self.__client.create_payload_index(
-                collection_name=collection_name,
-                field_name=field_name,
-                field_schema=field_type
-            )
-        except Exception as e:
-            log.error(f"Error when creating a schema index: {e}")
 
     # dump collection on disk before deleting
     async def __save_dump(self, collection_name: str, folder="dormouse/"):
