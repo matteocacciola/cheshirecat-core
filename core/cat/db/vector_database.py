@@ -26,6 +26,9 @@ class VectorDatabase:
             qdrant_host = extract_domain_from_url(qdrant_host)
             qdrant_api_key = get_env("CCAT_QDRANT_API_KEY")
 
+            qdrant_client_timeout = get_env("CCAT_QDRANT_CLIENT_TIMEOUT")
+            qdrant_client_timeout = int(qdrant_client_timeout) if qdrant_client_timeout is not None else None
+
             s = None
             try:
                 s = socket.socket()
@@ -45,6 +48,7 @@ class VectorDatabase:
                 api_key=qdrant_api_key or None,
                 prefer_grpc=True,
                 force_disable_check_same_thread=True,
+                timeout=qdrant_client_timeout,
             )
 
         # Qdrant local vector DB client

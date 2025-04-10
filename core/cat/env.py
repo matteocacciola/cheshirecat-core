@@ -14,6 +14,7 @@ def get_supported_env_variables():
         "CCAT_QDRANT_HOST": "",
         "CCAT_QDRANT_PORT": "6333",
         "CCAT_QDRANT_API_KEY": "",
+        "CCAT_QDRANT_CLIENT_TIMEOUT": None,
         "CCAT_SAVE_MEMORY_SNAPSHOTS": "false",
         "CCAT_REDIS_HOST": "localhost",
         "CCAT_REDIS_PORT": "6379",
