@@ -116,7 +116,7 @@ class RabbitHole:
         """
 
         # split file into a list of docs
-        file_bytes, content_type, docs = await self.file_to_docs(
+        file_bytes, content_type, docs = await self.__file_to_docs(
             stray=stray, file=file, chunk_size=chunk_size, chunk_overlap=chunk_overlap
         )
         metadata = metadata or {}
@@ -124,10 +124,10 @@ class RabbitHole:
         # store in memory
         filename = file if isinstance(file, str) else file.filename
 
-        await self.store_documents(stray=stray, docs=docs, source=filename, metadata=metadata)
+        await self.__store_documents(stray=stray, docs=docs, source=filename, metadata=metadata)
         self.save_file(stray, file_bytes, content_type)
 
-    async def file_to_docs(
+    async def __file_to_docs(
         self,
         stray: "StrayCat",
         file: str | UploadFile,
@@ -203,48 +203,6 @@ class RabbitHole:
         if not file_bytes:
             raise ValueError(f"Something went wrong with the file {source}")
 
-        return file_bytes, content_type, (await self.string_to_docs(
-            stray=stray,
-            file_bytes=file_bytes,
-            source=source,
-            content_type=content_type,
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap
-        ))
-
-    async def string_to_docs(
-        self,
-        stray: "StrayCat",
-        file_bytes: bytes,
-        source: str = None,
-        content_type: str = "text/plain",
-        chunk_size: int | None = None,
-        chunk_overlap: int | None = None
-    ) -> List[Document]:
-        """Convert string to Langchain `Document`.
-
-        Takes a string, converts it to langchain `Document`.
-        Hence, loads it in memory and splits it in overlapped chunks of text.
-
-        Args:
-            stray: StrayCat
-                Stray Cat instance.
-            file_bytes: bytes
-                The bytes to be converted.
-            source: str
-                Source filename.
-            content_type:
-                Mimetype of content.
-            chunk_size: int
-                Number of tokens in each document chunk.
-            chunk_overlap: int
-                Number of overlapping tokens between consecutive chunks.
-
-        Returns:
-            docs: List[Document]
-                List of Langchain `Document` of chunked text.
-        """
-
         # Load the bytes in the Blob schema
         blob = Blob(data=file_bytes, mimetype=content_type).from_data(
             data=file_bytes, mime_type=content_type, path=source
@@ -261,13 +219,13 @@ class RabbitHole:
         # Split
         await stray.send_ws_message("Parsing completed. Now let's go with reading process...")
         docs = self.__split_text(stray=stray, text=super_docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
-        return docs
+        return file_bytes, content_type, docs
 
-    async def store_documents(
+    async def __store_documents(
         self,
         stray: "StrayCat",
         docs: List[Document],
-        source: str, # TODO V2: is this necessary?
+        source: str,
         metadata: Dict = None
     ) -> None:
         """Add documents to the Cat's declarative memory.

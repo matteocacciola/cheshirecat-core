@@ -142,6 +142,7 @@ async def test_stray_recall_override_working_memory(stray, embedder, mocked_defa
 async def test_stray_recall_by_metadata(secure_client, secure_client_headers, stray, embedder):
     expected_chunks = 4
     content_type = "application/pdf"
+    query = embedder.embed_query("late")
 
     file_name = "sample.pdf"
     file_path = f"tests/mocks/{file_name}"
@@ -149,11 +150,15 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
         files = {"file": (file_name, f, content_type)}
         _ = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
 
+    memories = await stray.recall(query, "declarative", metadata={"source": file_name})
+    assert len(memories) == expected_chunks
+    for mem in memories:
+        assert mem.document.metadata["source"] == file_name
+
     with open(file_path, "rb") as f:
         files = {"file": ("sample2.pdf", f, content_type)}
         _ = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
 
-    query = embedder.embed_query("late")
     memories = await stray.recall(query, "declarative", metadata={"source": file_name})
     assert len(memories) == expected_chunks
     for mem in memories:
