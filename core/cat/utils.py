@@ -111,6 +111,9 @@ class Enum(BaseEnum, metaclass=MetaEnum):
             return self.value == other.value
         return self.value == other
 
+    def __hash__(self):
+        return hash(self.value)
+
 
 def to_camel_case(text: str) -> str:
     """Format string to camel case.

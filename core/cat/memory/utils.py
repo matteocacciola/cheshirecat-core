@@ -1,10 +1,15 @@
 import json
-from typing import List
-from langchain_core.documents import Document
-from pydantic import BaseModel, Field
-from qdrant_client.http.models import Record, ScoredPoint
+from typing import Dict, TypeAlias
+from langchain_core.documents.base import Document, Blob
+from pydantic import BaseModel
+from qdrant_client.http.models import Record, ScoredPoint, VectorStruct
 
 from cat.utils import Enum as BaseEnum, BaseModelDict
+
+
+class ContentType(BaseEnum):
+    TEXT = "text"
+    IMAGE = "image"
 
 
 class VectorMemoryCollectionTypes(BaseEnum):
@@ -18,16 +23,30 @@ class VectorEmbedderSize(BaseModel):
     image: int | None = None
 
 
-class DocumentRecall(BaseModelDict):
+class VectorMemoryConfig(BaseModelDict):
+    embedder_name: str
+    embedder_size: VectorEmbedderSize
+
+
+class MultimodalContent(BaseModel):
+    """Represents multimodal content with optional text and image data"""
+    text: str | None = None
+    image_url: str | None = None
+
+
+class DocumentRecallItem(BaseModelDict):
     """
-    Langchain `Document` retrieved from the episodic memory, with the similarity score, the list of embeddings and the
-    id of the memory.
+    Langchain `Document` or `Blob` retrieved from the episodic memory, with the similarity score, the vectors for each
+    modality and the id of the memory.
     """
 
-    document: Document
+    document: Document | Blob
     score: float | None = None
-    vector: List[float] = Field(default_factory=list)
+    vector: VectorStruct
     id: str | None = None
+
+
+DocumentRecall: TypeAlias = Dict[ContentType, DocumentRecallItem]
 
 
 def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
@@ -41,27 +60,35 @@ def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
         DocumentRecall: The converted DocumentRecall object
     """
 
-    page_content = m.payload.get("page_content", "") if m.payload else ""
-    if isinstance(page_content, dict):
-        page_content = json.dumps(page_content)
+    result = {}
+    for k, v in m.vector.items():
+        page_content = m.payload.get("page_content", "") if m.payload else ""
+        if isinstance(page_content, dict):
+            page_content = json.dumps(page_content[str(k)] if str(k) in page_content else page_content)
 
-    metadata = m.payload.get("metadata", {}) if m.payload else {}
-    if isinstance(metadata, str):
-        try:
-            metadata = json.loads(metadata)
-        except json.JSONDecodeError:
-            metadata = {}
+        metadata = m.payload.get("metadata", {}) if m.payload else {}
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except json.JSONDecodeError:
+                metadata = {}
+        metadata = metadata[str(k)] if str(k) in metadata else metadata
 
-    document = DocumentRecall(
-        document=Document(
+        doc = Document(
             page_content=page_content,
             metadata=metadata,
-        ),
-        vector=m.vector,
-        id=m.id,
-    )
+        ) if k == ContentType.TEXT else Blob(
+            data=page_content,
+            metadata=metadata
+        )
+        item = DocumentRecallItem(
+            document=doc,
+            vector=v,
+            id=m.id,
+        )
 
-    if isinstance(m, ScoredPoint):
-        document.score = m.score
+        if isinstance(m, ScoredPoint):
+            item.score = m.score
+        result[ContentType(k)] = item
 
-    return document
+    return result
