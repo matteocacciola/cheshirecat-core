@@ -58,10 +58,13 @@ services:
     container_name: cheshire_cat_vector_memory
     ports:
       - "6333:6333"
+    expose:
+      - 6333
+      - 6334
+      - 6335  
     volumes:
       - ./core/cat/data/long_term_memory/vector:/qdrant/storage
-    restart: unless-stopped
-
+    restart: always
   cheshire-cat-healthcheck:
     image: curlimages/curl:latest
     container_name: cheshire_cat_healthcheck
