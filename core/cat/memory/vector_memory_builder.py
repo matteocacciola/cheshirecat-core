@@ -31,10 +31,9 @@ class VectorMemoryBuilder:
     async def build(self):
         for collection_name in VectorMemoryCollectionTypes:
             is_collection_existing = await self.__check_collection_existence(str(collection_name))
-            has_same_size = False
-            if is_collection_existing:
-                has_same_size = await self.__check_embedding_size(str(collection_name))
-
+            has_same_size = (
+                await self.__check_embedding_size(str(collection_name))
+            ) if is_collection_existing else False
             if is_collection_existing and has_same_size:
                 continue
 
@@ -44,8 +43,9 @@ class VectorMemoryBuilder:
                 # dump collection on disk before deleting
                 await self.__save_dump(str(collection_name))
 
-            await self.__client.delete_collection(collection_name=str(collection_name))
-            log.warning(f"Collection \"{collection_name}\" deleted")
+            if is_collection_existing:
+                await self.__client.delete_collection(collection_name=str(collection_name))
+                log.warning(f"Collection \"{collection_name}\" deleted")
             await self.__create_collection(str(collection_name))
 
     async def __check_collection_existence(self, collection_name: str) -> bool:

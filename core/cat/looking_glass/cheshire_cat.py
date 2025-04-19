@@ -159,6 +159,7 @@ class CheshireCat:
         self.memory = LongTermMemory(agent_id=self.id)
 
     async def embed_procedures(self):
+        log.info(f"Agent id: {self.id}. Embedding procedures in vector memory")
         # Destroy all procedural embeddings
         await self.memory.vectors.procedural.destroy_all_points()
 
