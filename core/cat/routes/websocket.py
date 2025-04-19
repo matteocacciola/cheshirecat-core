@@ -33,6 +33,16 @@ async def websocket_endpoint(
         while True:
             # Receive the next message from the WebSocket.
             user_message_text = await websocket.receive_json()
+
+            if user_message_text == "ping":
+                # Respond to ping messages with a pong.
+                await websocket.send_json("pong")
+                continue
+
+            if user_message_text == "pong":
+                # Ignore pong messages.
+                continue
+
             user_message = UserMessage(**user_message_text)
 
             # Run the `stray` object's method in a threadpool since it might be a CPU-bound operation.
