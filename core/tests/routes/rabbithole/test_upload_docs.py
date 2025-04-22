@@ -109,26 +109,6 @@ def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_hea
     assert len(declarative_memories) == 7
 
 
-def test_rabbithole_chunking(secure_client, secure_client_headers):
-    content_type = "application/pdf"
-    file_name = "sample.pdf"
-    file_path = f"tests/mocks/{file_name}"
-    with open(file_path, "rb") as f:
-        files = {"file": (file_name, f, content_type)}
-        payload = {
-            "chunk_size": 128,
-            "chunk_overlap": 32,
-        }
-
-        response = secure_client.post("/rabbithole/", files=files, data=payload, headers=secure_client_headers)
-
-    # check response
-    assert response.status_code == 200
-
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
-    assert len(declarative_memories) == 7
-
-
 def test_rabbithole_upload_doc_with_metadata(secure_client, secure_client_headers):
     content_type = "application/pdf"
     file_name = "sample.pdf"

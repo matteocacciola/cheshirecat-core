@@ -34,6 +34,8 @@ The Cheshire Cat is a framework to build custom AI agents:
 - 🌍 Supports any language model via langchain
 - 👥 Multiuser with granular permissions, compatible with any identity provider
 - 💬 Multi-chatbots, with configurable (even different) LLM per chatbot, plus specific knowledge per chatbot
+- 💬 Remembers conversations and documents and uses them in conversation
+- ✂️ Customizable chunking and embedding
 - ☁️ Cloud Ready, working even with horizontal autoscaling
 - 🐋 100% dockerized
 - 🦄 Active [Discord community](https://discord.gg/bHX5sNFCYU) and easy to understand [docs](https://cheshire-cat-ai.github.io/docs/)
@@ -44,8 +46,11 @@ The current version is a multi-tenant fork of the original [Cheshire Cat](https:
 
 - **New features**: here, I have introduced some new features and improvements, such as:
   - The `Embedder` is centralized and can be used by multiple RAGs and other language models.
-  - A new `File Manager` that allows you to store files, injected to the RAG, into a remote storage.
-  - New admin endpoints allowing to configure the `Embedder` and `File Manager`.
+  - A new `File Manager` that allows you to store files, injected to the knowledge base of each RAG, into a remote storage.
+  - New chunking strategies, like text splitting or Semantic chunking.
+  - New admin endpoints allowing to configure the `Embedder`.
+  - New endpoints allowing to configure the `File Manager`, per chatbot.
+  - New endpoints allowing to configure the chunking strategy, per chatbot.
   - A new event system that allows you to get fine-grained control over the AI.
   - **The ability to manage multiple RAGs and other language models at the same time**.
 - **Customizable multi-chatbots**: the current version proposes a platform where each chatbot is fully customizable in terms of

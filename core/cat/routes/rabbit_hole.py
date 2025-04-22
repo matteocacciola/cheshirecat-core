@@ -21,14 +21,6 @@ class UploadURLConfig(BaseModel):
     url: str = Field(
         description="URL of the website to which you want to save the content"
     )
-    chunk_size: int | None = Field(
-        default=None,
-        description="Maximum length of each chunk after the document is split (in tokens)"
-    )
-    chunk_overlap: int | None = Field(
-        default=None,
-        description="Chunk overlap (in tokens)"
-    )
     metadata: Dict = Field(
         default={},
         description="Metadata to be stored with each chunk (e.g. author, category, etc.)"
@@ -57,14 +49,6 @@ async def upload_file(
     request: Request,
     file: UploadFile,
     background_tasks: BackgroundTasks,
-    chunk_size: int | None = Form(
-        default=None,
-        description="Maximum length of each chunk after the document is split (in tokens)"
-    ),
-    chunk_overlap: int | None = Form(
-        default=None,
-        description="Chunk overlap (in tokens)"
-    ),
     metadata: str = Form(
         default="{}",
         description="Metadata to be stored with each chunk (e.g. author, category, etc.). "
@@ -77,7 +61,7 @@ async def upload_file(
 
     Note
     ----------
-    `chunk_size`, `chunk_overlap` and `metadata` must be passed as form data.
+    `metadata` must be passed as a JSON-formatted string into the form data.
     This is necessary because the HTTP protocol does not allow file uploads to be sent as JSON.
 
     Example
@@ -97,7 +81,6 @@ async def upload_file(
         }
         # upload file endpoint only accepts form-encoded data
         payload = {
-            "chunk_size": 128,
             "metadata": json.dumps(metadata)
         }
 
@@ -133,8 +116,6 @@ async def upload_file(
         lizard.rabbit_hole.ingest_file,
         stray=cats.stray_cat,
         file=uploaded_file,
-        chunk_size=chunk_size,
-        chunk_overlap=chunk_overlap,
         metadata=json.loads(metadata)
     )
 
@@ -150,14 +131,6 @@ async def upload_files(
     request: Request,
     files: List[UploadFile],
     background_tasks: BackgroundTasks,
-    chunk_size: int | None = Form(
-        default=None,
-        description="Maximum length of each chunk after the document is split (in tokens)"
-    ),
-    chunk_overlap: int | None = Form(
-        default=None,
-        description="Chunk overlap (in tokens)"
-    ),
     metadata: str = Form(
         default="{}",
         description="Metadata to be stored where each key is the name of a file being uploaded, and the corresponding value is another dictionary containing metadata specific to that file. "
@@ -170,7 +143,7 @@ async def upload_files(
 
     Note
     ----------
-    `chunk_size`, `chunk_overlap` and `metadata` must be passed as form data.
+    `metadata` must be passed as a JSON-formatted string into the form data.
     This is necessary because the HTTP protocol does not allow file uploads to be sent as JSON.
     The maximum number of files you can upload is 1000.
 
@@ -178,7 +151,7 @@ async def upload_files(
     ----------
     ```
     files = []
-    files_to_upload = {"sample.pdf":"application/pdf","sample.txt":"application/txt"}
+    files_to_upload = {"sample.pdf":"application/pdf", "sample.txt":"application/txt"}
 
     for file_name in files_to_upload:
         content_type = files_to_upload[file_name]
@@ -203,7 +176,6 @@ async def upload_files(
 
     # upload file endpoint only accepts form-encoded data
     payload = {
-        "chunk_size": 128,
         "metadata": json.dumps(metadata)
     }
 
@@ -224,8 +196,6 @@ async def upload_files(
             request,
             file,
             background_tasks,
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
             # if file.filename in dictionary pass the stringified metadata, otherwise pass empty dictionary-like string
             metadata=json.dumps(metadata_dict[file.filename]) if file.filename in metadata_dict else "{}",
             cats=cats

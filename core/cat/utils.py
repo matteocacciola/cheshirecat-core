@@ -527,3 +527,27 @@ def dispatch_event(func: Callable[..., Any], *args, **kwargs) -> Any:
     if loop.is_running():
         return loop.create_task(coro)
     return loop.run_until_complete(coro)
+
+
+def get_factory_object(agent_id: str, factory: "BaseFactory") -> Any:
+    from cat.services.factory_adapter import FactoryAdapter
+
+    selected_config = FactoryAdapter(factory).get_factory_config_by_settings(agent_id)
+
+    return factory.get_from_config_name(agent_id, selected_config["value"]["name"])
+
+
+def get_updated_factory_object(
+    agent_id: str, factory: "BaseFactory", settings_name: str, settings: Dict
+) -> "UpdaterFactory":
+    from cat.services.factory_adapter import FactoryAdapter
+
+    adapter = FactoryAdapter(factory)
+    return adapter.upsert_factory_config_by_settings(agent_id, settings_name, settings)
+
+
+def rollback_factory_config(agent_id: str, factory: "BaseFactory"):
+    from cat.services.factory_adapter import FactoryAdapter
+
+    adapter = FactoryAdapter(factory)
+    adapter.rollback_factory_config(agent_id)

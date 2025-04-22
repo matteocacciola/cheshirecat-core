@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Type, Dict
+from typing import Type
 from pydantic import ConfigDict
 
 from cat.factory.base_factory import BaseFactory, BaseFactoryConfigModel
@@ -57,9 +57,6 @@ class AuthHandlerFactory(BaseFactory):
 
         return list_auth_handler
 
-    def get_from_config_name(self, agent_id: str, config_name: str) -> BaseAuthHandler:
-        return self._get_from_config_name(agent_id, config_name)
-
     @property
     def setting_name(self) -> str:
         return "auth_handler_selected"
@@ -75,10 +72,6 @@ class AuthHandlerFactory(BaseFactory):
     @property
     def default_config_class(self) -> Type[BaseFactoryConfigModel]:
         return CoreOnlyAuthConfig
-
-    @property
-    def default_config(self) -> Dict:
-        return {}
 
     @property
     def schema_name(self) -> str:

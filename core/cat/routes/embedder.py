@@ -2,12 +2,17 @@ from typing import Dict
 from fastapi import APIRouter, Body
 
 from cat.auth.permissions import AdminAuthResource, AuthPermission, check_admin_permissions
-from cat.db.cruds import settings as crud_settings
-from cat.exceptions import CustomValidationException
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.embedder import EmbedderFactory
 from cat.looking_glass.bill_the_lizard import BillTheLizard
-from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
+from cat.routes.routes_utils import (
+    GetSettingsResponse,
+    GetSettingResponse,
+    UpsertSettingResponse,
+    get_factory_settings,
+    get_factory_setting,
+    on_upsert_factory_setting,
+)
 
 router = APIRouter()
 
@@ -19,22 +24,7 @@ async def get_embedders_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Embedders"""
 
-    factory = EmbedderFactory(lizard.plugin_manager)
-
-    selected = crud_settings.get_setting_by_name(lizard.config_key, factory.setting_name)
-    if selected is not None:
-        selected = selected["value"]["name"]
-
-    saved_settings = crud_settings.get_settings_by_category(lizard.config_key, factory.setting_factory_category)
-    saved_settings = {s["name"]: s for s in saved_settings}
-
-    settings = [GetSettingResponse(
-        name=class_name,
-        value=saved_settings[class_name]["value"] if class_name in saved_settings else {},
-        scheme=scheme
-    ) for class_name, scheme in factory.get_schemas().items()]
-
-    return GetSettingsResponse(settings=settings, selected_configuration=selected)
+    return get_factory_settings(lizard.config_key, EmbedderFactory(lizard.plugin_manager))
 
 
 @router.get("/settings/{embedder_name}", response_model=GetSettingResponse)
@@ -44,18 +34,7 @@ async def get_embedder_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Embedder"""
 
-    embedder_schemas = EmbedderFactory(lizard.plugin_manager).get_schemas()
-    # check that embedder_name is a valid name
-    allowed_configurations = list(embedder_schemas.keys())
-    if embedder_name not in allowed_configurations:
-        raise CustomValidationException(f"{embedder_name} not supported. Must be one of {allowed_configurations}")
-
-    setting = crud_settings.get_setting_by_name(lizard.config_key, embedder_name)
-    setting = {} if setting is None else setting["value"]
-
-    scheme = embedder_schemas[embedder_name]
-
-    return GetSettingResponse(name=embedder_name, value=setting, scheme=scheme)
+    return get_factory_setting(lizard.config_key, embedder_name, EmbedderFactory(lizard.plugin_manager))
 
 
 @router.put("/settings/{embedder_name}", response_model=UpsertSettingResponse)
@@ -66,10 +45,6 @@ async def upsert_embedder_setting(
 ) -> ReplacedNLPConfig:
     """Upsert the Embedder setting"""
 
-    embedder_schemas = EmbedderFactory(lizard.plugin_manager).get_schemas()
-    # check that embedder_name is a valid name
-    allowed_configurations = list(embedder_schemas.keys())
-    if embedder_name not in allowed_configurations:
-        raise CustomValidationException(f"{embedder_name} not supported. Must be one of {allowed_configurations}")
+    on_upsert_factory_setting(embedder_name, EmbedderFactory(lizard.plugin_manager))
 
     return await lizard.replace_embedder(embedder_name, payload)
