@@ -1,12 +1,6 @@
 import time
 from typing import Dict
 from uuid import uuid4
-from langchain_community.document_loaders.parsers.audio import FasterWhisperParser
-from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
-from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
-from langchain_community.document_loaders.parsers.txt import TextParser
-from langchain_community.document_loaders.parsers.language.language_parser import LanguageParser
-from langchain_community.document_loaders.parsers.msword import MsWordParser
 from langchain_core.embeddings import Embeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.language_models import BaseLanguageModel
@@ -30,7 +24,6 @@ from cat.factory.llm import LLMFactory
 from cat.log import log
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
-from cat.parsers import YoutubeParser, TableParser, JSONParser
 from cat.services.factory_adapter import FactoryAdapter
 from cat.utils import langchain_log_prompt, langchain_log_output, get_caller_info
 
@@ -391,26 +384,7 @@ class CheshireCat:
     # each time we access the file handlers, plugins can intervene
     @property
     def file_handlers(self) -> Dict:
-        # default file handlers
-        file_handlers = {
-            "application/json": JSONParser(),
-            "application/msword": MsWordParser(),
-            "application/pdf": PyMuPDFParser(),
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": TableParser(),
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": MsWordParser(),
-            "text/csv": TableParser(),
-            "text/html": BS4HTMLParser(),
-            "text/javascript": LanguageParser(language="js"),
-            "text/markdown": TextParser(),
-            "text/plain": TextParser(),
-            "text/x-python": LanguageParser(language="python"),
-            "video/mp4": YoutubeParser(),
-            "audio/mpeg": FasterWhisperParser(),
-            "audio/mp3": FasterWhisperParser(),
-            "audio/ogg": FasterWhisperParser(),
-            "audio/wav": FasterWhisperParser(),
-            "audio/webm": FasterWhisperParser(),
-        }
+        file_handlers = self.lizard.parsers.copy()
 
         # no access to stray
         file_handlers = self.plugin_manager.execute_hook(

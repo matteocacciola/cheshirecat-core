@@ -1,5 +1,11 @@
-from typing import Dict
+from typing import Dict, Any
 from uuid import uuid4
+from langchain_community.document_loaders.parsers.audio import FasterWhisperParser
+from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
+from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
+from langchain_community.document_loaders.parsers.txt import TextParser
+from langchain_community.document_loaders.parsers.language.language_parser import LanguageParser
+from langchain_community.document_loaders.parsers.msword import MsWordParser
 from langchain_core.embeddings import Embeddings
 from fastapi import FastAPI
 
@@ -23,6 +29,7 @@ from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.tweedledum import Tweedledum
 from cat.memory.utils import VectorEmbedderSize
 from cat.memory.vector_memory_builder import VectorMemoryBuilder
+from cat.parsers import YoutubeParser, TableParser, JSONParser
 from cat.rabbit_hole import RabbitHole
 from cat.services.factory_adapter import FactoryAdapter
 from cat.services.websocket_manager import WebsocketManager
@@ -64,6 +71,7 @@ class BillTheLizard:
         self.embedder_size: VectorEmbedderSize | None = None
 
         self.file_manager: BaseFileManager | None = None
+        self.parsers: Dict[str, Any] = {}
 
         self.plugin_manager = Tweedledum()
         self.websocket_manager = WebsocketManager()
@@ -73,6 +81,9 @@ class BillTheLizard:
 
         # load file manager
         self.load_filemanager()
+
+        # load parsers
+        self.load_parsers()
 
         # Rabbit Hole Instance
         self.rabbit_hole = RabbitHole()
@@ -186,6 +197,28 @@ class BillTheLizard:
         selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.__key)
 
         self.file_manager = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
+
+    def load_parsers(self):
+        # default file handlers
+        self.parsers = {
+            "application/json": JSONParser(),
+            "application/msword": MsWordParser(),
+            "application/pdf": PyMuPDFParser(),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": TableParser(),
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": MsWordParser(),
+            "text/csv": TableParser(),
+            "text/html": BS4HTMLParser(),
+            "text/javascript": LanguageParser(language="js"),
+            "text/markdown": TextParser(),
+            "text/plain": TextParser(),
+            "text/x-python": LanguageParser(language="python"),
+            "video/mp4": YoutubeParser(),
+            "audio/mpeg": FasterWhisperParser(),
+            "audio/mp3": FasterWhisperParser(),
+            "audio/ogg": FasterWhisperParser(),
+            "audio/wav": FasterWhisperParser(),
+            "audio/webm": FasterWhisperParser(),
+        }
 
     async def replace_embedder(self, language_embedder_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
