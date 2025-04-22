@@ -1,5 +1,6 @@
 from typing import List
 
+from cat.factory.chunker import ChunkerSettings
 from cat.factory.llm import LLMSettings
 from cat.factory.embedder import EmbedderSettings
 from cat.factory.auth_handler import AuthHandlerConfig
@@ -72,6 +73,23 @@ def factory_allowed_file_managers(allowed: List[FileManagerConfig], cat) -> List
     Returns:
         supported: List of FileManagerConfig classes
             list of allowed file managers
+    """
+
+    return allowed
+
+@hook(priority=0)
+def factory_allowed_chunkers(allowed: List[ChunkerSettings], cat) -> List:
+    """Hook to extend list of supported chunkers.
+
+    Args:
+        allowed: List of ChunkerConfig classes
+            list of allowed chunkers
+        cat: CheshireCat
+            Cheshire Cat instance
+
+    Returns:
+        supported: List of ChunkerConfig classes
+            list of allowed chunkers
     """
 
     return allowed

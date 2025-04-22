@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Type, List, Dict
+from typing import Type, List
 from pydantic import ConfigDict
 
 from cat.factory.base_factory import BaseFactory, BaseFactoryConfigModel
@@ -107,20 +107,6 @@ class FileManagerFactory(BaseFactory):
         )
         return list_file_managers_default
 
-    def get_from_config_name(self, agent_id: str, config_name: str) -> BaseFileManager:
-        """
-        Get the file manager from the configuration name.
-
-        Args:
-            agent_id: The agent key
-            config_name: The configuration name
-
-        Returns:
-            BaseFileManager: The file manager instance
-        """
-
-        return self._get_from_config_name(agent_id, config_name)
-
     @property
     def setting_name(self) -> str:
         return "file_manager_selected"
@@ -136,10 +122,6 @@ class FileManagerFactory(BaseFactory):
     @property
     def default_config_class(self) -> Type[BaseFactoryConfigModel]:
         return LocalFileManagerConfig
-
-    @property
-    def default_config(self) -> Dict:
-        return {}
 
     @property
     def schema_name(self) -> str:

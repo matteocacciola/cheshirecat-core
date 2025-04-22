@@ -1,12 +1,11 @@
-import os
 from json import dumps
 from fastapi.encoders import jsonable_encoder
 
 from cat.factory.file_manager import FileManagerFactory
 
 
-def test_get_all_file_manager_settings(secure_client, secure_client_headers, lizard):
-    file_manager_schemas = FileManagerFactory(lizard.plugin_manager).get_schemas()
+def test_get_all_file_manager_settings(secure_client, secure_client_headers, cheshire_cat):
+    file_manager_schemas = FileManagerFactory(cheshire_cat.plugin_manager).get_schemas()
     response = secure_client.get("/file_manager/settings", headers=secure_client_headers)
     json = response.json()
 

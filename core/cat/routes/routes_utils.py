@@ -11,11 +11,13 @@ from cat import utils
 from cat.auth.auth_utils import issue_jwt
 from cat.auth.connection import ContextualCats
 from cat.db.database import DEFAULT_AGENT_KEY
+from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
-from cat.factory.base_factory import ReplacedNLPConfig
+from cat.factory.base_factory import ReplacedNLPConfig, BaseFactory
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
+from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.registry import registry_search_plugins
 from cat.memory.utils import ContentType, MultimodalContent, VectorMemoryCollectionTypes
 from cat.memory.vector_memory import VectorMemory
@@ -122,37 +124,39 @@ async def get_plugins(plugin_manager: MadHatter, query: str | None = None) -> Pl
         The list of plugins
     """
 
+    def create_manifest(plugin: Plugin) -> Dict[str, Any]:
+        # get manifest
+        manifest = deepcopy(plugin.manifest)  # we make a copy to avoid modifying the plugin obj
+        manifest["active"] = (plugin.id in active_plugins)  # pass along if plugin is active or not
+        manifest["upgrade"] = None
+        manifest["hooks"] = [{"name": hook.name, "priority": hook.priority} for hook in plugin.hooks]
+        manifest["tools"] = [{"name": tool.name} for tool in plugin.tools]
+        manifest["forms"] = [{"name": form.name} for form in plugin.forms]
+        manifest["endpoints"] = [{"name": endpoint.name, "tags": endpoint.tags} for endpoint in plugin.endpoints]
+        # do not show already installed plugins among registry plugins
+        r = registry_plugins_index.pop(manifest["plugin_url"], None)
+        # filter by query
+        plugin_text = [str(field) for field in manifest.values()]
+        plugin_text = " ".join(plugin_text).lower()
+        if (
+                (query is None or query.lower() in plugin_text)
+                and r is not None
+                and r.get("version") is not None
+                and r.get("version") != plugin.manifest.get("version")
+        ):
+            manifest["upgrade"] = r["version"]
+        return manifest
+
     # retrieve plugins from official repo
     registry_plugins = await registry_search_plugins(query)
     # index registry plugins by url
-    registry_plugins_index = {p["url"]: p for p in registry_plugins}
+    registry_plugins_index = {p.get("plugin_url"): p for p in registry_plugins if p.get("plugin_url") is not None}
 
     # get active plugins
     active_plugins = plugin_manager.load_active_plugins_from_db()
 
     # list installed plugins' manifest
-    installed_plugins = []
-    for p in plugin_manager.plugins.values():
-        # get manifest
-        manifest = deepcopy(p.manifest)  # we make a copy to avoid modifying the plugin obj
-        manifest["active"] = (p.id in active_plugins)  # pass along if plugin is active or not
-        manifest["upgrade"] = None
-        manifest["hooks"] = [{"name": hook.name, "priority": hook.priority} for hook in p.hooks]
-        manifest["tools"] = [{"name": tool.name} for tool in p.tools]
-        manifest["forms"] = [{"name": form.name} for form in p.forms]
-        manifest["endpoints"] = [{"name": endpoint.name, "tags": endpoint.tags} for endpoint in p.endpoints]
-
-        # filter by query
-        plugin_text = [str(field) for field in manifest.values()]
-        plugin_text = " ".join(plugin_text).lower()
-        if query is None or query.lower() in plugin_text:
-            for r in registry_plugins:
-                if r["plugin_url"] == p.manifest["plugin_url"] and r["version"] != p.manifest["version"]:
-                    manifest["upgrade"] = r["version"]
-            installed_plugins.append(manifest)
-
-        # do not show already installed plugins among registry plugins
-        registry_plugins_index.pop(manifest["plugin_url"], None)
+    installed_plugins = [create_manifest(p) for p in plugin_manager.plugins.values()]
 
     return Plugins(installed=installed_plugins, registry=list(registry_plugins_index.values()))
 
@@ -306,3 +310,44 @@ async def shutdown_app(app):
 
     del app.state.lizard
     del app.state.white_rabbit
+
+
+def get_factory_settings(agent_id: str, factory: BaseFactory) -> GetSettingsResponse:
+    # get selected AuthHandler
+    selected = crud_settings.get_setting_by_name(agent_id, factory.setting_name)
+    if selected is not None:
+        selected = selected["value"]["name"]
+
+    saved_settings = crud_settings.get_settings_by_category(agent_id, factory.setting_factory_category)
+    saved_settings = {s["name"]: s for s in saved_settings}
+
+    settings = [GetSettingResponse(
+        name=class_name,
+        value=saved_settings[class_name]["value"] if class_name in saved_settings else {},
+        scheme=scheme
+    ) for class_name, scheme in factory.get_schemas().items()]
+
+    return GetSettingsResponse(settings=settings, selected_configuration=selected)
+
+
+def get_factory_setting(agent_id: str, configuration_name: str, factory: BaseFactory) -> GetSettingResponse:
+    schemas = factory.get_schemas()
+
+    allowed_configurations = list(schemas.keys())
+    if configuration_name not in allowed_configurations:
+        raise CustomValidationException(f"{configuration_name} not supported. Must be one of {allowed_configurations}")
+
+    setting = crud_settings.get_setting_by_name(agent_id, configuration_name)
+    setting = {} if setting is None else setting["value"]
+
+    scheme = schemas[configuration_name]
+
+    return GetSettingResponse(name=configuration_name, value=setting, scheme=scheme)
+
+
+def on_upsert_factory_setting(configuration_name: str, factory: BaseFactory):
+    schemas = factory.get_schemas()
+
+    allowed_configurations = list(schemas.keys())
+    if configuration_name not in allowed_configurations:
+        raise CustomValidationException(f"{configuration_name} not supported. Must be one of {allowed_configurations}")

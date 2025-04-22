@@ -7,10 +7,10 @@ These hooks allow to intercept the uploaded documents at different places before
 """
 
 from typing import List, Dict
-from langchain.text_splitter import TextSplitter
 from langchain_core.documents import Document
 from qdrant_client.http.models import PointStruct
 
+from cat.factory.custom_chunker import BaseChunker
 from cat.mad_hatter.decorators import hook
 
 
@@ -34,7 +34,7 @@ def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
 
 
 @hook(priority=0)
-def rabbithole_instantiates_splitter(text_splitter: TextSplitter, cat) -> TextSplitter:
+def rabbithole_instantiates_splitter(text_splitter: BaseChunker, cat) -> BaseChunker:
     """Hook the splitter used to split text in chunks.
 
     Allows replacing the default text splitter to customize the splitting process.
@@ -122,7 +122,7 @@ def after_rabbithole_splitted_text(chunks: List[Document], cat) -> List[Document
         chunks: List[Document]
             List of Langchain `Document`.
         cat: StrayCat
-            Stray Cat Cat instance.
+            Stray Cat instance.
 
     Returns:
         chunks: List[Document]

@@ -81,14 +81,7 @@ class RabbitHole:
         # Upsert memories in batch mode
         await ccat.memory.vectors.declarative.add_points(ids=ids, payloads=payloads, vectors=vectors)
 
-    async def ingest_file(
-        self,
-        stray: "StrayCat",
-        file: str | UploadFile,
-        chunk_size: int | None = None,
-        chunk_overlap: int | None = None,
-        metadata: Dict = None
-    ):
+    async def ingest_file(self, stray: "StrayCat", file: str | UploadFile, metadata: Dict = None):
         """Load a file in the Cat's declarative memory.
 
         The method splits and converts the file in Langchain `Document`. Then, it stores the `Document` in the Cat's
@@ -100,10 +93,6 @@ class RabbitHole:
             file: str, UploadFile
                 The file can be a path passed as a string or an `UploadFile` object if the document is ingested using the
                 `rabbithole` endpoint.
-            chunk_size: int
-                Number of tokens in each document chunk.
-            chunk_overlap: int
-                Number of overlapping tokens between consecutive chunks.
             metadata: Dict
                 Metadata to be stored with each chunk.
 
@@ -117,9 +106,7 @@ class RabbitHole:
         """
 
         # split file into a list of docs
-        file_bytes, content_type, docs = await self.__file_to_docs(
-            stray=stray, file=file, chunk_size=chunk_size, chunk_overlap=chunk_overlap
-        )
+        file_bytes, content_type, docs = await self.__file_to_docs(stray=stray, file=file)
         metadata = metadata or {}
 
         # store in memory
@@ -129,11 +116,7 @@ class RabbitHole:
         self.save_file(stray, file_bytes, content_type)
 
     async def __file_to_docs(
-        self,
-        stray: "StrayCat",
-        file: str | UploadFile,
-        chunk_size: int | None = None,
-        chunk_overlap: int | None = None
+        self, stray: "StrayCat", file: str | UploadFile
     ) -> Tuple[bytes, str | None, List[Document]]:
         """
         Load and convert files to Langchain `Document`.
@@ -147,10 +130,6 @@ class RabbitHole:
             file: str, UploadFile
                 The file can be either a string path if loaded programmatically, a FastAPI `UploadFile`
                 if coming from the `/rabbithole/` endpoint or a URL if coming from the `/rabbithole/web` endpoint.
-            chunk_size: int
-                Number of tokens in each document chunk.
-            chunk_overlap: int
-                Number of overlapping tokens between consecutive chunks.
 
         Returns:
             (bytes, content_type, docs): Tuple[bytes, List[Document]]
@@ -219,7 +198,7 @@ class RabbitHole:
 
         # Split
         await stray.send_ws_message("Parsing completed. Now let's go with reading process...")
-        docs = self.__split_text(stray=stray, text=super_docs, chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        docs = self.__split_text(stray=stray, text=super_docs)
         return file_bytes, content_type, docs
 
     async def __store_documents(
@@ -319,7 +298,7 @@ class RabbitHole:
 
         log.warning(f"Agent id: {ccat.id}. Done uploading {source}")
 
-    def __split_text(self, stray: "StrayCat", text: List[Document], chunk_size: int, chunk_overlap: int):
+    def __split_text(self, stray: "StrayCat", text: List[Document]):
         """Split text in overlapped chunks.
 
         This method splits the incoming text in overlapped  chunks of text. Other two hooks are available to edit the
@@ -330,10 +309,6 @@ class RabbitHole:
                 Stray Cat instance.
             text: List[Document]
                 Content of the loaded file.
-            chunk_size: int
-                Number of tokens in each document chunk.
-            chunk_overlap: int
-                Number of overlapping tokens between consecutive chunks.
 
         Returns:
             docs: List[Document]
@@ -356,14 +331,6 @@ class RabbitHole:
         # do something on the text before it is split
         text = plugin_manager.execute_hook("before_rabbithole_splits_text", text, cat=stray)
 
-        # hooks decide the test splitter (see @property .text_splitter)
-        # override chunk_size and chunk_overlap only if the request has that info
-        if chunk_size:
-            text_splitter._chunk_size = chunk_size
-        if chunk_overlap:
-            text_splitter._chunk_overlap = chunk_overlap
-
-        log.info(f"Agent id: {stray.agent_id}. Chunk size: {chunk_size}, chunk overlap: {chunk_overlap}")
         # split text
         docs = text_splitter.split_documents(text)
         # remove short texts (page numbers, isolated words, etc.)
@@ -401,9 +368,4 @@ class RabbitHole:
             temp_file.write(file_bytes)
             file_path = temp_file.name
 
-            self.lizard.file_manager.upload_file_to_storage_and_remove(file_path, f"rabbit_hole/{stray.agent_id}")
-
-    @property
-    def lizard(self) -> "BillTheLizard":
-        from cat.looking_glass.bill_the_lizard import BillTheLizard
-        return BillTheLizard()
+            stray.cheshire_cat.file_manager.upload_file_to_storage_and_remove(file_path, f"rabbit_hole/{stray.agent_id}")

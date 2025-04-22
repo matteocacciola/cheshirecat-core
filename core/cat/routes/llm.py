@@ -3,11 +3,16 @@ from fastapi import APIRouter, Body
 
 from cat.auth.connection import ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
-from cat.exceptions import CustomValidationException
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.llm import LLMFactory
-from cat.db.cruds import settings as crud_settings
-from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
+from cat.routes.routes_utils import (
+    GetSettingsResponse,
+    GetSettingResponse,
+    UpsertSettingResponse,
+    get_factory_settings,
+    get_factory_setting,
+    on_upsert_factory_setting,
+)
 
 router = APIRouter()
 
@@ -20,23 +25,7 @@ def get_llms_settings(
     """Get the list of the Large Language Models"""
 
     ccat = cats.cheshire_cat
-    factory = LLMFactory(ccat.plugin_manager)
-
-    # get selected LLM, if any
-    selected = crud_settings.get_setting_by_name(ccat.id, factory.setting_name)
-    if selected is not None:
-        selected = selected["value"]["name"]
-
-    saved_settings = crud_settings.get_settings_by_category(ccat.id, factory.setting_factory_category)
-    saved_settings = {s["name"]: s for s in saved_settings}
-
-    settings = [GetSettingResponse(
-        name=class_name,
-        value=saved_settings[class_name]["value"] if class_name in saved_settings else {},
-        scheme=scheme
-    ) for class_name, scheme in factory.get_schemas().items()]
-
-    return GetSettingsResponse(settings=settings, selected_configuration=selected)
+    return get_factory_settings(ccat.id, LLMFactory(ccat.plugin_manager))
 
 
 @router.get("/settings/{language_model_name}", response_model=GetSettingResponse)
@@ -47,19 +36,7 @@ def get_llm_settings(
     """Get settings and scheme of the specified Large Language Model"""
 
     ccat = cats.cheshire_cat
-    llm_schemas = LLMFactory(ccat.plugin_manager).get_schemas()
-
-    # check that language_model_name is a valid name
-    allowed_configurations = list(llm_schemas.keys())
-    if language_model_name not in allowed_configurations:
-        raise CustomValidationException(f"{language_model_name} not supported. Must be one of {allowed_configurations}")
-
-    setting = crud_settings.get_setting_by_name(ccat.id, language_model_name)
-    setting = {} if setting is None else setting["value"]
-
-    scheme = llm_schemas[language_model_name]
-
-    return GetSettingResponse(name=language_model_name, value=setting, scheme=scheme)
+    return get_factory_setting(ccat.id, language_model_name, LLMFactory(ccat.plugin_manager))
 
 
 @router.put("/settings/{language_model_name}", response_model=UpsertSettingResponse)
@@ -71,11 +48,6 @@ def upsert_llm_setting(
     """Upsert the Large Language Model setting"""
 
     ccat = cats.cheshire_cat
-    llm_schemas = LLMFactory(ccat.plugin_manager).get_schemas()
-
-    # check that language_model_name is a valid name
-    allowed_configurations = list(llm_schemas.keys())
-    if language_model_name not in allowed_configurations:
-        raise CustomValidationException(f"{language_model_name} not supported. Must be one of {allowed_configurations}")
+    on_upsert_factory_setting(language_model_name, LLMFactory(ccat.plugin_manager))
 
     return ccat.replace_llm(language_model_name, payload)

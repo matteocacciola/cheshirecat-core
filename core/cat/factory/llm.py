@@ -12,7 +12,7 @@ from langchain_cohere import ChatCohere
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_anthropic import ChatAnthropic
 from langchain_mistralai import ChatMistralAI
-from typing import Type, List, Dict
+from typing import Type, List
 import json
 from pydantic import ConfigDict
 
@@ -367,20 +367,6 @@ class LLMFactory(BaseFactory):
         )
         return list_llms
 
-    def get_from_config_name(self, agent_id: str, config_name: str) -> BaseLanguageModel:
-        """
-        Get the language model from the configuration name.
-
-        Args:
-            agent_id: The agent key
-            config_name: The configuration name
-
-        Returns:
-            BaseLanguageModel: The language model instance
-        """
-
-        return self._get_from_config_name(agent_id, config_name)
-
     @property
     def setting_name(self) -> str:
         return "llm_selected"
@@ -396,10 +382,6 @@ class LLMFactory(BaseFactory):
     @property
     def default_config_class(self) -> Type[BaseFactoryConfigModel]:
         return LLMDefaultConfig
-
-    @property
-    def default_config(self) -> Dict:
-        return {}
 
     @property
     def schema_name(self) -> str:

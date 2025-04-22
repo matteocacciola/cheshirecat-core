@@ -55,7 +55,7 @@ class BaseFactory(ABC):
     def _get_factory_class(self, config_name: str) -> Type[BaseModel] | None:
         return next((cls for cls in self.get_allowed_classes() if cls.__name__ == config_name), None)
 
-    def _get_from_config_name(self, agent_id: str, config_name: str) -> Any:
+    def get_from_config_name(self, agent_id: str, config_name: str) -> Any:
         # get plugin file manager factory class
         factory_class = next((cls for cls in self.get_allowed_classes() if cls.__name__ == config_name), None)
         if not factory_class:
@@ -69,12 +69,12 @@ class BaseFactory(ABC):
         except:
             return self.default_config_class.get_from_config(self.default_config)
 
-    @abstractmethod
-    def get_allowed_classes(self) -> List[Type[BaseFactoryConfigModel]]:
-        pass
+    @property
+    def default_config(self) -> Dict:
+        return {k: v.default for k, v in self.default_config_class.model_fields.items()}
 
     @abstractmethod
-    def get_from_config_name(self, agent_id: str, config_name: str) -> Any:
+    def get_allowed_classes(self) -> List[Type[BaseFactoryConfigModel]]:
         pass
 
     @property
@@ -95,11 +95,6 @@ class BaseFactory(ABC):
     @property
     @abstractmethod
     def default_config_class(self) -> Type[BaseFactoryConfigModel]:
-        pass
-
-    @property
-    @abstractmethod
-    def default_config(self) -> Dict:
         pass
 
     @property

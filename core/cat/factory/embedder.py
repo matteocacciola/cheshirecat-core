@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Type, List, Dict
+from typing import Type, List
 from langchain_core.embeddings import Embeddings
 from langchain_mistralai import MistralAIEmbeddings
 from langchain_voyageai import VoyageAIEmbeddings
@@ -259,21 +259,6 @@ class EmbedderFactory(BaseFactory):
         )
         return list_embedder
 
-    def get_from_config_name(self, agent_id: str, config_name: str) -> Embeddings:
-        """
-        Get Embedder from configuration name. This function is used to get the Embedder from the configuration name
-        and the agent key.
-
-        Args:
-            agent_id: The agent key
-            config_name: The configuration name
-
-        Returns:
-            Embeddings: The Embeddings instance
-        """
-
-        return self._get_from_config_name(agent_id, config_name)
-
     @property
     def setting_name(self) -> str:
         return "embedder_selected"
@@ -289,10 +274,6 @@ class EmbedderFactory(BaseFactory):
     @property
     def default_config_class(self) -> Type[BaseFactoryConfigModel]:
         return EmbedderDumbConfig
-
-    @property
-    def default_config(self) -> Dict:
-        return {}
 
     @property
     def schema_name(self) -> str:
