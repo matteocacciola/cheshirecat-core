@@ -24,6 +24,7 @@ from cat.routes import (
     embedder,
     file_manager,
     llm,
+    chunker,
     memory_router as memory,
     plugins,
     rabbit_hole,
@@ -91,6 +92,7 @@ cheshire_cat_api.include_router(base.router)
 cheshire_cat_api.include_router(admins.router, prefix="/admins")
 cheshire_cat_api.include_router(auth_handler.router, tags=["AuthHandler"], prefix="/auth_handler")
 cheshire_cat_api.include_router(embedder.router, tags=["Embedder"], prefix="/embedder")
+cheshire_cat_api.include_router(chunker.router, tags=["Chunking"], prefix="/chunking")
 cheshire_cat_api.include_router(file_manager.router, tags=["File Manager"], prefix="/file_manager")
 cheshire_cat_api.include_router(llm.router, tags=["Large Language Model"], prefix="/llm")
 cheshire_cat_api.include_router(memory.router, prefix="/memory")

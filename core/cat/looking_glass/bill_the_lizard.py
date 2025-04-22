@@ -20,9 +20,7 @@ from cat.env import get_env
 from cat.exceptions import LoadMemoryException
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.custom_auth_handler import CoreAuthHandler
-from cat.factory.custom_file_manager import BaseFileManager
 from cat.factory.embedder import EmbedderFactory
-from cat.factory.file_manager import FileManagerFactory
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.mad_hatter.mad_hatter import MadHatter
@@ -31,9 +29,15 @@ from cat.memory.utils import VectorEmbedderSize
 from cat.memory.vector_memory_builder import VectorMemoryBuilder
 from cat.parsers import YoutubeParser, TableParser, JSONParser
 from cat.rabbit_hole import RabbitHole
-from cat.services.factory_adapter import FactoryAdapter
 from cat.services.websocket_manager import WebsocketManager
-from cat.utils import singleton, get_embedder_name, dispatch_event
+from cat.utils import (
+    singleton,
+    get_embedder_name,
+    dispatch_event,
+    get_factory_object,
+    get_updated_factory_object,
+    rollback_factory_config,
+)
 
 
 @singleton
@@ -70,20 +74,11 @@ class BillTheLizard:
         self.embedder_name: str | None = None
         self.embedder_size: VectorEmbedderSize | None = None
 
-        self.file_manager: BaseFileManager | None = None
-        self.parsers: Dict[str, Any] = {}
-
         self.plugin_manager = Tweedledum()
         self.websocket_manager = WebsocketManager()
 
         # load embedder
         self.load_language_embedder()
-
-        # load file manager
-        self.load_filemanager()
-
-        # load parsers
-        self.load_parsers()
 
         # Rabbit Hole Instance
         self.rabbit_hole = RabbitHole()
@@ -177,48 +172,12 @@ class BillTheLizard:
 
         factory = EmbedderFactory(self.plugin_manager)
 
-        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.__key)
-
-        self.embedder = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
+        self.embedder = get_factory_object(self.__key, factory)
         self.embedder_name = get_embedder_name(self.embedder)
 
         # Get embedder size (langchain classes do not store it)
         embedder_size = len(self.embedder.embed_query("hello world"))
         self.embedder_size = VectorEmbedderSize(text=embedder_size)
-
-    def load_filemanager(self):
-        """
-        Hook into the file manager selection. Allows to modify how the Lizard selects the file manager at bootstrap
-        time.
-        """
-
-        factory = FileManagerFactory(self.plugin_manager)
-
-        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.__key)
-
-        self.file_manager = factory.get_from_config_name(self.__key, selected_config["value"]["name"])
-
-    def load_parsers(self):
-        # default file handlers
-        self.parsers = {
-            "application/json": JSONParser(),
-            "application/msword": MsWordParser(),
-            "application/pdf": PyMuPDFParser(),
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": TableParser(),
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": MsWordParser(),
-            "text/csv": TableParser(),
-            "text/html": BS4HTMLParser(),
-            "text/javascript": LanguageParser(language="js"),
-            "text/markdown": TextParser(),
-            "text/plain": TextParser(),
-            "text/x-python": LanguageParser(language="python"),
-            "video/mp4": YoutubeParser(),
-            "audio/mpeg": FasterWhisperParser(),
-            "audio/mp3": FasterWhisperParser(),
-            "audio/ogg": FasterWhisperParser(),
-            "audio/wav": FasterWhisperParser(),
-            "audio/webm": FasterWhisperParser(),
-        }
 
     async def replace_embedder(self, language_embedder_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
@@ -232,8 +191,8 @@ class BillTheLizard:
             The dictionary resuming the new name and settings of the embedder
         """
 
-        adapter = FactoryAdapter(EmbedderFactory(self.plugin_manager))
-        updater = adapter.upsert_factory_config_by_settings(self.__key, language_embedder_name, settings)
+        factory = EmbedderFactory(self.plugin_manager)
+        updater = get_updated_factory_object(self.__key, factory, language_embedder_name, settings)
 
         # reload the embedder of the lizard
         self.load_language_embedder()
@@ -244,7 +203,7 @@ class BillTheLizard:
             log.error(e)
 
             # something went wrong: rollback
-            adapter.rollback_factory_config(self.__key)
+            rollback_factory_config(self.__key, factory)
 
             if updater.old_setting is not None:
                 await self.replace_embedder(updater.old_setting["value"]["name"], updater.old_factory["value"])
@@ -257,41 +216,6 @@ class BillTheLizard:
         await self.reload_embed_procedures()
 
         return ReplacedNLPConfig(name=language_embedder_name, value=updater.new_setting["value"])
-
-    def replace_file_manager(self, file_manager_name: str, settings: Dict) -> ReplacedNLPConfig:
-        """
-        Replace the current file manager with a new one. This method is used to change the file manager of the lizard.
-
-        Args:
-            file_manager_name: name of the new file manager
-            settings: settings of the new file manager
-
-        Returns:
-            The dictionary resuming the new name and settings of the file manager
-        """
-
-        adapter = FactoryAdapter(FileManagerFactory(self.plugin_manager))
-        updater = adapter.upsert_factory_config_by_settings(self.__key, file_manager_name, settings)
-
-        try:
-            old_filemanager = self.file_manager
-
-            # reload the file manager of the lizard
-            self.load_filemanager()
-
-            self.file_manager.transfer(old_filemanager)
-        except ValueError as e:
-            log.error(f"Error while loading the new File Manager: {e}")
-
-            # something went wrong: rollback
-            adapter.rollback_factory_config(self.__key)
-
-            if updater.old_setting is not None:
-                self.replace_file_manager(updater.old_setting["value"]["name"], updater.new_setting["value"])
-
-            raise e
-
-        return ReplacedNLPConfig(name=file_manager_name, value=updater.new_setting["value"])
 
     def get_cheshire_cat(self, agent_id: str) -> CheshireCat | None:
         """
@@ -369,7 +293,6 @@ class BillTheLizard:
         self.embedder = None
         self.embedder_name = None
         self.embedder_size = None
-        self.file_manager = None
         self.websocket_manager = None
         self.fastapi_app = None
 
@@ -395,3 +318,26 @@ class BillTheLizard:
             for endpoint in self.plugin_manager.endpoints
             if endpoint.plugin_id in self.plugin_manager.active_plugins
         ]
+
+    @property
+    def parsers(self):
+        # default file handlers
+        return {
+            "application/json": JSONParser(),
+            "application/msword": MsWordParser(),
+            "application/pdf": PyMuPDFParser(),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": TableParser(),
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": MsWordParser(),
+            "text/csv": TableParser(),
+            "text/html": BS4HTMLParser(),
+            "text/javascript": LanguageParser(language="js"),
+            "text/markdown": TextParser(),
+            "text/plain": TextParser(),
+            "text/x-python": LanguageParser(language="python"),
+            "video/mp4": YoutubeParser(),
+            "audio/mpeg": FasterWhisperParser(),
+            "audio/mp3": FasterWhisperParser(),
+            "audio/ogg": FasterWhisperParser(),
+            "audio/wav": FasterWhisperParser(),
+            "audio/webm": FasterWhisperParser(),
+        }

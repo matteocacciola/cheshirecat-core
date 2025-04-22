@@ -13,6 +13,8 @@ class AuthResource(Enum):
     SETTINGS = "SETTINGS"
     LLM = "LLM"
     AUTH_HANDLER = "AUTH_HANDLER"
+    FILE_MANAGER = "FILE_MANAGER"
+    CHUNKER = "CHUNKER"
     USERS = "USERS"
     UPLOAD = "UPLOAD"
     PLUGINS = "PLUGINS"
@@ -22,7 +24,6 @@ class AuthResource(Enum):
 class AdminAuthResource(Enum):
     ADMINS = "ADMINS"
     EMBEDDER = "EMBEDDER"
-    FILE_MANAGER = "FILE_MANAGER"
     CHESHIRE_CATS = "CHESHIRE_CATS"
     PLUGINS = "PLUGINS"
 

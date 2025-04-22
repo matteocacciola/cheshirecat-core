@@ -2,7 +2,6 @@ import time
 from typing import Dict
 from uuid import uuid4
 from langchain_core.embeddings import Embeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableLambda
@@ -19,13 +18,23 @@ from cat.db.cruds import (
 )
 from cat.factory.auth_handler import AuthHandlerFactory
 from cat.factory.base_factory import ReplacedNLPConfig
+from cat.factory.chunker import ChunkerFactory
 from cat.factory.custom_auth_handler import BaseAuthHandler
+from cat.factory.custom_chunker import BaseChunker
+from cat.factory.custom_file_manager import BaseFileManager
+from cat.factory.file_manager import FileManagerFactory
 from cat.factory.llm import LLMFactory
 from cat.log import log
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.long_term_memory import LongTermMemory
-from cat.services.factory_adapter import FactoryAdapter
-from cat.utils import langchain_log_prompt, langchain_log_output, get_caller_info
+from cat.utils import (
+    langchain_log_prompt,
+    langchain_log_output,
+    get_caller_info,
+    get_factory_object,
+    get_updated_factory_object,
+    rollback_factory_config,
+)
 
 
 # main class
@@ -49,21 +58,19 @@ class CheshireCat:
         """
 
         self.id = agent_id
-        self.large_language_model: BaseLanguageModel | None = None
+
         self.memory: LongTermMemory | None = None
-        self.custom_auth_handler: BaseAuthHandler | None = None
 
         # instantiate plugin manager (loads all plugins' hooks and tools)
         self.plugin_manager = Tweedledee(self.id)
 
-        # load AuthHandler
-        self.load_auth()
-
         # allows plugins to do something before cat components are loaded
         self.plugin_manager.execute_hook("before_cat_bootstrap", cat=self)
 
-        # load LLM
-        self.load_language_model()
+        self.large_language_model: BaseLanguageModel = get_factory_object(self.id, LLMFactory(self.plugin_manager))
+        self.custom_auth_handler: BaseAuthHandler = get_factory_object(self.id, AuthHandlerFactory(self.plugin_manager))
+        self.file_manager: BaseFileManager = get_factory_object(self.id, FileManagerFactory(self.plugin_manager))
+        self.chunker: BaseChunker = get_factory_object(self.id, ChunkerFactory(self.plugin_manager))
 
         # Load memories (vector collections and working_memory)
         self.load_memory()
@@ -114,6 +121,8 @@ class CheshireCat:
         self.custom_auth_handler = None
         self.plugin_manager = None
         self.large_language_model = None
+        self.file_manager = None
+        self.chunker = None
 
     async def destroy(self):
         """Destroy all data from the cat."""
@@ -125,24 +134,6 @@ class CheshireCat:
         crud_history.destroy_all(self.id)
         crud_plugins.destroy_all(self.id)
         crud_users.destroy_all(self.id)
-
-    def load_language_model(self):
-        """Large Language Model (LLM) selection."""
-
-        factory = LLMFactory(self.plugin_manager)
-
-        # Custom llm
-        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.id)
-
-        self.large_language_model = factory.get_from_config_name(self.id, selected_config["value"]["name"])
-
-    def load_auth(self):
-        factory = AuthHandlerFactory(self.plugin_manager)
-
-        # Custom auth_handler
-        selected_config = FactoryAdapter(factory).get_factory_config_by_settings(self.id)
-
-        self.custom_auth_handler = factory.get_from_config_name(self.id, selected_config["value"]["name"])
 
     def load_memory(self):
         """Load LongTerMemory (which loads WorkingMemory)."""
@@ -231,17 +222,17 @@ class CheshireCat:
             The dictionary resuming the new name and settings of the LLM
         """
 
-        adapter = FactoryAdapter(LLMFactory(self.plugin_manager))
-        updater = adapter.upsert_factory_config_by_settings(self.id, language_model_name, settings)
+        factory = LLMFactory(self.plugin_manager)
+        updater = get_updated_factory_object(self.id, factory, language_model_name, settings)
 
         try:
             # try to reload the llm of the cat
-            self.load_language_model()
+            self.large_language_model = get_factory_object(self.id, factory)
         except ValueError as e:
             log.error(f"Agent id: {self.id}. Error while loading the new LLM: {e}")
 
             # something went wrong: rollback
-            adapter.rollback_factory_config(self.id)
+            rollback_factory_config(self.id, factory)
 
             if updater.old_setting is not None:
                 self.replace_llm(updater.old_setting["value"]["name"], updater.new_setting["value"])
@@ -264,13 +255,66 @@ class CheshireCat:
             The dictionary resuming the new name and settings of the Auth Handler
         """
 
-        updater = FactoryAdapter(
-            AuthHandlerFactory(self.plugin_manager)
-        ).upsert_factory_config_by_settings(self.id, auth_handler_name, settings)
+        factory = AuthHandlerFactory(self.plugin_manager)
+        updater = get_updated_factory_object(self.id, factory, auth_handler_name, settings)
 
-        self.load_auth()
+        self.custom_auth_handler = get_factory_object(self.id, factory)
 
         return ReplacedNLPConfig(name=auth_handler_name, value=updater.new_setting["value"])
+
+    def replace_file_manager(self, file_manager_name: str, settings: Dict) -> ReplacedNLPConfig:
+        """
+        Replace the current file manager with a new one. This method is used to change the file manager of the lizard.
+
+        Args:
+            file_manager_name: name of the new file manager
+            settings: settings of the new file manager
+
+        Returns:
+            The dictionary resuming the new name and settings of the file manager
+        """
+
+        factory = FileManagerFactory(self.plugin_manager)
+        updater = get_updated_factory_object(self.id, factory, file_manager_name, settings)
+
+        try:
+            old_filemanager = self.file_manager
+
+            # reload the file manager of the lizard
+            self.file_manager = get_factory_object(self.id, factory)
+
+            self.file_manager.transfer(old_filemanager)
+        except ValueError as e:
+            log.error(f"Error while loading the new File Manager: {e}")
+
+            # something went wrong: rollback
+            rollback_factory_config(self.id, factory)
+
+            if updater.old_setting is not None:
+                self.replace_file_manager(updater.old_setting["value"]["name"], updater.new_setting["value"])
+
+            raise e
+
+        return ReplacedNLPConfig(name=file_manager_name, value=updater.new_setting["value"])
+
+
+    def replace_chunker(self, chunker_name: str, settings: Dict) -> ReplacedNLPConfig:
+        """
+        Replace the current Auth Handler with a new one.
+        Args:
+            chunker_name: name of the new chunker
+            settings: settings of the new chunker
+
+        Returns:
+            The dictionary resuming the new name and settings of the Auth Handler
+        """
+
+        factory = ChunkerFactory(self.plugin_manager)
+        updater = get_updated_factory_object(self.id, factory, chunker_name, settings)
+
+        self.chunker = get_factory_object(self.id, ChunkerFactory(self.plugin_manager))
+
+        return ReplacedNLPConfig(name=chunker_name, value=updater.new_setting["value"])
 
     @property
     def lizard(self) -> "BillTheLizard":
@@ -397,16 +441,7 @@ class CheshireCat:
     @property
     def text_splitter(self):
         # default text splitter
-        text_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-            chunk_size=256,
-            chunk_overlap=64,
-            separators=["\\n\\n", "\n\n", ".\\n", ".\n", "\\n", "\n", " ", ""],
-            encoding_name="cl100k_base",
-            keep_separator=True,
-            strip_whitespace=True,
-            allowed_special={"\n"},  # Explicitly allow the special token ‘\n’
-            disallowed_special=(),  # Disallow control for other special tokens
-        )
+        text_splitter = self.chunker
 
         # no access to stray
         text_splitter = self.plugin_manager.execute_hook(
