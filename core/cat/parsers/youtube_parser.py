@@ -1,4 +1,3 @@
-from abc import ABC
 from typing import Iterator
 from pytube import extract
 from youtube_transcript_api import YouTubeTranscriptApi
@@ -8,7 +7,7 @@ from langchain.document_loaders.base import BaseBlobParser
 from langchain.document_loaders.blob_loaders.schema import Blob
 
 
-class YoutubeParser(BaseBlobParser, ABC):
+class YoutubeParser(BaseBlobParser):
     def __init__(self):
         self.formatter = TextFormatter()
 

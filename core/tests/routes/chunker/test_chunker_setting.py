@@ -21,7 +21,7 @@ def test_get_all_chunker_settings(secure_client, secure_client_headers, cheshire
         expected_schema = chunkers_schemas[setting["name"]]
         assert dumps(jsonable_encoder(expected_schema)) == dumps(setting["scheme"])
 
-    assert json["selected_configuration"] == "TextChunkerSettings"
+    assert json["selected_configuration"] == "RecursiveTextChunkerSettings"
 
 
 def test_get_chunker_settings_non_existent(secure_client, secure_client_headers):
@@ -34,7 +34,7 @@ def test_get_chunker_settings_non_existent(secure_client, secure_client_headers)
 
 
 def test_get_chunker_settings(secure_client, secure_client_headers):
-    chunker_name = "TextChunkerSettings"
+    chunker_name = "RecursiveTextChunkerSettings"
     response = secure_client.get(f"/chunking/settings/{chunker_name}", headers=secure_client_headers)
     json = response.json()
 

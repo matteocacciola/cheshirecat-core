@@ -19,7 +19,7 @@ class BaseFileManager(ABC):
         self._excluded_files = [".gitignore", ".DS_Store", ".gitkeep", ".git", ".dockerignore"]
         self._root_dir = utils.get_file_manager_root_storage_path()
 
-    def upload_file_to_storage_and_remove(self, file_path: str, remote_root_dir: str):
+    def upload_file_to_storage_and_remove(self, file_path: str, remote_root_dir: str) -> str | None:
         """
         Upload a single file on the storage, within the directory specified by `remote_root_dir`, and then remove it
         from the local file system.
@@ -33,14 +33,17 @@ class BaseFileManager(ABC):
         """
 
         try:
-            self.upload_file_to_storage(file_path, remote_root_dir)
+            uploaded_file_path = self.upload_file_to_storage(file_path, remote_root_dir)
         except Exception as e:
             log.error(f"Error while uploading file {file_path}: {e}")
+            uploaded_file_path = None
 
         try:
             self.remove_file_from_storage(file_path)
         except Exception as e:
             log.error(f"Error while removing file {file_path}: {e}")
+
+        return uploaded_file_path
 
     def upload_file_to_storage(self, file_path: str, remote_root_dir: str | None = None) -> str | None:
         """
@@ -210,17 +213,21 @@ class BaseFileManager(ABC):
             log.error(f"Error while transferring files from the old file manager to the new one: {e}")
             return False
 
-    def file_exists(self, filename: str, remote_root_dir: str) -> bool:
+    def file_exists(self, filename: str, remote_root_dir: str | None = None) -> bool:
         """
         Check if a file exists in the storage.
 
         Args:
-            filename: The name of the file to check
+            filename: The name or path of the file to check
             remote_root_dir: The directory on the storage where the file should be contained
 
         Returns:
             True if the file exists, False otherwise
         """
+        if remote_root_dir is None:
+            remote_root_dir = os.path.dirname(filename)
+            filename = os.path.basename(filename)
+
         return filename in self.list_files(remote_root_dir)
 
     def _filter_excluded(self, files: List[str]) -> List[str]:
@@ -272,7 +279,7 @@ class AWSFileManager(BaseFileManager):
     def __init__(self, bucket_name: str, aws_access_key: str, aws_secret_key: str):
         import boto3
         self.s3 = boto3.client(
-            's3',
+            "s3",
             aws_access_key_id=aws_access_key,
             aws_secret_access_key=aws_secret_key
         )
@@ -300,10 +307,10 @@ class AWSFileManager(BaseFileManager):
         try:
             files_to_delete = self.list_files(remote_root_dir)
             if files_to_delete:
-                objects_to_delete = [{'Key': key} for key in files_to_delete]
+                objects_to_delete = [{"Key": key} for key in files_to_delete]
                 self.s3.delete_objects(
                     Bucket=self.bucket_name,
-                    Delete={'Objects': objects_to_delete}
+                    Delete={"Objects": objects_to_delete}
                 )
             return True
         except Exception as e:
