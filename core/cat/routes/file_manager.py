@@ -4,6 +4,7 @@ from fastapi import APIRouter, Body
 from cat.auth.connection import ContextualCats
 from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
 from cat.factory.base_factory import ReplacedNLPConfig
+from cat.factory.custom_file_manager import FileManagerAttributes
 from cat.factory.file_manager import FileManagerFactory
 from cat.routes.routes_utils import (
     GetSettingsResponse,
@@ -52,3 +53,11 @@ async def upsert_file_manager_setting(
     on_upsert_factory_setting(file_manager_name, FileManagerFactory(ccat.plugin_manager))
 
     return ccat.replace_file_manager(file_manager_name, payload)
+
+
+@router.get("/", response_model=FileManagerAttributes)
+async def get_attributes(
+        cats: ContextualCats = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.LIST),
+) -> FileManagerAttributes:
+    ccat = cats.cheshire_cat
+    return ccat.file_manager.get_attributes()

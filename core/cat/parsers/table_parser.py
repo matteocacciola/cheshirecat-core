@@ -1,13 +1,12 @@
 import json
 import pandas as pd
-from abc import ABC
 from typing import Iterator
 from langchain_core.documents import Document
 from langchain.document_loaders.base import BaseBlobParser
 from langchain.document_loaders.blob_loaders.schema import Blob
 
 
-class TableParser(BaseBlobParser, ABC):
+class TableParser(BaseBlobParser):
     def lazy_parse(self, blob: Blob) -> Iterator[Document]:
         with blob.as_bytes_io() as file:
             if blob.mimetype == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":

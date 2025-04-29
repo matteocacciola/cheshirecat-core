@@ -1,7 +1,7 @@
 [project]
 name = "Cheshire-Cat"
 description = "Production ready AI assistant framework"
-version = "2.1.0"
+version = "2.1.1"
 requires-python = ">=3.11"
 license = { file = "LICENSE" }
 authors = [
@@ -53,6 +53,7 @@ dependencies = [
     "scalar-fastapi",
     "scikit-learn",
     "sentence-transformers",
+    "spacy",
     "text_generation",
     "tiktoken",
     "tomli",

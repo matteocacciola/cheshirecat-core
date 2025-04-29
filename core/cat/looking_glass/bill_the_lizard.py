@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict
 from uuid import uuid4
 from langchain_community.document_loaders.parsers.audio import FasterWhisperParser
 from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
@@ -26,7 +26,7 @@ from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.tweedledum import Tweedledum
 from cat.memory.vector_memory_builder import VectorMemoryBuilder
-from cat.parsers import YoutubeParser, TableParser, JSONParser
+from cat.parsers import YoutubeParser, TableParser, JSONParser, PowerPointParser
 from cat.rabbit_hole import RabbitHole
 from cat.services.websocket_manager import WebsocketManager
 from cat.utils import (
@@ -323,9 +323,11 @@ class BillTheLizard:
         return {
             "application/json": JSONParser(),
             "application/msword": MsWordParser(),
+            "application/vnd.ms-powerpoint": PowerPointParser(),  # Per .ppt
             "application/pdf": PyMuPDFParser(),
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": TableParser(),
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document": MsWordParser(),
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation": PowerPointParser(),
             "text/csv": TableParser(),
             "text/html": BS4HTMLParser(),
             "text/javascript": LanguageParser(language="js"),
