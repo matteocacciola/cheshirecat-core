@@ -8,12 +8,13 @@ import httpx
 from typing import List, Dict, Tuple
 from urllib.parse import urlparse
 from urllib.error import HTTPError
+from qdrant_client.http.models import PointStruct
 from starlette.datastructures import UploadFile
 from langchain_core.documents import Document
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
 from langchain.document_loaders.blob_loaders.schema import Blob
 
-from cat.env import get_env
+from cat.env import get_env_bool
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.memory.utils import ContentType, MultimodalContent, VectorMemoryCollectionTypes
@@ -112,8 +113,8 @@ class RabbitHole:
         # store in memory
         filename = file if isinstance(file, str) else file.filename
 
-        await self.__store_documents(stray=stray, docs=docs, source=filename, metadata=metadata)
-        self.save_file(stray, file_bytes, content_type)
+        stored_points = await self.__store_documents(stray=stray, docs=docs, source=filename, metadata=metadata)
+        self.save_file(stray, file_bytes, content_type, stored_points)
 
     async def __file_to_docs(
         self, stray: "StrayCat", file: str | UploadFile
@@ -207,7 +208,7 @@ class RabbitHole:
         docs: List[Document],
         source: str,
         metadata: Dict = None
-    ) -> None:
+    ) -> List[PointStruct]:
         """Add documents to the Cat's declarative memory.
 
         This method loops a list of Langchain `Document` and adds some metadata. Namely, the source filename and the
@@ -222,6 +223,10 @@ class RabbitHole:
                 Source name to be added as a metadata. It can be a file name or an URL.
             metadata: Dict
                 Metadata to be stored with each chunk.
+
+        Returns:
+            stored_points: List[PointStruct]
+                List of points stored in the Cat's declarative memory.
 
         See Also:
             before_rabbithole_insert_memory
@@ -260,6 +265,7 @@ class RabbitHole:
 
             # add default metadata
             doc.metadata["source"] = source
+            doc.metadata["reference"] = source
             doc.metadata["when"] = time.time()
             # add custom metadata (sent via endpoint)
             doc.metadata = {**doc.metadata, **{k: v for k, v in metadata.items()}}
@@ -270,12 +276,12 @@ class RabbitHole:
             inserting_info = f"{d + 1}/{len(docs)}):    {doc.page_content}"
             if doc.page_content != "":
                 doc_embedding = embedder.embed_documents([doc.page_content])
-                stored_point = await memory.vectors.declarative.add_point(
+                if (stored_point := await memory.vectors.declarative.add_point(
                     content=MultimodalContent(text=doc.page_content),
                     vectors={ContentType.TEXT: doc_embedding[0]},
                     metadata=doc.metadata,
-                )
-                stored_points.append(stored_point)
+                )) is not None:
+                    stored_points.append(stored_point)
 
                 log.info(f"Agent id: {ccat.id}. Inserted into memory ({inserting_info})")
             else:
@@ -297,6 +303,8 @@ class RabbitHole:
         await stray.send_ws_message(finished_reading_message)
 
         log.warning(f"Agent id: {ccat.id}. Done uploading {source}")
+
+        return stored_points
 
     def __split_text(self, stray: "StrayCat", text: List[Document]):
         """Split text in overlapped chunks.
@@ -344,11 +352,11 @@ class RabbitHole:
 
         return docs
 
-    def save_file(self, stray: "StrayCat", file_bytes: bytes, content_type: str):
+    def save_file(self, stray: "StrayCat", file_bytes: bytes, content_type: str, stored_points: List[PointStruct]):
         """
-        Save file in the Rabbit Hole remote storage handled by the BillTheLizard's file manager.
+        Save file in the Rabbit Hole remote storage handled by the CheshireCat's file manager.
         This method saves the file in the Rabbit Hole storage. The file is saved in a temporary folder and the path is
-        stored in the remote storage handled by the BillTheLizard's file manager.
+        stored in the remote storage handled by the CheshireCat's file manager.
 
         Args:
             stray: StrayCat
@@ -357,9 +365,11 @@ class RabbitHole:
                 The file bytes to be saved.
             content_type: str
                 The content type of the file.
+            stored_points: List[PointStruct]
+                List of points stored in the Cat's declarative memory.
         """
 
-        if get_env("CCAT_RABBIT_HOLE_STORAGE_ENABLED") not in ("1", "true"):
+        if not get_env_bool("CCAT_RABBIT_HOLE_STORAGE_ENABLED"):
             return
 
         # save file in a temporary folder
@@ -368,4 +378,9 @@ class RabbitHole:
             temp_file.write(file_bytes)
             file_path = temp_file.name
 
-            stray.cheshire_cat.file_manager.upload_file_to_storage_and_remove(file_path, f"rabbit_hole/{stray.agent_id}")
+            uploaded_file_path = stray.cheshire_cat.file_manager.upload_file_to_storage_and_remove(
+                file_path, f"rabbit_hole/{stray.agent_id}"
+            )
+            stray.memory.vectors.declarative.update_metadata(
+                stored_points, {"reference": uploaded_file_path}
+            )

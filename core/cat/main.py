@@ -1,7 +1,7 @@
 import os
 import uvicorn
 
-from cat.env import get_env
+from cat.env import get_env, get_env_bool
 from cat.utils import get_plugins_path
 
 # RUN!
@@ -15,7 +15,7 @@ if __name__ == "__main__":
         }
     # uvicorn running behind an https proxy
     proxy_pass_config = {}
-    if get_env("CCAT_HTTPS_PROXY_MODE") in ("1", "true"):
+    if get_env_bool("CCAT_HTTPS_PROXY_MODE"):
         proxy_pass_config = {
             "proxy_headers": True,
             "forwarded_allow_ips": get_env("CCAT_CORS_FORWARDED_ALLOW_IPS"),

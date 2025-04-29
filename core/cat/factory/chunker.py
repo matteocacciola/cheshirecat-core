@@ -1,9 +1,17 @@
 from abc import ABC
-from typing import Type, List
+from typing import Type, List, Tuple
 from pydantic import ConfigDict
 
 from cat.factory.base_factory import BaseFactory, BaseFactoryConfigModel
-from cat.factory.custom_chunker import BaseChunker, TextChunker, SemanticChunker
+from cat.factory.custom_chunker import (
+    BaseChunker,
+    RecursiveTextChunker,
+    SemanticChunker,
+    HTMLSemanticChunker,
+    JSONChunker,
+    TokenSpacyChunker,
+    TokenNLTKChunker,
+)
 
 
 class ChunkerSettings(BaseFactoryConfigModel, ABC):
@@ -19,17 +27,17 @@ class ChunkerSettings(BaseFactoryConfigModel, ABC):
         return BaseChunker
 
 
-class TextChunkerSettings(ChunkerSettings):
+class RecursiveTextChunkerSettings(ChunkerSettings):
     encoding_name: str = "cl100k_base"
     chunk_size: int = 256
     chunk_overlap: int = 64
 
-    _pyclass: Type = TextChunker
+    _pyclass: Type = RecursiveTextChunker
 
     model_config = ConfigDict(
         json_schema_extra={
-            "humanReadableName": "Text splitter",
-            "description": "Configuration for text splitter to be used to split text into smaller chunks",
+            "humanReadableName": "Recursive text splitter",
+            "description": "Configuration for a recursive text splitter to be used to split text into smaller chunks",
             "link": "",
         }
     )
@@ -52,11 +60,79 @@ class SemanticChunkerSettings(ChunkerSettings):
     )
 
 
+class HTMLSemanticChunkerSettings(ChunkerSettings):
+    headers_to_split_on: List[Tuple[str, str]] = [
+        ("h1", "Header 1"),
+        ("h2", "Header 2"),
+    ]
+    elements_to_preserve: List[str] = ["table", "ul", "ol", "code"]
+
+    _pyclass: Type = HTMLSemanticChunker
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "HTML Semantic chunker",
+            "description": "Configuration for HTML semantic chunker to be used to split text into smaller chunks",
+            "link": "",
+        }
+    )
+
+
+class JSONChunkerSettings(ChunkerSettings):
+    max_chunk_size: int = 2000
+    min_chunk_size: int | None = None
+
+    _pyclass: Type = JSONChunker
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "JSON Semantic chunker",
+            "description": "Configuration for JSON semantic chunker to be used to split text into smaller chunks",
+            "link": "",
+        }
+    )
+
+
+class TokenSpacyChunkerSettings(ChunkerSettings):
+    chunk_size: int = 4000
+    chunk_overlap: int = 200
+    max_length: int = 1_000_000
+
+    _pyclass: Type = TokenSpacyChunker
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "spaCy token-based chunker",
+            "description": "Configuration for spaCy token-based chunker to be used to split text into smaller chunks",
+            "link": "",
+        }
+    )
+
+
+class TokenNLTKChunkerSettings(ChunkerSettings):
+    chunk_size: int = 4000
+    chunk_overlap: int = 200
+    language: str = "english"
+
+    _pyclass: Type = TokenNLTKChunker
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "NLTK token-based chunker",
+            "description": "Configuration for NLTK token-based chunker to be used to split text into smaller chunks",
+            "link": "",
+        }
+    )
+
 class ChunkerFactory(BaseFactory):
     def get_allowed_classes(self) -> List[Type[ChunkerSettings]]:
         list_chunkers_default = [
-            TextChunkerSettings,
+            RecursiveTextChunkerSettings,
             SemanticChunkerSettings,
+            HTMLSemanticChunkerSettings,
+            JSONChunkerSettings,
+            TokenSpacyChunkerSettings,
+            TokenNLTKChunkerSettings,
         ]
 
         list_chunkers_default = self._hook_manager.execute_hook(
@@ -78,7 +154,7 @@ class ChunkerFactory(BaseFactory):
 
     @property
     def default_config_class(self) -> Type[BaseFactoryConfigModel]:
-        return TextChunkerSettings
+        return RecursiveTextChunkerSettings
 
     @property
     def schema_name(self) -> str:

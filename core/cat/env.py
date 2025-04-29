@@ -47,3 +47,7 @@ def get_env(name):
         default = cat_default_env_variables[name]
 
     return os.getenv(name, default)
+
+
+def get_env_bool(name):
+    return get_env(name) in ("1", "true")

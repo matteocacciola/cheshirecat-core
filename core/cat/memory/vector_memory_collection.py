@@ -279,3 +279,19 @@ class VectorMemoryCollection:
         except Exception as e:
             log.error(f"Error deleting collection {self.collection_name}, agent {self.agent_id}: {e}")
             return False
+
+    async def update_metadata(self, points: List[PointStruct], metadata: Dict) -> UpdateResult:
+        """
+        Update the metadata of a point in the collection.
+
+        Args:
+            points: The points to update.
+            metadata: The metadata to update.
+
+        Returns:
+            UpdateResult: The result of the update operation.
+        """
+        for point in points:
+            point.payload["metadata"] = {**point.payload["metadata"], **metadata}
+            point.payload["tenant_id"] = self.agent_id
+        return await self.client.upsert(collection_name=self.collection_name, points=points)

@@ -5,6 +5,7 @@ from qdrant_client.http.models import UpdateResult, Record
 
 from cat.auth.connection import ContextualCats
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
+from cat.env import get_env_bool
 from cat.factory.embedder import EmbedderFactory
 from cat.routes.routes_utils import (
     MemoryPointBase,
@@ -221,12 +222,23 @@ async def delete_memory_points_by_metadata(
 ) -> DeleteMemoryPointsByMetadataResponse:
     """Delete points in memory by filter"""
 
+    ccat = cats.cheshire_cat
     memory_collection_is_accessible(collection_id)
 
     metadata = metadata or {}
 
     # delete points
-    ret = await cats.cheshire_cat.memory.vectors.collections[collection_id].delete_points_by_metadata_filter(metadata)
+    ret = await ccat.memory.vectors.collections[collection_id].delete_points_by_metadata_filter(metadata)
+
+    # if `metadata["reference"]` exists within the file storage, delete the file
+    file_manager = ccat.file_manager
+    if (
+            get_env_bool("CCAT_RABBIT_HOLE_STORAGE_ENABLED")
+            and collection_id == VectorMemoryCollectionTypes.DECLARATIVE
+            and (reference := metadata.get("reference"))
+            and file_manager.file_exists(reference)
+    ):
+        file_manager.remove_file_from_storage(reference)
 
     return DeleteMemoryPointsByMetadataResponse(deleted=ret)
 
