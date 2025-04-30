@@ -18,7 +18,7 @@ from qdrant_client.http.models import (
 from cat.db.vector_database import get_vector_db
 from cat.env import get_env
 from cat.log import log
-from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.memory.utils import ContentType, VectorMemoryCollectionTypes
 from cat.utils import singleton
 
 
@@ -61,12 +61,19 @@ class VectorMemoryBuilder:
         return f"{self.lizard.embedder_name}_{collection_name}"
 
     async def __check_embedding_size(self, collection_name: str) -> bool:
-        # having the same size does not necessarily imply being the same embedder
-        # having vectors with the same size but from different embedder in the same vector space is wrong
-        same_size = (
-            (await self.__client.get_collection(collection_name=collection_name)).config.params.vectors.size
-            == self.lizard.embedder_size.text
-        )
+        # Multiple vector configurations
+        vectors_config = (await self.__client.get_collection(collection_name=collection_name)).config.params.vectors
+        embedder_sizes = self.lizard.embedder_size
+
+        text_lbl = str(ContentType.TEXT)
+        image_lbl = str(ContentType.IMAGE)
+
+        text_condition = text_lbl in vectors_config and vectors_config[text_lbl].size == embedder_sizes.text
+        image_condition = (
+            image_lbl in vectors_config and vectors_config[image_lbl].size == embedder_sizes.image
+        ) if embedder_sizes.image else True
+
+        same_size = text_condition and image_condition
         local_alias = self.__get_local_alias(collection_name)
 
         existing_aliases = (await self.__client.get_collection_aliases(collection_name=collection_name)).aliases
@@ -87,15 +94,24 @@ class VectorMemoryBuilder:
             collection_name: Name of the collection to create
         """
 
-        log.warning(f"Creating collection \"{collection_name}\"...")
+        log.warning(f"Creating collection \"{collection_name}\" ...")
+
+        embedder_sizes = self.lizard.embedder_size
+
+        # Create vector config for each modality
+        vectors_config = {
+            str(ContentType.TEXT): VectorParams(size=embedder_sizes.text, distance=Distance.COSINE)
+        }
+
+        if embedder_sizes.image:
+            vectors_config[str(ContentType.IMAGE)] = VectorParams(
+                size=embedder_sizes.image, distance=Distance.COSINE
+            )
 
         try:
             await self.__client.create_collection(
                 collection_name=collection_name,
-                vectors_config=VectorParams(
-                    size=self.lizard.embedder_size.text, distance=Distance.COSINE
-                ),
-                # hybrid mode: original vector on Disk, quantized vector in RAM
+                vectors_config=vectors_config,
                 optimizers_config=OptimizersConfigDiff(memmap_threshold=20000, indexing_threshold=20000),
                 quantization_config=ScalarQuantization(
                     scalar=ScalarQuantizationConfig(
