@@ -5,7 +5,7 @@ from enum import Enum as BaseEnum, EnumMeta
 from fastapi import UploadFile
 import inspect
 from pydantic import BaseModel, ConfigDict
-from langchain.evaluation import StringDistance, load_evaluator, EvaluatorType
+from rapidfuzz.distance import Levenshtein
 from langchain_core.embeddings import Embeddings
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
@@ -232,16 +232,9 @@ HOW TO FIX: go to your OpenAI account and add a credit card"""
     return error_description
 
 
-def levenshtein_distance(prediction: str, reference: str) -> int:
-    jaro_evaluator = load_evaluator(
-        EvaluatorType.STRING_DISTANCE, distance=StringDistance.LEVENSHTEIN
-    )
-    result = jaro_evaluator.evaluate_strings(
-        prediction=prediction,
-        reference=reference,
-    )
-    return result["score"]
-
+def levenshtein_distance(prediction: str, reference: str) -> float:
+    res = Levenshtein.normalized_distance(prediction, reference)
+    return res
 
 def parse_json(json_string: str, pydantic_model: BaseModel = None) -> Dict:
     # instantiate parser
@@ -249,8 +242,8 @@ def parse_json(json_string: str, pydantic_model: BaseModel = None) -> Dict:
 
     # clean to help small LLMs
     replaces = {
-        "\_": "_",
-        "\-": "-",
+        "\\_": "_",
+        "\\-": "-",
         "None": "null",
         "{{": "{",
         "}}": "}",
