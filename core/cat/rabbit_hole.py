@@ -161,7 +161,10 @@ class RabbitHole:
                 request = httpx.get(file, headers={"User-Agent": "Magic Browser"})
 
                 # Define mime type and source of url
-                content_type = request.headers["Content-Type"].split(";")[0]
+                # Add fallback for empty/None content_type
+                content_type = request.headers.get(
+                    "Content-Type", "text/html" if file.startswith(("http://", "https://")) else "text/plain"
+                ).split(";")[0]
                 source = file
 
                 try:
@@ -182,6 +185,10 @@ class RabbitHole:
 
         if not file_bytes:
             raise ValueError(f"Something went wrong with the file {source}")
+
+        log.debug(f"Attempting to parse file: {source}")
+        log.debug(f"Detected MIME type: {content_type}")
+        log.debug(f"Available handlers: {list(stray.file_handlers.keys())}")
 
         # Load the bytes in the Blob schema
         blob = Blob(data=file_bytes, mimetype=content_type).from_data(
