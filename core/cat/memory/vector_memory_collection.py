@@ -1,5 +1,5 @@
 import uuid
-from typing import Any, List, Iterable, Dict, Tuple, Final
+from typing import Any, List, Dict, Tuple, Final
 from qdrant_client.qdrant_remote import QdrantRemote
 from qdrant_client.http.models import (
     Batch,
@@ -13,11 +13,12 @@ from qdrant_client.http.models import (
     UpdateResult,
     HasIdCondition,
     Payload,
+    Vector,
 )
 
 from cat.db.vector_database import get_vector_db
 from cat.log import log
-from cat.memory.utils import DocumentRecall, to_document_recall
+from cat.memory.utils import ContentType, DocumentRecall, MultimodalContent, to_document_recall
 
 
 class VectorMemoryCollection:
@@ -83,33 +84,33 @@ class VectorMemoryCollection:
 
     async def add_point(
         self,
-        content: str,
-        vector: Iterable,
+        content: MultimodalContent,
+        vectors: Dict[ContentType, List[float]],
         metadata: Dict = None,
         id: str | None = None,
         **kwargs,
     ) -> PointStruct | None:
-        """Add a point (and its metadata) to the vectorstore.
+        """
+        Add a multimodal point to the vectorstore.
 
         Args:
-            content: original text.
-            vector: Embedding vector.
-            metadata: Optional metadata dictionary associated with the text.
-            id:
-                Optional id to associate with the point. Id has to be an uuid-like string.
+            content: MultimodalContent object containing text and/or image data
+            vectors: Dictionary mapping modality to its vector representation
+            metadata: Optional metadata dictionary
+            id: Optional unique identifier
 
         Returns:
-            PointStruct: The stored point.
+            PointStruct: The stored point
         """
 
         point = PointStruct(
             id=id or uuid.uuid4().hex,
             payload={
-                "page_content": content,
+                "page_content": content.model_dump(),
                 "metadata": metadata,
                 "tenant_id": self.agent_id,
             },
-            vector=vector,
+            vector={str(k): v for k, v in vectors.items()}  # Using named vectors
         )
 
         update_status = await self.client.upsert(collection_name=self.collection_name, points=[point], **kwargs)
@@ -121,9 +122,12 @@ class VectorMemoryCollection:
         return None
 
     # add points in collection
-    async def add_points(self, payloads: List[Payload], vectors: List, ids: List | None = None):
+    async def add_points(
+        self, payloads: List[Payload], vectors: Dict[ContentType, List[Vector]], ids: List | None = None
+    ) -> UpdateResult:
         """
         Upsert memories in batch mode
+
         Args:
             payloads: the payloads of the points
             vectors: the vectors of the points
@@ -136,14 +140,10 @@ class VectorMemoryCollection:
         if not ids:
             ids = [uuid.uuid4().hex for _ in range(len(payloads))]
 
-        if len(ids) != len(payloads) or len(ids) != len(vectors):
-            raise ValueError("ids, payloads and vectors must have the same length")
-
         payloads = [{**p, **{"tenant_id": self.agent_id}} for p in payloads]
-        points = Batch(ids=ids, payloads=payloads, vectors=vectors)
+        points = Batch(ids=ids, payloads=payloads, vectors={str(k): v for k, v in vectors.items()})
 
-        res = await self.client.upsert(collection_name=self.collection_name, points=points)
-        return res
+        return await self.client.upsert(collection_name=self.collection_name, points=points)
 
     async def delete_points_by_metadata_filter(self, metadata: Dict | None = None) -> UpdateResult:
         conditions = [self._tenant_field_condition()]
@@ -157,12 +157,15 @@ class VectorMemoryCollection:
 
     # delete point in collection
     async def delete_points(self, points_ids: List) -> UpdateResult:
-        res = await self.client.delete(collection_name=self.collection_name, points_selector=points_ids)
-        return res
+        return await self.client.delete(collection_name=self.collection_name, points_selector=points_ids)
 
     # retrieve similar memories from embedding
     async def recall_memories_from_embedding(
-        self, embedding: List[float], metadata: Dict | None = None, k: int | None = 5, threshold: float | None = None
+        self,
+        query_vectors: Dict[ContentType, List[float]],
+        metadata: Dict | None = None,
+        k: int | None = 5,
+        threshold: float | None =None
     ) -> List[DocumentRecall]:
         """
         Retrieve memories from the collection based on an embedding vector. The memories are sorted by similarity to the
@@ -175,10 +178,10 @@ class VectorMemoryCollection:
         parameter is None, all memories are retrieved. If the threshold parameter is None, no memories are filtered out.
 
         Args:
-            embedding: Embedding vector.
-            metadata: Dictionary containing metadata filter.
-            k: Number of memories to retrieve.
-            threshold: Similarity threshold.
+            query_vectors: Dictionary mapping modality to query vector
+            metadata: Optional metadata filter
+            k: Number of results to return
+            threshold: Optional similarity threshold
 
         Returns:
             List: List of DocumentRecall.
@@ -189,6 +192,8 @@ class VectorMemoryCollection:
             conditions.extend([
                 condition for key, value in metadata.items() for condition in self._build_condition(key, value)
             ])
+
+        embedding = [v for v in query_vectors.values()]
 
         # retrieve memories
         query_response = await self.client.query_points(
