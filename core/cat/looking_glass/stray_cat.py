@@ -90,7 +90,7 @@ class StrayCat:
         Send a message via websocket.
 
         This method is useful for sending a message via websocket directly without passing through the LLM.
-        In case there is no connection the message is skipped and a warning is logged.
+        In case there is no connection, the message is skipped and a warning is logged.
 
         Args:
         content: str
@@ -125,14 +125,13 @@ class StrayCat:
             return
         await self._send_ws_json({"type": msg_type, "content": content})
 
-    async def send_chat_message(self, message: str | CatMessage, save : bool = False):
+    async def send_chat_message(self, message: str | CatMessage):
         """
         Sends a chat message to the user using the active WebSocket connection.
-        In case there is no connection the message is skipped and a warning is logged
+        In case there is no connection, the message is skipped and a warning is logged
 
         Args:
             message (str | CatMessage): message to send
-            save (bool, optional): Save the message in the conversation history. Defaults to False.
 
         Examples
         --------
@@ -146,15 +145,12 @@ class StrayCat:
         if isinstance(message, str):
             message = CatMessage(text=message, why=self._build_why())
 
-        if save:
-            self.working_memory.update_history(who=Role.AI, content=message)
-
         await self._send_ws_json(message.model_dump())
 
     async def send_notification(self, content: str):
         """
         Sends a notification message to the user using the active WebSocket connection.
-        In case there is no connection the message is skipped and a warning is logged.
+        In case there is no connection, the message is skipped and a warning is logged.
 
         Args:
             content (str): message to send
@@ -170,7 +166,7 @@ class StrayCat:
     async def send_error(self, error: str | Exception):
         """
         Sends an error message to the user using the active WebSocket connection.
-        In case there is no connection the message is skipped and a warning is logged.
+        In case there is no connection, the message is skipped and a warning is logged.
 
         Args:
             error (Union[str, Exception]): message to send
@@ -209,14 +205,14 @@ class StrayCat:
         """
         This is a proxy method to perform search in a vector memory collection.
         The method allows retrieving information from one specific vector memory collection with custom parameters.
-        The Cat uses this method internally.
-        to recall the relevant memories to Working Memory every user's chat interaction.
+        The Cat uses this method internally to recall the relevant memories to Working Memory every user's chat
+        interaction.
         This method is useful also to perform a manual search in hook and tools.
 
         Args:
             query: List[float]
                 The search query, passed as embedding vector.
-                Please, first run cheshire_cat.embedder.embed_query(query) if you have a string query to pass here.
+                Please first run cheshire_cat.embedder.embed_query(query) if you have a string query to pass here.
             collection_name: str
                 The name of the collection to perform the search.
                 Available collections are: *episodic*, *declarative*, *procedural*.
@@ -283,12 +279,12 @@ class StrayCat:
         Notes
         -----
         The user's message is used as a query to make a similarity search in the Cat's vector memories.
-        Five hooks allow to customize the recall pipeline before and after it is done.
+        Five hooks allow customizing the recall pipeline before and after it is done.
         """
         cheshire_cat = self.cheshire_cat
         plugin_manager = self.plugin_manager
 
-        # We may want to search in memory. If query is not provided, use the user's message as the query
+        # We may want to search in memory. If a query is not provided, use the user's message as the query
         recall_query = plugin_manager.execute_hook(
             "cat_recall_query",
             query if query is not None else self.working_memory.user_message.text,
@@ -390,7 +386,7 @@ class StrayCat:
         answer. This is formatted in a dictionary to be sent as a JSON via Websocket to the client.
         """
 
-        ### setup working memory for this convo turn
+        # set up working memory for this convo turn
         # keeping track of model interactions
         self.working_memory.model_interactions = []
         # latest user message
@@ -411,9 +407,6 @@ class StrayCat:
             UserMessage
         )
 
-        # update conversation history (Human turn)
-        self.working_memory.update_history(who=Role.HUMAN, content=self.working_memory.user_message)
-
         # recall episodic and declarative memories from vector collections and store them in working_memory
         try:
             await self.recall_relevant_memories_to_working_memory()
@@ -422,11 +415,62 @@ class StrayCat:
 
             raise VectorMemoryError("An error occurred while recalling relevant memories.")
 
-        agent_output = self._build_agent_output()
+        # reply with agent
+        try:
+            agent_output: AgentOutput = self.main_agent.execute(self)
+            if agent_output.output == utils.default_llm_answer_prompt():
+                agent_output.with_llm_error = True
+        except Exception as e:
+            # This error happens when the LLM does not respect prompt instructions.
+            # We grab the LLM output here anyway, so small and non-instruction-fine-tuned models can still be used.
+            error_description = str(e)
+
+            log.error(f"Agent id: {self.__agent_id}. Error: {error_description}")
+            if "Could not parse LLM output: `" not in error_description:
+                raise e
+
+            unparsable_llm_output = error_description.replace(
+                "Could not parse LLM output: `", ""
+            ).replace("`", "")
+            agent_output = AgentOutput(output=unparsable_llm_output, with_llm_error=True)
+
         log.info(f"Agent id: {self.__agent_id}. Agent output returned to stray:")
         log.info(agent_output)
 
-        return await self._on_agent_output_built(agent_output=agent_output)
+        # prepare a final cat message
+        final_output = CatMessage(text=str(agent_output.output), why=self._build_why(agent_output))
+
+        # run a message through plugins
+        final_output = utils.restore_original_model(
+            self.plugin_manager.execute_hook("before_cat_sends_message", final_output, cat=self),
+            CatMessage,
+        )
+
+        if not agent_output.with_llm_error:
+            # update conversation history (Human turn)
+            self.working_memory.update_history(who=Role.HUMAN, content=self.working_memory.user_message)
+
+            # store a user message in episodic memory
+            doc = Document(
+                page_content=self.working_memory.user_message.text,
+                metadata={"source": self.__user.id, "when": time.time()},
+            )
+            doc = self.plugin_manager.execute_hook(
+                "before_cat_stores_episodic_memory", doc, cat=self
+            )
+            # TODO: vectorize and store also conversation chunks (not raw dialog, but summarization)
+            cheshire_cat = self.cheshire_cat
+            user_message_embedding = cheshire_cat.embedder.embed_documents([self.working_memory.user_message.text])
+            await cheshire_cat.memory.vectors.episodic.add_point(
+                doc.page_content,
+                user_message_embedding[0],
+                doc.metadata,
+            )
+
+            # update conversation history (AI turn)
+            self.working_memory.update_history(who=Role.AI, content=final_output)
+
+        return final_output
 
     async def run_http(self, user_message: UserMessage) -> CatMessage:
         try:
@@ -439,13 +483,13 @@ class StrayCat:
     async def run_websocket(self, user_message: UserMessage) -> None:
         try:
             cat_message = await self(user_message)
-            # send message back to client via WS
+            # send a message back to a client via WS
             await self.send_chat_message(cat_message)
         except Exception as e:
             # Log any unexpected errors
             log.error(f"Agent id: {self.__agent_id}. Error {e}")
             try:
-                # Send error as websocket message
+                # Send error as a websocket message
                 await self.send_error(e)
             except ConnectionClosedOK as ex:
                 log.warning(f"Agent id: {self.__agent_id}. Warning {ex}")
@@ -510,67 +554,6 @@ Allowed classes are:
         )
 
         return best_label if score < score_threshold else None
-
-    def _build_agent_output(self) -> AgentOutput:
-        # reply with agent
-        try:
-            agent_output: AgentOutput = self.main_agent.execute(self)
-            if agent_output.output == utils.default_llm_answer_prompt():
-                agent_output.with_llm_error = True
-        except Exception as e:
-            # This error happens when the LLM does not respect prompt instructions.
-            # We grab the LLM output here anyway, so small and non instruction-fine-tuned models can still be used.
-            error_description = str(e)
-
-            log.error(f"Agent id: {self.__agent_id}. Error: {error_description}")
-            if "Could not parse LLM output: `" not in error_description:
-                raise e
-
-            unparsable_llm_output = error_description.replace(
-                "Could not parse LLM output: `", ""
-            ).replace("`", "")
-            agent_output = AgentOutput(output=unparsable_llm_output, with_llm_error=True)
-
-        return agent_output
-
-    async def _on_agent_output_built(self, agent_output: AgentOutput) -> CatMessage:
-        if not agent_output.with_llm_error:
-            await self._store_user_message_in_episodic_memory(self.working_memory.user_message)
-
-        # prepare final cat message
-        final_output = CatMessage(text=str(agent_output.output), why=self._build_why(agent_output))
-
-        # run message through plugins
-        final_output = utils.restore_original_model(
-            self.plugin_manager.execute_hook("before_cat_sends_message", final_output, cat=self),
-            CatMessage,
-        )
-
-        # update conversation history (AI turn)
-        if agent_output.with_llm_error:
-            self.working_memory.pop_last_message_if_human()
-        else:
-            self.working_memory.update_history(who=Role.AI, content=final_output)
-
-        return final_output
-
-    async def _store_user_message_in_episodic_memory(self, user_message: UserMessage):
-        doc = Document(
-            page_content=user_message.text,
-            metadata={"source": self.__user.id, "when": time.time()},
-        )
-        doc = self.plugin_manager.execute_hook(
-            "before_cat_stores_episodic_memory", doc, cat=self
-        )
-        # store user message in episodic memory
-        # TODO: vectorize and store also conversation chunks (not raw dialog, but summarization)
-        cheshire_cat = self.cheshire_cat
-        user_message_embedding = cheshire_cat.embedder.embed_documents([user_message.text])
-        await cheshire_cat.memory.vectors.episodic.add_point(
-            doc.page_content,
-            user_message_embedding[0],
-            doc.metadata,
-        )
 
     @property
     def user(self) -> AuthUserInfo:

@@ -378,15 +378,26 @@ class RabbitHole:
         if not get_env_bool("CCAT_RABBIT_HOLE_STORAGE_ENABLED"):
             return
 
-        # save file in a temporary folder
+        # save a file in a temporary folder
         extension = mimetypes.guess_extension(content_type)
         with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as temp_file:
             temp_file.write(file_bytes)
             file_path = temp_file.name
 
-            uploaded_file_path = stray.cheshire_cat.file_manager.upload_file_to_storage_and_remove(
-                file_path, f"rabbit_hole/{stray.agent_id}"
-            )
+        # upload a file to CheshireCat's file manager
+        uploaded_file_path = None
+        try:
+            uploaded_file_path = stray.cheshire_cat.file_manager.upload_file_to_storage(file_path, stray.agent_id)
+        except Exception as e:
+            log.error(f"Error while uploading file {file_path}: {e}")
+        finally:
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                log.error(f"Error while deleting temporary file {file_path}: {e}")
+
+        if uploaded_file_path is not None:
+            # update metadata of the stored points with the uploaded file path
             stray.memory.vectors.declarative.update_metadata(
                 stored_points, {"reference": uploaded_file_path}
             )

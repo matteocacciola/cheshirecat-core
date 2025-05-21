@@ -60,4 +60,4 @@ async def get_attributes(
     cats: ContextualCats = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.LIST),
 ) -> FileManagerAttributes:
     ccat = cats.cheshire_cat
-    return ccat.file_manager.get_attributes()
+    return ccat.file_manager.get_attributes(ccat.id)

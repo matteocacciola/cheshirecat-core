@@ -33,32 +33,6 @@ class BaseFileManager(ABC):
         self._excluded_files = [".gitignore", ".DS_Store", ".gitkeep", ".git", ".dockerignore"]
         self._root_dir = utils.get_file_manager_root_storage_path()
 
-    def upload_file_to_storage_and_remove(self, file_path: str, remote_root_dir: str) -> str | None:
-        """
-        Upload a single file on the storage, within the directory specified by `remote_root_dir`, and then remove it
-        from the local file system.
-
-        Args:
-            file_path: The path of the file to upload
-            remote_root_dir: The directory on the storage where the file will be uploaded
-
-        Returns:
-            The path of the file on the storage, None if the file has not been uploaded
-        """
-
-        try:
-            uploaded_file_path = self.upload_file_to_storage(file_path, remote_root_dir)
-        except Exception as e:
-            log.error(f"Error while uploading file {file_path}: {e}")
-            uploaded_file_path = None
-
-        try:
-            self.remove_file_from_storage(file_path)
-        except Exception as e:
-            log.error(f"Error while removing file {file_path}: {e}")
-
-        return uploaded_file_path
-
     def upload_file_to_storage(self, file_path: str, remote_root_dir: str | None = None) -> str | None:
         """
         Upload a single file on the storage, within the directory specified by `remote_root_dir`.
@@ -141,14 +115,12 @@ class BaseFileManager(ABC):
     def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
         pass
 
-    def get_attributes(self, remote_root_dir: str | None = None, all_results: bool = True) -> FileManagerAttributes:
+    def get_attributes(self, remote_root_dir: str | None = None) -> FileManagerAttributes:
         """
         List of all the files contained into the `remote_root_dir` on the storage.
 
         Args:
             remote_root_dir: The directory on the storage where the files are contained
-            all_results: If True, return all the files, otherwise return only the files that are not excluded by the
-                rules identified within the `_excluded_dirs` and `_excluded_files` attributes
 
         Returns:
             List of the files on the storage: path, size, last modified date
@@ -160,28 +132,9 @@ class BaseFileManager(ABC):
         excluded_paths = self._excluded_dirs + self._excluded_files
         file_names = [file.name for file in files]
 
-        final_list = (
-            files
-            if all_results
-            else [file for file in files if not any([ex in file_names for ex in excluded_paths])]
-        )
+        final_list = [file for file in files if not any([ex in file_names for ex in excluded_paths])]
 
         return FileManagerAttributes(files=final_list, size=sum(file.size for file in final_list))
-
-    def list_filenames(self, remote_root_dir: str | None = None, all_results: bool = True) -> List[str]:
-        """
-        List of all the file names contained into the `remote_root_dir` on the storage.
-
-        Args:
-            remote_root_dir: The directory on the storage where the files are contained
-            all_results: If True, return all the files, otherwise return only the files that are not excluded by the
-                rules identified within the `_excluded_dirs` and `_excluded_files` attributes
-
-        Returns:
-            List of the file names on the storage
-        """
-
-        return [file.name for file in self.get_attributes(remote_root_dir, all_results).files]
 
     @abstractmethod
     def _list_files(self, remote_root_dir: str) -> List[FileResponse]:
@@ -221,8 +174,10 @@ class BaseFileManager(ABC):
             List of the paths of the files locally
         """
 
-        files = self.list_filenames(remote_root_dir, False)
-        return [self.download_file_from_storage(file_path, local_dir) for file_path in files]
+        return [
+            self.download_file_from_storage(file.name, local_dir)
+            for file in self.get_attributes(remote_root_dir).files
+        ]
 
     def transfer(self, file_manager_from: "BaseFileManager") -> bool:
         """
@@ -267,7 +222,7 @@ class BaseFileManager(ABC):
             remote_root_dir = os.path.dirname(filename)
             filename = os.path.basename(filename)
 
-        return filename in self.list_filenames(remote_root_dir)
+        return filename in [file.name for file in self.get_attributes(remote_root_dir).files]
 
 
 class LocalFileManager(BaseFileManager):
@@ -348,7 +303,7 @@ class AWSFileManager(BaseFileManager):
 
     def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
         try:
-            files_to_delete = self.list_filenames(remote_root_dir)
+            files_to_delete = [file.name for file in self.get_attributes(remote_root_dir).files]
             if files_to_delete:
                 objects_to_delete = [{"Key": key} for key in files_to_delete]
                 self.s3.delete_objects(
@@ -406,7 +361,7 @@ class AzureFileManager(BaseFileManager):
 
     def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
         try:
-            for file_path in self.list_filenames(remote_root_dir):
+            for file_path in [file.name for file in self.get_attributes(remote_root_dir).files]:
                 blob_client = self.container.get_blob_client(file_path)
                 blob_client.delete_blob()
             return True
@@ -453,7 +408,7 @@ class GoogleCloudFileManager(BaseFileManager):
 
     def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
         try:
-            for file_path in self.list_filenames(remote_root_dir):
+            for file_path in [file.name for file in self.get_attributes(remote_root_dir).files]:
                 blob = self.bucket.blob(file_path)
                 blob.delete()
             return True

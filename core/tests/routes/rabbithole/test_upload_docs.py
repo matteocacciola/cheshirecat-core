@@ -58,10 +58,10 @@ async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_header
     )
     assert len(declarative_memories) == 0
 
-    # assert that cat/data/rabbit_hole folder exists, it has 1 folder with the name `agent_id` and it has 1 file
+    # assert that cat/data folder exists, it has 1 folder with the name `agent_id` and it has 1 file
     storage_folder = utils.get_file_manager_root_storage_path()
     assert os.path.exists(storage_folder)
-    assert len(os.listdir(os.path.join(storage_folder, f"rabbit_hole/{agent_id}"))) == 1
+    assert len(os.listdir(os.path.join(storage_folder, agent_id))) == 1  # type: ignore
 
 
 def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers):
