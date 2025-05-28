@@ -4,7 +4,7 @@ from fastapi import APIRouter
 
 from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions, check_permissions
 from cat.auth.auth_utils import hash_password
-from cat.auth.connection import ContextualCats
+from cat.auth.connection import AuthorizedInfo
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException
 
@@ -56,9 +56,9 @@ class UserResponse(UserBase):
 @router.post("/", response_model=UserResponse)
 def create_user(
     new_user: UserCreate,
-    cats: ContextualCats = check_permissions(AuthResource.USERS, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.WRITE),
 ) -> UserResponse:
-    agent_id = cats.cheshire_cat.id
+    agent_id = info.cheshire_cat.id
     created_user = crud_users.create_user(agent_id, new_user.model_dump())
     if not created_user:
         raise CustomForbiddenException("Cannot duplicate user")
@@ -70,9 +70,9 @@ def create_user(
 def read_users(
     skip: int = 0,
     limit: int = 100,
-    cats: ContextualCats = check_permissions(AuthResource.USERS, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.LIST),
 ) -> List[UserResponse]:
-    users_db = crud_users.get_users(cats.cheshire_cat.id)
+    users_db = crud_users.get_users(info.cheshire_cat.id)
 
     users = list(users_db.values())[skip: skip + limit]
     return [UserResponse(**u) for u in users]
@@ -81,9 +81,9 @@ def read_users(
 @router.get("/{user_id}", response_model=UserResponse)
 def read_user(
     user_id: str,
-    cats: ContextualCats = check_permissions(AuthResource.USERS, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.READ),
 ) -> UserResponse:
-    users_db = crud_users.get_users(cats.cheshire_cat.id)
+    users_db = crud_users.get_users(info.cheshire_cat.id)
 
     if user_id not in users_db:
         raise CustomNotFoundException("User not found")
@@ -94,9 +94,9 @@ def read_user(
 def update_user(
     user_id: str,
     user: UserUpdate,
-    cats: ContextualCats = check_permissions(AuthResource.USERS, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.EDIT),
 ) -> UserResponse:
-    agent_id = cats.cheshire_cat.id
+    agent_id = info.cheshire_cat.id
     stored_user = crud_users.get_user(agent_id, user_id)
     if not stored_user:
         raise CustomNotFoundException("User not found")
@@ -112,9 +112,9 @@ def update_user(
 @router.delete("/{user_id}", response_model=UserResponse)
 def delete_user(
     user_id: str,
-    cats: ContextualCats = check_permissions(AuthResource.USERS, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.DELETE),
 ) -> UserResponse:
-    agent_id = cats.cheshire_cat.id
+    agent_id = info.cheshire_cat.id
     deleted_user = crud_users.delete_user(agent_id, user_id)
     if not deleted_user:
         raise CustomNotFoundException("User not found")

@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from fastapi import Query, APIRouter, Depends
 from qdrant_client.http.models import UpdateResult, Record
 
-from cat.auth.connection import ContextualCats
+from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.env import get_env_bool
 from cat.factory.embedder import EmbedderFactory
@@ -57,7 +57,7 @@ async def recall_memory_points_from_text(
         description="Flat dictionary where each key-value pair represents a filter."
                     "The memory points returned will match the specified metadata criteria."
     )),
-    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> RecallResponse:
     """
     Search k memories similar to given text with specified metadata criteria.
@@ -101,14 +101,14 @@ async def recall_memory_points_from_text(
     async def get_memories(c: VectorMemoryCollectionTypes) -> List:
         # only episodic collection has users, and then a source
         if c == VectorMemoryCollectionTypes.EPISODIC:
-            metadata["source"] = cats.stray_cat.user.id
+            metadata["source"] = info.user.id
         else:
             metadata.pop("source", None)
         return await ccat.memory.vectors.collections[str(c)].recall_memories_from_embedding(
             query_embedding, k=k, metadata=metadata
         )
 
-    ccat = cats.cheshire_cat
+    ccat = info.cheshire_cat
 
     # Embed the query to plot it in the Memory page
     query_embedding = ccat.embedder.embed_query(text)
@@ -134,13 +134,13 @@ async def recall_memory_points_from_text(
 async def create_memory_point(
     collection_id: str,
     point: MemoryPointBase,
-    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
 ) -> MemoryPoint:
     """Create a point in memory"""
 
     memory_collection_is_accessible(collection_id)
 
-    return await upsert_memory_point(collection_id, point, cats)
+    return await upsert_memory_point(collection_id, point, info)
 
 
 @router.put("/collections/{collection_id}/points/{point_id}", response_model=MemoryPoint)
@@ -148,7 +148,7 @@ async def edit_memory_point(
     collection_id: str,
     point_id: str,
     point: MemoryPointBase,
-    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.EDIT),
 ) -> MemoryPoint:
     """Edit a point in memory
 
@@ -187,22 +187,22 @@ async def edit_memory_point(
     """
 
     memory_collection_is_accessible(collection_id)
-    await verify_memory_point_existence(collection_id, point_id, cats.cheshire_cat.memory.vectors)
+    await verify_memory_point_existence(collection_id, point_id, info.cheshire_cat.memory.vectors)
 
-    return await upsert_memory_point(collection_id, point, cats, point_id)
+    return await upsert_memory_point(collection_id, point, info, point_id)
 
 
 @router.delete("/collections/{collection_id}/points/{point_id}", response_model=DeleteMemoryPointResponse)
 async def delete_memory_point(
     collection_id: str,
     point_id: str,
-    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteMemoryPointResponse:
     """Delete a specific point in memory"""
 
     memory_collection_is_accessible(collection_id)
 
-    vector_memory = cats.cheshire_cat.memory.vectors
+    vector_memory = info.cheshire_cat.memory.vectors
     await verify_memory_point_existence(collection_id, point_id, vector_memory)
 
     # delete point
@@ -215,11 +215,11 @@ async def delete_memory_point(
 async def delete_memory_points_by_metadata(
     collection_id: str,
     metadata: Dict = None,
-    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteMemoryPointsByMetadataResponse:
     """Delete points in memory by filter"""
 
-    ccat = cats.cheshire_cat
+    ccat = info.cheshire_cat
     memory_collection_is_accessible(collection_id)
 
     metadata = metadata or {}
@@ -252,7 +252,7 @@ async def get_points_in_collection(
         default=None,
         description="If provided (or not empty string) - skip points with ids less than given `offset`"
     ),
-    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> GetPointsInCollectionResponse:
     """Retrieve all the points from a single collection
 
@@ -302,11 +302,11 @@ async def get_points_in_collection(
 
     memory_collection_is_accessible(collection_id)
 
-    # if offset is empty string set to null
+    # if offset is an empty string set to null
     if offset == "":
         offset = None
 
-    memory_collection = cats.cheshire_cat.memory.vectors.collections[collection_id]
+    memory_collection = info.cheshire_cat.memory.vectors.collections[collection_id]
     points, next_offset = await memory_collection.get_all_points(limit=limit, offset=offset)
 
     return GetPointsInCollectionResponse(points=points, next_offset=next_offset)

@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
-from cat.auth.connection import ContextualCats
+from cat.auth.connection import AuthorizedInfo
 from cat.db import models
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomNotFoundException
@@ -26,11 +26,11 @@ class DeleteSettingResponse(BaseModel):
 @router.get("/", response_model=GetSettingsResponse)
 def get_settings(
     search: str = "",
-    cats: ContextualCats = check_permissions(AuthResource.SETTINGS, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.LIST),
 ) -> GetSettingsResponse:
     """Get the entire list of settings available in the database"""
 
-    settings = crud_settings.get_settings(cats.cheshire_cat.id, search=search)
+    settings = crud_settings.get_settings(info.cheshire_cat.id, search=search)
 
     return GetSettingsResponse(settings=settings)
 
@@ -38,7 +38,7 @@ def get_settings(
 @router.post("/", response_model=SettingResponse)
 def create_setting(
     payload: models.SettingBody,
-    cats: ContextualCats = check_permissions(AuthResource.SETTINGS, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.WRITE),
 ) -> SettingResponse:
     """Create a new setting in the database"""
 
@@ -46,7 +46,7 @@ def create_setting(
     payload = models.Setting(**payload.model_dump())
 
     # save to DB
-    new_setting = crud_settings.create_setting(cats.cheshire_cat.id, payload)
+    new_setting = crud_settings.create_setting(info.cheshire_cat.id, payload)
 
     return SettingResponse(setting=new_setting)
 
@@ -54,11 +54,11 @@ def create_setting(
 @router.get("/{setting_id}", response_model=SettingResponse)
 def get_setting(
     setting_id: str,
-    cats: ContextualCats = check_permissions(AuthResource.SETTINGS, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.READ),
 ) -> SettingResponse:
     """Get the specific setting from the database"""
 
-    setting = crud_settings.get_setting_by_id(cats.cheshire_cat.id, setting_id)
+    setting = crud_settings.get_setting_by_id(info.cheshire_cat.id, setting_id)
     if not setting:
         raise CustomNotFoundException(f"No setting with this id: {setting_id}")
     return SettingResponse(setting=setting)
@@ -68,11 +68,11 @@ def get_setting(
 def update_setting(
     setting_id: str,
     payload: models.SettingBody,
-    cats: ContextualCats = check_permissions(AuthResource.SETTINGS, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.EDIT),
 ) -> SettingResponse:
     """Update a specific setting in the database if it exists"""
 
-    agent_id = cats.cheshire_cat.id
+    agent_id = info.cheshire_cat.id
 
     # does the setting exist?
     setting = crud_settings.get_setting_by_id(agent_id, setting_id)
@@ -92,11 +92,11 @@ def update_setting(
 @router.delete("/{setting_id}", response_model=DeleteSettingResponse)
 def delete_setting(
     setting_id: str,
-    cats: ContextualCats = check_permissions(AuthResource.SETTINGS, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.DELETE),
 ) -> DeleteSettingResponse:
     """Delete a specific setting in the database"""
 
-    agent_id = cats.cheshire_cat.id
+    agent_id = info.cheshire_cat.id
 
     # does the setting exist?
     setting = crud_settings.get_setting_by_id(agent_id, setting_id)

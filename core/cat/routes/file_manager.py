@@ -1,7 +1,7 @@
 from typing import Dict
 from fastapi import APIRouter, Body
 
-from cat.auth.connection import ContextualCats
+from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.custom_file_manager import FileManagerAttributes
@@ -21,22 +21,22 @@ router = APIRouter()
 # get configured Plugin File Managers and configuration schemas
 @router.get("/settings", response_model=GetSettingsResponse)
 async def get_file_managers_settings(
-    cats: ContextualCats = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.LIST),
 ) -> GetSettingsResponse:
     """Get the list of the File Managers and their settings"""
 
-    ccat = cats.cheshire_cat
+    ccat = info.cheshire_cat
     return get_factory_settings(ccat.id, FileManagerFactory(ccat.plugin_manager))
 
 
 @router.get("/settings/{file_manager_name}", response_model=GetSettingResponse)
 async def get_file_manager_settings(
     file_manager_name: str,
-    cats: ContextualCats = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified File Manager"""
 
-    ccat = cats.cheshire_cat
+    ccat = info.cheshire_cat
     factory = FileManagerFactory(ccat.plugin_manager)
     return get_factory_setting(ccat.id, file_manager_name, factory)
 
@@ -45,11 +45,11 @@ async def get_file_manager_settings(
 async def upsert_file_manager_setting(
     file_manager_name: str,
     payload: Dict = Body(...),
-    cats: ContextualCats = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.EDIT),
 ) -> ReplacedNLPConfig:
     """Upsert the File Manager setting"""
 
-    ccat = cats.cheshire_cat
+    ccat = info.cheshire_cat
     on_upsert_factory_setting(file_manager_name, FileManagerFactory(ccat.plugin_manager))
 
     return ccat.replace_file_manager(file_manager_name, payload)
@@ -57,7 +57,7 @@ async def upsert_file_manager_setting(
 
 @router.get("/", response_model=FileManagerAttributes)
 async def get_attributes(
-    cats: ContextualCats = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.LIST),
 ) -> FileManagerAttributes:
-    ccat = cats.cheshire_cat
+    ccat = info.cheshire_cat
     return ccat.file_manager.get_attributes(ccat.id)

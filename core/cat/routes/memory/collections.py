@@ -2,7 +2,7 @@ from typing import Dict, List
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from cat.auth.connection import ContextualCats
+from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomNotFoundException
 from cat.memory.utils import VectorMemoryCollectionTypes
@@ -23,16 +23,16 @@ class WipeCollectionsResponse(BaseModel):
     deleted: Dict[str, bool]
 
 
-# GET collection list with some metadata
+# GET a collection list with some metadata
 @router.get("/collections", response_model=GetCollectionsResponse)
 async def get_collections(
-    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> GetCollectionsResponse:
-    """Get list of available collections"""
+    """Get the list of available collections"""
 
     collections_metadata = [GetCollectionsItem(
         name=str(c),
-        vectors_count=await cats.cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
+        vectors_count=await info.cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
     ) for c in VectorMemoryCollectionTypes]
 
     return GetCollectionsResponse(collections=collections_metadata)
@@ -41,11 +41,11 @@ async def get_collections(
 # DELETE all collections
 @router.delete("/collections", response_model=WipeCollectionsResponse)
 async def destroy_all_collection_points(
-    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> WipeCollectionsResponse:
     """Delete and create all collections"""
 
-    ccat = cats.cheshire_cat
+    ccat = info.cheshire_cat
 
     to_return = {
         str(c): (
@@ -64,7 +64,7 @@ async def destroy_all_collection_points(
 @router.delete("/collections/{collection_id}", response_model=WipeCollectionsResponse)
 async def destroy_all_single_collection_points(
     collection_id: str,
-    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> WipeCollectionsResponse:
     """Delete and recreate a collection"""
 
@@ -72,7 +72,7 @@ async def destroy_all_single_collection_points(
     if collection_id not in VectorMemoryCollectionTypes:
         raise CustomNotFoundException("Collection does not exist.")
 
-    ccat = cats.cheshire_cat
+    ccat = info.cheshire_cat
     ret = await ccat.memory.vectors.collections[collection_id].destroy_all_points()
 
     ccat.load_memory()  # recreate the long term memories

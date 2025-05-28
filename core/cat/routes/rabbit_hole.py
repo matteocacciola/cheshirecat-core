@@ -6,12 +6,12 @@ from copy import deepcopy
 from pydantic import BaseModel, Field, ConfigDict
 from fastapi import Form, APIRouter, UploadFile, BackgroundTasks, Request
 
-from cat.auth.connection import ContextualCats
+from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
-from cat.looking_glass.cheshire_cat import CheshireCat
+from cat.looking_glass.stray_cat import StrayCat
 from cat.routes.routes_utils import format_upload_file
 
 router = APIRouter()
@@ -54,7 +54,7 @@ async def upload_file(
         description="Metadata to be stored with each chunk (e.g. author, category, etc.). "
                     "Since we are passing this along side form data, must be a JSON string (use `json.dumps(metadata)`)."
     ),
-    cats: ContextualCats = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
 ) -> UploadSingleFileResponse:
     """Upload a file containing text (.txt, .md, .pdf, etc.). File content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory.
@@ -93,7 +93,7 @@ async def upload_file(
     """
 
     lizard: BillTheLizard = request.app.state.lizard
-    ccat: CheshireCat = cats.cheshire_cat
+    ccat = info.cheshire_cat
 
     # Check the file format is supported
     admitted_types = ccat.file_handlers.keys()
@@ -114,7 +114,7 @@ async def upload_file(
     # https://github.com/tiangolo/fastapi/discussions/10936
     background_tasks.add_task(
         lizard.rabbit_hole.ingest_file,
-        stray=cats.stray_cat,
+        stray=StrayCat(user_data=info.user, agent_id=ccat.id),
         file=uploaded_file,
         metadata=json.loads(metadata)
     )
@@ -136,7 +136,7 @@ async def upload_files(
         description="Metadata to be stored where each key is the name of a file being uploaded, and the corresponding value is another dictionary containing metadata specific to that file. "
                     "Since we are passing this along side form data, metadata must be a JSON string (use `json.dumps(metadata)`)."
     ),
-    cats: ContextualCats = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
 ) -> Dict[str, UploadSingleFileResponse]:
     """Batch upload multiple files containing text (.txt, .md, .pdf, etc.). File content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory.
@@ -198,7 +198,7 @@ async def upload_files(
             background_tasks,
             # if file.filename in dictionary pass the stringified metadata, otherwise pass empty dictionary-like string
             metadata=json.dumps(metadata_dict[file.filename]) if file.filename in metadata_dict else "{}",
-            cats=cats
+            info=info
         )
 
     return response
@@ -209,7 +209,7 @@ async def upload_url(
     request: Request,
     background_tasks: BackgroundTasks,
     upload_config: UploadURLConfig,
-    cats: ContextualCats = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
 ) -> UploadUrlResponse:
     """Upload an url. Website content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory."""
@@ -226,7 +226,7 @@ async def upload_url(
             # upload file to long term memory, in the background
             background_tasks.add_task(
                 request.app.state.lizard.rabbit_hole.ingest_file,
-                stray=cats.stray_cat,
+                stray=StrayCat(user_data=info.user, agent_id=info.cheshire_cat.id),
                 file=upload_config.url,
                 **upload_config.model_dump(exclude={"url"})
             )
@@ -242,7 +242,7 @@ async def upload_memory(
     request: Request,
     file: UploadFile,
     background_tasks: BackgroundTasks,
-    cats: ContextualCats = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
 ) -> UploadSingleFileResponse:
     """Upload a memory json file to the cat memory"""
 
@@ -256,7 +256,7 @@ async def upload_memory(
 
     # Ingest memories in background and notify client
     background_tasks.add_task(
-        request.app.state.lizard.rabbit_hole.ingest_memory, ccat=cats.cheshire_cat, file=deepcopy(file)
+        request.app.state.lizard.rabbit_hole.ingest_memory, ccat=info.cheshire_cat, file=deepcopy(file)
     )
 
     # reply to client
@@ -267,8 +267,8 @@ async def upload_memory(
 
 @router.get("/allowed-mimetypes", response_model=AllowedMimeTypesResponse)
 async def get_allowed_mimetypes(
-    cats: ContextualCats = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
 ) -> AllowedMimeTypesResponse:
     """Retrieve the allowed mimetypes that can be ingested by the Rabbit Hole"""
 
-    return AllowedMimeTypesResponse(allowed=list(cats.cheshire_cat.file_handlers.keys()))
+    return AllowedMimeTypesResponse(allowed=list(info.cheshire_cat.file_handlers.keys()))

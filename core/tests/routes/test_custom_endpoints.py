@@ -32,8 +32,8 @@ def test_custom_endpoint_get(secure_client, secure_client_headers):
 
     assert response.status_code == 200
     assert response.json()["result"] == "ok"
-    assert isinstance(response.json()["stray_user_id"], str)
-    assert len(response.json()["stray_user_id"]) == 36
+    assert isinstance(response.json()["user_id"], str)
+    assert len(response.json()["user_id"]) == 36
 
 
 def test_custom_endpoint_post(client, secure_client, secure_client_headers):

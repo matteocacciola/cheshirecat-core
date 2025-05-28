@@ -1,9 +1,10 @@
 from cat.auth.permissions import AuthPermission, AuthResource, check_websocket_permissions
-from cat.auth.connection import ContextualCats
+from cat.auth.connection import AuthorizedInfo
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from cat.convo.messages import UserMessage
 from cat.log import log
+from cat.looking_glass.stray_cat import StrayCat
 
 router = APIRouter()
 
@@ -12,20 +13,20 @@ router = APIRouter()
 @router.websocket("/ws/{agent_id}")
 async def websocket_endpoint(
     websocket: WebSocket,
-    cats: ContextualCats = check_websocket_permissions(AuthResource.CONVERSATION, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_websocket_permissions(AuthResource.CONVERSATION, AuthPermission.WRITE),
 ):
     """
     Endpoint to handle incoming WebSocket connections by user id, process messages, and check for messages.
     """
 
     # Extract the StrayCat object from the DependingCats object.
-    stray = cats.stray_cat
+    stray = StrayCat(user_data=info.user, agent_id=info.cheshire_cat.id)
 
     # Establish connection
     await websocket.accept()
 
     # Add the new WebSocket connection to the manager.
-    websocket_manager = cats.cheshire_cat.websocket_manager
+    websocket_manager = info.cheshire_cat.websocket_manager
     websocket_manager.add_connection(stray.user.id, websocket)
 
     try:

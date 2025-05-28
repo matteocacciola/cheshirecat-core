@@ -9,7 +9,7 @@ import io
 
 from cat import utils
 from cat.auth.auth_utils import issue_jwt
-from cat.auth.connection import ContextualCats
+from cat.auth.connection import AuthorizedInfo
 from cat.db.database import DEFAULT_AGENT_KEY
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
@@ -238,9 +238,9 @@ async def verify_memory_point_existence(collection_id: str, point_id: str, vecto
 
 
 async def upsert_memory_point(
-    collection_id: str, point: MemoryPointBase, cats: ContextualCats, point_id: str = None
+    collection_id: str, point: MemoryPointBase, info: AuthorizedInfo, point_id: str = None
 ) -> MemoryPoint:
-    ccat = cats.cheshire_cat
+    ccat = info.cheshire_cat
     vector_memory = ccat.memory.vectors
 
     # embed content
@@ -248,7 +248,7 @@ async def upsert_memory_point(
 
     # ensure source is set
     if not point.metadata.get("source"):
-        point.metadata["source"] = cats.stray_cat.user.id  # this will do also for declarative memory
+        point.metadata["source"] = info.user.id  # this will do also for declarative memory
 
     # ensure when is set
     if not point.metadata.get("when"):

@@ -3,7 +3,7 @@ from fastapi import Body, APIRouter
 from pydantic import ValidationError
 from slugify import slugify
 
-from cat.auth.connection import ContextualCats
+from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException, CustomNotFoundException
 from cat.routes.routes_utils import (
@@ -23,7 +23,7 @@ router = APIRouter()
 @router.get("/", response_model=GetAvailablePluginsResponse)
 async def get_cheshirecat_available_plugins(
     query: str = None,
-    cats: ContextualCats = check_permissions(AuthResource.PLUGINS, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.LIST),
     # author: str = None, to be activated in case of more granular search
     # tag: str = None, to be activated in case of more granular search
 ) -> GetAvailablePluginsResponse:
@@ -32,20 +32,20 @@ async def get_cheshirecat_available_plugins(
     if query is not None:
         query = slugify(query, separator="_")
 
-    return await get_available_plugins(cats.cheshire_cat.plugin_manager, query)
+    return await get_available_plugins(info.cheshire_cat.plugin_manager, query)
 
 
 @router.put("/toggle/{plugin_id}", status_code=200, response_model=TogglePluginResponse)
 async def toggle_plugin(
     plugin_id: str,
-    cats: ContextualCats = check_permissions(AuthResource.PLUGINS, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.WRITE),
 ) -> TogglePluginResponse:
     """Enable or disable a single plugin"""
 
     plugin_id = slugify(plugin_id, separator="_")
 
     # access cat instance
-    ccat = cats.cheshire_cat
+    ccat = info.cheshire_cat
 
     # check if plugin exists
     if not ccat.plugin_manager.plugin_exists(plugin_id):
@@ -58,37 +58,39 @@ async def toggle_plugin(
 
 @router.get("/settings", response_model=PluginsSettingsResponse)
 async def get_cheshirecat_plugins_settings(
-    cats: ContextualCats = check_permissions(AuthResource.PLUGINS, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.READ),
 ) -> PluginsSettingsResponse:
     """Returns the settings of all the plugins"""
 
-    return get_plugins_settings(cats.cheshire_cat.plugin_manager, cats.cheshire_cat.id)
+    ccat = info.cheshire_cat
+    return get_plugins_settings(ccat.plugin_manager, ccat.id)
 
 
 @router.get("/settings/{plugin_id}", response_model=GetSettingResponse)
 async def get_cheshirecat_plugin_settings(
     plugin_id: str,
-    cats: ContextualCats = check_permissions(AuthResource.PLUGINS, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Returns the settings of a specific plugin"""
 
     plugin_id = slugify(plugin_id, separator="_")
 
-    return get_plugin_settings(cats.cheshire_cat.plugin_manager, plugin_id, cats.cheshire_cat.id)
+    ccat = info.cheshire_cat
+    return get_plugin_settings(ccat.plugin_manager, plugin_id, ccat.id)
 
 
 @router.put("/settings/{plugin_id}", response_model=GetSettingResponse)
 async def upsert_cheshirecat_plugin_settings(
     plugin_id: str,
     payload: Dict = Body({"setting_a": "some value", "setting_b": "another value"}),
-    cats: ContextualCats = check_permissions(AuthResource.PLUGINS, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.EDIT),
 ) -> GetSettingResponse:
     """Updates the settings of a specific plugin"""
 
     plugin_id = slugify(plugin_id, separator="_")
 
     # access cat instance
-    ccat = cats.cheshire_cat
+    ccat = info.cheshire_cat
 
     if not ccat.plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")

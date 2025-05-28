@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 from cat.mad_hatter.decorators import endpoint
-from cat.auth.connection import ContextualCats
+from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 
 
@@ -21,8 +21,8 @@ def test_endpoint_prefix():
 
 
 @endpoint.get(path="/crud", prefix="/tests", tags=["Tests"])
-def test_get(cats: ContextualCats = check_permissions(AuthResource.PLUGINS, AuthPermission.LIST)):
-    return {"result": "ok", "stray_user_id": cats.stray_cat.user.id}
+def test_get(info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.LIST)):
+    return {"result": "ok", "user_id": info.user.id}
 
 
 @endpoint.post(path="/crud", prefix="/tests", tags=["Tests"])

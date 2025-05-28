@@ -16,12 +16,11 @@ from cat.db.cruds import users as crud_users
 from cat.factory.custom_auth_handler import BaseAuthHandler
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.looking_glass.stray_cat import StrayCat
 
 
-class ContextualCats(BaseModel):
+class AuthorizedInfo(BaseModel):
     cheshire_cat: CheshireCat
-    stray_cat: StrayCat
+    user: AuthUserInfo
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -56,18 +55,17 @@ class ConnectionAuth(ABC):
         self.resource = resource
         self.permission = permission
 
-    def __call__(self, connection: HTTPConnection) -> ContextualCats:
+    def __call__(self, connection: HTTPConnection) -> AuthorizedInfo:
         agent_id = extract_agent_id_from_request(connection)
         lizard: BillTheLizard = connection.app.state.lizard
         ccat = lizard.get_cheshire_cat(agent_id)
 
         user = self.get_user_from_auth_handlers(connection, lizard, ccat)
         if not user:
-            # if no user was obtained, raise exception
+            # if no user was obtained, raise an exception
             self.not_allowed(connection)
 
-        stray = StrayCat(user_data=user, agent_id=ccat.id)
-        return ContextualCats(cheshire_cat=ccat, stray_cat=stray)
+        return AuthorizedInfo(cheshire_cat=ccat, user=user)
 
     @abstractmethod
     def get_user_from_auth_handlers(
