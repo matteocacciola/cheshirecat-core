@@ -105,7 +105,8 @@ async def agent_destroy(
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE),
 ) -> ResetResponse:
     """
-    Reset a single agent. This will delete all settings, memories, and metadata, for the agent.
+    Destroy a single agent. This will completely delete all settings, memories, and metadata, for the agent.
+    This is a permanent action and cannot be undone.
     """
 
     agent_id = extract_agent_id_from_request(request)
