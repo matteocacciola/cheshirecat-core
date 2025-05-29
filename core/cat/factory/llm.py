@@ -1,6 +1,7 @@
 from abc import ABC
 from langchain_core.language_models import BaseLanguageModel
 from langchain_groq import ChatGroq
+from langchain_litellm import ChatLiteLLM
 from langchain_openai import AzureChatOpenAI
 from langchain_openai import AzureOpenAI
 from langchain_community.llms import (
@@ -117,8 +118,8 @@ class LLMOpenAIConfig(LLMSettings):
 
     model_config = ConfigDict(
         json_schema_extra={
-            "humanReadableName": "OpenAI GPT-3",
-            "description": "OpenAI GPT-3. More expensive but also more flexible than ChatGPT.",
+            "humanReadableName": "OpenAI GPT",
+            "description": "OpenAI GPT. More expensive but also more flexible than ChatGPT.",
             "link": "https://platform.openai.com/docs/models/overview",
         }
     )
@@ -311,7 +312,7 @@ class LLMMistralAIChatConfig(LLMSettings):
     temperature: float = 0.7
     max_tokens: int = 8192
     max_retries: int = 2
-    top_p: float | None = 1
+    top_p: float | None = None
 
     _pyclass: Type = ChatMistralAI
 
@@ -324,7 +325,7 @@ class LLMMistralAIChatConfig(LLMSettings):
     )
 
 
-class LLMMGroqChatConfig(LLMSettings):
+class LLMGroqChatConfig(LLMSettings):
     api_key: str
     model: str = "mixtral-8x7b-32768"
     temperature: float = 0.7
@@ -338,6 +339,26 @@ class LLMMGroqChatConfig(LLMSettings):
             "humanReadableName": "Groq",
             "description": "Configuration for Groq",
             "link": "https://groq.com/",
+        }
+    )
+
+
+class LLMLiteLLMChatConfig(LLMSettings):
+    api_key: str
+    model: str = "perplexity/sonar-pro"
+    temperature: float = 0.7
+    max_tokens: int | None = None
+    max_retries: int = 2
+    top_p: int | None = None
+    top_k: int | None = None
+
+    _pyclass: Type = ChatLiteLLM
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "LiteLLM",
+            "description": "Configuration for LiteLLM",
+            "link": "https://www.litellm.ai/",
         }
     )
 
@@ -359,7 +380,8 @@ class LLMFactory(BaseFactory):
             LLMDefaultConfig,
             LLMAnthropicChatConfig,
             LLMMistralAIChatConfig,
-            LLMMGroqChatConfig,
+            LLMGroqChatConfig,
+            LLMLiteLLMChatConfig,
         ]
 
         list_llms = self._hook_manager.execute_hook(

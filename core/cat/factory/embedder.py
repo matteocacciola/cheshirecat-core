@@ -65,6 +65,7 @@ class EmbedderDumbConfig(EmbedderSettings):
 
 
 class EmbedderOpenAICompatibleConfig(EmbedderSettings):
+    api_key: str | None = None
     url: str
 
     _pyclass: Type = CustomOpenAIEmbeddings
