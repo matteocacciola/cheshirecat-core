@@ -32,7 +32,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "cat.startup:cheshire_cat_api",
         host="0.0.0.0",
-        port=80,
+        port=int(get_env("CCAT_CORE_PORT")),
         use_colors=True,
         workers=workers,
         limit_max_requests=limit_max_requests,
