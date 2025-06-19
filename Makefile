@@ -41,7 +41,7 @@ restart:  ## Restart service [service=php]
 	docker compose ${docker-compose-files} restart
 
 test:  ## Run tests
-	docker exec cheshire_cat_core python -m pytest --color=yes -vvv -W ignore -x ${args}
+	docker exec cheshire_cat_core python -m pytest --color=yes -vvv -W ignore ${args}
 
 sync-requirements: ## Update the local virtual environment with the latest requirements.
 	@cd core && $(PYTHON) -m pip install --upgrade pip-tools pip wheel

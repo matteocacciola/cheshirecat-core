@@ -272,3 +272,25 @@ async def get_allowed_mimetypes(
     """Retrieve the allowed mimetypes that can be ingested by the Rabbit Hole"""
 
     return AllowedMimeTypesResponse(allowed=list(info.cheshire_cat.file_handlers.keys()))
+
+
+@router.get("/web", response_model=List[str])
+async def get_source_urls(
+    info: AuthorizedInfo = check_permissions(AuthResource.UPLOAD, AuthPermission.READ),
+) -> List[str]:
+    """Retrieve the list of source URLs that have been uploaded to the Rabbit Hole"""
+
+    memory = info.cheshire_cat.memory.vectors.declarative
+    # Get all points
+    memory_points, _ = await memory.get_all_points_from_web()
+
+    # retrieve all the memory points where the metadata["source"] is a URL
+    return [
+        memory_point.payload["metadata"]["source"]
+        for memory_point in memory_points
+        if (
+                "metadata" in memory_point.payload
+                and "source" in memory_point.payload["metadata"]
+                and memory_point.payload["metadata"]["source"].startswith("http")
+        )
+    ]

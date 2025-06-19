@@ -54,3 +54,20 @@ def test_rabbithole_upload_url_with_metadata(secure_client, secure_client_header
     assert "title" in declarative_memories[0]["metadata"]
     for key, value in metadata.items():
         assert declarative_memories[0]["metadata"][key] == value
+
+
+def test_rabbithole_get_uploaded_web_urls(secure_client, secure_client_headers):
+    # First upload a URL
+    payload = {"url": "https://www.example.com"}
+    response = secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
+    assert response.status_code == 200
+
+    # Now get the uploaded URLs
+    response = secure_client.get("/rabbithole/web/", headers=secure_client_headers)
+
+    # check response
+    assert response.status_code == 200
+    json = response.json()
+    assert isinstance(json, list)
+    assert len(json) == 1
+    assert json[0] == payload["url"]

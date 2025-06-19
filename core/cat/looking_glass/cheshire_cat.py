@@ -7,9 +7,6 @@ from langchain_core.messages import HumanMessage
 from langchain_core.runnables import RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers.string import StrOutputParser
-from langchain_cohere import ChatCohere
-from langchain_openai import ChatOpenAI, OpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
 
 from cat.auth.auth_utils import hash_password, DEFAULT_USER_USERNAME
 from cat.auth.permissions import get_base_permissions
@@ -19,6 +16,7 @@ from cat.db.cruds import (
     plugins as crud_plugins,
     users as crud_users,
 )
+from cat.env import get_env_bool
 from cat.factory.auth_handler import AuthHandlerFactory
 from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.chunker import ChunkerFactory
@@ -137,6 +135,10 @@ class CheshireCat:
         crud_history.destroy_all(self.id)
         crud_plugins.destroy_all(self.id)
         crud_users.destroy_all(self.id)
+
+        # if Rabbit Hole storage is enabled, remove the folder from storage
+        if get_env_bool("CCAT_RABBIT_HOLE_STORAGE_ENABLED") and self.file_manager is not None:
+            self.file_manager.remove_folder_from_storage(self.id)
 
     def load_memory(self):
         """Load LongTerMemory (which loads WorkingMemory)."""
@@ -286,7 +288,7 @@ class CheshireCat:
             # reload the file manager of the lizard
             self.file_manager = get_factory_object(self.id, factory)
 
-            self.file_manager.transfer(old_filemanager)
+            self.file_manager.transfer(old_filemanager, self.id)
         except ValueError as e:
             log.error(f"Error while loading the new File Manager: {e}")
 

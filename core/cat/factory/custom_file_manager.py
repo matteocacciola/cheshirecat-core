@@ -13,6 +13,7 @@ from cat import utils
 class FileResponse(BaseModel):
     path: str
     name: str
+    hash: str
     size: int
     last_modified: str
 
@@ -33,7 +34,7 @@ class BaseFileManager(ABC):
         self._excluded_files = [".gitignore", ".DS_Store", ".gitkeep", ".git", ".dockerignore"]
         self._root_dir = utils.get_file_manager_root_storage_path()
 
-    def upload_file_to_storage(self, file_path: str, remote_root_dir: str | None = None) -> str | None:
+    def upload_file_to_storage(self, file_path: str, remote_root_dir: str) -> str | None:
         """
         Upload a single file on the storage, within the directory specified by `remote_root_dir`.
 
@@ -99,7 +100,7 @@ class BaseFileManager(ABC):
     def _remove_file_from_storage(self, file_path: str) -> bool:
         pass
 
-    def remove_folder_from_storage(self, remote_root_dir: str | None = None) -> bool:
+    def remove_folder_from_storage(self, remote_root_dir: str) -> bool:
         """
         Remove the entire `remote_root_dir` directory from the storage. If not specified, the entire storage will be
         removed.
@@ -115,7 +116,7 @@ class BaseFileManager(ABC):
     def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
         pass
 
-    def get_attributes(self, remote_root_dir: str | None = None) -> FileManagerAttributes:
+    def get_attributes(self, remote_root_dir: str) -> FileManagerAttributes:
         """
         List of all the files contained into the `remote_root_dir` on the storage.
 
@@ -140,7 +141,7 @@ class BaseFileManager(ABC):
     def _list_files(self, remote_root_dir: str) -> List[FileResponse]:
         pass
 
-    def upload_folder_to_storage(self, local_dir: str, remote_root_dir: str | None = None) -> List[str]:
+    def upload_folder_to_storage(self, local_dir: str, remote_root_dir: str) -> List[str]:
         """
         Upload a directory with all the contained files on the storage, within the directory specified by
         `remote_root_dir`.
@@ -161,7 +162,7 @@ class BaseFileManager(ABC):
             for file in files
         ]
 
-    def download_folder_from_storage(self, local_dir: str, remote_root_dir: str | None = None) -> List[str]:
+    def download_folder_from_storage(self, local_dir: str, remote_root_dir: str) -> List[str]:
         """
         Download the directory specified by `remote_root_dir` with all the contained files from the storage to
         `local_dir`.
@@ -175,16 +176,17 @@ class BaseFileManager(ABC):
         """
 
         return [
-            self.download_file_from_storage(file.name, local_dir)
+            self.download_file_from_storage(file.path, local_dir)
             for file in self.get_attributes(remote_root_dir).files
         ]
 
-    def transfer(self, file_manager_from: "BaseFileManager") -> bool:
+    def transfer(self, file_manager_from: "BaseFileManager", remote_root_dir: str) -> bool:
         """
         Transfer files from the file manager specified in the `file_manager_from` to the current one.
 
         Args:
             file_manager_from: The file manager to transfer the files from
+            remote_root_dir: The directory on the storage where the files are contained
         """
 
         try:
@@ -193,15 +195,15 @@ class BaseFileManager(ABC):
             os.mkdir(tmp_folder_name)
 
             # try to download the files from the old file manager to the `tmp_folder_name`
-            file_manager_from.download_folder_from_storage(tmp_folder_name)
+            file_manager_from.download_folder_from_storage(tmp_folder_name, remote_root_dir)
 
             # now, try to upload the files to the new storage
-            self.upload_folder_to_storage(tmp_folder_name)
+            self.upload_folder_to_storage(tmp_folder_name, remote_root_dir)
 
             # cleanup
             if os.path.exists(tmp_folder_name):
                 shutil.rmtree(tmp_folder_name)
-            file_manager_from.remove_folder_from_storage()
+            file_manager_from.remove_folder_from_storage(remote_root_dir)
             return True
         except Exception as e:
             log.error(f"Error while transferring files from the old file manager to the new one: {e}")
@@ -263,6 +265,7 @@ class LocalFileManager(BaseFileManager):
             FileResponse(
                 path=os.path.join(root, file),
                 name=file,
+                hash=utils.get_file_hash(os.path.join(root, file)),
                 size=int(os.path.getsize(os.path.join(root, file))),
                 last_modified=datetime.fromtimestamp(
                     os.path.getmtime(os.path.join(root, file))
@@ -324,6 +327,7 @@ class AWSFileManager(BaseFileManager):
                 files.extend([FileResponse(
                     path=obj["Key"],
                     name=os.path.basename(obj["Key"]),
+                    hash=obj.get("ETag", "").strip('"'),
                     size=int(obj["Size"]),
                     last_modified=obj["LastModified"].strftime("%Y-%m-%d"),
                 ) for obj in page["Contents"] if obj["Key"] != remote_root_dir])
@@ -374,6 +378,7 @@ class AzureFileManager(BaseFileManager):
         return [FileResponse(
             path=blob.name,
             name=os.path.basename(blob.name),
+            hash=blob.etag.strip('"') if blob.etag else "",
             size=int(blob.size),
             last_modified=blob.last_modified.strftime("%Y-%m-%d"),
         ) for blob in self.container.list_blobs(name_starts_with=remote_root_dir) if blob.name != remote_root_dir]
@@ -421,6 +426,7 @@ class GoogleCloudFileManager(BaseFileManager):
         return [FileResponse(
             path=blob.name,
             name=os.path.basename(blob.name),
+            hash=blob.md5_hash.strip('"') if blob.md5_hash else "",
             size=int(blob.size),
             last_modified=blob.updated.strftime("%Y-%m-%d"),
         ) for blob in self.bucket.list_blobs(prefix=remote_root_dir) if blob.name != remote_root_dir]

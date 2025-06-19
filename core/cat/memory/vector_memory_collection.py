@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from typing import Any, List, Iterable, Dict, Tuple, Final
 from qdrant_client.qdrant_remote import QdrantRemote
@@ -7,6 +8,7 @@ from qdrant_client.http.models import (
     Filter,
     FieldCondition,
     MatchValue,
+    MatchText,
     SearchParams,
     QuantizationSearchParams,
     Record,
@@ -48,6 +50,14 @@ class VectorMemoryCollection:
             out.append(FieldCondition(key=f"metadata.{key}", match=MatchValue(value=value)))
 
         return out
+
+    def _build_metadata_conditions(self, metadata: Dict | None = None) -> List[FieldCondition]:
+        conditions = [self._tenant_field_condition()]
+        if metadata:
+            conditions.extend([
+                condition for key, value in metadata.items() for condition in self._build_condition(key, value)
+            ])
+        return conditions
 
     async def get_payload_indexes(self) -> Dict:
         """
@@ -146,11 +156,7 @@ class VectorMemoryCollection:
         return res
 
     async def delete_points_by_metadata_filter(self, metadata: Dict | None = None) -> UpdateResult:
-        conditions = [self._tenant_field_condition()]
-        if metadata:
-            conditions.extend([
-            condition for key, value in metadata.items() for condition in self._build_condition(key, value)
-        ])
+        conditions = self._build_metadata_conditions(metadata)
 
         res = await self.client.delete(collection_name=self.collection_name, points_selector=Filter(must=conditions))
         return res
@@ -184,11 +190,7 @@ class VectorMemoryCollection:
             List: List of DocumentRecall.
         """
 
-        conditions = [self._tenant_field_condition()]
-        if metadata:
-            conditions.extend([
-                condition for key, value in metadata.items() for condition in self._build_condition(key, value)
-            ])
+        conditions = self._build_metadata_conditions(metadata)
 
         # retrieve memories
         query_response = await self.client.query_points(
@@ -231,9 +233,46 @@ class VectorMemoryCollection:
 
         return memories
 
+    async def _get_all_points(
+        self, scroll_filter: Filter, limit: int | None = None, offset: str | None = None, with_vectors: bool = True
+    ) -> Tuple[List[Record], int | str | None]:
+        if limit is not None:
+            # retrieving the points
+            return await self.client.scroll(
+                collection_name=self.collection_name,
+                scroll_filter=scroll_filter,
+                with_vectors=with_vectors,
+                offset=offset,  # Start from the given offset, or the beginning if None.
+                limit=limit  # Limit the number of points retrieved to the specified limit.
+            )
+
+        # retrieve all points without limit
+        memory_points = []
+        limit = 10000
+        while True:
+            # Get a batch of points
+            points_batch, next_offset = await self._get_all_points(
+                scroll_filter, limit=limit, offset=offset, with_vectors=with_vectors
+            )
+
+            # Add filtered points to our collection
+            memory_points.extend(points_batch)
+
+            # Check if we have more pages
+            if next_offset is None:
+                # No more pages
+                break
+
+            # Set offset for next iteration
+            offset = next_offset
+
+            # Optional: Add a small delay to avoid overwhelming the system
+            await asyncio.sleep(0.1)
+        return memory_points, None
+
     # retrieve all the points in the collection
     async def get_all_points(
-        self, limit: int = 10000, offset: str | None = None
+        self, limit: int | None = None, offset: str | None = None, metadata: Dict | None = None
     ) -> Tuple[List[Record], int | str | None]:
         """
         Retrieve all the points in the collection with an optional offset and limit.
@@ -241,19 +280,48 @@ class VectorMemoryCollection:
         Args:
             limit: The maximum number of points to retrieve.
             offset: The offset from which to start retrieving points.
+            metadata: Optional metadata filter to apply to the points.
 
         Returns:
             Tuple: A tuple containing the list of points and the next offset.
         """
 
-        # retrieving the points
-        return await self.client.scroll(
-            collection_name=self.collection_name,
-            scroll_filter=Filter(must=[self._tenant_field_condition()]),
-            with_vectors=True,
-            offset=offset,  # Start from the given offset, or the beginning if None.
-            limit=limit  # Limit the number of points retrieved to the specified limit.
+        conditions = self._build_metadata_conditions(metadata)
+        return await self._get_all_points(Filter(must=conditions), limit=limit, offset=offset)
+
+    async def get_all_points_from_web(
+        self, limit: int | None = None, offset: str | None = None
+    ) -> Tuple[List[Record], int | str | None]:
+        conditions = [
+            self._tenant_field_condition(),
+            FieldCondition(
+                key="metadata.source",
+                match=MatchText(text="http")  # Regex for "starts with http"
+            )
+        ]
+
+        return await self._get_all_points(Filter(must=conditions), limit=limit, offset=offset, with_vectors=False)
+
+    async def get_all_points_from_files(
+        self, limit: int | None = None, offset: str | None = None
+    ) -> Tuple[List[Record], int | str | None]:
+        filter_condition = Filter(
+            must_not=[
+                FieldCondition(
+                    key="metadata.source",
+                    match=MatchText(text="http")  # Regex for "starts with http"
+                )
+            ],
+            must=[
+                self._tenant_field_condition(),
+                FieldCondition(
+                    key="metadata.source",
+                    match=MatchValue(value="^http")  # Regex for "starts with http"
+                )
+            ]
         )
+
+        return await self._get_all_points(filter_condition, limit=limit, offset=offset, with_vectors=False)
 
     def db_is_remote(self):
         return isinstance(self.client._client, QdrantRemote)

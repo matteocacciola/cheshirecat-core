@@ -16,6 +16,7 @@ import shutil
 import tomli
 from typing import Dict, Tuple, List, Type, TypeVar, Any, Callable
 from urllib.parse import urlparse
+import hashlib
 
 from cat.env import get_env
 from cat.exceptions import CustomValidationException
@@ -541,3 +542,11 @@ def rollback_factory_config(agent_id: str, factory: "BaseFactory"):
 
     adapter = FactoryAdapter(factory)
     adapter.rollback_factory_config(agent_id)
+
+
+def get_file_hash(file_path: str, chunk_size: int = 8192) -> str:
+    sha256 = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        while chunk := f.read(chunk_size):
+            sha256.update(chunk)
+    return sha256.hexdigest()

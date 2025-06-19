@@ -161,7 +161,7 @@ class WorkingMemory(BaseModelDict):
         using dedicated objects and libraries.
 
         Args:
-            latest_n (int. optional): How many latest turns to stringify. Defaults to 5.
+            latest_n (int. optional): How many latest turns to stringify. Default to 5.
 
         Returns:
             str: String with recent conversation turns.
@@ -186,7 +186,7 @@ class WorkingMemory(BaseModelDict):
         Convert chat history in working memory to Langchain objects.
 
         Args:
-            latest_n (int, optional): Number of latest messages to get. Defaults to 5.
+            latest_n (int, optional): Number of latest messages to get. Default to 5.
 
         Returns:
             List[BaseMessage]: List of Langchain messages.
