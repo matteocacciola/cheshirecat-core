@@ -18,7 +18,7 @@ def test_get_base_url():
 
 
 def test_get_base_path():
-    assert utils.get_base_path() == "app/cat/"
+    assert utils.get_base_path() == "/app/cat/"
 
 
 def test_get_plugin_path():
@@ -28,7 +28,7 @@ def test_get_plugin_path():
 
 
 def test_get_static_path():
-    assert utils.get_static_path() == "app/cat/static/"
+    assert utils.get_static_path() == "/app/cat/static/"
 
 
 def test_get_static_url():
