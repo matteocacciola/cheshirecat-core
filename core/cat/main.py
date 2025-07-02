@@ -11,7 +11,7 @@ if __name__ == "__main__":
     if get_env("CCAT_DEBUG") == "true":
         debug_config = {
             "reload": True,
-            "reload_excludes": ["*test_*.*", "*mock_*.*", os.path.join(get_plugins_path(), "*", "*.*")],
+            "reload_excludes": ["*test_*.*", "*mock_*.*", os.path.join("plugins", "*", "*.*")],
         }
     # uvicorn running behind an https proxy
     proxy_pass_config = {}
