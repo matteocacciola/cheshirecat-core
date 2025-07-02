@@ -1,4 +1,5 @@
 __pycache__
+*.egg-info
 .env
 *mypy_cache
 *.pytest_cache
@@ -11,6 +12,7 @@ venv
 .idea
 
 # DBs
+*dormouse/*
 long_term_memory
 local_vector_memory
 /core/dormouse/*

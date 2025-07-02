@@ -18,6 +18,7 @@ from typing import Dict, Tuple, List, Type, TypeVar, Any, Callable
 from urllib.parse import urlparse
 import hashlib
 
+import cat
 from cat.env import get_env
 from cat.exceptions import CustomValidationException
 from cat.log import log
@@ -180,7 +181,8 @@ def get_base_url():
 
 def get_base_path():
     """Allows exposing the base path."""
-    return "cat/"
+    current_file_path = os.path.dirname(os.path.abspath(__file__))
+    return current_file_path + "/"
 
 
 def get_plugins_path():

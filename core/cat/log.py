@@ -137,6 +137,8 @@ class CatLogEngine:
             logger.log(level, line)
 
     def welcome(self):
+        from cat.utils import get_base_path
+
         """Welcome message in the terminal."""
         secure = "s" if get_env("CCAT_CORE_USE_SECURE_PROTOCOLS") in ("true", "1") else ""
 
@@ -144,7 +146,8 @@ class CatLogEngine:
         cat_port = get_env("CCAT_CORE_PORT")
         cat_address = f"http{secure}://{cat_host}:{cat_port}"
 
-        with open("cat/welcome.txt", "r") as f:
+        print("\n\n")
+        with open(get_base_path() + "welcome.txt", "r") as f:
             print(f.read())
             time.sleep(0.01)
 

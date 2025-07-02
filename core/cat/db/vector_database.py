@@ -6,9 +6,9 @@ from qdrant_client import AsyncQdrantClient
 
 from cat.log import log
 from cat.env import get_env
-from cat.utils import extract_domain_from_url, is_https, singleton
+from cat.utils import extract_domain_from_url, is_https, singleton, get_base_path
 
-LOCAL_FOLDER_PATH = "cat/data/local_vector_memory/"
+LOCAL_FOLDER_PATH = get_base_path() + "data/local_vector_memory/"
 
 
 @singleton

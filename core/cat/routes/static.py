@@ -3,6 +3,7 @@ from fastapi.staticfiles import StaticFiles
 
 from cat.auth.connection import HTTPAuth
 from cat.auth.permissions import AuthPermission, AuthResource
+from cat.utils import get_base_path
 
 
 class AuthStatic(StaticFiles):
@@ -15,5 +16,5 @@ class AuthStatic(StaticFiles):
 def mount(cheshire_cat_api: FastAPI):
     # static files folder available to plugins
     cheshire_cat_api.mount(
-        "/static/", AuthStatic(directory="cat/static"), name="static"
+        "/static/", AuthStatic(directory=get_base_path() + "static"), name="static"
     )

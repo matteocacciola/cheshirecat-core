@@ -14,7 +14,7 @@ from cat.db.cruds import plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.experimental.form.cat_form import CatForm
 from cat.mad_hatter.decorators import CustomEndpoint, CatHook, CatPluginDecorator, CatTool
-from cat.utils import to_camel_case, inspect_calling_agent
+from cat.utils import to_camel_case, inspect_calling_agent, get_base_path
 from cat.log import log
 
 
@@ -332,8 +332,13 @@ class Plugin:
         endpoints = []
         plugin_overrides = []
 
+        base_path_dotted_notation = get_base_path().replace("/", ".")
         for py_file in self._py_files:
-            py_filename = py_file.replace(".py", "").replace("/", ".")
+            py_filename = (
+                py_file.replace(".py", "")
+                .replace("/", ".")
+                .replace(base_path_dotted_notation, "cat.")
+            )
 
             log.debug(f"Import module {py_filename}")
 

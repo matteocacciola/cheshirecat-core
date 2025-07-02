@@ -99,7 +99,7 @@ class Tweedledum(MadHatter):
 
         # plugins are found in the plugins folder,
         # plus the default core plugin (where default hooks and tools are defined)
-        core_plugin_folder = "cat/mad_hatter/core_plugin/"
+        core_plugin_folder = utils.get_base_path() + "mad_hatter/core_plugin/"
 
         # plugin folder is "cat/plugins/" in production, "tests/mocks/mock_plugin_folder/" during tests
         all_plugin_folders = [core_plugin_folder] + glob.glob(
