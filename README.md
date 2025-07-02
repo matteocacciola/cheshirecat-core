@@ -33,7 +33,7 @@ The Cheshire Cat is a framework to build custom AI agents:
 - 🏛 Easy to use admin panel
 - 🌍 Supports any language model via langchain
 - 👥 Multiuser with granular permissions, compatible with any identity provider
-- 💬 Multi-chatbots, with configurable (even different) LLM per chatbot, plus specific knowledge per chatbot
+- 💬 Multi-chatbots, with configurable (even different) LLM, chunking strategy and other features per chatbot, plus specific knowledge per chatbot
 - 💬 Remembers conversations and documents and uses them in conversation
 - ✂️ Customizable chunking and embedding
 - ☁️ Cloud Ready, working even with horizontal autoscaling
