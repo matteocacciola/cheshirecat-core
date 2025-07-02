@@ -1,73 +1,15 @@
-import asyncio
-import uuid
-from typing import Any, List, Iterable, Dict, Tuple, Final
-from qdrant_client.qdrant_remote import QdrantRemote
-from qdrant_client.http.models import (
-    Batch,
-    PointStruct,
-    Filter,
-    FieldCondition,
-    MatchValue,
-    MatchText,
-    SearchParams,
-    QuantizationSearchParams,
-    Record,
-    UpdateResult,
-    HasIdCondition,
-    Payload,
-)
+from typing import List, Iterable, Dict, Tuple, Final
 
-from cat.db.vector_database import get_vector_db
-from cat.log import log
-from cat.memory.utils import DocumentRecall, to_document_recall
+from cat.memory.utils import DocumentRecall, Payload, PointStruct, Record, UpdateResult, to_document_recall
+from cat.memory.vector_memory_handler import VectorMemoryHandler
 
 
 class VectorMemoryCollection:
-    def __init__(self, agent_id: str, collection_name: str):
-        self.agent_id: Final[str] = agent_id
+    def __init__(self, vector_memory_handler: VectorMemoryHandler, collection_name: str):
+        self.vector_memory_handler: Final[VectorMemoryHandler] = vector_memory_handler
 
         # Set attributes (metadata on the embedder are useful because it may change at runtime)
         self.collection_name: Final[str] = collection_name
-
-        # connects to Qdrant and creates self.client attribute
-        self.client: Final = get_vector_db()
-
-    def _tenant_field_condition(self) -> FieldCondition:
-        return FieldCondition(key="tenant_id", match=MatchValue(value=self.agent_id))
-
-    # adapted from https://github.com/langchain-ai/langchain/blob/bfc12a4a7644cfc4d832cc4023086a7a5374f46a/libs/langchain/langchain/vectorstores/qdrant.py#L1941
-    # see also https://github.com/langchain-ai/langchain/blob/bfc12a4a7644cfc4d832cc4023086a7a5374f46a/libs/langchain/langchain/vectorstores/qdrant.py#L1965
-    def _build_condition(self, key: str, value: Any) -> List[FieldCondition]:
-        out = []
-
-        if isinstance(value, dict):
-            for k, v in value.items():
-                out.extend(self._build_condition(f"{key}.{k}", v))
-        elif isinstance(value, list):
-            for v in value:
-                out.extend(self._build_condition(f"{key}[]" if isinstance(v, dict) else f"{key}", v))
-        else:
-            out.append(FieldCondition(key=f"metadata.{key}", match=MatchValue(value=value)))
-
-        return out
-
-    def _build_metadata_conditions(self, metadata: Dict | None = None) -> List[FieldCondition]:
-        conditions = [self._tenant_field_condition()]
-        if metadata:
-            conditions.extend([
-                condition for key, value in metadata.items() for condition in self._build_condition(key, value)
-            ])
-        return conditions
-
-    async def get_payload_indexes(self) -> Dict:
-        """
-        Retrieve the indexes configured on the collection.
-
-        Returns:
-            Dictionary with the configuration of the indexes
-        """
-        collection_info = await self.client.get_collection(collection_name=self.collection_name)
-        return collection_info.payload_schema
 
     async def retrieve_points(self, points: List) -> List[Record]:
         """
@@ -80,15 +22,8 @@ class VectorMemoryCollection:
             the list of points
         """
 
-        results = await self.client.scroll(
-            collection_name=self.collection_name,
-            scroll_filter=Filter(must=[self._tenant_field_condition(), HasIdCondition(has_id=points)]),
-            limit=len(points),
-            with_payload=True,
-            with_vectors=True,
-        )
+        points_found = await self.vector_memory_handler.retrieve_points(self.collection_name, points)
 
-        points_found, _ = results
         return points_found
 
     async def add_point(
@@ -112,26 +47,19 @@ class VectorMemoryCollection:
             PointStruct: The stored point.
         """
 
-        point = PointStruct(
-            id=id or uuid.uuid4().hex,
-            payload={
-                "page_content": content,
-                "metadata": metadata,
-                "tenant_id": self.agent_id,
-            },
+        point = await self.vector_memory_handler.add_point(
+            collection_name=self.collection_name,
+            content=content,
             vector=vector,
+            metadata=metadata,
+            id=id,
+            **kwargs,
         )
 
-        update_status = await self.client.upsert(collection_name=self.collection_name, points=[point], **kwargs)
-
-        if update_status.status == "completed":
-            # returning stored point
-            return point
-
-        return None
+        return point
 
     # add points in collection
-    async def add_points(self, payloads: List[Payload], vectors: List, ids: List | None = None):
+    async def add_points(self, payloads: List[Payload], vectors: List, ids: List | None = None) -> UpdateResult:
         """
         Upsert memories in batch mode
         Args:
@@ -143,27 +71,27 @@ class VectorMemoryCollection:
             the response of the upsert operation
         """
 
-        if not ids:
-            ids = [uuid.uuid4().hex for _ in range(len(payloads))]
+        res = await self.vector_memory_handler.add_points(
+            collection_name=self.collection_name,
+            payloads=payloads,
+            vectors=vectors,
+            ids=ids,
+        )
 
-        if len(ids) != len(payloads) or len(ids) != len(vectors):
-            raise ValueError("ids, payloads and vectors must have the same length")
-
-        payloads = [{**p, **{"tenant_id": self.agent_id}} for p in payloads]
-        points = Batch(ids=ids, payloads=payloads, vectors=vectors)
-
-        res = await self.client.upsert(collection_name=self.collection_name, points=points)
         return res
 
     async def delete_points_by_metadata_filter(self, metadata: Dict | None = None) -> UpdateResult:
-        conditions = self._build_metadata_conditions(metadata)
+        res = await self.vector_memory_handler.delete_points_by_metadata_filter(
+            collection_name=self.collection_name, metadata=metadata
+        )
 
-        res = await self.client.delete(collection_name=self.collection_name, points_selector=Filter(must=conditions))
         return res
 
     # delete point in collection
     async def delete_points(self, points_ids: List) -> UpdateResult:
-        res = await self.client.delete(collection_name=self.collection_name, points_selector=points_ids)
+        res = await self.vector_memory_handler.delete_points(
+            collection_name=self.collection_name, points_ids=points_ids
+        )
         return res
 
     # retrieve similar memories from embedding
@@ -190,28 +118,14 @@ class VectorMemoryCollection:
             List: List of DocumentRecall.
         """
 
-        conditions = self._build_metadata_conditions(metadata)
-
-        # retrieve memories
-        query_response = await self.client.query_points(
+        res = await self.vector_memory_handler.recall_memories_from_embedding(
             collection_name=self.collection_name,
-            query=embedding,
-            query_filter=Filter(must=conditions),
-            with_payload=True,
-            with_vectors=True,
-            limit=k,
-            score_threshold=threshold,
-            search_params=SearchParams(
-                quantization=QuantizationSearchParams(
-                    ignore=False,
-                    rescore=True,
-                    oversampling=2.0,  # Available as of v1.3.0
-                )
-            ),
+            metadata=metadata,
+            embedding=embedding,
+            k=k,
+            threshold=threshold,
         )
-
-        # convert Qdrant points to a structure containing langchain.Document and its information
-        return [to_document_recall(m) for m in query_response.points]
+        return res
 
     async def recall_all_memories(self) -> List[DocumentRecall]:
         """
@@ -233,115 +147,48 @@ class VectorMemoryCollection:
 
         return memories
 
-    async def _get_all_points(
-        self, scroll_filter: Filter, limit: int | None = None, offset: str | None = None, with_vectors: bool = True
-    ) -> Tuple[List[Record], int | str | None]:
-        if limit is not None:
-            # retrieving the points
-            return await self.client.scroll(
-                collection_name=self.collection_name,
-                scroll_filter=scroll_filter,
-                with_vectors=with_vectors,
-                offset=offset,  # Start from the given offset, or the beginning if None.
-                limit=limit  # Limit the number of points retrieved to the specified limit.
-            )
-
-        # retrieve all points without limit
-        memory_points = []
-        limit = 10000
-        while True:
-            # Get a batch of points
-            points_batch, next_offset = await self._get_all_points(
-                scroll_filter, limit=limit, offset=offset, with_vectors=with_vectors
-            )
-
-            # Add filtered points to our collection
-            memory_points.extend(points_batch)
-
-            # Check if we have more pages
-            if next_offset is None:
-                # No more pages
-                break
-
-            # Set offset for next iteration
-            offset = next_offset
-
-            # Optional: Add a small delay to avoid overwhelming the system
-            await asyncio.sleep(0.1)
-        return memory_points, None
-
     # retrieve all the points in the collection
     async def get_all_points(
         self, limit: int | None = None, offset: str | None = None, metadata: Dict | None = None
     ) -> Tuple[List[Record], int | str | None]:
-        """
-        Retrieve all the points in the collection with an optional offset and limit.
+        res = await self.vector_memory_handler.get_all_points(
+            collection_name=self.collection_name,
+            limit=limit,
+            offset=offset,
+            metadata=metadata,
+        )
 
-        Args:
-            limit: The maximum number of points to retrieve.
-            offset: The offset from which to start retrieving points.
-            metadata: Optional metadata filter to apply to the points.
-
-        Returns:
-            Tuple: A tuple containing the list of points and the next offset.
-        """
-
-        conditions = self._build_metadata_conditions(metadata)
-        return await self._get_all_points(Filter(must=conditions), limit=limit, offset=offset)
+        return res
 
     async def get_all_points_from_web(
         self, limit: int | None = None, offset: str | None = None
     ) -> Tuple[List[Record], int | str | None]:
-        conditions = [
-            self._tenant_field_condition(),
-            FieldCondition(
-                key="metadata.source",
-                match=MatchText(text="http")  # Regex for "starts with http"
-            )
-        ]
+        res = await self.vector_memory_handler.get_all_points_from_web(
+            collection_name=self.collection_name,
+            limit=limit,
+            offset=offset,
+        )
 
-        return await self._get_all_points(Filter(must=conditions), limit=limit, offset=offset, with_vectors=False)
+        return res
 
     async def get_all_points_from_files(
         self, limit: int | None = None, offset: str | None = None
     ) -> Tuple[List[Record], int | str | None]:
-        filter_condition = Filter(
-            must_not=[
-                FieldCondition(
-                    key="metadata.source",
-                    match=MatchText(text="http")  # Regex for "starts with http"
-                )
-            ],
-            must=[
-                self._tenant_field_condition(),
-                FieldCondition(
-                    key="metadata.source",
-                    match=MatchValue(value="^http")  # Regex for "starts with http"
-                )
-            ]
+        res = await self.vector_memory_handler.get_all_points_from_files(
+            collection_name=self.collection_name,
+            limit=limit,
+            offset=offset,
         )
 
-        return await self._get_all_points(filter_condition, limit=limit, offset=offset, with_vectors=False)
-
-    def db_is_remote(self):
-        return isinstance(self.client._client, QdrantRemote)
+        return res
 
     async def get_vectors_count(self) -> int:
-        return (await self.client.count(
-            collection_name=self.collection_name,
-            count_filter=Filter(must=[self._tenant_field_condition()]),
-        )).count
+        res = await self.vector_memory_handler.get_vectors_count(collection_name=self.collection_name)
+        return res
 
     async def destroy_all_points(self) -> bool:
-        try:
-            await self.client.delete(
-                collection_name=self.collection_name,
-                points_selector=Filter(must=[self._tenant_field_condition()]),
-            )
-            return True
-        except Exception as e:
-            log.error(f"Error deleting collection {self.collection_name}, agent {self.agent_id}: {e}")
-            return False
+        res = await self.vector_memory_handler.destroy_all_points(collection_name=self.collection_name)
+        return res
 
     async def update_metadata(self, points: List[PointStruct], metadata: Dict) -> UpdateResult:
         """
@@ -354,7 +201,9 @@ class VectorMemoryCollection:
         Returns:
             UpdateResult: The result of the update operation.
         """
-        for point in points:
-            point.payload["metadata"] = {**point.payload["metadata"], **metadata}
-            point.payload["tenant_id"] = self.agent_id
-        return await self.client.upsert(collection_name=self.collection_name, points=points)
+
+        res = await self.vector_memory_handler.update_metadata(
+            collection_name=self.collection_name, points=points, metadata=metadata
+        )
+
+        return res

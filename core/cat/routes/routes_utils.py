@@ -21,7 +21,6 @@ from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.registry import registry_search_plugins
 from cat.memory.utils import VectorMemoryCollectionTypes
 from cat.memory.vector_memory import VectorMemory
-from cat.memory.vector_memory_builder import VectorMemoryBuilder
 
 
 class Plugins(BaseModel):
@@ -297,8 +296,6 @@ async def startup_app(app):
     app.state.lizard = BillTheLizard().set_fastapi_app(app)
     app.state.white_rabbit = WhiteRabbit()
 
-    memory_builder = VectorMemoryBuilder()
-    await memory_builder.build()
     await app.state.lizard.create_cheshire_cat(DEFAULT_AGENT_KEY)
 
 

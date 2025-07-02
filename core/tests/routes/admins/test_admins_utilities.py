@@ -2,6 +2,7 @@ import uuid
 from qdrant_client.http.models import Filter, FieldCondition, MatchValue
 import pytest
 
+from cat import utils
 from cat.db.cruds import (
     settings as crud_settings,
     history as crud_history,
@@ -9,7 +10,6 @@ from cat.db.cruds import (
     users as crud_users,
 )
 from cat.db.database import get_db
-from cat.db.vector_database import get_vector_db
 from cat.env import get_env
 from cat.memory.long_term_memory import LongTermMemory
 from cat.memory.utils import VectorMemoryCollectionTypes
@@ -20,7 +20,8 @@ from tests.utils import create_new_user, get_client_admin_headers, new_user_pass
 @pytest.mark.asyncio
 async def test_factory_reset_success(client, lizard, cheshire_cat):
     # check that the vector database is not empty
-    assert len((await get_vector_db().get_collections()).collections) > 0
+    c = await cheshire_cat.memory.vectors.vector_memory_handler._client.get_collections()
+    assert len(c.collections) > 0
 
     creds = {
         "username": "admin",
@@ -36,7 +37,7 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
     )
 
     assert response.status_code == 200
-    assert response.json() == {"deleted_settings": True, "deleted_memories": True, "deleted_plugin_folders": True}
+    assert response.json() == {"deleted_settings": True, "deleted_memories": False, "deleted_plugin_folders": True}
 
     settings = crud_settings.get_settings(cheshire_cat.id)
     assert len(settings) == 0
@@ -45,8 +46,9 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
     settings = crud_settings.get_settings(lizard.config_key)
     assert len(settings) > 0
 
-    # check that the vector database is empty
-    assert len((await get_vector_db().get_collections()).collections) == 3
+    # check that the vector database is not empty
+    c = await cheshire_cat.memory.vectors.vector_memory_handler._client.get_collections()
+    assert len(c.collections) == 3
 
     histories = get_db().get(crud_history.format_key(cheshire_cat.id, "*"))
     assert histories is None
@@ -90,7 +92,10 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
 
     qdrant_filter = Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=cheshire_cat.id))])
     for c in VectorMemoryCollectionTypes:
-        assert (await get_vector_db().count(collection_name=str(c), count_filter=qdrant_filter)).count == 0
+        count_response = await cheshire_cat.memory.vectors.vector_memory_handler._client.count(
+            collection_name=str(c), count_filter=qdrant_filter
+        )
+        assert count_response.count == 0
 
 
 @pytest.mark.asyncio

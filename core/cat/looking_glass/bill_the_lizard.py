@@ -26,7 +26,6 @@ from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.tweedledum import Tweedledum
 from cat.memory.utils import VectorEmbedderSize
-from cat.memory.vector_memory_builder import VectorMemoryBuilder
 from cat.parsers import YoutubeParser, TableParser, JSONParser, PowerPointParser
 from cat.rabbit_hole import RabbitHole
 from cat.services.websocket_manager import WebsocketManager
@@ -141,6 +140,18 @@ class BillTheLizard:
 
         crud_plugins.destroy_plugin(plugin_id)
 
+    async def on_replacing_embedder(self):
+        """
+        Callback executed when the embedder is replaced. It informs the Cheshire Cats about the new embedder available
+        in the system.
+        """
+
+        for ccat_id in crud.get_agents_main_keys():
+            ccat = self.get_cheshire_cat(ccat_id)
+
+            # inform the Cheshire Cats about the new embedder available in the system
+            await ccat.memory.vectors.initialize(self.embedder_name, self.embedder_size)
+
     async def reload_embed_procedures(self):
         """
         Reload the embedding of the procedures in the procedural memory for each Cheshire Cat.
@@ -198,7 +209,7 @@ class BillTheLizard:
         self.load_language_embedder()
 
         try:
-            await self.memory_builder.build()  # create new collections (different embedder!)
+            await self.on_replacing_embedder()
         except Exception as e:  # restore the original Embedder
             log.error(e)
 
@@ -254,6 +265,7 @@ class BillTheLizard:
             return self.get_cheshire_cat(agent_id)
 
         result = CheshireCat(agent_id)
+        await result.memory.vectors.initialize(self.embedder_name, self.embedder_size)
         await result.embed_procedures()
 
         return result
@@ -303,10 +315,6 @@ class BillTheLizard:
     @property
     def mad_hatter(self) -> MadHatter:
         return self.plugin_manager
-
-    @property
-    def memory_builder(self) -> VectorMemoryBuilder:
-        return VectorMemoryBuilder()
 
     @property
     def endpoints(self):

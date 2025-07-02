@@ -7,7 +7,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from cat.db.database import get_db
-from cat.db.vector_database import get_vector_db
 from cat.env import get_env
 from cat.exceptions import (
     LoadMemoryException,
@@ -57,7 +56,6 @@ async def lifespan(app: FastAPI):
     await shutdown_app(app)
 
     get_db().close()
-    await get_vector_db().close()
 
 
 def custom_generate_unique_id(route: APIRoute):

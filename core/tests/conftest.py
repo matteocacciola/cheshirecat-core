@@ -14,13 +14,12 @@ from cat.auth import auth_utils
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
 from cat.convo.messages import UserMessage
 from cat.db.database import Database
-from cat.db.vector_database import VectorDatabase, LOCAL_FOLDER_PATH
+from cat.db.vector_database import VectorDatabase
 from cat.env import get_env
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.stray_cat import StrayCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.plugin import Plugin
-from cat.memory.vector_memory_builder import VectorMemoryBuilder
 from cat.startup import cheshire_cat_api
 import cat.utils as utils
 
@@ -42,14 +41,14 @@ redis_client = redis.Redis(host=get_env("CCAT_REDIS_HOST"), db="1", encoding="ut
 # substitute classes' methods where necessary for testing purposes
 def mock_classes(monkeypatch):
     # Use in memory vector db
-    def mock_connect_to_vector_memory(self, *args, **kwargs):
+    def mock_connect_to_vector_memory(self):
         return AsyncQdrantClient(":memory:")
     monkeypatch.setattr(
         get_class_from_decorated_singleton(VectorDatabase), "connect_to_vector_memory", mock_connect_to_vector_memory
     )
 
     # Use a different redis client
-    def mock_get_redis_client(self, *args, **kwargs):
+    def mock_get_redis_client(self):
         return redis_client
     monkeypatch.setattr(get_class_from_decorated_singleton(Database), "get_redis_client", mock_get_redis_client)
 
@@ -57,7 +56,7 @@ def mock_classes(monkeypatch):
     utils.get_file_manager_root_storage_path = lambda: "tests/data/storage"
 
     # do not check plugin dependencies at every restart
-    def mock_install_requirements(self, *args, **kwargs):
+    def mock_install_requirements(self):
         pass
     monkeypatch.setattr(Plugin, "_install_requirements", mock_install_requirements)
 
@@ -89,13 +88,6 @@ def clean_up():
     time.sleep(0.1)
 
 
-# remove the local Qdrant memory
-def clean_up_qdrant():
-    # remove the local Qdrant memory
-    if os.path.exists(LOCAL_FOLDER_PATH):
-        shutil.rmtree(LOCAL_FOLDER_PATH)
-
-
 def should_skip_encapsulation(request):
     return request.node.get_closest_marker("skip_encapsulation") is not None
 
@@ -107,8 +99,6 @@ async def encapsulate_each_test(request, monkeypatch):
         yield
 
         return
-
-    clean_up_qdrant()
 
     # monkeypatch classes
     mock_classes(monkeypatch)
@@ -123,10 +113,7 @@ async def encapsulate_each_test(request, monkeypatch):
     clean_up()
 
     # delete all singletons!!!
-    utils.singleton.instances = {}
-
-    memory_builder = VectorMemoryBuilder()
-    await memory_builder.build()
+    utils.singleton.instances.clear()
 
     yield
 
@@ -142,21 +129,17 @@ async def encapsulate_each_test(request, monkeypatch):
     else:
         del os.environ["CCAT_RABBIT_HOLE_STORAGE_ENABLED"]
 
-    clean_up_qdrant()
-
 
 @pytest_asyncio.fixture(scope="function")
 async def lizard():
     l = BillTheLizard().set_fastapi_app(cheshire_cat_api)
     yield l
-    await l.shutdown()
 
 
 @pytest.fixture(scope="function")
 def white_rabbit():
     wr = WhiteRabbit()
     yield wr
-    wr.shutdown()
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -233,34 +216,12 @@ def agent_plugin_manager(cheshire_cat):
     yield plugin_manager
 
 
-@pytest.fixture(scope="function")
-def embedder(lizard):
-    yield lizard.embedder
-
-
-@pytest.fixture(scope="function")
-def llm(cheshire_cat):
-    yield cheshire_cat.large_language_model
-
-
 @pytest_asyncio.fixture(scope="function")
-async def memory(cheshire_cat):
-    yield cheshire_cat.memory
-
-
-@pytest_asyncio.fixture(scope="function")
-async def stray_no_memory(cheshire_cat, lizard) -> StrayCat:
+async def stray_no_memory(cheshire_cat, agent_plugin_manager):
     stray_cat = StrayCat(
         user_data=AuthUserInfo(id="user_alice", name="Alice", permissions=get_base_permissions()),
         agent_id=cheshire_cat.id
     )
-
-    # install plugin
-    new_plugin_zip_path = create_mock_plugin_zip(flat=True)
-    plugin_id = lizard.plugin_manager.install_plugin(new_plugin_zip_path)
-
-    # activate the plugin within the Cheshire Cat whose plugin manager is being used
-    cheshire_cat.plugin_manager.toggle_plugin(plugin_id)
 
     yield stray_cat
 

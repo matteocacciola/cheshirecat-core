@@ -48,7 +48,11 @@ async def install_plugin(
     """Install a new plugin from a zip file"""
 
     plugin_archive_path = await load_uploaded_file(file, get_allowed_plugins_mime_types())
-    lizard.plugin_manager.install_plugin(plugin_archive_path)
+
+    try:
+        lizard.plugin_manager.install_plugin(plugin_archive_path)
+    except Exception as e:
+        raise CustomValidationException(f"Could not install plugin from file: {e}")
 
     return InstallPluginResponse(
         filename=file.filename,
@@ -69,7 +73,7 @@ async def install_plugin_from_registry(
         tmp_plugin_path = await registry_download_plugin(payload["url"])
         lizard.plugin_manager.install_plugin(tmp_plugin_path)
     except Exception as e:
-        raise CustomValidationException(f"Could not download plugin from registry: {e}")
+        raise CustomValidationException(f"Could not install plugin from registry: {e}")
 
     return InstallPluginFromRegistryResponse(url=payload["url"], info="Plugin is being installed asynchronously")
 

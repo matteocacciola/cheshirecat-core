@@ -1,7 +1,5 @@
-import os
 import sys
 import socket
-import portalocker
 from qdrant_client import AsyncQdrantClient
 
 from cat.log import log
@@ -68,15 +66,3 @@ class VectorDatabase:
 
 def get_vector_db() -> AsyncQdrantClient:
     return VectorDatabase().db
-
-
-def unlock_local_vector_db():
-    lock_file_path = os.path.join(LOCAL_FOLDER_PATH, ".lock")
-    if not os.path.exists(lock_file_path):
-        return
-
-    try:
-        with open(lock_file_path, "r+") as lock_file:
-            portalocker.unlock(lock_file)
-    except (IOError, portalocker.LockException):
-        pass  # If we can't unlock, it's probably already unlocked

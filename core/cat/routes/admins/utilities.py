@@ -6,10 +6,8 @@ from cat.auth.auth_utils import extract_agent_id_from_request
 from cat.auth.permissions import AdminAuthResource, AuthPermission, check_admin_permissions
 from cat.db import crud
 from cat.db.database import get_db
-from cat.db.vector_database import get_vector_db
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
-from cat.memory.utils import VectorMemoryCollectionTypes
 from cat.routes.routes_utils import startup_app, shutdown_app
 from cat.utils import empty_plugin_folder
 
@@ -34,21 +32,14 @@ async def factory_reset(
     Factory reset the entire application. This will delete all settings, memories, and metadata.
     """
 
+    await shutdown_app(request.app)
+
     try:
-        await lizard.shutdown()
         get_db().flushdb()
         deleted_settings = True
     except Exception as e:
         log.error(f"Error deleting settings: {e}")
         deleted_settings = False
-
-    try:
-        for collection_name in VectorMemoryCollectionTypes:
-            await get_vector_db().delete_collection(str(collection_name))
-        deleted_memories = True
-    except Exception as e:
-        log.error(f"Error deleting memories: {e}")
-        deleted_memories = False
 
     try:
         empty_plugin_folder()
@@ -57,12 +48,11 @@ async def factory_reset(
         log.error(f"Error deleting plugin folders: {e}")
         deleted_plugin_folders = False
 
-    await shutdown_app(request.app)
     await startup_app(request.app)
 
     return ResetResponse(
         deleted_settings=deleted_settings,
-        deleted_memories=deleted_memories,
+        deleted_memories=False,
         deleted_plugin_folders=deleted_plugin_folders,
     )
 

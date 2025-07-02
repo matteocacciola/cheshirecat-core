@@ -118,6 +118,11 @@ class CheshireCat:
         })
 
     def shutdown(self) -> None:
+        # try:
+        #     await self.memory.vectors.vector_memory_handler.close()
+        # except Exception:
+        #     pass
+
         self.memory = None
         self.custom_auth_handler = None
         self.plugin_manager = None
@@ -301,7 +306,6 @@ class CheshireCat:
             raise e
 
         return ReplacedNLPConfig(name=file_manager_name, value=updater.new_setting["value"])
-
 
     def replace_chunker(self, chunker_name: str, settings: Dict) -> ReplacedNLPConfig:
         """

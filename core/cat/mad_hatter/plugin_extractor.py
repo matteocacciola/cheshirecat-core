@@ -1,9 +1,12 @@
+import ast
 import os
 import uuid
 import shutil
 import mimetypes
 from slugify import slugify
 
+from cat.log import log
+from cat.services.python_security import PythonSecurityVisitor, MaliciousCodeError
 from cat.utils import get_allowed_plugins_mime_types
 
 
@@ -43,37 +46,78 @@ class PluginExtractor:
         file_name_no_extension = os.path.splitext(file_name)[0]
         return slugify(file_name_no_extension, separator="_")
 
-    def extract(self, to):
+    def __is_safe_python_file(self, file_path: str) -> bool:
+        """
+        Performs static analysis on a Python file to check for malicious constructs.
+        """
+        with open(file_path, "r", encoding="utf-8") as f:
+            try:
+                tree = ast.parse(f.read())
+            except SyntaxError as e:
+                log.debug(f"Syntax error in {file_path}: {e}")
+                return False
+
+        visitor = PythonSecurityVisitor(file_path)
+        try:
+            visitor.visit(tree)
+            return not visitor.found_malicious
+        except MaliciousCodeError as e:
+            log.error(f"Malicious code detected: {e}")
+            return False
+
+    def __is_safe_plugin(self, folder_path: str) -> bool:
+        """
+        Check all Python files in the plugin folder for safety.
+        """
+        for root, _, files in os.walk(folder_path):
+            for file in files:
+                if not file.endswith(".py"):
+                    continue
+
+                file_path = os.path.join(root, file)
+                if not self.__is_safe_python_file(file_path):
+                    return False
+        return True
+
+    def extract(self, to: str) -> str:
         # create tmp directory
         tmp_folder_name = f"/tmp/{uuid.uuid1()}"
-        os.mkdir(tmp_folder_name)
+        os.makedirs(tmp_folder_name)
 
         # extract into tmp directory
         shutil.unpack_archive(self._path, tmp_folder_name, self._extension)
         # what was extracted?
         contents = os.listdir(tmp_folder_name)
 
-        # if it is just one folder and nothing else, that is the plugin
-        if len(contents) == 1 and os.path.isdir(os.path.join(tmp_folder_name, contents[0])):
-            tmp_folder_to = os.path.join(tmp_folder_name, contents[0])
-        else:  # flat zip
-            tmp_folder_to = tmp_folder_name
+        tmp_folder_to = (
+            os.path.join(tmp_folder_name, contents[0])
+            if len(contents) == 1 and os.path.isdir(os.path.join(tmp_folder_name, contents[0]))
+            else tmp_folder_name
+        )
 
-        # move plugin folder to cat plugins folder
-        folder_to = os.path.join(to, self._id)
-        # if folder exists, delete it as it will be replaced
-        if os.path.exists(folder_to):
-            shutil.rmtree(folder_to)
+        try:
+            # check if plugin is safe
+            if not self.__is_safe_plugin(tmp_folder_to):
+                raise ValueError("Plugin contains unsafe Python files")
 
-        # extracted plugin in plugins folder!
-        shutil.move(tmp_folder_to, folder_to)
+            # proceed with installation if checks pass
+            # move plugin folder to cat plugins folder
+            folder_to = os.path.join(to, self._id)
 
-        # cleanup
-        if os.path.exists(tmp_folder_name):
-            shutil.rmtree(tmp_folder_name)
+            # if `folder_to` exists, delete it as it will be replaced
+            if os.path.exists(folder_to):
+                shutil.rmtree(folder_to)
+            shutil.move(tmp_folder_to, folder_to)
 
-        # remove zip after extraction
-        os.remove(self._path)
+            return folder_to
+        except Exception as e:
+            log.error(f"Error during plugin extraction: {e}")
+            raise e
+        finally:
+            # Cleanup temporary directory
+            if os.path.exists(tmp_folder_name):
+                shutil.rmtree(tmp_folder_name)
 
-        # return extracted dir path
-        return folder_to
+            # Remove zip after extraction
+            if os.path.exists(self._path):
+                os.remove(self._path)
