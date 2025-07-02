@@ -543,7 +543,7 @@ class StrayCat:
 Allowed classes are:
 {labels_list}{examples_list}
 
-"{sentence}" -> """
+Just output the class, nothing else."""
 
         response = self.llm(prompt)
 

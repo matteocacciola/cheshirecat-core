@@ -239,6 +239,7 @@ def levenshtein_distance(prediction: str, reference: str) -> float:
     res = Levenshtein.normalized_distance(prediction, reference)
     return res
 
+
 def parse_json(json_string: str, pydantic_model: BaseModel = None) -> Dict:
     # instantiate parser
     parser = JsonOutputParser(pydantic_object=pydantic_model)
