@@ -45,6 +45,7 @@ def test_stray_classify(stray_no_memory):
 @pytest.mark.asyncio
 async def test_recall_to_working_memory(stray_no_memory, mocked_default_llm_answer_prompt):
     # empty working memory / episodic
+    assert len(stray_no_memory.working_memory.history) == 0
     assert stray_no_memory.working_memory.episodic_memories == []
 
     msg_text = "Where do I go?"
@@ -52,11 +53,11 @@ async def test_recall_to_working_memory(stray_no_memory, mocked_default_llm_answ
 
     # send message
     await stray_no_memory(UserMessage(**msg))
+    assert len(stray_no_memory.working_memory.history) == 2
 
     # recall after episodic memory was stored
     await stray_no_memory.recall_relevant_memories_to_working_memory(msg_text)
 
-    assert len(stray_no_memory.working_memory.history) == 2
     assert stray_no_memory.working_memory.user_message.text == msg_text
     assert stray_no_memory.working_memory.user_message_json.text == msg_text
     assert stray_no_memory.working_memory.history[0].content.text == msg_text

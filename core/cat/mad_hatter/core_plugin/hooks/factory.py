@@ -5,6 +5,7 @@ from cat.factory.llm import LLMSettings
 from cat.factory.embedder import EmbedderSettings
 from cat.factory.auth_handler import AuthHandlerConfig
 from cat.factory.file_manager import FileManagerConfig
+from cat.factory.vector_db import VectorDatabaseSettings
 from cat.mad_hatter.decorators import hook
 
 
@@ -82,14 +83,31 @@ def factory_allowed_chunkers(allowed: List[ChunkerSettings], cat) -> List:
     """Hook to extend list of supported chunkers.
 
     Args:
-        allowed: List of ChunkerConfig classes
+        allowed: List of ChunkerSettings classes
             list of allowed chunkers
         cat: CheshireCat
             Cheshire Cat instance
 
     Returns:
-        supported: List of ChunkerConfig classes
+        supported: List of ChunkerSettings classes
             list of allowed chunkers
+    """
+
+    return allowed
+
+@hook(priority=0)
+def factory_allowed_vector_databases(allowed: List[VectorDatabaseSettings], cat) -> List:
+    """Hook to extend list of supported vector databases.
+
+    Args:
+        allowed: List of VectorDatabaseSettings classes
+            list of allowed vector databases
+        cat: CheshireCat
+            Cheshire Cat instance
+
+    Returns:
+        supported: List of VectorDatabaseSettings classes
+            list of allowed vector databases
     """
 
     return allowed

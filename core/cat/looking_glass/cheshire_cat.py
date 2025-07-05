@@ -23,11 +23,13 @@ from cat.factory.chunker import ChunkerFactory
 from cat.factory.custom_auth_handler import BaseAuthHandler
 from cat.factory.custom_chunker import BaseChunker
 from cat.factory.custom_file_manager import BaseFileManager
+from cat.factory.custom_vector_db import BaseVectorDatabaseHandler
 from cat.factory.file_manager import FileManagerFactory
 from cat.factory.llm import LLMFactory
+from cat.factory.vector_db import VectorDatabaseFactory
 from cat.log import log
 from cat.mad_hatter.tweedledee import Tweedledee
-from cat.memory.long_term_memory import LongTermMemory
+from cat.memory.utils import VectorMemoryCollectionTypes
 from cat.utils import (
     langchain_log_prompt,
     langchain_log_output,
@@ -60,8 +62,6 @@ class CheshireCat:
 
         self.id = agent_id
 
-        self.memory: LongTermMemory | None = None
-
         # instantiate plugin manager (loads all plugins' hooks and tools)
         self.plugin_manager = Tweedledee(self.id)
 
@@ -72,9 +72,10 @@ class CheshireCat:
         self.custom_auth_handler: BaseAuthHandler = get_factory_object(self.id, AuthHandlerFactory(self.plugin_manager))
         self.file_manager: BaseFileManager = get_factory_object(self.id, FileManagerFactory(self.plugin_manager))
         self.chunker: BaseChunker = get_factory_object(self.id, ChunkerFactory(self.plugin_manager))
-
-        # Load memories (vector collections and working_memory)
-        self.load_memory()
+        self.vector_memory_handler: BaseVectorDatabaseHandler = get_factory_object(
+            self.id, VectorDatabaseFactory(self.plugin_manager)
+        )
+        self.vector_memory_handler.agent_id = self.id
 
         # After memory is loaded, we can get/create tools embeddings
         # every time the plugin_manager finishes syncing hooks, tools and forms, it will notify the Cat (so it can
@@ -118,22 +119,27 @@ class CheshireCat:
         })
 
     def shutdown(self) -> None:
-        # try:
-        #     await self.memory.vectors.vector_memory_handler.close()
-        # except Exception:
-        #     pass
-
-        self.memory = None
         self.custom_auth_handler = None
         self.plugin_manager = None
         self.large_language_model = None
         self.file_manager = None
         self.chunker = None
 
+    async def destroy_memory(self):
+        """Destroy all data from the cat's memory."""
+        log.info(f"Agent id: {self.id}. Destroying all data from the cat's memory")
+
+        # destroy all memories
+        for c in VectorMemoryCollectionTypes:
+            await self.vector_memory_handler.destroy_all_points(str(c))
+
     async def destroy(self):
         """Destroy all data from the cat."""
 
-        await self.memory.destroy()
+        log.info(f"Agent id: {self.id}. Destroying all data from the cat")
+        # destroy all memories
+        await self.destroy_memory()
+
         self.shutdown()
 
         crud_settings.destroy_all(self.id)
@@ -145,16 +151,10 @@ class CheshireCat:
         if get_env_bool("CCAT_RABBIT_HOLE_STORAGE_ENABLED") and self.file_manager is not None:
             self.file_manager.remove_folder_from_storage(self.id)
 
-    def load_memory(self):
-        """Load LongTerMemory (which loads WorkingMemory)."""
-
-        # instantiate long term memory
-        self.memory = LongTermMemory(agent_id=self.id)
-
     async def embed_procedures(self):
         log.info(f"Agent id: {self.id}. Embedding procedures in vector memory")
         # Destroy all procedural embeddings
-        await self.memory.vectors.procedural.destroy_all_points()
+        await self.vector_memory_handler.destroy_all_points(str(VectorMemoryCollectionTypes.PROCEDURAL))
 
         # Easy access to active procedures in plugin_manager (source of truth!)
         active_procedures_hashes = [
@@ -184,7 +184,9 @@ class CheshireCat:
             })
             vectors.append(self.lizard.embedder.embed_documents([t["content"]])[0])
 
-        await self.memory.vectors.procedural.add_points(payloads=payloads, vectors=vectors)
+        await self.vector_memory_handler.add_points(
+            collection_name=str(VectorMemoryCollectionTypes.PROCEDURAL), payloads=payloads, vectors=vectors
+        )
         log.info(f"Agent id: {self.id}. Embedded {len(active_procedures_hashes)} triggers in procedural vector memory")
 
     def send_ws_message(self, content: str, msg_type="notification"):
@@ -324,6 +326,29 @@ class CheshireCat:
         self.chunker = get_factory_object(self.id, ChunkerFactory(self.plugin_manager))
 
         return ReplacedNLPConfig(name=chunker_name, value=updater.new_setting["value"])
+
+    async def replace_vector_memory_handler(
+        self, vector_memory_name: str, settings: Dict
+    ) -> ReplacedNLPConfig:
+        """
+        Replace the current Vector Memory Handler with a new one.
+        Args:
+            vector_memory_name: name of the new Vector Memory Handler
+            settings: settings of the new Vector Memory Handler
+
+        Returns:
+            The dictionary resuming the new name and settings of the Vector Memory Handler
+        """
+
+        factory = VectorDatabaseFactory(self.plugin_manager)
+        updater = get_updated_factory_object(self.id, factory, vector_memory_name, settings)
+
+        self.vector_memory_handler = get_factory_object(self.id, factory)
+
+        lizard = self.lizard
+        await self.vector_memory_handler.initialize(lizard.embedder_name, lizard.embedder_size)
+
+        return ReplacedNLPConfig(name=vector_memory_name, value=updater.new_setting["value"])
 
     @property
     def lizard(self) -> "BillTheLizard":

@@ -17,9 +17,6 @@ services:
       # Timezone
       - TZ=${CCAT_TIMEZONE:-UTC}
       - PYTHONUNBUFFERED=1
-      - CCAT_QDRANT_HOST=cheshire_cat_vector_memory
-      - CCAT_QDRANT_PORT=6333
-      - CCAT_QDRANT_CLIENT_TIMEOUT=100
       - CCAT_API_KEY=test
       - CCAT_API_KEY_WS=test
       - CCAT_REDIS_HOST=cheshire_cat_redis

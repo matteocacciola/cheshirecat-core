@@ -5,19 +5,20 @@ from langchain_core.embeddings import Embeddings
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.factory.custom_chunker import BaseChunker
 from cat.factory.custom_file_manager import BaseFileManager
+from cat.factory.custom_vector_db import BaseVectorDatabaseHandler
 from cat.mad_hatter.tweedledee import Tweedledee
-from cat.memory.long_term_memory import LongTermMemory
 from cat.factory.custom_embedder import DumbEmbedder
 from cat.factory.custom_llm import LLMDefault
+from cat.memory.utils import VectorMemoryCollectionTypes
 
 
 def test_main_modules_loaded(cheshire_cat):
     assert isinstance(cheshire_cat.plugin_manager, Tweedledee)
-    assert isinstance(cheshire_cat.memory, LongTermMemory)
     assert isinstance(cheshire_cat.large_language_model, BaseLanguageModel)
     assert isinstance(cheshire_cat.file_manager, BaseFileManager)
     assert isinstance(cheshire_cat.chunker, BaseChunker)
     assert isinstance(cheshire_cat.embedder, Embeddings)
+    assert isinstance(cheshire_cat.vector_memory_handler, BaseVectorDatabaseHandler)
 
 
 def test_default_llm_loaded(cheshire_cat):
@@ -40,10 +41,9 @@ def test_default_embedder_loaded(lizard):
 @pytest.mark.asyncio
 async def test_procedures_embedded(lizard, cheshire_cat):
     embedder = lizard.embedder
-    memory = cheshire_cat.memory
 
     # get embedded tools
-    procedures, _ = await memory.vectors.procedural.get_all_points()
+    procedures, _ = await cheshire_cat.vector_memory_handler.get_all_points(str(VectorMemoryCollectionTypes.PROCEDURAL))
     assert len(procedures) == 3
 
     for p in procedures:

@@ -17,8 +17,6 @@ from cat.convo.messages import (
 from cat.convo.model_interactions import LLMModelInteraction, EmbedderModelInteraction
 from cat.db.cruds import history as crud_history
 from cat.experimental.form.cat_form import CatForm
-from cat.looking_glass.bill_the_lizard import BillTheLizard
-from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.memory.utils import DocumentRecall
 from cat.utils import BaseModelDict
 
@@ -199,15 +197,3 @@ class WorkingMemory(BaseModelDict):
     @property
     def user_message_json(self) -> UserMessage | None:
         return self.user_message
-
-    @property
-    def lizard(self) -> BillTheLizard:
-        return BillTheLizard()
-
-    @property
-    def cheshire_cat(self) -> CheshireCat:
-        ccat = self.lizard.get_cheshire_cat(self.agent_id)
-        if not ccat:
-            raise ValueError(f"Cheshire Cat not found for the StrayCat {self.__user.id}.")
-
-        return ccat

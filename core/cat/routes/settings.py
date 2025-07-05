@@ -24,7 +24,7 @@ class DeleteSettingResponse(BaseModel):
 
 
 @router.get("/", response_model=GetSettingsResponse)
-def get_settings(
+async def get_settings(
     search: str = "",
     info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.LIST),
 ) -> GetSettingsResponse:
@@ -36,7 +36,7 @@ def get_settings(
 
 
 @router.post("/", response_model=SettingResponse)
-def create_setting(
+async def create_setting(
     payload: models.SettingBody,
     info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.WRITE),
 ) -> SettingResponse:
@@ -52,7 +52,7 @@ def create_setting(
 
 
 @router.get("/{setting_id}", response_model=SettingResponse)
-def get_setting(
+async def get_setting(
     setting_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.READ),
 ) -> SettingResponse:
@@ -65,7 +65,7 @@ def get_setting(
 
 
 @router.put("/{setting_id}", response_model=SettingResponse)
-def update_setting(
+async def update_setting(
     setting_id: str,
     payload: models.SettingBody,
     info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.EDIT),
@@ -90,7 +90,7 @@ def update_setting(
 
 
 @router.delete("/{setting_id}", response_model=DeleteSettingResponse)
-def delete_setting(
+async def delete_setting(
     setting_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.DELETE),
 ) -> DeleteSettingResponse:

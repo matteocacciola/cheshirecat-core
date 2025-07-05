@@ -2,7 +2,6 @@ import json
 from typing import List, Any, Dict
 from langchain_core.documents import Document as LangchainDocument
 from pydantic import BaseModel, Field
-from qdrant_client.http.models import ScoredPoint
 
 from cat.utils import Enum as BaseEnum, BaseModelDict
 
@@ -87,6 +86,7 @@ class InferenceObject(BaseModel, extra="forbid"):
 Vector = List[float] | SparseVector | List[List[float]] | Document | Image | InferenceObject
 VectorOutput = List[float] | List[List[float]] | Dict[str, List[float] | List[List[float]] | SparseVector]
 VectorStruct = List[float] | List[List[float]] | Dict[str, Vector] | Document | Image | InferenceObject
+VectorStructOutput = List[float] | List[List[float]] | Dict[str, VectorOutput]
 Payload = Dict[str, Any]
 
 
@@ -97,11 +97,23 @@ class Record(BaseModel):
 
     id: int | str = Field(..., description="Point data")
     payload: Payload | None = Field(default=None, description="Payload - values assigned to the point")
-    vector: List[float] | List[List[float]] | Dict[str, VectorOutput] | None = Field(
-        default=None, description="Vector of the point"
-    )
+    vector: VectorStructOutput | None = Field(default=None, description="Vector of the point")
     shard_key: int | str | None = Field(default=None, description="Shard Key")
     order_value: int | float | None = Field(default=None, description="Point data")
+
+
+class ScoredPoint(BaseModel):
+    """
+    Search result
+    """
+
+    id: int | str = Field(..., description="Search result")
+    version: int = Field(..., description="Point version")
+    score: float = Field(..., description="Points vector distance to the query vector")
+    payload: Payload | None = Field(default=None, description="Payload - values assigned to the point")
+    vector: VectorStructOutput | None = Field(default=None, description="Vector of the point")
+    shard_key: int | str | None = Field(default=None, description="Shard Key")
+    order_value: int | float | None = Field(default=None, description="Order-by value")
 
 
 class PointStruct(BaseModel, extra="forbid"):

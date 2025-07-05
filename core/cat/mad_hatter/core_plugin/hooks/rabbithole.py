@@ -8,10 +8,10 @@ These hooks allow to intercept the uploaded documents at different places before
 
 from typing import List, Dict
 from langchain_core.documents import Document
-from qdrant_client.http.models import PointStruct
 
 from cat.factory.custom_chunker import BaseChunker
 from cat.mad_hatter.decorators import hook
+from cat.memory.utils import PointStruct
 
 
 @hook(priority=0)
@@ -170,7 +170,7 @@ def after_rabbithole_stored_documents(source, stored_points: List[PointStruct], 
         source: str
             Name of ingested file/url
         stored_points: List[PointStruct]
-            List of Qdrant PointStruct just inserted into the db.
+            List of PointStruct just inserted into the db.
         cat: StrayCat
             Stray Cat instance.
     """

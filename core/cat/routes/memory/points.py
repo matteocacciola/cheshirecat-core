@@ -1,7 +1,6 @@
 from typing import Dict, List, Any
 from pydantic import BaseModel
 from fastapi import Query, APIRouter, Depends
-from qdrant_client.http.models import UpdateResult, Record
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
@@ -15,7 +14,7 @@ from cat.routes.routes_utils import (
     memory_collection_is_accessible,
     create_dict_parser,
 )
-from cat.memory.utils import DocumentRecall, VectorMemoryCollectionTypes
+from cat.memory.utils import DocumentRecall, VectorMemoryCollectionTypes, UpdateResult, Record
 
 router = APIRouter()
 
@@ -104,8 +103,8 @@ async def recall_memory_points_from_text(
             metadata["source"] = info.user.id
         else:
             metadata.pop("source", None)
-        return await ccat.memory.vectors.collections[str(c)].recall_memories_from_embedding(
-            query_embedding, k=k, metadata=metadata
+        return await ccat.vector_memory_handler.recall_memories_from_embedding(
+            str(c), query_embedding, k=k, metadata=metadata
         )
 
     ccat = info.cheshire_cat
@@ -187,7 +186,7 @@ async def edit_memory_point(
     """
 
     memory_collection_is_accessible(collection_id)
-    await verify_memory_point_existence(collection_id, point_id, info.cheshire_cat.memory.vectors)
+    await verify_memory_point_existence(info.cheshire_cat, collection_id, point_id)
 
     return await upsert_memory_point(collection_id, point, info, point_id)
 
@@ -202,11 +201,10 @@ async def delete_memory_point(
 
     memory_collection_is_accessible(collection_id)
 
-    vector_memory = info.cheshire_cat.memory.vectors
-    await verify_memory_point_existence(collection_id, point_id, vector_memory)
+    await verify_memory_point_existence(info.cheshire_cat, collection_id, point_id)
 
     # delete point
-    await vector_memory.collections[collection_id].delete_points([point_id])
+    await info.cheshire_cat.vector_memory_handler.delete_points(collection_id, [point_id])
 
     return DeleteMemoryPointResponse(deleted=point_id)
 
@@ -225,7 +223,7 @@ async def delete_memory_points_by_metadata(
     metadata = metadata or {}
 
     # delete points
-    ret = await ccat.memory.vectors.collections[collection_id].delete_points_by_metadata_filter(metadata)
+    ret = await ccat.vector_memory_handler.delete_points_by_metadata_filter(collection_id, metadata)
 
     # if `metadata["reference"]` exists within the file storage, delete the file
     file_manager = ccat.file_manager
@@ -306,7 +304,8 @@ async def get_points_in_collection(
     if offset == "":
         offset = None
 
-    memory_collection = info.cheshire_cat.memory.vectors.collections[collection_id]
-    points, next_offset = await memory_collection.get_all_points(limit=limit, offset=offset)
+    points, next_offset = await info.cheshire_cat.vector_memory_handler.get_all_points(
+        collection_name=collection_id, limit=limit, offset=offset
+    )
 
     return GetPointsInCollectionResponse(points=points, next_offset=next_offset)

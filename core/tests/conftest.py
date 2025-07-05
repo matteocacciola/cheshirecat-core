@@ -3,7 +3,6 @@ import pytest_asyncio
 import os
 import shutil
 import redis
-from typing import Any, Generator
 import warnings
 from pydantic import PydanticDeprecatedSince20
 from qdrant_client import AsyncQdrantClient
@@ -14,8 +13,8 @@ from cat.auth import auth_utils
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
 from cat.convo.messages import UserMessage
 from cat.db.database import Database
-from cat.db.vector_database import VectorDatabase
 from cat.env import get_env
+from cat.factory.custom_vector_db import QdrantHandler
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.stray_cat import StrayCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
@@ -34,18 +33,22 @@ from tests.utils import (
     fake_timestamp,
 )
 
-pytest_plugins = ['pytest_asyncio']
+pytest_plugins = ["pytest_asyncio"]
+
 redis_client = redis.Redis(host=get_env("CCAT_REDIS_HOST"), db="1", encoding="utf-8", decode_responses=True)
+memory_client = AsyncQdrantClient(":memory:")
 
 
 # substitute classes' methods where necessary for testing purposes
 def mock_classes(monkeypatch):
-    # Use in memory vector db
-    def mock_connect_to_vector_memory(self):
-        return AsyncQdrantClient(":memory:")
-    monkeypatch.setattr(
-        get_class_from_decorated_singleton(VectorDatabase), "connect_to_vector_memory", mock_connect_to_vector_memory
-    )
+    # Mock the entire __init__ method to set _client to memory client
+    def mock_init_vector_database(self, *args, **kwargs):
+        # Call the parent __init__
+        super(QdrantHandler, self).__init__()
+        # Set the _client to memory client
+        self._client = memory_client
+        self.save_memory_snapshots = kwargs.get("save_memory_snapshots", False)
+    monkeypatch.setattr(QdrantHandler, "__init__", mock_init_vector_database)
 
     # Use a different redis client
     def mock_get_redis_client(self):
@@ -131,13 +134,13 @@ async def encapsulate_each_test(request, monkeypatch):
 
 
 @pytest_asyncio.fixture(scope="function")
-async def lizard():
+async def lizard(encapsulate_each_test):
     l = BillTheLizard().set_fastapi_app(cheshire_cat_api)
     yield l
 
 
 @pytest.fixture(scope="function")
-def white_rabbit():
+def white_rabbit(encapsulate_each_test):
     wr = WhiteRabbit()
     yield wr
 
@@ -145,13 +148,13 @@ def white_rabbit():
 @pytest_asyncio.fixture(scope="function")
 async def cheshire_cat(lizard):
     cheshire_cat = await lizard.create_cheshire_cat(agent_id)
-
     yield cheshire_cat
+    await cheshire_cat.destroy_memory()
 
 
 # Main fixture for the FastAPI app
 @pytest_asyncio.fixture(scope="function")
-async def client(cheshire_cat) -> Generator[TestClient, Any, None]:
+async def client(cheshire_cat):
     """
     Create a new FastAPI TestClient.
     """

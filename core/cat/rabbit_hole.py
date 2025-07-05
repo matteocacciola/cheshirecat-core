@@ -7,7 +7,6 @@ import httpx
 from typing import List, Dict, Tuple
 from urllib.parse import urlparse
 from urllib.error import HTTPError
-from qdrant_client.http.models import PointStruct
 from starlette.datastructures import UploadFile
 from langchain_core.documents import Document
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
@@ -16,7 +15,7 @@ from langchain.document_loaders.blob_loaders.schema import Blob
 from cat.env import get_env_bool
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.memory.utils import VectorMemoryCollectionTypes, PointStruct
 from cat.utils import singleton
 
 
@@ -79,7 +78,9 @@ class RabbitHole:
             )
 
         # Upsert memories in batch mode
-        await ccat.memory.vectors.declarative.add_points(ids=ids, payloads=payloads, vectors=vectors)
+        await ccat.vector_memory_handler.add_points(
+            collection_name=str(VectorMemoryCollectionTypes.DECLARATIVE), ids=ids, payloads=payloads, vectors=vectors
+        )
 
     async def ingest_file(self, stray: "StrayCat", file: str | UploadFile, metadata: Dict = None):
         """Load a file in the Cat's declarative memory.
@@ -113,7 +114,7 @@ class RabbitHole:
         filename = file if isinstance(file, str) else file.filename
 
         stored_points = await self.__store_documents(stray=stray, docs=docs, source=filename, metadata=metadata)
-        self.save_file(stray, file_bytes, content_type, stored_points)
+        await self.save_file(stray, file_bytes, content_type, stored_points)
 
     async def __file_to_docs(
         self, stray: "StrayCat", file: str | UploadFile
@@ -247,8 +248,6 @@ class RabbitHole:
         log.info(f"Agent id: {ccat.id}. Preparing to memorize {len(docs)} vectors")
 
         embedder = ccat.embedder
-        memory = ccat.memory
-
         plugin_manager = stray.mad_hatter
 
         # hook the docs before they are stored in the vector memory
@@ -282,7 +281,8 @@ class RabbitHole:
             inserting_info = f"{d + 1}/{len(docs)}):    {doc.page_content}"
             if doc.page_content != "":
                 doc_embedding = embedder.embed_documents([doc.page_content])
-                if (stored_point := await memory.vectors.declarative.add_point(
+                if (stored_point := await ccat.vector_memory_handler.add_point(
+                    str(VectorMemoryCollectionTypes.DECLARATIVE),
                     doc.page_content,
                     doc_embedding[0],
                     doc.metadata,
@@ -358,7 +358,9 @@ class RabbitHole:
 
         return docs
 
-    def save_file(self, stray: "StrayCat", file_bytes: bytes, content_type: str, stored_points: List[PointStruct]):
+    async def save_file(
+        self, stray: "StrayCat", file_bytes: bytes, content_type: str, stored_points: List[PointStruct]
+    ):
         """
         Save file in the Rabbit Hole remote storage handled by the CheshireCat's file manager.
         This method saves the file in the Rabbit Hole storage. The file is saved in a temporary folder and the path is
@@ -391,13 +393,11 @@ class RabbitHole:
         except Exception as e:
             log.error(f"Error while uploading file {file_path}: {e}")
         finally:
-            try:
+            if os.path.exists(file_path):
                 os.remove(file_path)
-            except Exception as e:
-                log.error(f"Error while deleting temporary file {file_path}: {e}")
 
         if uploaded_file_path is not None:
             # update metadata of the stored points with the uploaded file path
-            stray.memory.vectors.declarative.update_metadata(
-                stored_points, {"reference": uploaded_file_path}
+            await stray.cheshire_cat.vector_memory_handler.update_metadata(
+                str(VectorMemoryCollectionTypes.DECLARATIVE), stored_points, {"reference": uploaded_file_path}
             )

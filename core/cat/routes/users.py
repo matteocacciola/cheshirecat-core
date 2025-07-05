@@ -54,7 +54,7 @@ class UserResponse(UserBase):
 
 
 @router.post("/", response_model=UserResponse)
-def create_user(
+async def create_user(
     new_user: UserCreate,
     info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.WRITE),
 ) -> UserResponse:
@@ -67,7 +67,7 @@ def create_user(
 
 
 @router.get("/", response_model=List[UserResponse])
-def read_users(
+async def read_users(
     skip: int = 0,
     limit: int = 100,
     info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.LIST),
@@ -79,7 +79,7 @@ def read_users(
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-def read_user(
+async def read_user(
     user_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.READ),
 ) -> UserResponse:
@@ -91,7 +91,7 @@ def read_user(
 
 
 @router.put("/{user_id}", response_model=UserResponse)
-def update_user(
+async def update_user(
     user_id: str,
     user: UserUpdate,
     info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.EDIT),
@@ -110,7 +110,7 @@ def update_user(
 
 
 @router.delete("/{user_id}", response_model=UserResponse)
-def delete_user(
+async def delete_user(
     user_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.DELETE),
 ) -> UserResponse:

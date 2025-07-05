@@ -12,6 +12,7 @@ from cat.exceptions import CustomValidationException
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.stray_cat import StrayCat
+from cat.memory.utils import VectorMemoryCollectionTypes
 from cat.routes.routes_utils import format_upload_file
 
 router = APIRouter()
@@ -280,9 +281,10 @@ async def get_source_urls(
 ) -> List[str]:
     """Retrieve the list of source URLs that have been uploaded to the Rabbit Hole"""
 
-    memory = info.cheshire_cat.memory.vectors.declarative
     # Get all points
-    memory_points, _ = await memory.get_all_points_from_web()
+    memory_points, _ = await info.cheshire_cat.vector_memory_handler.get_all_points_from_web(
+        str(VectorMemoryCollectionTypes.DECLARATIVE)
+    )
 
     # retrieve all the memory points where the metadata["source"] is a URL
     return [

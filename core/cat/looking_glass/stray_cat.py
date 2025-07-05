@@ -19,9 +19,7 @@ from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.tweedledee import Tweedledee
-from cat.memory.long_term_memory import LongTermMemory
 from cat.memory.utils import DocumentRecall, VectorMemoryCollectionTypes
-from cat.memory.vector_memory_collection import VectorMemoryCollection
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
 from cat.services.websocket_manager import WebsocketManager
@@ -228,10 +226,6 @@ class StrayCat:
         Returns:
             memories: List[DocumentRecall]
                 List of retrieved memories.
-
-        See Also:
-            VectorMemoryCollection.recall_memories_from_embedding
-            VectorMemoryCollection.recall_all_memories
         """
 
         cheshire_cat = self.cheshire_cat
@@ -243,11 +237,12 @@ class StrayCat:
             log.error(error_message)
             raise ValueError(error_message)
 
-        vector_memory: VectorMemoryCollection = cheshire_cat.memory.vectors.collections[collection_name]
         if k:
-            memories = await vector_memory.recall_memories_from_embedding(query, metadata, k, threshold)
+            memories = await cheshire_cat.vector_memory_handler.recall_memories_from_embedding(
+                collection_name, query, metadata, k, threshold
+            )
         else:
-            memories = await vector_memory.recall_all_memories()
+            memories = await cheshire_cat.vector_memory_handler.recall_all_memories(collection_name)
 
         setattr(self.working_memory, f"{collection_name}_memories", memories)
         return memories
@@ -461,7 +456,8 @@ class StrayCat:
             # TODO: vectorize and store also conversation chunks (not raw dialog, but summarization)
             cheshire_cat = self.cheshire_cat
             user_message_embedding = cheshire_cat.embedder.embed_documents([self.working_memory.user_message.text])
-            await cheshire_cat.memory.vectors.episodic.add_point(
+            await cheshire_cat.vector_memory_handler.add_point(
+                str(VectorMemoryCollectionTypes.EPISODIC),
                 doc.page_content,
                 user_message_embedding[0],
                 doc.metadata,
@@ -594,11 +590,7 @@ Just output the class, nothing else."""
             cheshire_cat: CheshireCat
                 Instance of `CheshireCat`.
         """
-        ccat = self.lizard.get_cheshire_cat(self.__agent_id)
-        if not ccat:
-            raise ValueError(f"Cheshire Cat not found for the StrayCat {self.__user.id}.")
-
-        return ccat
+        return self.lizard.get_cheshire_cat(self.__agent_id)
 
     @property
     def large_language_model(self) -> BaseLanguageModel:
@@ -632,23 +624,6 @@ Just output the class, nothing else."""
         """
 
         return self.lizard.embedder
-
-    @property
-    def memory(self) -> LongTermMemory:
-        """
-        Gives access to the long term memory, containing vector DB collections (episodic, declarative, procedural).
-
-        Returns:
-            memory: LongTermMemory
-                Long term memory of the Cat.
-
-        Examples
-        --------
-        >>> cat.memory.vectors.episodic
-        VectorMemoryCollection object for the episodic memory.
-        """
-
-        return self.cheshire_cat.memory
 
     @property
     def rabbit_hole(self) -> RabbitHole:

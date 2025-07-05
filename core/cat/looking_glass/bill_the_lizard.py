@@ -150,7 +150,7 @@ class BillTheLizard:
             ccat = self.get_cheshire_cat(ccat_id)
 
             # inform the Cheshire Cats about the new embedder available in the system
-            await ccat.memory.vectors.initialize(self.embedder_name, self.embedder_size)
+            await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
 
     async def reload_embed_procedures(self):
         """
@@ -240,10 +240,10 @@ class BillTheLizard:
         """
 
         if agent_id == DEFAULT_SYSTEM_KEY:
-            raise ValueError(f"{DEFAULT_SYSTEM_KEY} is a reserved name for agents")
+            raise ValueError(f"`{DEFAULT_SYSTEM_KEY}` is a reserved name for agents")
 
         if agent_id not in crud.get_agents_main_keys():
-            raise ValueError(f"{agent_id} is not a valid agent id")
+            raise ValueError(f"`{agent_id}` is not a valid agent id")
 
         return CheshireCat(agent_id)
 
@@ -264,11 +264,11 @@ class BillTheLizard:
         if agent_id in crud.get_agents_main_keys():
             return self.get_cheshire_cat(agent_id)
 
-        result = CheshireCat(agent_id)
-        await result.memory.vectors.initialize(self.embedder_name, self.embedder_size)
-        await result.embed_procedures()
+        ccat = CheshireCat(agent_id)
+        await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
+        await ccat.embed_procedures()
 
-        return result
+        return ccat
 
     def get_cheshire_cat_from_db(self, agent_id: str) -> CheshireCat | None:
         """

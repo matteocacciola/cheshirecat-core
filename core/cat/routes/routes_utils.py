@@ -15,12 +15,12 @@ from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
 from cat.factory.base_factory import ReplacedNLPConfig, BaseFactory
 from cat.looking_glass.bill_the_lizard import BillTheLizard
+from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.registry import registry_search_plugins
 from cat.memory.utils import VectorMemoryCollectionTypes
-from cat.memory.vector_memory import VectorMemory
 
 
 class Plugins(BaseModel):
@@ -227,11 +227,11 @@ def memory_collection_is_accessible(collection_id: str) -> None:
         raise CustomValidationException("Procedural memory is read-only.")
 
 
-async def verify_memory_point_existence(collection_id: str, point_id: str, vector_memory: VectorMemory) -> None:
+async def verify_memory_point_existence(cheshire_cat: CheshireCat, collection_id: str, point_id: str) -> None:
     memory_collection_is_accessible(collection_id)
 
     # check if point exists
-    points = await vector_memory.collections[collection_id].retrieve_points([point_id])
+    points = await cheshire_cat.vector_memory_handler.retrieve_points(collection_id, [point_id])
     if not points:
         raise CustomNotFoundException("Point does not exist.")
 
@@ -240,7 +240,6 @@ async def upsert_memory_point(
     collection_id: str, point: MemoryPointBase, info: AuthorizedInfo, point_id: str = None
 ) -> MemoryPoint:
     ccat = info.cheshire_cat
-    vector_memory = ccat.memory.vectors
 
     # embed content
     embedding = ccat.embedder.embed_query(point.content)
@@ -254,7 +253,8 @@ async def upsert_memory_point(
         point.metadata["when"] = time.time()  # if when is not in the metadata set the current time
 
     # create point
-    qdrant_point = await vector_memory.collections[collection_id].add_point(
+    qdrant_point = await ccat.vector_memory_handler.add_point(
+        collection_name=collection_id,
         content=point.content,
         vector=embedding,
         metadata=point.metadata,

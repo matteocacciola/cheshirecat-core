@@ -27,10 +27,11 @@ The Cheshire Cat is a framework to build custom AI agents:
 
 - ⚡️ API first, to easily add a conversational layer to your app
 - 💬 Chat via WebSocket and manage your agent with an customizable REST API
-- 🐘 Built-in RAG with Qdrant
+- 🐘 Built-in RAG with **customizable vector database**, so you can use your own technology (e.g., Qdrant, Pinecone, Weaviate, etc.)
+- 🐘 Customizable database for your documents, so that you can use your own storage (e.g., S3, MinIO, etc.)
 - 🚀 Extensible via plugins
 - 🪛 Event callbacks, function calling (tools), conversational forms
-- 🏛 Easy to use admin panel
+- 🏛 Easy to use Admin Panel
 - 🌍 Supports any language model via langchain
 - 👥 Multiuser with granular permissions, compatible with any identity provider
 - 💬 Multi-chatbots, with configurable (even different) LLM, chunking strategy and other features per chatbot, plus specific knowledge per chatbot
@@ -44,32 +45,50 @@ The Cheshire Cat is a framework to build custom AI agents:
 
 The current version is a multi-tenant fork of the original [Cheshire Cat](https://github.com/cheshire-cat-ai/core). Here are the main differences:
 
-- **New features**: here, I have introduced some new features and improvements, such as:
-  - The `Embedder` is centralized and can be used by multiple RAGs and other language models.
-  - A new `File Manager` that allows you to store files, injected to the knowledge base of each RAG, into a remote storage.
-  - New chunking strategies, like text splitting or Semantic chunking.
-  - New admin endpoints allowing to configure the `Embedder`.
-  - New endpoints allowing to configure the `File Manager`, per chatbot.
-  - New endpoints allowing to configure the chunking strategy, per chatbot.
-  - A new event system that allows you to get fine-grained control over the AI.
-  - **The ability to manage multiple RAGs and other language models at the same time**.
-- **Customizable multi-chatbots**: the current version proposes a platform where each chatbot is fully customizable in terms of
-plugjns, settings, LLM, etc.
-**The way of "injecting" the identification of the Chatbot (RAG) is simple**:
-  - **in case of the HTTP API endpoints, use the `agent_id` key into the request headers or as a querystring parameter;**
-  - **in case of the WebSocket API, use the `agent_id` into the URL, e.g., `/ws/{agent_id}`.**
+- **Multi-tenant**: the original version was designed to be a single-tenant application, meaning that it could only manage one chatbot at a time.
+  This version is designed to be multi-tenant, meaning that it can manage multiple chatbots at the same time, each with its own settings, plugins, LLMs, etc.
+  - **The way of "injecting" the identification of the Chatbot (RAG) is simple**:
+    - **in case of the HTTP API endpoints, use the `agent_id` key into the request headers or as a querystring parameter;**
+    - **in case of the WebSocket API, use the `agent_id` into the URL, e.g., `/ws/{agent_id}`.**
+
+- **Customizable RAG**: the original version used a fixed RAG implementation, meaning that it could only use a specific vector database and chunking strategy.
+  This version allows you to configure the RAG per chatbot, meaning that you can use your own vector database and chunking strategy.
+  - **The current version supports multiple vector databases**, such as Qdrant, Pinecone, Weaviate, etc.
+  - **The current version supports multiple chunking strategies**, such as text splitting or Semantic chunking.
+
+- **Customizable LLM**: the original version used a fixed LLM implementation, meaning that it could only use a specific language model.
+  This version allows you to configure the LLM per chatbot, meaning that you can use your own language model.
+  - **The current version supports multiple language models**, such as OpenAI, Ollama, Google, HuggingFace, etc.
+  - **The current version supports multiple LLMs**, meaning that you can use different language models for different chatbots.
+
+- **Customizable Storage**: the original did not use any storage solution for the documents composing your RAG, meaning that you were able to store the documents into the knowledge base of each RAG, but not into a remote storage.
+  This version allows you to configure the storage per chatbot, meaning that you can use your own storage solution.
+  - **The current version supports multiple storage solutions**, such as S3, MinIO, etc.
+  - **The current version supports multiple file managers**, meaning that you can use different file managers for different chatbots.
+
 - **Cloud ready**: this version can be deployed in a cluster environment. Whilst the original version stored the settings into
 JSON files, **this version requires a Redis database** to store the  settings, the conversation histories, the plugins and so
 forth. You can **configure the Redis database by environment variables**. The [`compose.yml`](./compose.yml) file is provided as an example.
 The Cat is still stateless, so it can be easily scaled.
 In case of a cluster environment, we suggest to use a shared storage, mounted in the `cat/plugins` folder, to share the plugins.
 Hence, the current version is multi-tenant, meaning that you can manage multiple RAGs and other language models at the same time.
+
 - **Security**: the original project is developed as a framework that could be used for a personal use as well as for single-tenant production.
 In the latter case, the original [documentation](https://cheshire-cat-ai.github.io/docs/) clearly states to set up a secure environment
 by using an API Key. **If not configured properly (e.g. by setting up an API Key), the current version will not work, indeed**.
 In this way, I tried to make the Cat more secure and production-ready.
+
 - **Additional implementations**: here, the structure used for configuring `Embedder`, `LLMs`, `Authorization Handler` and `File Manager`
 is different from the original version: interfaces and factories have been used for the scope.
+
+- **New features**: here, I have introduced some new features and improvements, such as:
+  - The `Embedder` is centralized and can be used by multiple RAGs and other language models.
+  - New admin endpoints allowing to configure the `Embedder`.
+  - New endpoints allowing to configure the `File Manager`, per chatbot.
+  - New endpoints allowing to configure the chunking strategy, per chatbot.
+  - New endpoints allowing to configure the vector database, per chatbot.
+  - A new event system that allows you to get fine-grained control over the AI.
+  - **The ability to manage multiple RAGs and other language models at the same time**.
 
 ## Compatibility with plugins
 

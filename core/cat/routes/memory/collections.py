@@ -32,7 +32,7 @@ async def get_collections(
 
     collections_metadata = [GetCollectionsItem(
         name=str(c),
-        vectors_count=await info.cheshire_cat.memory.vectors.collections[str(c)].get_vectors_count()
+        vectors_count=await info.cheshire_cat.vector_memory_handler.get_vectors_count(str(c))
     ) for c in VectorMemoryCollectionTypes]
 
     return GetCollectionsResponse(collections=collections_metadata)
@@ -49,11 +49,10 @@ async def destroy_all_collection_points(
 
     to_return = {
         str(c): (
-            await ccat.memory.vectors.collections[str(c)].destroy_all_points()
+            await ccat.vector_memory_handler.destroy_all_points(str(c))
         ) for c in VectorMemoryCollectionTypes
     }
 
-    ccat.load_memory()  # recreate the long term memories
     ccat.plugin_manager.find_plugins()
     await ccat.embed_procedures()
 
@@ -73,9 +72,8 @@ async def destroy_all_single_collection_points(
         raise CustomNotFoundException("Collection does not exist.")
 
     ccat = info.cheshire_cat
-    ret = await ccat.memory.vectors.collections[collection_id].destroy_all_points()
+    ret = await ccat.vector_memory_handler.destroy_all_points(collection_id)
 
-    ccat.load_memory()  # recreate the long term memories
     ccat.plugin_manager.find_plugins()
     await ccat.embed_procedures()
 

@@ -32,7 +32,7 @@ def test_rabbithole_upload_txt(secure_client, secure_client_headers):
 
 @pytest.mark.asyncio
 async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_headers):
-    await lizard.create_cheshire_cat("another_agent_test")
+    cat = await lizard.create_cheshire_cat("another_agent_test")
 
     content_type = "application/pdf"
     file_name = "sample.pdf"
@@ -62,6 +62,8 @@ async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_header
     storage_folder = utils.get_file_manager_root_storage_path()
     assert os.path.exists(storage_folder)
     assert len(os.listdir(os.path.join(storage_folder, agent_id))) == 1  # type: ignore
+
+    await cat.destroy_memory()
 
 
 def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers):
