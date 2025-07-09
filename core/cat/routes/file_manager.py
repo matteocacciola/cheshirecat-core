@@ -52,7 +52,7 @@ async def upsert_file_manager_setting(
     ccat = info.cheshire_cat
     on_upsert_factory_setting(file_manager_name, FileManagerFactory(ccat.plugin_manager))
 
-    return ccat.replace_file_manager(file_manager_name, payload)
+    return UpsertSettingResponse(**ccat.replace_file_manager(file_manager_name, payload).model_dump())
 
 
 @router.get("/", response_model=FileManagerAttributes)

@@ -49,6 +49,7 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
 
     assert picked_history["who"] == str(Role.HUMAN)
     assert picked_history["message"] == message
+    assert picked_history["content"]["text"] == message
     assert picked_history["why"] is None
     assert isinstance(picked_history["when"], float)  # timestamp
 
@@ -114,10 +115,13 @@ def test_convo_history_by_user(secure_client, secure_client_headers, client, moc
         for m_idx, m in enumerate(json["history"]):
             assert "who" in m
             assert "message" in m
+            assert "content" in m
+            assert "text" in m["content"]
             if m_idx % 2 == 0:  # even message
                 m_number_from_user = int(m_idx / 2)
                 assert m["who"] == str(Role.HUMAN)
                 assert m["message"] == f"Mex n.{m_number_from_user} from {username}"
+                assert m["content"]["text"] == f"Mex n.{m_number_from_user} from {username}"
             else:
                 assert m["who"] == str(Role.AI)
 
@@ -185,9 +189,11 @@ def test_add_items_to_convo_history(secure_client, secure_client_headers, cheshi
     # check items
     assert json["history"][0]["who"] == "Human"
     assert json["history"][0]["message"] == "Hello, Alice!"
+    assert json["history"][0]["content"]["text"] == "Hello, Alice!"
     assert json["history"][0]["why"] is None
     assert json["history"][1]["who"] == "AI"
     assert json["history"][1]["message"] == "Hello, how are you?"
+    assert json["history"][1]["content"]["text"] == "Hello, how are you?"
     assert json["history"][1]["why"]["input"] == "This is an input"
     assert json["history"][1]["why"]["intermediate_steps"] == []
     assert json["history"][1]["why"]["model_interactions"] == []

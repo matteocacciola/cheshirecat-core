@@ -225,15 +225,14 @@ async def delete_memory_points_by_metadata(
     # delete points
     ret = await ccat.vector_memory_handler.delete_points_by_metadata_filter(collection_id, metadata)
 
-    # if `metadata["reference"]` exists within the file storage, delete the file
+    # delete the file with path `metadata["source"]` from the file storage
     file_manager = ccat.file_manager
     if (
             get_env_bool("CCAT_RABBIT_HOLE_STORAGE_ENABLED")
             and collection_id == VectorMemoryCollectionTypes.DECLARATIVE
-            and (reference := metadata.get("reference"))
-            and file_manager.file_exists(reference)
+            and (source := metadata.get("source"))
     ):
-        file_manager.remove_file_from_storage(reference)
+        file_manager.remove_file_from_storage(source)
 
     return DeleteMemoryPointsByMetadataResponse(deleted=ret)
 

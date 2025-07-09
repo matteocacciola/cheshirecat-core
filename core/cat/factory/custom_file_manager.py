@@ -34,20 +34,26 @@ class BaseFileManager(ABC):
         self._excluded_files = [".gitignore", ".DS_Store", ".gitkeep", ".git", ".dockerignore"]
         self._root_dir = utils.get_file_manager_root_storage_path()
 
-    def upload_file_to_storage(self, file_path: str, remote_root_dir: str) -> str | None:
+    def upload_file_to_storage(
+        self, file_path: str, remote_root_dir: str, remote_filename: str | None = None
+    ) -> str | None:
         """
         Upload a single file on the storage, within the directory specified by `remote_root_dir`.
 
         Args:
             file_path: The path of the file to upload
             remote_root_dir: The directory on the storage where the file will be uploaded
+            remote_filename: The name of the file on the storage. If not specified, the file will be uploaded with its
+                original name.
 
         Returns:
             The path of the file on the storage, None if the file has not been uploaded
         """
 
         remote_root_dir = os.path.join(self._root_dir, remote_root_dir) if remote_root_dir else self._root_dir
-        destination_path = os.path.join(remote_root_dir, os.path.basename(file_path))
+        destination_path = os.path.join(
+            remote_root_dir, os.path.basename(file_path) if remote_filename is None else remote_filename
+        )
         if any([ex_file in destination_path for ex_file in self._excluded_files]):
             return None
 

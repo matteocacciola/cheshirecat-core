@@ -402,6 +402,9 @@ class StrayCat:
             UserMessage
         )
 
+        # update conversation history (Human turn)
+        self.working_memory.update_history(who=Role.HUMAN, content=self.working_memory.user_message)
+
         # recall episodic and declarative memories from vector collections and store them in working_memory
         try:
             await self.recall_relevant_memories_to_working_memory()
@@ -441,10 +444,9 @@ class StrayCat:
             CatMessage,
         )
 
-        if not agent_output.with_llm_error:
-            # update conversation history (Human turn)
-            self.working_memory.update_history(who=Role.HUMAN, content=self.working_memory.user_message)
-
+        if agent_output.with_llm_error:
+            self.working_memory.pop_last_message_if_human()
+        else:
             # store a user message in episodic memory
             doc = Document(
                 page_content=self.working_memory.user_message.text,
@@ -501,6 +503,8 @@ class StrayCat:
                 Sentence to be classified.
             labels: List[str] or Dict[str, List[str]]
                 Possible output categories and optional examples.
+            score_threshold: float
+                Threshold for the classification score. If the best match is below this threshold, returns None.
 
         Returns:
             label: str

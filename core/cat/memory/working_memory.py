@@ -151,6 +151,19 @@ class WorkingMemory(BaseModelDict):
             crud_history.update_history(self.agent_id, self.user_id, conversation_history_item)
         )
 
+    def pop_last_message_if_human(self) -> None:
+        """
+        Pop the last message if it was said by the human.
+        """
+
+        if not self.history or self.history[-1].who != Role.HUMAN:
+            return
+
+        self.history.pop()
+        crud_history.set_history(
+            self.agent_id, self.user_id, [message.model_dump() for message in self.history]
+        )
+
     def stringify_chat_history(self, latest_n: int = 10) -> str:
         """
         Serialize chat history.
@@ -170,13 +183,13 @@ class WorkingMemory(BaseModelDict):
 
         The chat history is a dictionary with keys::
             'who': the name of who said the utterance;
-            'message': the utterance.
+            'content': the utterance.
         """
 
         history = self.history[-latest_n:]
         history = [h.model_dump() for h in history]
 
-        history_strings = [f"\n - {str(turn['who'])}: {turn['message']}" for turn in history]
+        history_strings = [f"\n - {str(turn.get('who'))}: {turn.get('content', {}).get('text')}" for turn in history]
         return "".join(history_strings)
 
     def langchainfy_chat_history(self, latest_n: int = 5) -> List[BaseMessage]:

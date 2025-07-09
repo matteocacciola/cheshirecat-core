@@ -50,4 +50,4 @@ async def upsert_llm_setting(
     ccat = info.cheshire_cat
     on_upsert_factory_setting(language_model_name, LLMFactory(ccat.plugin_manager))
 
-    return ccat.replace_llm(language_model_name, payload)
+    return UpsertSettingResponse(**ccat.replace_llm(language_model_name, payload).model_dump())

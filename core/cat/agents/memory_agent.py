@@ -3,9 +3,9 @@ from langchain_core.prompts.chat import SystemMessagePromptTemplate
 from langchain_core.runnables import RunnableConfig, RunnableLambda
 from langchain_core.output_parsers.string import StrOutputParser
 
+from cat import utils
 from cat.agents.base_agent import BaseAgent, AgentOutput
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
-from cat import utils
 
 
 class MemoryAgent(BaseAgent):

@@ -47,4 +47,5 @@ async def upsert_embedder_setting(
 
     on_upsert_factory_setting(embedder_name, EmbedderFactory(lizard.plugin_manager))
 
-    return await lizard.replace_embedder(embedder_name, payload)
+    response = await lizard.replace_embedder(embedder_name, payload)
+    return UpsertSettingResponse(**response.model_dump())

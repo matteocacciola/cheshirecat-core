@@ -107,16 +107,16 @@ class RabbitHole:
         """
 
         # split file into a list of docs
-        file_bytes, content_type, docs = await self.__file_to_docs(stray=stray, file=file)
+        file_bytes, content_type, docs = await self._file_to_docs(stray=stray, file=file)
         metadata = metadata or {}
 
         # store in memory
         filename = file if isinstance(file, str) else file.filename
 
-        stored_points = await self.__store_documents(stray=stray, docs=docs, source=filename, metadata=metadata)
-        await self.save_file(stray, file_bytes, content_type, stored_points)
+        await self._store_documents(stray=stray, docs=docs, source=filename, metadata=metadata)
+        await self._save_file(stray, file_bytes, content_type, filename)
 
-    async def __file_to_docs(
+    async def _file_to_docs(
         self, stray: "StrayCat", file: str | UploadFile
     ) -> Tuple[bytes, str | None, List[Document]]:
         """
@@ -206,10 +206,10 @@ class RabbitHole:
 
         # Split
         await stray.send_ws_message("Parsing completed. Now let's go with reading process...")
-        docs = self.__split_text(stray=stray, text=super_docs)
+        docs = self._split_text(stray=stray, text=super_docs)
         return file_bytes, content_type, docs
 
-    async def __store_documents(
+    async def _store_documents(
         self,
         stray: "StrayCat",
         docs: List[Document],
@@ -270,7 +270,6 @@ class RabbitHole:
 
             # add default metadata
             doc.metadata["source"] = source
-            doc.metadata["reference"] = source
             doc.metadata["when"] = time.time()
             # add custom metadata (sent via endpoint)
             doc.metadata = {**doc.metadata, **{k: v for k, v in metadata.items()}}
@@ -312,7 +311,7 @@ class RabbitHole:
 
         return stored_points
 
-    def __split_text(self, stray: "StrayCat", text: List[Document]):
+    def _split_text(self, stray: "StrayCat", text: List[Document]):
         """Split text in overlapped chunks.
 
         This method splits the incoming text in overlapped  chunks of text. Other two hooks are available to edit the
@@ -358,8 +357,8 @@ class RabbitHole:
 
         return docs
 
-    async def save_file(
-        self, stray: "StrayCat", file_bytes: bytes, content_type: str, stored_points: List[PointStruct]
+    async def _save_file(
+        self, stray: "StrayCat", file_bytes: bytes, content_type: str, source: str
     ):
         """
         Save file in the Rabbit Hole remote storage handled by the CheshireCat's file manager.
@@ -373,8 +372,8 @@ class RabbitHole:
                 The file bytes to be saved.
             content_type: str
                 The content type of the file.
-            stored_points: List[PointStruct]
-                List of points stored in the Cat's declarative memory.
+            source: str
+                The source of the file, e.g. the file name or URL.
         """
 
         if not get_env_bool("CCAT_RABBIT_HOLE_STORAGE_ENABLED"):
@@ -387,17 +386,10 @@ class RabbitHole:
             file_path = temp_file.name
 
         # upload a file to CheshireCat's file manager
-        uploaded_file_path = None
         try:
-            uploaded_file_path = stray.cheshire_cat.file_manager.upload_file_to_storage(file_path, stray.agent_id)
+            stray.cheshire_cat.file_manager.upload_file_to_storage(file_path, stray.agent_id, source)
         except Exception as e:
             log.error(f"Error while uploading file {file_path}: {e}")
         finally:
             if os.path.exists(file_path):
                 os.remove(file_path)
-
-        if uploaded_file_path is not None:
-            # update metadata of the stored points with the uploaded file path
-            await stray.cheshire_cat.vector_memory_handler.update_metadata(
-                str(VectorMemoryCollectionTypes.DECLARATIVE), stored_points, {"reference": uploaded_file_path}
-            )
