@@ -18,7 +18,6 @@ from typing import Dict, Tuple, List, Type, TypeVar, Any, Callable
 from urllib.parse import urlparse
 import hashlib
 
-import cat
 from cat.env import get_env
 from cat.exceptions import CustomValidationException
 from cat.log import log
@@ -171,7 +170,7 @@ def verbal_timedelta(td: timedelta) -> str:
     return "{} ago".format(abs_delta)
 
 
-def get_base_url():
+def get_base_url() -> str:
     """Allows exposing the base url."""
     secure = "s" if get_env("CCAT_CORE_USE_SECURE_PROTOCOLS") in ("true", "1") else ""
     cat_host = get_env("CCAT_CORE_HOST")
@@ -179,33 +178,46 @@ def get_base_url():
     return f"http{secure}://{cat_host}:{cat_port}/"
 
 
-def get_base_path():
+def get_base_path() -> str:
     """Allows exposing the base path."""
     current_file_path = os.path.dirname(os.path.abspath(__file__))
     return current_file_path + "/"
 
 
-def get_plugins_path():
+def get_base_path_dotted_notation() -> str:
+    return get_base_path().replace("/", ".")
+
+
+def get_py_filename_dotted_notation(py_file: str) -> str:
+    base_path_dotted_notation = get_base_path_dotted_notation()
+    return (
+        py_file.replace(".py", "")
+        .replace("/", ".")
+        .replace(base_path_dotted_notation, "cat.")
+    )
+
+
+def get_plugins_path() -> str:
     """Allows exposing the plugins' path."""
     return os.path.join(get_base_path(), "plugins/")
 
 
-def get_file_manager_root_storage_path():
+def get_file_manager_root_storage_path() -> str:
     """Allows exposing the local storage path."""
     return os.path.join(get_base_path(), "data/storage/")
 
 
-def get_static_url():
+def get_static_url() -> str:
     """Allows exposing the static server url."""
     return get_base_url() + "static/"
 
 
-def get_static_path():
+def get_static_path() -> str:
     """Allows exposing the static files' path."""
     return os.path.join(get_base_path(), "static/")
 
 
-def is_https(url):
+def is_https(url) -> bool:
     try:
         parsed_url = urlparse(url)
         return parsed_url.scheme == "https"
@@ -213,7 +225,7 @@ def is_https(url):
         return False
 
 
-def extract_domain_from_url(url):
+def extract_domain_from_url(url: str) -> str:
     try:
         parsed_url = urlparse(url)
         return parsed_url.netloc + parsed_url.path
@@ -221,7 +233,7 @@ def extract_domain_from_url(url):
         return url
 
 
-def explicit_error_message(e):
+def explicit_error_message(e) -> str:
     # add more explicit info on "RateLimitError" by OpenAI, 'cause people can't get it
     error_description = str(e)
     if "billing details" in error_description:

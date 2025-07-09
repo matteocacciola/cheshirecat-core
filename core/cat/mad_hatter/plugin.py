@@ -14,7 +14,7 @@ from cat.db.cruds import plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.experimental.form.cat_form import CatForm
 from cat.mad_hatter.decorators import CustomEndpoint, CatHook, CatPluginDecorator, CatTool
-from cat.utils import to_camel_case, inspect_calling_agent, get_base_path
+from cat.utils import to_camel_case, inspect_calling_agent, get_py_filename_dotted_notation
 from cat.log import log
 
 
@@ -136,7 +136,7 @@ class Plugin:
         if "settings_schema" in self.overrides:
             return self.overrides["settings_schema"].function()
 
-        # otherwise, if the "settings_schema" is not defined but "settings_model" is it get the schema from the model
+        # otherwise, if the "settings_schema" is not defined but "settings_model" is, it gets the schema from the model
         if "settings_model" in self.overrides:
             return self.overrides["settings_model"].function().model_json_schema()
 
@@ -148,6 +148,34 @@ class Plugin:
         # is "settings_model" hook defined in the plugin?
         if "settings_model" in self.overrides:
             return self.overrides["settings_model"].function()
+
+        # is "settings_schema" hook defined in the plugin?
+        if "settings_schema" in self.overrides:
+            schema = self.overrides["settings_schema"].function()
+            pydantic_class = schema.get("__pydantic_model__", schema.get("title"))
+            if not pydantic_class:
+                return PluginSettingsModel
+
+            if isinstance(pydantic_class, BaseModel):
+                return pydantic_class
+
+            if not isinstance(pydantic_class, str):
+                log.error(f"Invalid settings class {pydantic_class} from `settings_schema` hook in plugin {self.id}")
+                return PluginSettingsModel
+
+            # if the pydantic class is a string, try to load it from the plugin
+            # find where a Pydantic model with name pydantic_class is defined within the folder self._path
+            for py_file in self._py_files:
+                py_filename = get_py_filename_dotted_notation(py_file)
+                try:
+                    module = importlib.import_module(py_filename)
+                    if hasattr(module, pydantic_class):
+                        return getattr(module, pydantic_class)
+                except Exception:
+                    pass
+
+            # if the pydantic class is not found, return the default PluginSettingsModel
+            log.error(f"Unable to find settings model {pydantic_class} from `settings_schema` hook in plugin {self.id}")
 
         # default schema (empty)
         return PluginSettingsModel
@@ -332,13 +360,8 @@ class Plugin:
         endpoints = []
         plugin_overrides = []
 
-        base_path_dotted_notation = get_base_path().replace("/", ".")
         for py_file in self._py_files:
-            py_filename = (
-                py_file.replace(".py", "")
-                .replace("/", ".")
-                .replace(base_path_dotted_notation, "cat.")
-            )
+            py_filename = get_py_filename_dotted_notation(py_file)
 
             log.debug(f"Import module {py_filename}")
 
