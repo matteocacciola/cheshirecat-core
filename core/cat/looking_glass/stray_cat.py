@@ -31,7 +31,7 @@ DEFAULT_THRESHOLD = 0.5
 
 class RecallSettings(utils.BaseModelDict):
     embedding: List[float]
-    k: float | None = DEFAULT_K
+    k: int | None = DEFAULT_K
     threshold: float | None = DEFAULT_THRESHOLD
     metadata: dict | None = None
 
