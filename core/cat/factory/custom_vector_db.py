@@ -32,14 +32,18 @@ from qdrant_client.http.models import (
 
 from cat.log import log
 from cat.memory.utils import (
+    ContentType,
     VectorMemoryCollectionTypes,
     VectorEmbedderSize,
     DocumentRecall,
     Payload,
     PointStruct,
     Record,
+    ScoredPoint,
     UpdateResult,
-    to_document_recall, ScoredPoint,
+    MultimodalContent,
+    Vector,
+    to_document_recall,
 )
 
 
@@ -137,18 +141,18 @@ class BaseVectorDatabaseHandler(ABC):
     async def add_point(
         self,
         collection_name: str,
-        content: str,
-        vector: Iterable,
+        content: MultimodalContent,
+        vectors: Dict[ContentType, Iterable],
         metadata: Dict = None,
         id: str | None = None,
         **kwargs,
     ) -> PointStruct | None:
-        """Add a point (and its metadata) to the vectorstore.
+        """Add a multimodal point (and its metadata) to the vectorstore.
 
         Args:
             collection_name: Name of the collection to add the point to.
-            content: original text.
-            vector: Embedding vector.
+            content: original text or multimodal content.
+            vectors: Embedding vectors for the content, keyed by ContentType.
             metadata: Optional metadata dictionary associated with the text.
             id:
                 Optional id to associate with the point. Id has to be an uuid-like string.
@@ -160,14 +164,18 @@ class BaseVectorDatabaseHandler(ABC):
 
     @abstractmethod
     async def add_points(
-        self, collection_name: str, payloads: List[Payload], vectors: List, ids: List | None = None
+        self,
+        collection_name: str,
+        payloads: List[Payload],
+        vectors: Dict[ContentType, List[Vector]],
+        ids: List | None = None,
     ) -> UpdateResult:
         """
         Upsert memories in batch mode
         Args:
             collection_name: the name of the collection to upsert points into
             payloads: the payloads of the points
-            vectors: the vectors of the points
+            vectors: the vectors of the points, keyed by ContentType
             ids: the ids of the points, if not provided, they will be generated automatically using uuid4 hex strings
 
         Returns:
@@ -207,7 +215,7 @@ class BaseVectorDatabaseHandler(ABC):
     async def recall_memories_from_embedding(
         self,
         collection_name: str,
-        embedding: List[float],
+        query_vectors: Dict[ContentType, List[float]],
         metadata: Dict | None = None,
         k: int | None = 5,
         threshold: float | None = None,
@@ -224,7 +232,7 @@ class BaseVectorDatabaseHandler(ABC):
 
         Args:
             collection_name: Name of the collection to search in.
-            embedding: Embedding vector.
+            query_vectors: Embedding vector to search for, keyed by ContentType.
             metadata: Dictionary containing metadata filter.
             k: Number of memories to retrieve.
             threshold: Similarity threshold.
@@ -335,21 +343,6 @@ class BaseVectorDatabaseHandler(ABC):
         """
         pass
 
-    @abstractmethod
-    async def update_metadata(self, collection_name: str, points: List[PointStruct], metadata: Dict) -> UpdateResult:
-        """
-        Update the metadata of a point in the collection.
-
-        Args:
-            collection_name: The name of the collection to update points in.
-            points: The points to update.
-            metadata: The metadata to update.
-
-        Returns:
-            UpdateResult: The result of the update operation.
-        """
-        pass
-
 
 class QdrantHandler(BaseVectorDatabaseHandler):
     def __init__(
@@ -457,12 +450,20 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     async def _check_embedding_size(
         self, embedder_name: str, embedder_size: VectorEmbedderSize, collection_name: str
     ) -> bool:
+        # Multiple vector configurations
+        vectors_config = (await self._client.get_collection(collection_name=collection_name)).config.params.vectors
+
+        text_lbl = str(ContentType.TEXT)
+        image_lbl = str(ContentType.IMAGE)
+
+        text_condition = text_lbl in vectors_config and vectors_config[text_lbl].size == embedder_size.text
+        image_condition = (
+                image_lbl in vectors_config and vectors_config[image_lbl].size == embedder_size.image
+        ) if embedder_size.image else True
+
         # having the same size does not necessarily imply being the same embedder
         # having vectors with the same size but from different embedder in the same vector space is wrong
-        same_size = (
-            (await self._client.get_collection(collection_name=collection_name)).config.params.vectors.size
-            == embedder_size.text
-        )
+        same_size = text_condition and image_condition
         local_alias = self._get_local_alias(embedder_name, collection_name)
 
         existing_aliases = (await self._client.get_collection_aliases(collection_name=collection_name)).aliases
@@ -476,23 +477,20 @@ class QdrantHandler(BaseVectorDatabaseHandler):
 
     # create collection
     async def _create_collection(self, embedder_name: str, embedder_size: VectorEmbedderSize, collection_name: str):
-        """
-        Create a new collection in the vector database.
-
-        Args:
-            embedder_name: Name of the embedder to use for the collection
-            embedder_size: Size of the embedding vectors
-            collection_name: Name of the collection to create
-        """
-
         log.warning(f"Creating collection `{collection_name}` for the agent `{self.agent_id}`...")
+
+        vectors_config = {
+            str(ContentType.TEXT): VectorParams(size=embedder_size.text, distance=Distance.COSINE)
+        }
+        if embedder_size.image:
+            vectors_config[str(ContentType.IMAGE)] = VectorParams(
+                size=embedder_size.image, distance=Distance.COSINE
+            )
 
         try:
             await self._client.create_collection(
                 collection_name=collection_name,
-                vectors_config=VectorParams(
-                    size=embedder_size.text, distance=Distance.COSINE
-                ),
+                vectors_config=vectors_config,
                 # hybrid mode: original vector on Disk, quantized vector in RAM
                 optimizers_config=OptimizersConfigDiff(memmap_threshold=20000, indexing_threshold=20000),
                 quantization_config=ScalarQuantization(
@@ -544,13 +542,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             await self._client.close()
 
     async def delete_collection(self, collection_name: str, timeout: int | None = None):
-        """
-        Delete a collection from the vector database.
-
-        Args:
-            collection_name: Name of the collection to delete
-            timeout: Optional timeout for the operation
-        """
         await self._client.delete_collection(collection_name=collection_name, timeout=timeout)
         log.warning(f"Collection `{collection_name}` for the agent `{self.agent_id}` deleted")
 
@@ -597,17 +588,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         log.warning(f"Dump `{new_name}` for the agent `{self.agent_id}` completed")
 
     async def retrieve_points(self, collection_name:str, points: List) -> List[Record]:
-        """
-        Retrieve points from the collection by their ids
-
-        Args:
-            collection_name: the name of the collection to retrieve points from
-            points: the ids of the points to retrieve
-
-        Returns:
-            the list of points
-        """
-
         points_found, _ = await self._client.scroll(
             collection_name=collection_name,
             scroll_filter=Filter(
@@ -623,34 +603,20 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     async def add_point(
         self,
         collection_name: str,
-        content: str,
-        vector: Iterable,
+        content: MultimodalContent,
+        vectors: Dict[ContentType, Iterable],
         metadata: Dict = None,
         id: str | None = None,
         **kwargs,
     ) -> PointStruct | None:
-        """Add a point (and its metadata) to the vectorstore.
-
-        Args:
-            collection_name: Name of the collection to add the point to.
-            content: original text.
-            vector: Embedding vector.
-            metadata: Optional metadata dictionary associated with the text.
-            id:
-                Optional id to associate with the point. Id has to be an uuid-like string.
-
-        Returns:
-            PointStruct: The stored point.
-        """
-
         point = QdrantPointStruct(
             id=id or uuid.uuid4().hex,
             payload={
-                "page_content": content,
+                "page_content": content.model_dump(),
                 "metadata": metadata,
                 "tenant_id": self.agent_id,
             },
-            vector=vector,
+            vector={str(k): v for k, v in vectors.items()}  # Using named vectors
         )
 
         update_status = await self._client.upsert(collection_name=collection_name, points=[point], **kwargs)
@@ -661,22 +627,14 @@ class QdrantHandler(BaseVectorDatabaseHandler):
 
         return None
 
-    # add points in collection
+    # add points in a collection
     async def add_points(
-        self, collection_name: str, payloads: List[Payload], vectors: List, ids: List | None = None
+        self,
+        collection_name: str,
+        payloads: List[Payload],
+        vectors: Dict[ContentType, List[Vector]],
+        ids: List | None = None,
     ) -> UpdateResult:
-        """
-        Upsert memories in batch mode
-        Args:
-            collection_name: the name of the collection to upsert points into
-            payloads: the payloads of the points
-            vectors: the vectors of the points
-            ids: the ids of the points, if not provided, they will be generated automatically using uuid4 hex strings
-
-        Returns:
-            the response of the upsert operation
-        """
-
         if not ids:
             ids = [uuid.uuid4().hex for _ in range(len(payloads))]
 
@@ -684,7 +642,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             raise ValueError("ids, payloads and vectors must have the same length")
 
         payloads = [{**p, **{"tenant_id": self.agent_id}} for p in payloads]
-        points = Batch(ids=ids, payloads=payloads, vectors=vectors)
+        points = Batch(ids=ids, payloads=payloads, vectors={str(k): v for k, v in vectors.items()})
 
         res = await self._client.upsert(collection_name=collection_name, points=points)
         return UpdateResult(
@@ -713,33 +671,14 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     async def recall_memories_from_embedding(
         self,
         collection_name: str,
-        embedding: List[float],
+        query_vectors: Dict[ContentType, List[float]],
         metadata: Dict | None = None,
         k: int | None = 5,
         threshold: float | None = None,
     ) -> List[DocumentRecall]:
-        """
-        Retrieve memories from the collection based on an embedding vector. The memories are sorted by similarity to the
-        embedding vector. The metadata filter is applied to the memories before retrieving them. The number of memories
-        to retrieve is limited by the k parameter. The threshold parameter is used to filter out memories with a score
-        below the threshold. The memories are returned as a list of tuples, where each tuple contains a Document, the
-        similarity score, and the embedding vector of the memory. The Document contains the page content and metadata of
-        the memory. The similarity score is a float between 0 and 1, where 1 is the highest similarity. The embedding
-        vector is a list of floats. The list of tuples is sorted by similarity score in descending order. If the k
-        parameter is None, all memories are retrieved. If the threshold parameter is None, no memories are filtered out.
-
-        Args:
-            collection_name: Name of the collection to search in.
-            embedding: Embedding vector.
-            metadata: Dictionary containing metadata filter.
-            k: Number of memories to retrieve.
-            threshold: Similarity threshold.
-
-        Returns:
-            List: List of DocumentRecall.
-        """
-
         conditions = self._build_metadata_conditions(metadata=metadata)
+
+        embedding = [v for v in query_vectors.values()]
 
         # retrieve memories
         query_response = await self._client.query_points(
@@ -824,19 +763,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         offset: str | None = None,
         metadata: Dict | None = None,
     ) -> Tuple[List[Record], int | str | None]:
-        """
-        Retrieve all the points in the collection with an optional offset and limit.
-
-        Args:
-            collection_name: The name of the collection to retrieve points from.
-            limit: The maximum number of points to retrieve.
-            offset: The offset from which to start retrieving points.
-            metadata: Optional metadata filter to apply to the points.
-
-        Returns:
-            Tuple: A tuple containing the list of points and the next offset.
-        """
-
         conditions = self._build_metadata_conditions(metadata)
         return await self._get_all_points(
             collection_name=collection_name, scroll_filter=Filter(must=conditions), limit=limit, offset=offset
@@ -904,18 +830,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         except Exception as e:
             log.error(f"Error deleting collection `{collection_name}`, agent `{self.agent_id}`: {e}")
             return False
-
-    async def update_metadata(self, collection_name: str, points: List[PointStruct], metadata: Dict) -> UpdateResult:
-        qdrant_points = []
-        for point in points:
-            point.payload["metadata"] = {**point.payload["metadata"], **metadata}
-            point.payload["tenant_id"] = self.agent_id
-            qdrant_points.append(QdrantPointStruct(**point.model_dump()))
-        res = await self._client.upsert(collection_name=collection_name, points=qdrant_points)
-        return UpdateResult(
-            status=res.status,
-            operation_id=res.operation_id,
-        )
 
     def is_db_remote(self) -> bool:
         return True

@@ -21,7 +21,7 @@ from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.registry import registry_search_plugins
-from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.memory.utils import VectorMemoryCollectionTypes, ContentType, MultimodalContent
 
 
 class Plugins(BaseModel):
@@ -277,16 +277,16 @@ async def upsert_memory_point(
     # create point
     qdrant_point = await ccat.vector_memory_handler.add_point(
         collection_name=collection_id,
-        content=point.content,
-        vector=embedding,
+        content=MultimodalContent(text=point.content),
+        vectors={ContentType.TEXT: embedding},
         metadata=point.metadata,
         id=point_id,
     )
 
     return MemoryPoint(
         metadata=qdrant_point.payload["metadata"],
-        content=qdrant_point.payload["page_content"],
-        vector=qdrant_point.vector,
+        content=qdrant_point.payload["page_content"][str(ContentType.TEXT)],
+        vector=qdrant_point.vector[str(ContentType.TEXT)],
         id=qdrant_point.id
     )
 

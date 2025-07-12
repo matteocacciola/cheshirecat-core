@@ -29,7 +29,7 @@ from cat.factory.llm import LLMFactory
 from cat.factory.vector_db import VectorDatabaseFactory
 from cat.log import log
 from cat.mad_hatter.tweedledee import Tweedledee
-from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.memory.utils import VectorMemoryCollectionTypes, ContentType, MultimodalContent
 from cat.utils import (
     langchain_log_prompt,
     langchain_log_output,
@@ -175,7 +175,7 @@ class CheshireCat:
         vectors = []
         for t in active_procedures_hashes:
             payloads.append({
-                "page_content": t["content"],
+                "page_content": MultimodalContent(text=t["content"]),
                 "metadata": {
                     "source": t["source"],
                     "type": t["type"],
@@ -186,7 +186,9 @@ class CheshireCat:
             vectors.append(self.lizard.embedder.embed_documents([t["content"]])[0])
 
         await self.vector_memory_handler.add_points(
-            collection_name=str(VectorMemoryCollectionTypes.PROCEDURAL), payloads=payloads, vectors=vectors
+            collection_name=str(VectorMemoryCollectionTypes.PROCEDURAL),
+            payloads=payloads,
+            vectors={ContentType.TEXT: vectors},
         )
         log.info(f"Agent id: {self.id}. Embedded {len(active_procedures_hashes)} triggers in procedural vector memory")
 
