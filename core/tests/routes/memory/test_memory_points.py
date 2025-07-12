@@ -212,7 +212,10 @@ def test_get_collection_points(secure_client, secure_client_headers, cheshire_ca
 
     expected_payloads = [
         {
-            "page_content": p["content"],
+            "page_content": {
+                "text": p["content"],
+                "image_url": None,
+            },
             "metadata": {
                 "when": fake_timestamp,
                 "source": headers["user_id"],
@@ -231,8 +234,8 @@ def test_get_collection_points(secure_client, secure_client_headers, cheshire_ca
     # check points payload
     points_payloads = [p["payload"] for p in points]
     # sort the list and compare payload
-    points_payloads.sort(key=lambda p: p["page_content"])
-    expected_payloads.sort(key=lambda p: p["page_content"])
+    points_payloads.sort(key=lambda p: p["page_content"]["text"])
+    expected_payloads.sort(key=lambda p: p["page_content"]["text"])
     assert points_payloads == expected_payloads
 
 
@@ -275,7 +278,10 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, ches
     # create the expected payloads for all the points
     expected_payloads = [
         {
-            "page_content": p["content"],
+            "page_content": {
+                "text": p["content"],
+                "image_url": None,
+            },
             "metadata": {
                 "when": fake_timestamp,
                 "source": headers["user_id"],
@@ -294,8 +300,8 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, ches
     # check points payload
     points_payloads = [p["payload"] for p in all_points]
     # sort the list and compare payload
-    points_payloads.sort(key=lambda p: p["page_content"])
-    expected_payloads.sort(key=lambda p: p["page_content"])
+    points_payloads.sort(key=lambda p: p["page_content"]["text"])
+    expected_payloads.sort(key=lambda p: p["page_content"]["text"])
     assert points_payloads == expected_payloads
 
 
