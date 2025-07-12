@@ -1,7 +1,7 @@
 import time
 from langchain.docstore.document import Document
 
-from cat.memory.utils import DocumentRecall
+from cat.memory.utils import DocumentRecallItem, ContentType
 
 
 def test_format_agent_input_on_empty_memory(stray):
@@ -73,7 +73,7 @@ def test_agent_prompt_declarative_memories(stray):
 # utility to add content to the working memory
 def fill_working_memory(stray_cat):
     stray_cat.working_memory.episodic_memories = [
-        DocumentRecall(
+        {ContentType.TEXT: DocumentRecallItem(
             document=Document(
                 page_content="A",
                 metadata={
@@ -81,41 +81,45 @@ def fill_working_memory(stray_cat):
                 },
             ),
             score=0.99,
-        ),
-        DocumentRecall(
+            vector=[],
+        )},
+        {ContentType.TEXT: DocumentRecallItem(
             document=Document(
                 page_content="B",
                 metadata={
                     "when": time.time() - (60 * 60 * 24),
                 },
             ),
-            score=0.88
-        ),
+            score=0.88,
+            vector=[],
+        )},
     ]
 
     stray_cat.working_memory.declarative_memories = [
-        DocumentRecall(
+        {ContentType.TEXT: DocumentRecallItem(
             document=Document(
                 page_content="A",
                 metadata={
                     "source": "a.pdf",
                 },
             ),
-            score=0.99
-        ),
-        DocumentRecall(
+            score=0.99,
+            vector=[],
+        )},
+        {ContentType.TEXT: DocumentRecallItem(
             document=Document(
                 page_content="B",
                 metadata={
                     "source": "http://b",
                 },
             ),
-            score=0.88
-        ),
+            score=0.88,
+            vector=[],
+        )},
     ]
 
     stray_cat.working_memory.procedural_memories = [
-        DocumentRecall(
+        {ContentType.TEXT: DocumentRecallItem(
             document=Document(
                 page_content="what time is it",
                 metadata={
@@ -123,7 +127,8 @@ def fill_working_memory(stray_cat):
                 },
             ),
             score=0.99,
-        )
+            vector=[],
+        )},
     ]
 
     return stray_cat
