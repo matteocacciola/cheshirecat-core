@@ -95,8 +95,12 @@ class SemanticChunker(BaseChunker):
 
 
 class HTMLSemanticChunker(BaseChunker):
-    def __init__(self, headers_to_split_on: List[Tuple[str, str]], elements_to_preserve: List[str]):
-        self._headers_to_split_on = headers_to_split_on
+    def __init__(
+        self, headers_to_split_on: List[Tuple[str, str]] | List[List[str]], elements_to_preserve: List[str]
+    ):
+        self._headers_to_split_on = headers_to_split_on if isinstance(headers_to_split_on[0], tuple) else [
+            (header, header) for header in headers_to_split_on
+        ]
         self._elements_to_preserve = elements_to_preserve
 
     @property

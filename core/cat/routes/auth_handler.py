@@ -4,7 +4,6 @@ from fastapi import APIRouter, Body
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.factory.auth_handler import AuthHandlerFactory
-from cat.factory.base_factory import ReplacedNLPConfig
 from cat.routes.routes_utils import (
     GetSettingsResponse,
     GetSettingResponse,
@@ -43,7 +42,7 @@ async def upsert_authenticator_setting(
     auth_handler_name: str,
     info: AuthorizedInfo = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.LIST),
     payload: Dict = Body(...),
-) -> ReplacedNLPConfig:
+) -> UpsertSettingResponse:
     """Upsert the settings of a specific AuthHandler"""
 
     ccat = info.cheshire_cat

@@ -3,7 +3,6 @@ from fastapi import APIRouter, Body
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
-from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.custom_file_manager import FileManagerAttributes
 from cat.factory.file_manager import FileManagerFactory
 from cat.routes.routes_utils import (
@@ -46,7 +45,7 @@ async def upsert_file_manager_setting(
     file_manager_name: str,
     payload: Dict = Body(...),
     info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.EDIT),
-) -> ReplacedNLPConfig:
+) -> UpsertSettingResponse:
     """Upsert the File Manager setting"""
 
     ccat = info.cheshire_cat

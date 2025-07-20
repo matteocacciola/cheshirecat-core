@@ -2,7 +2,6 @@ from typing import Dict
 from fastapi import APIRouter, Body
 
 from cat.auth.permissions import AdminAuthResource, AuthPermission, check_admin_permissions
-from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.embedder import EmbedderFactory
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.routes.routes_utils import (
@@ -42,7 +41,7 @@ async def upsert_embedder_setting(
     embedder_name: str,
     payload: Dict = Body({"openai_api_key": "your-key-here"}),
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.EMBEDDER, AuthPermission.EDIT),
-) -> ReplacedNLPConfig:
+) -> UpsertSettingResponse:
     """Upsert the Embedder setting"""
 
     on_upsert_factory_setting(embedder_name, EmbedderFactory(lizard.plugin_manager))

@@ -125,7 +125,28 @@ async def value_error_exception_handler(request, exc):
 
 @cheshire_cat_api.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
-    return JSONResponse(status_code=400, content={"detail": {"error": exc.errors()}})
+    # Convert error objects to JSON-serializable format
+    serializable_errors = []
+    for error in exc.errors():
+        serializable_error = {
+            "loc": error.get("loc", []),
+            "msg": str(error.get("msg", "")),
+            "type": str(error.get("type", ""))
+        }
+        # Add context if it exists and is serializable
+        if "ctx" in error:
+            try:
+                serializable_error["ctx"] = error["ctx"]
+            except (TypeError, ValueError):
+                # If ctx is not serializable, convert to string
+                serializable_error["ctx"] = str(error["ctx"])
+
+        serializable_errors.append(serializable_error)
+
+    return JSONResponse(
+        status_code=400,
+        content={"detail": {"errors": serializable_errors}}
+    )
 
 
 @cheshire_cat_api.exception_handler(LoadMemoryException)

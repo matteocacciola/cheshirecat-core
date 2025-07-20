@@ -20,8 +20,6 @@ class AdminBase(BaseModel):
         if not v:
             raise ValueError("Permissions cannot be empty")
         for k_, v_ in v.items():
-            if not v_:
-                raise ValueError(f"Permissions for {k_} cannot be empty")
             if k_ not in AdminAuthResource:
                 raise ValueError(f"Invalid resource: {k_}")
             if any([p not in AuthPermission for p in v_]):

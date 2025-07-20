@@ -3,7 +3,6 @@ from fastapi import APIRouter, Body
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
-from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.vector_db import VectorDatabaseFactory
 from cat.routes.routes_utils import (
     GetSettingsResponse,
@@ -48,7 +47,7 @@ async def upsert_vector_database_setting(
     vector_database_name: str,
     payload: Dict = Body(...),
     info: AuthorizedInfo = check_permissions(AuthResource.VECTOR_DATABASE, AuthPermission.EDIT),
-) -> ReplacedNLPConfig:
+) -> UpsertSettingResponse:
     """Upsert the Vector Database setting"""
 
     ccat = info.cheshire_cat

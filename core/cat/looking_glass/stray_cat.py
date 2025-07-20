@@ -247,16 +247,15 @@ class StrayCat:
         setattr(self.working_memory, f"{collection_name}_memories", memories)
         return memories
 
-    async def recall_relevant_memories_to_working_memory(self, query: str | None = None):
+    async def recall_relevant_memories_to_working_memory(self, query: str):
         """
         Retrieve context from memory.
         The method retrieves the relevant memories from the vector collections that are given as context to the LLM.
         Recalled memories are stored in the working memory.
 
         Args:
-            query: str, optional
-                The query used to make a similarity search in the Cat's vector memories. If not provided, the query
-                will be derived from the user's message.
+            query: str
+                The query used to make a similarity search in the Cat's vector memories.
 
         See Also:
             cat_recall_query
@@ -280,11 +279,7 @@ class StrayCat:
         plugin_manager = self.plugin_manager
 
         # We may want to search in memory. If a query is not provided, use the user's message as the query
-        recall_query = plugin_manager.execute_hook(
-            "cat_recall_query",
-            query if query is not None else self.working_memory.user_message.text,
-            cat=self
-        )
+        recall_query = plugin_manager.execute_hook("cat_recall_query", query, cat=self)
         log.info(f"Agent id: {self.__agent_id}. Recall query: '{recall_query}'")
 
         # Embed recall query
@@ -407,7 +402,7 @@ class StrayCat:
 
         # recall episodic and declarative memories from vector collections and store them in working_memory
         try:
-            await self.recall_relevant_memories_to_working_memory()
+            await self.recall_relevant_memories_to_working_memory(self.working_memory.user_message.text)
         except Exception as e:
             log.error(f"Agent id: {self.__agent_id}. Error during recall {e}")
 

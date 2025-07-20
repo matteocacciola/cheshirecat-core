@@ -61,7 +61,7 @@ class SemanticChunkerSettings(ChunkerSettings):
 
 
 class HTMLSemanticChunkerSettings(ChunkerSettings):
-    headers_to_split_on: List[Tuple[str, str]] = [
+    headers_to_split_on: List[Tuple[str, str]] | List[List[str]] = [
         ("h1", "Header 1"),
         ("h2", "Header 2"),
     ]

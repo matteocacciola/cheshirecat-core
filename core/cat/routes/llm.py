@@ -3,7 +3,6 @@ from fastapi import APIRouter, Body
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
-from cat.factory.base_factory import ReplacedNLPConfig
 from cat.factory.llm import LLMFactory
 from cat.routes.routes_utils import (
     GetSettingsResponse,
@@ -44,7 +43,7 @@ async def upsert_llm_setting(
     language_model_name: str,
     payload: Dict = Body({"openai_api_key": "your-key-here"}),
     info: AuthorizedInfo = check_permissions(AuthResource.LLM, AuthPermission.EDIT),
-) -> ReplacedNLPConfig:
+) -> UpsertSettingResponse:
     """Upsert the Large Language Model setting"""
 
     ccat = info.cheshire_cat
