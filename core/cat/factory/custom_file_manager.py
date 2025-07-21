@@ -60,6 +60,20 @@ class BaseFileManager(ABC):
         return self._upload_file_to_storage(file_path, destination_path)
 
     @abstractmethod
+    def download(self, file_path: str) -> bytes | None:
+        """
+        Download a single file from the storage and return its content as bytes.
+
+        Args:
+            file_path: The path of the file to download from the storage
+
+        Returns:
+            The path of the file on the storage, None if the file has not been downloaded
+        """
+
+        pass
+
+    @abstractmethod
     def _upload_file_to_storage(self, file_path: str, destination_path: str) -> str:
         pass
 
@@ -234,6 +248,17 @@ class BaseFileManager(ABC):
 
 
 class LocalFileManager(BaseFileManager):
+    def download(self, file_path: str) -> bytes | None:
+        try:
+            if not os.path.exists(file_path):
+                return None
+
+            with open(file_path, "rb") as f:
+                return f.read()
+        except Exception as e:
+            log.error(f"Error while downloading file {file_path} from storage: {e}")
+            return None
+
     def _upload_file_to_storage(self, file_path: str, destination_path: str) -> str:
         if file_path != destination_path:
             os.makedirs(os.path.dirname(destination_path), exist_ok=True)
@@ -293,6 +318,14 @@ class AWSFileManager(BaseFileManager):
         self.bucket_name = bucket_name
         super().__init__()
 
+    def download(self, file_path: str) -> bytes | None:
+        try:
+            response = self.s3.get_object(Bucket=self.bucket_name, Key=file_path)
+            return response["Body"].read()
+        except Exception as e:
+            log.error(f"Error downloading file {file_path}: {str(e)}")
+            return None
+
     def _upload_file_to_storage(self, file_path: str, destination_path: str) -> str:
         self.s3.upload_file(file_path, self.bucket_name, destination_path)
         return os.path.join("s3://", self.bucket_name, destination_path)
@@ -325,7 +358,6 @@ class AWSFileManager(BaseFileManager):
             return False
 
     def _list_files(self, remote_root_dir: str) -> List[FileResponse]:
-        # list all the files in the directory: retrieve the full path, the size and the last modified date
         files = []
         paginator = self.s3.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=self.bucket_name, Prefix=remote_root_dir):
@@ -346,6 +378,16 @@ class AzureFileManager(BaseFileManager):
         self.blob_service = BlobServiceClient.from_connection_string(connection_string)
         self.container = self.blob_service.get_container_client(container_name)
         super().__init__()
+
+    def download(self, file_path: str) -> bytes | None:
+        try:
+            blob_client = self.container.get_blob_client(file_path)
+            if blob_client.exists():
+                return blob_client.download_blob().readall()
+            return None
+        except Exception as e:
+            log.error(f"Error while downloading file {file_path} from storage: {e}")
+            return None
 
     def _upload_file_to_storage(self, file_path: str, destination_path: str) -> str:
         with open(file_path, "rb") as data:
@@ -380,7 +422,6 @@ class AzureFileManager(BaseFileManager):
             return False
 
     def _list_files(self, remote_root_dir: str) -> List[FileResponse]:
-        # list all the files in the directory: retrieve the full path, the size and the last modified date
         return [FileResponse(
             path=blob.name,
             name=os.path.basename(blob.name),
@@ -396,6 +437,16 @@ class GoogleCloudFileManager(BaseFileManager):
         self.storage_client = storage.Client.from_service_account_json(credentials_path)
         self.bucket = self.storage_client.bucket(bucket_name)
         super().__init__()
+
+    def download(self, file_path: str) -> bytes | None:
+        try:
+            blob = self.bucket.blob(file_path)
+            if blob.exists():
+                return blob.download_as_bytes()
+            return None
+        except Exception as e:
+            log.error(f"Error while downloading file {file_path} from storage: {e}")
+            return None
 
     def _upload_file_to_storage(self, file_path: str, destination_path: str) -> str:
         blob = self.bucket.blob(destination_path)
@@ -428,7 +479,6 @@ class GoogleCloudFileManager(BaseFileManager):
             return False
 
     def _list_files(self, remote_root_dir: str) -> List[FileResponse]:
-        # list all the files in the directory: retrieve the full path, the size and the last modified date
         return [FileResponse(
             path=blob.name,
             name=os.path.basename(blob.name),

@@ -1,8 +1,11 @@
+from io import BytesIO
 from typing import Dict
 from fastapi import APIRouter, Body
+from starlette.responses import StreamingResponse
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
+from cat.exceptions import CustomNotFoundException
 from cat.factory.custom_file_manager import FileManagerAttributes
 from cat.factory.file_manager import FileManagerFactory
 from cat.routes.routes_utils import (
@@ -60,3 +63,21 @@ async def get_attributes(
 ) -> FileManagerAttributes:
     ccat = info.cheshire_cat
     return ccat.file_manager.get_attributes(ccat.id)
+
+
+@router.get("/download/{source}", response_model=FileManagerAttributes)
+async def download(
+    source: str,
+    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.LIST),
+) -> StreamingResponse:
+    ccat = info.cheshire_cat
+
+    file_content = ccat.file_manager.download(f"{ccat.id}/{source}")
+    if file_content is None:
+        raise CustomNotFoundException("File not found")
+
+    return StreamingResponse(
+        BytesIO(file_content),
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename={source}"}
+    )
