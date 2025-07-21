@@ -65,7 +65,7 @@ async def get_attributes(
     return ccat.file_manager.get_attributes(ccat.id)
 
 
-@router.get("/download/{source}", response_model=FileManagerAttributes)
+@router.get("/download/{source}")
 async def download(
     source: str,
     info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.LIST),
