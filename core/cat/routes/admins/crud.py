@@ -19,6 +19,11 @@ class AdminBase(BaseModel):
     def validate_permissions(cls, v):
         if not v:
             raise ValueError("Permissions cannot be empty")
+        # Check if all permissions are empty
+        all_items_empty = all([not p for p in v.values()])
+        if all_items_empty:
+            raise ValueError("At least one permission must be set")
+        # Validate each resource and its permissions
         for k_, v_ in v.items():
             if k_ not in AdminAuthResource:
                 raise ValueError(f"Invalid resource: {k_}")

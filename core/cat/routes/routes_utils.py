@@ -4,7 +4,7 @@ import time
 from copy import deepcopy
 from typing import Dict, List, Any
 from fastapi import Query, UploadFile
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_serializer
 import io
 
 from cat import utils
@@ -39,11 +39,32 @@ class JWTResponse(BaseModel):
 
 
 class UpsertSettingResponse(ReplacedNLPConfig):
-    pass
+    @model_serializer
+    def serialize_model(self) -> Dict[str, Any]:
+        """Custom serializer that will be used by FastAPI"""
+
+        value = self.value.copy()  # Create a copy to avoid modifying the original value
+        value = {
+            k: "********" if isinstance(v, str) and any(suffix in k for suffix in ["_key", "_secret"]) else v
+            for k, v in value.items()
+        }
+
+        return {
+            "name": self.name,
+            "value": value
+        }
 
 
 class GetSettingResponse(UpsertSettingResponse):
     scheme: Dict[str, Any] | None = None
+
+    @model_serializer
+    def serialize_model(self) -> Dict[str, Any]:
+        """Custom serializer that will be used by FastAPI"""
+
+        serialized = super().serialize_model()
+        serialized["scheme"] = self.scheme
+        return serialized
 
 
 class GetSettingsResponse(BaseModel):

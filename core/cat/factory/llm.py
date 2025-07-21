@@ -62,7 +62,7 @@ class LLMCustomConfig(LLMSettings):
         if isinstance(options, str):
             config["options"] = json.loads(options) if options != "" else {}
 
-        return cls._pyclass.default(**config)
+        return cls.pyclass()(**cls._parse_config(config))
 
     model_config = ConfigDict(
         json_schema_extra={

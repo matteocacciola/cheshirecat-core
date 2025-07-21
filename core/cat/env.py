@@ -26,6 +26,8 @@ def get_supported_env_variables():
         "CCAT_CORS_ENABLED": "true",
         "CCAT_WORKERS": None,
         "CCAT_LIMIT_MAX_REQUESTS": None,
+        "CCAT_CRYPTO_KEY": "cheshirecat",
+        "CCAT_CRYPTO_SALT": "cheshirecat_salt",
     }
 
 

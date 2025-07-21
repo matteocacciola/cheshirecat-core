@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import Type, List, Dict, Any
+from typing import Type, List, Dict, Any, Final
 from pydantic import BaseModel
 
 from cat.db.cruds import settings as crud_settings
 from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
+from cat.services.string_crypto import StringCrypto
 
 
 class ReplacedNLPConfig(BaseModel):
@@ -14,11 +15,21 @@ class ReplacedNLPConfig(BaseModel):
 
 class BaseFactoryConfigModel(ABC, BaseModel):
     _pyclass: Type = None
+    crypto: Final = StringCrypto()
+
+    @classmethod
+    def _parse_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            k: cls.crypto.decrypt(v)
+            if isinstance(v, str) and any(suffix in k for suffix in ["_key", "_secret"])
+            else v
+            for k, v in config.items()
+        }
 
     @classmethod
     def get_from_config(cls, config) -> Type:
         if cls._pyclass and issubclass(cls.pyclass(), cls.base_class()):
-            return cls.pyclass()(**config)
+            return cls.pyclass()(**cls._parse_config(config))
         raise Exception(f"Configuration class is invalid. It should be a valid {cls.base_class().__name__} class")
 
     @classmethod

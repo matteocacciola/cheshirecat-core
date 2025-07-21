@@ -25,6 +25,7 @@ def test_validation_errors():
     with pytest.raises(ValidationError) as e:
         AdminUpdate(username="Alice", permissions={"CHESHIRE_CATS": ["WRITE", "WRONG"]})
 
+
 def test_create_admin(client):
     # create admin
     data = create_new_user(client, "/admins/users", headers=get_client_admin_headers(client))

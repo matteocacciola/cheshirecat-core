@@ -64,7 +64,7 @@ def test_upsert_vector_database_settings_success(secure_client, secure_client_he
     assert json["name"] == new_vector_db
     assert json["value"]["host"] == payload["host"]
     assert json["value"]["port"] == payload["port"]
-    assert json["value"]["api_key"] == payload["api_key"]
+    assert "api_key" in json["value"]
     assert json["value"]["client_timeout"] == payload["client_timeout"]
 
     # retrieve all Vector databases settings to check if it was saved in DB
@@ -75,7 +75,7 @@ def test_upsert_vector_database_settings_success(secure_client, secure_client_he
     saved_config = [c for c in json["settings"] if c["name"] == new_vector_db]
     assert saved_config[0]["value"]["host"] == payload["host"]
     assert saved_config[0]["value"]["port"] == payload["port"]
-    assert saved_config[0]["value"]["api_key"] == payload["api_key"]
+    assert "api_key" in saved_config[0]["value"]
     assert saved_config[0]["value"]["client_timeout"] == payload["client_timeout"]
 
     # check also specific Vector database endpoint
@@ -85,7 +85,7 @@ def test_upsert_vector_database_settings_success(secure_client, secure_client_he
     assert json["name"] == new_vector_db
     assert json["value"]["host"] == payload["host"]
     assert json["value"]["port"] == payload["port"]
-    assert json["value"]["api_key"] == payload["api_key"]
+    assert "api_key" in json["value"]
     assert json["value"]["client_timeout"] == payload["client_timeout"]
     assert json["scheme"]["vectorDatabaseName"] == new_vector_db
 

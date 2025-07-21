@@ -1,9 +1,10 @@
-from typing import Dict
+from typing import Dict, Final, Any
 from pydantic import BaseModel
 
 from cat.db import models
 from cat.db.cruds import settings as crud_settings
 from cat.factory.base_factory import BaseFactory
+from cat.services.string_crypto import StringCrypto
 
 
 class UpdaterFactory(BaseModel):
@@ -15,6 +16,15 @@ class UpdaterFactory(BaseModel):
 class FactoryAdapter:
     def __init__(self, factory: BaseFactory):
         self._factory = factory
+        self.crypto: Final = StringCrypto()
+
+    def _encrypt_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            k: self.crypto.encrypt(v)
+            if isinstance(v, str) and any(suffix in k for suffix in ["_key", "_secret"])
+            else v
+            for k, v in config.items()
+        }
 
     def get_factory_config_by_settings(self, key_id: str) -> Dict:
         selected_config = crud_settings.get_setting_by_name(key_id, self._factory.setting_name)
@@ -53,7 +63,9 @@ class FactoryAdapter:
 
         # upsert the settings for the factory
         final_setting = crud_settings.upsert_setting_by_category(key_id, models.Setting(
-            name=new_factory_name, category=self._factory.setting_factory_category, value=new_factory_settings,
+            name=new_factory_name,
+            category=self._factory.setting_factory_category,
+            value=self._encrypt_config(new_factory_settings),
         ))
 
         # upsert the setting for the class of the factory
