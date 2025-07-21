@@ -14,6 +14,7 @@ from cat.db.database import DEFAULT_AGENT_KEY
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
 from cat.factory.base_factory import ReplacedNLPConfig, BaseFactory
+from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
@@ -326,6 +327,9 @@ async def shutdown_app(app):
     # shutdown Manager
     app.state.white_rabbit.shutdown()
     await app.state.lizard.shutdown()
+
+    for log_handler in log.plugin_log_handlers:
+        log_handler.on_plugin_shutdown()
 
     del app.state.lizard
     del app.state.white_rabbit

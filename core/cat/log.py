@@ -5,6 +5,7 @@ import sys
 import json
 import traceback
 import time
+from abc import abstractmethod, ABC
 from pprint import pformat
 from loguru import logger
 
@@ -25,6 +26,8 @@ class CatLogEngine:
     ----------
     LOG_LEVEL: str
         Level of logging set in the `.env` file.
+    _plugin_log_handlers: list
+        A list of callable functions registered by plugins to handle log messages.
 
     Notes
     -----
@@ -43,6 +46,7 @@ class CatLogEngine:
     def __init__(self):
         self.LOG_LEVEL = get_log_level()
         self.default_log()
+        self._plugin_log_handlers = []  # Initialize the list for plugin handlers
 
         # workaround for pdfminer logging
         # https://github.com/pdfminer/pdfminer.six/issues/347
@@ -112,7 +116,7 @@ class CatLogEngine:
             traceback.print_exc()
 
     def log(self, msg, level="DEBUG"):
-        """Log a message
+        """Log a message and dispatch to registered plugin handlers.
 
         Args:
             msg :
@@ -126,15 +130,42 @@ class CatLogEngine:
         elif type(msg) in [dict, list]:  # TODO: should be recursive
             try:
                 msg = json.dumps(msg, indent=4)
-            except:
-                pass
+            except TypeError: # Catch potential TypeError during serialization
+                msg = pformat(msg) # Fallback to pformat if JSON serialization fails
         else:
             msg = pformat(msg)
 
-        # actual log
+        # actual log to stdout using loguru
         lines = msg.split("\n")
         for line in lines:
             logger.log(level, line)
+
+        # Dispatch to plugin handlers
+        for handler in self._plugin_log_handlers:
+            try:
+                handler(msg, level)
+            except Exception as e:
+                # Log any errors in plugin handlers so they don't break the main logging
+                logger.error(f"Error in plugin log handler: {e}", exc_info=True)
+
+    def register_plugin_log_handler(self, handler_func: callable):
+        """Registers a function from a plugin to receive log messages.
+
+        The `handler_func` should accept two arguments: `msg` (str) and `level` (str).
+        """
+        if callable(handler_func):
+            self._plugin_log_handlers.append(handler_func)
+            self.info(f"Registered plugin log handler: {handler_func.__name__}")
+        else:
+            self.warning(f"Attempted to register non-callable as log handler: {handler_func}")
+
+    def unregister_plugin_log_handler(self, handler_func: callable):
+        """Unregisters a previously registered plugin log handler."""
+        if handler_func in self._plugin_log_handlers:
+            self._plugin_log_handlers.remove(handler_func)
+            self.info(f"Unregistered plugin log handler: {handler_func.__name__}")
+        else:
+            self.warning(f"Attempted to unregister a log handler that was not registered: {handler_func}")
 
     def welcome(self):
         from cat.utils import get_base_path
@@ -147,15 +178,18 @@ class CatLogEngine:
         cat_address = f"http{secure}://{cat_host}:{cat_port}"
 
         print("\n\n")
-        with open(get_base_path() + "welcome.txt", "r") as f:
-            print(f.read())
-            time.sleep(0.01)
+        try:
+            with open(get_base_path() + "welcome.txt", "r") as f:
+                print(f.read())
+                time.sleep(0.01)
+        except FileNotFoundError:
+            self.warning("welcome.txt not found. Skipping welcome message.")
 
         print("\n=============== ^._.^ ===============\n")
         print(f"Cat REST API:   {cat_address}/docs")
         print("======================================")
 
-        # self.log_examples()
+        # self.log_examples() # You can uncomment this for testing purposes
 
     def log_examples(self):
         """Log examples for the log engine."""
@@ -168,11 +202,47 @@ class CatLogEngine:
             self.critical(c)
 
         def intentional_error():
-            print(42/0)
+            _ = 42/0
         try:
             intentional_error()
-        except:
+        except ZeroDivisionError: # Catch specific error for clarity
             self.error("This error is just for demonstration purposes.")
+
+    @property
+    def plugin_log_handlers(self):
+        """Returns the list of registered plugin log handlers."""
+        return self._plugin_log_handlers
+
+
+class CatLogProcessor(ABC):
+    def __init__(self):
+        self.log_engine = log # Get reference to the running log engine
+
+        # IMMEDIATELY REGISTER THE HANDLER upon plugin instantiation
+        self.log_engine.register_plugin_log_handler(self.handle_log_message)
+        self.log_engine.info(f"{self.__class__.__name__}: registered its log handler.")
+
+    @abstractmethod
+    def handle_log_message(self, message: str, level: str):
+        """
+        This method will be called by the CatLogEngine's `log` method for every log message.
+        Implement this method to process the log message as needed by your plugin.
+
+        Args:
+            message (str): The log message.
+            level (str): The log level (e.g., "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL").
+        """
+        pass
+
+    # IMPORTANT: Implement a method for plugin shutdown/cleanup
+    # The Cheshire Cat Core should ideally call this when unloading the plugin.
+    # If there's a specific "on_shutdown" hook, use that.
+    def on_plugin_shutdown(self):
+        """
+        Called when the plugin is being unloaded. Essential for cleanup.
+        """
+        self.log_engine.unregister_plugin_log_handler(self.handle_log_message)
+        self.log_engine.info(f"{self.__class__.__name__}: unregistered its log handler.")
 
 
 # logger instance
