@@ -300,8 +300,9 @@ class StrayCat:
         plugin_manager.execute_hook("before_cat_recalls_memories", cat=self)
 
         # Setting default recall configs for each memory + hooks to change recall configs for each memory
+        metadata = self.working_memory.user_message.get("metadata", {})
         for memory_type in VectorMemoryCollectionTypes:
-            metadata = {"source": self.__user.id} if memory_type == VectorMemoryCollectionTypes.EPISODIC else None
+            metadata |= {"source": self.__user.id} if memory_type == VectorMemoryCollectionTypes.EPISODIC else metadata
             config = utils.restore_original_model(
                 plugin_manager.execute_hook(
                     f"before_cat_recalls_{str(memory_type)}_memories",

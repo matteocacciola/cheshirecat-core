@@ -1,4 +1,4 @@
-import uuid
+import tempfile
 from abc import ABC, abstractmethod
 import os
 from datetime import datetime
@@ -59,7 +59,6 @@ class BaseFileManager(ABC):
 
         return self._upload_file_to_storage(file_path, destination_path)
 
-    @abstractmethod
     def download(self, file_path: str) -> bytes | None:
         """
         Download a single file from the storage and return its content as bytes.
@@ -71,6 +70,11 @@ class BaseFileManager(ABC):
             The path of the file on the storage, None if the file has not been downloaded
         """
 
+        file_path = os.path.join(self._root_dir, file_path)
+        return self._download(file_path)
+
+    @abstractmethod
+    def _download(self, file_path: str) -> bytes | None:
         pass
 
     @abstractmethod
@@ -210,21 +214,15 @@ class BaseFileManager(ABC):
         """
 
         try:
-            # create a tmp directory
-            tmp_folder_name = f"/tmp/{uuid.uuid1()}"
-            os.mkdir(tmp_folder_name)
+            with tempfile.TemporaryDirectory() as tmp_folder_name:
+                # try to download the files from the old file manager to the `tmp_folder_name`
+                file_manager_from.download_folder_from_storage(tmp_folder_name, remote_root_dir)
 
-            # try to download the files from the old file manager to the `tmp_folder_name`
-            file_manager_from.download_folder_from_storage(tmp_folder_name, remote_root_dir)
+                # now, try to upload the files to the new storage
+                self.upload_folder_to_storage(tmp_folder_name, remote_root_dir)
+                file_manager_from.remove_folder_from_storage(remote_root_dir)
 
-            # now, try to upload the files to the new storage
-            self.upload_folder_to_storage(tmp_folder_name, remote_root_dir)
-
-            # cleanup
-            if os.path.exists(tmp_folder_name):
-                shutil.rmtree(tmp_folder_name)
-            file_manager_from.remove_folder_from_storage(remote_root_dir)
-            return True
+                return True
         except Exception as e:
             log.error(f"Error while transferring files from the old file manager to the new one: {e}")
             return False
@@ -248,7 +246,7 @@ class BaseFileManager(ABC):
 
 
 class LocalFileManager(BaseFileManager):
-    def download(self, file_path: str) -> bytes | None:
+    def _download(self, file_path: str) -> bytes | None:
         try:
             if not os.path.exists(file_path):
                 return None
@@ -318,7 +316,7 @@ class AWSFileManager(BaseFileManager):
         self.bucket_name = bucket_name
         super().__init__()
 
-    def download(self, file_path: str) -> bytes | None:
+    def _download(self, file_path: str) -> bytes | None:
         try:
             response = self.s3.get_object(Bucket=self.bucket_name, Key=file_path)
             return response["Body"].read()
@@ -379,7 +377,7 @@ class AzureFileManager(BaseFileManager):
         self.container = self.blob_service.get_container_client(container_name)
         super().__init__()
 
-    def download(self, file_path: str) -> bytes | None:
+    def _download(self, file_path: str) -> bytes | None:
         try:
             blob_client = self.container.get_blob_client(file_path)
             if blob_client.exists():
@@ -438,7 +436,7 @@ class GoogleCloudFileManager(BaseFileManager):
         self.bucket = self.storage_client.bucket(bucket_name)
         super().__init__()
 
-    def download(self, file_path: str) -> bytes | None:
+    def _download(self, file_path: str) -> bytes | None:
         try:
             blob = self.bucket.blob(file_path)
             if blob.exists():

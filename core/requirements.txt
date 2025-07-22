@@ -10,7 +10,7 @@ aiofiles==24.1.0
     #   unstructured-client
 aiohappyeyeballs==2.6.1
     # via aiohttp
-aiohttp==3.11.16
+aiohttp==3.12.14
     # via
     #   langchain-community
     #   litellm
@@ -18,11 +18,11 @@ aiohttp==3.11.16
     #   voyageai
 aiolimiter==1.2.1
     # via voyageai
-aiosignal==1.3.2
+aiosignal==1.4.0
     # via aiohttp
 annotated-types==0.7.0
     # via pydantic
-anthropic==0.49.0
+anthropic==0.58.2
     # via langchain-anthropic
 anyio==4.9.0
     # via
@@ -34,7 +34,7 @@ anyio==4.9.0
     #   watchfiles
 apscheduler==3.11.0
     # via Cheshire-Cat (pyproject.toml)
-astroid==3.3.9
+astroid==3.3.11
     # via pylint
 attrs==25.3.0
     # via
@@ -43,23 +43,23 @@ attrs==25.3.0
     #   referencing
 autopep8==2.3.2
     # via Cheshire-Cat (pyproject.toml)
-azure-core==1.33.0
+azure-core==1.35.0
     # via azure-storage-blob
-azure-storage-blob==12.25.1
+azure-storage-blob==12.26.0
     # via Cheshire-Cat (pyproject.toml)
 backoff==2.2.1
     # via unstructured
 bcrypt==4.3.0
     # via Cheshire-Cat (pyproject.toml)
-beautifulsoup4==4.13.3
+beautifulsoup4==4.13.4
     # via
     #   Cheshire-Cat (pyproject.toml)
     #   unstructured
 blis==1.3.0
     # via thinc
-boto3==1.37.28
+boto3==1.39.10
     # via Cheshire-Cat (pyproject.toml)
-botocore==1.37.28
+botocore==1.39.10
     # via
     #   boto3
     #   s3transfer
@@ -70,7 +70,7 @@ catalogue==2.0.10
     #   spacy
     #   srsly
     #   thinc
-certifi==2025.1.31
+certifi==2025.7.14
     # via
     #   httpcore
     #   httpx
@@ -79,28 +79,30 @@ cffi==1.17.1
     # via cryptography
 chardet==5.2.0
     # via unstructured
-charset-normalizer==3.4.1
+charset-normalizer==3.4.2
     # via
     #   pdfminer-six
     #   requests
-click==8.1.8
+click==8.2.1
     # via
     #   litellm
     #   nltk
     #   python-oxmsg
     #   typer
     #   uvicorn
-cloudpathlib==0.21.0
+cloudpathlib==0.21.1
     # via weasel
 cohere==5.14.2
-    # via langchain-cohere
+    # via
+    #   Cheshire-Cat (pyproject.toml)
+    #   langchain-cohere
 coloredlogs==15.0.1
     # via onnxruntime
 confection==0.1.5
     # via
     #   thinc
     #   weasel
-cryptography==44.0.2
+cryptography==45.0.5
     # via
     #   azure-storage-blob
     #   pdfminer-six
@@ -116,7 +118,7 @@ dataclasses-json==0.6.7
     #   unstructured
 defusedxml==0.7.1
     # via youtube-transcript-api
-dill==0.3.9
+dill==0.4.0
     # via pylint
 distro==1.9.0
     # via
@@ -125,13 +127,11 @@ distro==1.9.0
     #   openai
 emoji==2.14.1
     # via unstructured
-eval-type-backport==0.2.2
-    # via unstructured-client
-fastapi==0.115.12
+fastapi==0.116.1
     # via Cheshire-Cat (pyproject.toml)
-fastavro==1.10.0
+fastavro==1.11.1
     # via cohere
-fastembed==0.6.0
+fastembed==0.7.1
     # via Cheshire-Cat (pyproject.toml)
 filelock==3.18.0
     # via
@@ -145,22 +145,22 @@ filetype==1.2.0
     #   unstructured
 flatbuffers==25.2.10
     # via onnxruntime
-frozenlist==1.5.0
+frozenlist==1.7.0
     # via
     #   aiohttp
     #   aiosignal
-fsspec==2025.3.2
+fsspec==2025.7.0
     # via
     #   huggingface-hub
     #   torch
-google-ai-generativelanguage==0.6.17
+google-ai-generativelanguage==0.6.18
     # via langchain-google-genai
-google-api-core==2.24.2
+google-api-core==2.25.1
     # via
     #   google-ai-generativelanguage
     #   google-cloud-core
     #   google-cloud-storage
-google-auth==2.38.0
+google-auth==2.40.3
     # via
     #   google-ai-generativelanguage
     #   google-api-core
@@ -168,7 +168,7 @@ google-auth==2.38.0
     #   google-cloud-storage
 google-cloud-core==2.4.3
     # via google-cloud-storage
-google-cloud-storage==3.1.0
+google-cloud-storage==3.2.0
     # via Cheshire-Cat (pyproject.toml)
 google-crc32c==1.7.1
     # via
@@ -176,37 +176,36 @@ google-crc32c==1.7.1
     #   google-resumable-media
 google-resumable-media==2.7.2
     # via google-cloud-storage
-googleapis-common-protos==1.69.2
+googleapis-common-protos==1.70.0
     # via
     #   google-api-core
     #   grpcio-status
-greenlet==3.1.1
+greenlet==3.2.3
     # via sqlalchemy
-groq==0.22.0
+groq==0.30.0
     # via langchain-groq
-grpcio==1.71.0
+grpcio==1.73.1
     # via
     #   google-api-core
     #   grpcio-status
-    #   grpcio-tools
     #   qdrant-client
-grpcio-status==1.71.0
+grpcio-status==1.73.1
     # via google-api-core
-grpcio-tools==1.71.0
-    # via qdrant-client
 gunicorn==23.0.0
     # via Cheshire-Cat (pyproject.toml)
-h11==0.14.0
+h11==0.16.0
     # via
     #   httpcore
     #   uvicorn
 h2==4.2.0
     # via httpx
+hf-xet==1.1.5
+    # via huggingface-hub
 hpack==4.1.0
     # via h2
 html5lib==1.1
     # via unstructured
-httpcore==1.0.7
+httpcore==1.0.9
     # via httpx
 httptools==0.6.4
     # via uvicorn
@@ -228,7 +227,7 @@ httpx-sse==0.4.0
     #   cohere
     #   langchain-community
     #   langchain-mistralai
-huggingface-hub==0.30.1
+huggingface-hub==0.33.4
     # via
     #   Cheshire-Cat (pyproject.toml)
     #   fastembed
@@ -259,7 +258,7 @@ jinja2==3.1.6
     #   litellm
     #   spacy
     #   torch
-jiter==0.9.0
+jiter==0.10.0
     # via
     #   anthropic
     #   openai
@@ -267,7 +266,7 @@ jmespath==1.0.1
     # via
     #   boto3
     #   botocore
-joblib==1.4.2
+joblib==1.5.1
     # via
     #   nltk
     #   scikit-learn
@@ -275,21 +274,21 @@ jsonpatch==1.33
     # via langchain-core
 jsonpointer==3.0.0
     # via jsonpatch
-jsonschema==4.24.0
+jsonschema==4.25.0
     # via litellm
 jsonschema-specifications==2025.4.1
     # via jsonschema
-langchain==0.3.23
+langchain==0.3.26
     # via
     #   Cheshire-Cat (pyproject.toml)
     #   langchain-community
-langchain-anthropic==0.3.10
+langchain-anthropic==0.3.17
     # via Cheshire-Cat (pyproject.toml)
-langchain-cohere==0.4.3
+langchain-cohere==0.4.4
     # via Cheshire-Cat (pyproject.toml)
-langchain-community==0.3.21
+langchain-community==0.3.27
     # via langchain-cohere
-langchain-core==0.3.51
+langchain-core==0.3.70
     # via
     #   langchain
     #   langchain-anthropic
@@ -303,40 +302,40 @@ langchain-core==0.3.51
     #   langchain-openai
     #   langchain-text-splitters
     #   langchain-voyageai
-langchain-google-genai==2.1.2
+langchain-google-genai==2.1.8
     # via Cheshire-Cat (pyproject.toml)
-langchain-groq==0.3.2
+langchain-groq==0.3.6
     # via Cheshire-Cat (pyproject.toml)
-langchain-litellm==0.2.1
+langchain-litellm==0.2.2
     # via Cheshire-Cat (pyproject.toml)
-langchain-mistralai==0.2.10
+langchain-mistralai==0.2.11
     # via Cheshire-Cat (pyproject.toml)
-langchain-ollama==0.3.0
+langchain-ollama==0.3.5
     # via Cheshire-Cat (pyproject.toml)
-langchain-openai==0.3.12
+langchain-openai==0.3.28
     # via Cheshire-Cat (pyproject.toml)
 langchain-text-splitters==0.3.8
     # via langchain
-langchain-voyageai==0.1.4
+langchain-voyageai==0.1.6
     # via Cheshire-Cat (pyproject.toml)
 langcodes==3.5.0
     # via spacy
 langdetect==1.0.9
     # via unstructured
-langsmith==0.3.24
+langsmith==0.4.8
     # via
     #   langchain
     #   langchain-community
     #   langchain-core
 language-data==1.3.0
     # via langcodes
-litellm==1.71.2
+litellm==1.74.7
     # via langchain-litellm
 loguru==0.7.3
     # via
     #   Cheshire-Cat (pyproject.toml)
     #   fastembed
-lxml==5.3.1
+lxml==6.0.0
     # via unstructured
 marisa-trie==1.2.1
     # via language-data
@@ -354,24 +353,24 @@ mmh3==5.1.0
     # via fastembed
 mpmath==1.3.0
     # via sympy
-multidict==6.3.2
+multidict==6.6.3
     # via
     #   aiohttp
     #   yarl
-murmurhash==1.0.12
+murmurhash==1.0.13
     # via
     #   preshed
     #   spacy
     #   thinc
-mypy-extensions==1.0.0
+mypy-extensions==1.1.0
     # via typing-inspect
 nest-asyncio==1.6.0
     # via unstructured-client
-networkx==3.4.2
+networkx==3.5
     # via torch
 nltk==3.9.1
     # via unstructured
-numpy==2.2.4
+numpy==2.3.1
     # via
     #   blis
     #   fastembed
@@ -411,7 +410,7 @@ nvidia-cusparse-cu12==12.1.0.106
     #   torch
 nvidia-nccl-cu12==2.20.5
     # via torch
-nvidia-nvjitlink-cu12==12.8.93
+nvidia-nvjitlink-cu12==12.9.86
     # via
     #   nvidia-cusolver-cu12
     #   nvidia-cusparse-cu12
@@ -419,17 +418,17 @@ nvidia-nvtx-cu12==12.1.105
     # via torch
 olefile==0.47
     # via python-oxmsg
-ollama==0.4.7
+ollama==0.5.1
     # via langchain-ollama
-onnxruntime==1.21.0
+onnxruntime==1.22.1
     # via fastembed
-openai==1.70.0
+openai==1.97.0
     # via
     #   langchain-openai
     #   litellm
-orjson==3.10.16
+orjson==3.11.0
     # via langsmith
-packaging==24.2
+packaging==25.0
     # via
     #   gunicorn
     #   huggingface-hub
@@ -442,28 +441,28 @@ packaging==24.2
     #   thinc
     #   transformers
     #   weasel
-pandas==2.2.3
+pandas==2.3.1
     # via Cheshire-Cat (pyproject.toml)
-pdfminer-six==20250327
+pdfminer-six==20250506
     # via Cheshire-Cat (pyproject.toml)
 perflint==0.8.1
     # via Cheshire-Cat (pyproject.toml)
-pillow==11.1.0
+pillow==11.3.0
     # via
     #   fastembed
     #   sentence-transformers
     #   voyageai
-platformdirs==4.3.7
+platformdirs==4.3.8
     # via pylint
-pluggy==1.5.0
+pluggy==1.6.0
     # via pytest
-portalocker==2.10.1
+portalocker==3.2.0
     # via qdrant-client
-preshed==3.0.9
+preshed==3.0.10
     # via
     #   spacy
     #   thinc
-propcache==0.3.1
+propcache==0.3.2
     # via
     #   aiohttp
     #   yarl
@@ -471,15 +470,15 @@ proto-plus==1.26.1
     # via
     #   google-ai-generativelanguage
     #   google-api-core
-protobuf==5.29.4
+protobuf==6.31.1
     # via
     #   google-ai-generativelanguage
     #   google-api-core
     #   googleapis-common-protos
     #   grpcio-status
-    #   grpcio-tools
     #   onnxruntime
     #   proto-plus
+    #   qdrant-client
 psutil==7.0.0
     # via unstructured
 py-rust-stemmers==0.1.5
@@ -490,11 +489,11 @@ pyasn1==0.6.1
     #   rsa
 pyasn1-modules==0.4.2
     # via google-auth
-pycodestyle==2.13.0
+pycodestyle==2.14.0
     # via autopep8
 pycparser==2.22
     # via cffi
-pydantic==2.11.2
+pydantic==2.11.7
     # via
     #   Cheshire-Cat (pyproject.toml)
     #   anthropic
@@ -521,39 +520,40 @@ pydantic==2.11.2
     #   unstructured-client
     #   voyageai
     #   weasel
-pydantic-core==2.33.1
+pydantic-core==2.33.2
     # via
     #   cohere
     #   pydantic
-pydantic-settings==2.8.1
+pydantic-settings==2.10.1
     # via langchain-community
-pygments==2.19.1
-    # via rich
+pygments==2.19.2
+    # via
+    #   pytest
+    #   rich
 pyjwt==2.10.1
     # via Cheshire-Cat (pyproject.toml)
-pylint==3.3.6
+pylint==3.3.7
     # via
     #   Cheshire-Cat (pyproject.toml)
     #   perflint
     #   pylint-actions
-pylint-actions==0.5.0
+pylint-actions==0.6.0
     # via Cheshire-Cat (pyproject.toml)
-pymupdf==1.25.5
+pymupdf==1.26.3
     # via Cheshire-Cat (pyproject.toml)
-pypdf==5.4.0
+pypdf==5.8.0
     # via unstructured-client
-pytest==8.3.5
+pytest==8.4.1
     # via
     #   Cheshire-Cat (pyproject.toml)
     #   pytest-asyncio
-pytest-asyncio==0.26.0
+pytest-asyncio==1.1.0
     # via Cheshire-Cat (pyproject.toml)
 python-dateutil==2.9.0.post0
     # via
     #   botocore
     #   pandas
-    #   unstructured-client
-python-dotenv==1.1.0
+python-dotenv==1.1.1
     # via
     #   litellm
     #   pydantic-settings
@@ -580,13 +580,13 @@ pyyaml==6.0.2
     #   langchain-core
     #   transformers
     #   uvicorn
-qdrant-client==1.13.3
+qdrant-client==1.15.0
     # via Cheshire-Cat (pyproject.toml)
 rapidfuzz==3.13.0
     # via
     #   Cheshire-Cat (pyproject.toml)
     #   unstructured
-redis==5.2.1
+redis==6.2.0
     # via Cheshire-Cat (pyproject.toml)
 referencing==0.36.2
     # via
@@ -597,7 +597,7 @@ regex==2024.11.6
     #   nltk
     #   tiktoken
     #   transformers
-requests==2.32.3
+requests==2.32.4
     # via
     #   azure-core
     #   cohere
@@ -622,29 +622,29 @@ requests-toolbelt==1.0.0
     #   unstructured-client
 rich==14.0.0
     # via typer
-rpds-py==0.25.1
+rpds-py==0.26.0
     # via
     #   jsonschema
     #   referencing
-rsa==4.9
+rsa==4.9.1
     # via google-auth
-ruff==0.11.4
+ruff==0.12.4
     # via Cheshire-Cat (pyproject.toml)
-s3transfer==0.11.4
+s3transfer==0.13.1
     # via boto3
 safetensors==0.5.3
     # via transformers
-scalar-fastapi==1.0.3
+scalar-fastapi==1.2.2
     # via Cheshire-Cat (pyproject.toml)
-scikit-learn==1.6.1
+scikit-learn==1.7.1
     # via
     #   Cheshire-Cat (pyproject.toml)
     #   sentence-transformers
-scipy==1.15.2
+scipy==1.16.0
     # via
     #   scikit-learn
     #   sentence-transformers
-sentence-transformers==4.1.0
+sentence-transformers==5.0.0
     # via Cheshire-Cat (pyproject.toml)
 shellingham==1.5.4
     # via typer
@@ -654,7 +654,7 @@ six==1.17.0
     #   html5lib
     #   langdetect
     #   python-dateutil
-smart-open==7.1.0
+smart-open==7.3.0.post1
     # via weasel
 sniffio==1.3.1
     # via
@@ -662,15 +662,15 @@ sniffio==1.3.1
     #   anyio
     #   groq
     #   openai
-soupsieve==2.6
+soupsieve==2.7
     # via beautifulsoup4
-spacy==3.8.5
+spacy==3.8.7
     # via Cheshire-Cat (pyproject.toml)
 spacy-legacy==3.0.12
     # via spacy
 spacy-loggers==1.0.5
     # via spacy
-sqlalchemy==2.0.40
+sqlalchemy==2.0.41
     # via
     #   langchain
     #   langchain-community
@@ -680,9 +680,9 @@ srsly==2.5.1
     #   spacy
     #   thinc
     #   weasel
-starlette==0.46.1
+starlette==0.47.2
     # via fastapi
-sympy==1.13.3
+sympy==1.14.0
     # via
     #   onnxruntime
     #   torch
@@ -704,7 +704,7 @@ tiktoken==0.9.0
     #   Cheshire-Cat (pyproject.toml)
     #   langchain-openai
     #   litellm
-tokenizers==0.21.1
+tokenizers==0.21.2
     # via
     #   cohere
     #   fastembed
@@ -714,7 +714,7 @@ tokenizers==0.21.1
     #   voyageai
 tomli==2.2.1
     # via Cheshire-Cat (pyproject.toml)
-tomlkit==0.13.2
+tomlkit==0.13.3
     # via pylint
 torch==2.4.1
     # via
@@ -730,20 +730,21 @@ tqdm==4.67.1
     #   spacy
     #   transformers
     #   unstructured
-transformers==4.51.3
+transformers==4.53.2
     # via sentence-transformers
 triton==3.0.0
     # via torch
-typer==0.15.2
+typer==0.16.0
     # via
     #   spacy
     #   weasel
-types-pyyaml==6.0.12.20250402
+types-pyyaml==6.0.12.20250516
     # via langchain-cohere
-types-requests==2.32.0.20250328
+types-requests==2.32.4.20250611
     # via cohere
-typing-extensions==4.13.1
+typing-extensions==4.14.1
     # via
+    #   aiosignal
     #   anthropic
     #   anyio
     #   azure-core
@@ -761,6 +762,7 @@ typing-extensions==4.13.1
     #   referencing
     #   sentence-transformers
     #   sqlalchemy
+    #   starlette
     #   torch
     #   typer
     #   typing-inspect
@@ -768,36 +770,36 @@ typing-extensions==4.13.1
     #   unstructured
 typing-inspect==0.9.0
     # via dataclasses-json
-typing-inspection==0.4.0
+typing-inspection==0.4.1
     # via
     #   pydantic
-    #   unstructured-client
+    #   pydantic-settings
 tzdata==2025.2
     # via pandas
 tzlocal==5.3.1
     # via apscheduler
-unstructured==0.17.2
+unstructured==0.18.9
     # via Cheshire-Cat (pyproject.toml)
-unstructured-client==0.32.1
+unstructured-client==0.39.1
     # via unstructured
-urllib3==2.3.0
+urllib3==2.5.0
     # via
     #   botocore
     #   qdrant-client
     #   requests
     #   types-requests
-uvicorn==0.34.0
+uvicorn==0.35.0
     # via Cheshire-Cat (pyproject.toml)
 uvloop==0.21.0
     # via uvicorn
-voyageai==0.3.2
+voyageai==0.3.3
     # via langchain-voyageai
 wasabi==1.1.3
     # via
     #   spacy
     #   thinc
     #   weasel
-watchfiles==1.0.4
+watchfiles==1.1.0
     # via uvicorn
 weasel==0.4.1
     # via spacy
@@ -811,11 +813,11 @@ wrapt==1.17.2
     # via
     #   smart-open
     #   unstructured
-yarl==1.18.3
+yarl==1.20.1
     # via aiohttp
-youtube-transcript-api==1.0.3
+youtube-transcript-api==1.2.0
     # via Cheshire-Cat (pyproject.toml)
-zipp==3.22.0
+zipp==3.23.0
     # via importlib-metadata
 zstandard==0.23.0
     # via langsmith

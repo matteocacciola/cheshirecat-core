@@ -1,7 +1,7 @@
 [project]
 name = "Cheshire-Cat"
 description = "Production ready AI assistant framework"
-version = "2.3.2"
+version = "2.3.1"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [
@@ -17,6 +17,7 @@ dependencies = [
     "bcrypt",
     "beautifulsoup4",
     "boto3",
+    "cohere==5.14.2",
     "fastapi",
     "fastembed",
     "google-cloud-storage",

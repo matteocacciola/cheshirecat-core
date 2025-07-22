@@ -226,13 +226,12 @@ async def delete_memory_points_by_metadata(
     ret = await ccat.vector_memory_handler.delete_points_by_metadata_filter(collection_id, metadata)
 
     # delete the file with path `metadata["source"]` from the file storage
-    file_manager = ccat.file_manager
     if (
             get_env_bool("CCAT_RABBIT_HOLE_STORAGE_ENABLED")
             and collection_id == VectorMemoryCollectionTypes.DECLARATIVE
             and (source := metadata.get("source"))
     ):
-        file_manager.remove_file_from_storage(source)
+        ccat.file_manager.remove_file_from_storage(f"{ccat.id}/{source}")
 
     return DeleteMemoryPointsByMetadataResponse(deleted=ret)
 
@@ -249,6 +248,11 @@ async def get_points_in_collection(
         default=None,
         description="If provided (or not empty string) - skip points with ids less than given `offset`"
     ),
+    metadata: Dict[str, Any] = Depends(create_dict_parser(
+        "metadata",
+        description="Flat dictionary where each key-value pair represents a filter."
+                    "The memory points returned will match the specified metadata criteria."
+    )),
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> GetPointsInCollectionResponse:
     """Retrieve all the points from a single collection
@@ -304,7 +308,7 @@ async def get_points_in_collection(
         offset = None
 
     points, next_offset = await info.cheshire_cat.vector_memory_handler.get_all_points(
-        collection_name=collection_id, limit=limit, offset=offset
+        collection_name=collection_id, limit=limit, offset=offset, metadata=metadata
     )
 
     return GetPointsInCollectionResponse(points=points, next_offset=next_offset)
