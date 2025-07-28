@@ -113,9 +113,8 @@ class BillTheLizard:
         """
 
         for ccat_id in crud.get_agents_main_keys():
-            # inform the Cheshire Cats about the new plugin available in the system: `find_plugins` is called within the
-            # Cheshire Cat constructor
-            self.get_cheshire_cat(ccat_id)
+            # inform the Cheshire Cats about the new plugin available in the system
+            self.inform_cheshirecat_plugin(ccat_id)
 
     def on_start_plugin_uninstall(self, plugin_id: str):
         """
@@ -263,12 +262,13 @@ class BillTheLizard:
 
         return ReplacedNLPConfig(name=language_embedder_name, value=updater.new_setting["value"])
 
-    def get_cheshire_cat(self, agent_id: str) -> CheshireCat | None:
+    def get_cheshire_cat(self, agent_id: str, fast: bool = False) -> CheshireCat | None:
         """
         Get the Cheshire Cat with the given id, directly from db.
 
         Args:
             agent_id: The id of the agent to get
+            fast: If True, it will load the plugin manager of the Cheshire Cat only
 
         Returns:
             The Cheshire Cat with the given id, or None if it doesn't exist
@@ -280,7 +280,17 @@ class BillTheLizard:
         if agent_id not in crud.get_agents_main_keys():
             raise ValueError(f"`{agent_id}` is not a valid agent id")
 
-        return CheshireCat(agent_id)
+        return CheshireCat(agent_id, fast_load=fast)
+
+    def inform_cheshirecat_plugin(self, agent_id: str) -> None:
+        """
+        Find the plugins for the given Cheshire Cat and update its plugin manager.
+
+        Args:
+            agent_id: The id of the agent to get plugins for
+        """
+
+        self.get_cheshire_cat(agent_id, fast=True)
 
     async def create_cheshire_cat(self, agent_id: str) -> CheshireCat:
         """
