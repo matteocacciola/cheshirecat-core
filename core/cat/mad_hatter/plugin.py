@@ -75,16 +75,17 @@ class Plugin:
         except Exception as e:
             raise e
 
+        # load hooks and tools
+        self._load_decorated_functions()
+
         self.activate_settings(agent_id, False)
+        self._active = True
 
         # run custom activation from @plugin
         if "activated" in self.overrides:
             self.overrides["activated"].function(self)
 
     def activate_settings(self, agent_id: str, incremental: bool = True):
-        # load hooks and tools
-        self._load_decorated_functions()
-
         # by default, plugin settings are saved inside the Redis database
         setting = crud_plugins.get_setting(agent_id, self._id)
 
@@ -95,8 +96,6 @@ class Plugin:
             # try to create the setting into the Redis database
             if not setting:
                 self._create_settings_from_model(agent_id)
-
-        self._active = True
 
     def deactivate(self, agent_id: str):
         # run custom deactivation from @plugin
@@ -113,20 +112,11 @@ class Plugin:
             log.debug(f"Remove module {py_filename}")
             sys.modules.pop(py_filename)
 
+        self._unload_decorated_functions()
+        self._active = False
         self.deactivate_settings(agent_id)
 
     def deactivate_settings(self, agent_id: str):
-        self._hooks = []
-        self._tools = []
-        self._forms = []
-
-        for endpoint in self._endpoints:
-            endpoint.deactivate()
-        self._endpoints = []
-
-        self._plugin_overrides = {}
-        self._active = False
-
         # remove the settings
         crud_plugins.delete_setting(agent_id, self._id)
 
@@ -263,7 +253,7 @@ class Plugin:
 
         # try to create the new incremental settings into the Redis database
         crud_plugins.set_setting(agent_id, self._id, finalized_setting)
-        log.info(f"Plugin {self._id} for agent {agent_id}, migrating settings: {finalized_setting}")
+        log.info(f"Plugin {self._id} for agent '{agent_id}', migrating settings: {finalized_setting}")
 
         return True
 
@@ -388,7 +378,15 @@ class Plugin:
         self._tools = list(map(self._clean_tool, tools))
         self._forms = list(map(self._clean_form, forms))
         self._endpoints = list(map(self._clean_endpoint, endpoints))
+
         self._plugin_overrides = {override.name: override for _, override in plugin_overrides}
+
+    def _unload_decorated_functions(self):
+        self._hooks = []
+        self._tools = []
+        self._forms = []
+        self._endpoints = []
+        self._plugin_overrides = {}
 
     def plugin_specific_error_message(self):
         name = self.manifest.get("name")

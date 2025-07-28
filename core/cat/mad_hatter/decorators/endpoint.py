@@ -30,6 +30,17 @@ class CustomEndpoint:
     def __repr__(self) -> str:
         return f"CustomEndpoint(path={self.name} methods={self.methods})"
 
+    def __eq__(self, other):
+        """Two endpoints are equal if they have the same name and methods"""
+        if not isinstance(other, CustomEndpoint):
+            return False
+        return self.name == other.name and set(self.methods or []) == set(other.methods or [])
+
+    def __hash__(self):
+        """Make CustomEndpoint hashable for use in sets/dicts"""
+        methods_tuple = tuple(sorted(self.methods)) if self.methods else ()
+        return hash((self.name, methods_tuple))
+
     def activate(self):
         log.info(f"Activating custom endpoint {self.methods} {self.name}")
 
@@ -66,8 +77,6 @@ class CustomEndpoint:
         assert self.api_route.path == self.name
 
     def deactivate(self):
-        log.info(f"Deactivating custom endpoint {self.methods} {self.name}")
-
         cheshire_cat_api = self.cheshire_cat_api
 
         # Seems there is no official way to remove a route:
@@ -80,6 +89,8 @@ class CustomEndpoint:
                 break
 
         if to_remove:
+            log.info(f"Deactivating custom endpoint {self.methods} {self.name}")
+
             cheshire_cat_api.routes.remove(to_remove)
             cheshire_cat_api.openapi_schema = None  # Flush the cached openapi schema
 

@@ -27,12 +27,12 @@ class MadHatter(ABC):
         self.active_plugins: List[str] = []
 
         # this callback is set from outside to be notified when plugin sync is completed
-        self.on_finish_plugins_sync_callback = lambda: None
+        self.on_finish_plugins_sync_callback = lambda on_activation, on_deactivation: None
 
         self.find_plugins()
 
     # Load hooks, tools and forms of the active plugins into the plugin manager
-    def _sync_hooks_tools_and_forms(self):
+    def _sync_hooks_tools_and_forms(self, on_activation: bool = False, on_deactivation: bool = False):
         # emptying tools, hooks and forms
         self.hooks = {}
         self.tools = []
@@ -56,7 +56,9 @@ class MadHatter(ABC):
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
 
         # notify sync has finished (the Lizard will ensure all tools are embedded in vector memory)
-        utils.dispatch_event(self.on_finish_plugins_sync_callback)
+        utils.dispatch_event(
+            self.on_finish_plugins_sync_callback, on_activation=on_activation, on_deactivation=on_deactivation
+        )
 
     def load_active_plugins_from_db(self):
         active_plugins = crud_settings.get_setting_by_name(self.agent_key, "active_plugins")
@@ -85,7 +87,7 @@ class MadHatter(ABC):
         self.active_plugins.remove(plugin_id)
 
         self.on_plugin_deactivation(plugin_id=plugin_id)
-        self.on_finish_toggle_plugin()
+        self.on_finish_toggle_plugin(on_activation=False, on_deactivation=True)
 
     def activate_plugin(self, plugin_id: str):
         if not self.plugin_exists(plugin_id):
@@ -102,15 +104,15 @@ class MadHatter(ABC):
         # Add the plugin in the list of active plugins
         self.active_plugins.append(plugin_id)
 
-        self.on_finish_toggle_plugin()
+        self.on_finish_toggle_plugin(on_activation=True, on_deactivation=False)
 
-    def on_finish_toggle_plugin(self):
+    def on_finish_toggle_plugin(self, on_activation: bool, on_deactivation: bool):
         # update DB with list of active plugins, delete duplicate plugins
         active_plugins = list(set(self.active_plugins))
         crud_settings.upsert_setting_by_name(self.agent_key, Setting(name="active_plugins", value=active_plugins))
 
         # update cache and embeddings
-        self._sync_hooks_tools_and_forms()
+        self._sync_hooks_tools_and_forms(on_activation=on_activation, on_deactivation=on_deactivation)
 
     # execute requested hook
     def execute_hook(self, hook_name: str, *args, cat):
@@ -185,6 +187,10 @@ class MadHatter(ABC):
 
     @abstractmethod
     def on_plugin_deactivation(self, plugin_id: str):
+        pass
+
+    @abstractmethod
+    def _load_plugin(self, plugin_path: str) -> bool:
         pass
 
     @property

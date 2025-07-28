@@ -16,8 +16,6 @@ def test_plugin_install_from_zip(secure_client, secure_client_headers, cheshire_
     # during tests, the cat uses a different folder for plugins
     mock_plugin_final_folder = "tests/mocks/mock_plugin_folder/mock_plugin"
 
-    #### PLUGIN IS ALREADY ACTIVE
-
     # GET plugin endpoint responds
     response = secure_client.get("/admins/plugins/mock_plugin", headers=secure_client_headers)
     assert response.status_code == 200
@@ -42,11 +40,11 @@ def test_plugin_install_from_zip(secure_client, secure_client_headers, cheshire_
     )
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
-    assert "mock_plugin" in installed_plugins_names
+    assert "mock_plugin" not in installed_plugins_names
+    assert len(installed_plugins_names) == 1  # only core_plugin is active
     # core_plugin is active, mock_plugin is not at an agent level
-    for p in installed_plugins:
-        assert isinstance(p["active"], bool)
-        assert p["active"] if p["id"] == "core_plugin" else not p["active"]
+    assert isinstance(installed_plugins[0]["active"], bool)
+    assert installed_plugins[0]["active"]
 
     # plugin has been actually extracted in (mock) plugins folder
     assert os.path.exists(mock_plugin_final_folder)
@@ -92,11 +90,11 @@ async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client,
     )
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
-    assert "mock_plugin" in installed_plugins_names
+    assert "mock_plugin" not in installed_plugins_names
+    assert len(installed_plugins_names) == 1  # only core_plugin is active
     # core_plugin is active, mock_plugin is not at an agent level
-    for p in installed_plugins:
-        assert isinstance(p["active"], bool)
-        assert p["active"] if p["id"] == "core_plugin" else not p["active"]
+    assert isinstance(installed_plugins[0]["active"], bool)
+    assert installed_plugins[0]["active"]
 
 
 def test_plugin_uninstall(secure_client, secure_client_headers):
@@ -186,13 +184,17 @@ async def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_
             files={"file": (zip_file_name, f, "application/zip")},
             headers=secure_client_headers
         )
+    agent_settings = crud_plugins.get_setting(ccat.id, "mock_plugin")
+    assert not agent_settings
 
     # activate for the new agent
     secure_client.put("/plugins/toggle/mock_plugin", headers=ccat_headers)
-
-    # manually change the configuration of `mock_plugin` for the agent in the Redis database (mock a first update with
-    # new keys in the settings)
     agent_settings = crud_plugins.get_setting(ccat.id, "mock_plugin")
+    assert agent_settings["a"] == "a"
+    assert agent_settings["b"] == 0
+
+    # manually change the configuration of `mock_plugin` for the agent in the Redis database (mock a first manual
+    # update)
     agent_settings["a"] = "value_a"
     agent_settings["b"] = 10
     crud_plugins.update_setting(ccat.id, "mock_plugin", agent_settings)

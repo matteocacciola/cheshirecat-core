@@ -80,7 +80,7 @@ class CheshireCat:
         # After memory is loaded, we can get/create tools embeddings
         # every time the plugin_manager finishes syncing hooks, tools and forms, it will notify the Cat (so it can
         # embed tools in vector memory)
-        self.plugin_manager.on_finish_plugins_sync_callback = self.embed_procedures
+        self.plugin_manager.on_finish_plugins_sync_callback = self.on_finish_plugins_sync
 
         # Initialize the default user if not present
         if not crud_users.get_users(self.id):
@@ -104,6 +104,18 @@ class CheshireCat:
     def __del__(self):
         """Cat destructor."""
         self.shutdown()
+
+    async def on_finish_plugins_sync(self, on_activation: bool, on_deactivation: bool):
+        await self.embed_procedures()
+
+        if on_activation:
+            # activate all endpoints
+            log.info(f"Agent id: {self.id}. Activating all endpoints")
+            self.plugin_manager.activate_all_endpoints()
+
+        if on_deactivation:
+            # deactivate unused endpoints
+            self.lizard.deactivate_unused_endpoints()
 
     def initialize_users(self):
         user_id = str(uuid4())

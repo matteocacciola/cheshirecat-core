@@ -46,7 +46,7 @@ class Tweedledum(MadHatter):
         # this callback is set from outside to be notified when plugin uninstall is started
         self.on_start_plugin_uninstall_callback = lambda plugin_id: None
         # this callback is set from outside to be notified when plugin uninstall is completed
-        self.on_end_plugin_uninstall_callback = lambda plugin_id: None
+        self.on_end_plugin_uninstall_callback = lambda plugin_id, endpoints: None
 
         super().__init__()
 
@@ -59,11 +59,13 @@ class Tweedledum(MadHatter):
         plugin_id = extractor.id
 
         # create plugin obj, and eventually activate it
-        if plugin_id != "core_plugin" and self.__load_plugin(plugin_path):
+        if plugin_id != "core_plugin" and self._load_plugin(plugin_path):
+            if plugin_id in self.active_plugins:
+                self.deactivate_plugin(plugin_id)
+
             self.activate_plugin(plugin_id)
 
-        # notify install has finished (the Lizard will ensure to notify the already loaded Cheshire Cats about the
-        # plugin)
+        # notify installation has finished
         utils.dispatch_event(self.on_end_plugin_install_callback, plugin_id=plugin_id)
 
         return plugin_id
@@ -71,7 +73,10 @@ class Tweedledum(MadHatter):
     def uninstall_plugin(self, plugin_id: str):
         utils.dispatch_event(self.on_start_plugin_uninstall_callback, plugin_id=plugin_id)
 
+        endpoints = None
         if self.plugin_exists(plugin_id) and plugin_id != "core_plugin":
+            endpoints = self.plugins[plugin_id].endpoints
+
             # deactivate plugin if it is active (will sync cache)
             if plugin_id in self.active_plugins:
                 self.deactivate_plugin(plugin_id)
@@ -83,9 +88,8 @@ class Tweedledum(MadHatter):
             # remove plugin folder
             shutil.rmtree(plugin_path)
 
-        # notify uninstall has finished (the Lizard will ensure to completely remove the plugin from the system,
-        # including DB)
-        utils.dispatch_event(self.on_end_plugin_uninstall_callback, plugin_id=plugin_id)
+        # notify uninstallation has finished
+        utils.dispatch_event(self.on_end_plugin_uninstall_callback, plugin_id=plugin_id, endpoints=endpoints)
 
     # check if plugin exists
     def plugin_exists(self, plugin_id: str):
@@ -113,7 +117,7 @@ class Tweedledum(MadHatter):
             if plugin_id in self.__skip_folders:
                 continue
 
-            if not self.__load_plugin(folder):
+            if not self._load_plugin(folder):
                 log.error(f"Plugin {plugin_id} could not be loaded")
                 continue
 
@@ -133,7 +137,7 @@ class Tweedledum(MadHatter):
 
         self._sync_hooks_tools_and_forms()
 
-    def __load_plugin(self, plugin_path: str) -> bool:
+    def _load_plugin(self, plugin_path: str) -> bool:
         # Instantiate plugin.
         #   If the plugin is inactive, only manifest will be loaded
         #   If active, also settings, tools and hooks

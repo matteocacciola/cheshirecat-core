@@ -32,6 +32,20 @@ async def factory_reset(
     Factory reset the entire application. This will delete all settings, memories, and metadata.
     """
 
+    # remove memories
+    cheshire_cats_ids = crud.get_agents_main_keys()
+    deleted_memories = False
+    for agent_id in cheshire_cats_ids:
+        ccat = lizard.get_cheshire_cat_from_db(agent_id)
+        if not ccat:
+            continue
+        try:
+            await ccat.destroy()
+            deleted_memories = True
+        except Exception as e:
+            log.error(f"Error deleting memories for agent {agent_id}: {e}")
+            deleted_memories = False
+
     await shutdown_app(request.app)
 
     try:
@@ -52,7 +66,7 @@ async def factory_reset(
 
     return ResetResponse(
         deleted_settings=deleted_settings,
-        deleted_memories=False,
+        deleted_memories=deleted_memories,
         deleted_plugin_folders=deleted_plugin_folders,
     )
 

@@ -76,9 +76,8 @@ def test_custom_endpoint_delete(client, secure_client, secure_client_headers):
 
 @pytest.mark.parametrize("switch_type", ["deactivation", "uninstall"])
 def test_custom_endpoints_on_plugin_deactivation_or_uninstall(switch_type, secure_client, secure_client_headers):
-    just_installed_plugin(secure_client, secure_client_headers)
-    # activate the plugin
-    secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
+    # install and activate the plugin
+    just_installed_plugin(secure_client, secure_client_headers, activate=True)
 
     # endpoints added via mock_plugin (verb, endpoint, payload)
     custom_endpoints = [
