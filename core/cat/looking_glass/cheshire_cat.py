@@ -51,7 +51,7 @@ class CheshireCat:
     In most cases you will not need to interact with this class directly, but rather with class `StrayCat` which will be available in your plugin's hooks, tools, forms end endpoints.
     """
 
-    def __init__(self, agent_id: str):
+    def __init__(self, agent_id: str, fast_load: bool = False):
         """
         Cat initialization. At init time, the Cat executes the bootstrap.
 
@@ -61,6 +61,7 @@ class CheshireCat:
         """
 
         self.id = agent_id
+        self.fast_load = fast_load
 
         # instantiate plugin manager (loads all plugins' hooks and tools)
         self.plugin_manager = Tweedledee(self.id)
@@ -68,14 +69,22 @@ class CheshireCat:
         # allows plugins to do something before cat components are loaded
         self.plugin_manager.execute_hook("before_cat_bootstrap", cat=self)
 
-        self.large_language_model: BaseLanguageModel = get_factory_object(self.id, LLMFactory(self.plugin_manager))
-        self.custom_auth_handler: BaseAuthHandler = get_factory_object(self.id, AuthHandlerFactory(self.plugin_manager))
-        self.file_manager: BaseFileManager = get_factory_object(self.id, FileManagerFactory(self.plugin_manager))
-        self.chunker: BaseChunker = get_factory_object(self.id, ChunkerFactory(self.plugin_manager))
-        self.vector_memory_handler: BaseVectorDatabaseHandler = get_factory_object(
-            self.id, VectorDatabaseFactory(self.plugin_manager)
-        )
-        self.vector_memory_handler.agent_id = self.id
+        self.large_language_model = None
+        self.custom_auth_handler = None
+        self.file_manager = None
+        self.chunker = None
+        self.vector_memory_handler = None
+        if not fast_load:
+            self.large_language_model: BaseLanguageModel = get_factory_object(self.id, LLMFactory(self.plugin_manager))
+            self.custom_auth_handler: BaseAuthHandler = get_factory_object(
+                self.id, AuthHandlerFactory(self.plugin_manager)
+            )
+            self.file_manager: BaseFileManager = get_factory_object(self.id, FileManagerFactory(self.plugin_manager))
+            self.chunker: BaseChunker = get_factory_object(self.id, ChunkerFactory(self.plugin_manager))
+            self.vector_memory_handler: BaseVectorDatabaseHandler = get_factory_object(
+                self.id, VectorDatabaseFactory(self.plugin_manager)
+            )
+            self.vector_memory_handler.agent_id = self.id
 
         # After memory is loaded, we can get/create tools embeddings
         # every time the plugin_manager finishes syncing hooks, tools and forms, it will notify the Cat (so it can

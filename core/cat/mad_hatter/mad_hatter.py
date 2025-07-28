@@ -19,7 +19,7 @@ class MadHatter(ABC):
     def __init__(self):
         self.plugins: Dict[str, Plugin] = {}  # plugins dictionary
 
-        self.hooks: Dict[str, List[CatHook]] = {}  # dict of active plugins hooks ( hook_name -> [CatHook, CatHook, ...])
+        self.hooks: Dict[str, List[CatHook]] = {}  # dict of active plugins hooks (hook_name -> [CatHook, CatHook, ...])
         self.tools: List[CatTool] = []  # list of active plugins tools
         self.forms: List[CatForm] = []  # list of active plugins forms
         self.endpoints: List[CustomEndpoint] = []  # list of active plugins endpoints
