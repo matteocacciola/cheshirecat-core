@@ -9,9 +9,8 @@ from typing import List, Dict, Tuple
 from urllib.parse import urlparse
 from urllib.error import HTTPError
 from starlette.datastructures import UploadFile
-from langchain_core.documents import Document
+from langchain_core.documents.base import Document, Blob
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
-from langchain.document_loaders.blob_loaders.schema import Blob
 
 from cat.env import get_env_bool
 from cat.log import log
@@ -121,7 +120,7 @@ class RabbitHole:
         self, stray: "StrayCat", file: str | UploadFile
     ) -> Tuple[bytes, str | None, List[Document]]:
         """
-        Load and convert files to Langchain `Document`.
+        Load and convert files to a list of Langchain `Document`.
 
         This method takes a file either from a Python script, from the `/rabbithole/` or `/rabbithole/web` endpoints.
         Hence, it loads it in memory and splits it in overlapped chunks of text.
@@ -135,7 +134,7 @@ class RabbitHole:
 
         Returns:
             (bytes, content_type, docs): Tuple[bytes, List[Document]]
-                The file bytes, the content type and the list of Langchain `Document` of chunked text.
+                The file bytes, the content type and the list of Langchain `Document` of chunked content.
 
         Notes
         -----

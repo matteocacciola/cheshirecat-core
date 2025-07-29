@@ -35,7 +35,6 @@ from cat.memory.utils import (
     ContentType,
     VectorMemoryCollectionTypes,
     VectorEmbedderSize,
-    DocumentRecall,
     Payload,
     PointStruct,
     Record,
@@ -43,7 +42,6 @@ from cat.memory.utils import (
     UpdateResult,
     MultimodalContent,
     Vector,
-    to_document_recall,
 )
 
 
@@ -219,7 +217,7 @@ class BaseVectorDatabaseHandler(ABC):
         metadata: Dict | None = None,
         k: int | None = 5,
         threshold: float | None = None,
-    ) -> List[DocumentRecall]:
+    ) -> List[ScoredPoint]:
         """
         Retrieve memories from the collection based on an embedding vector. The memories are sorted by similarity to the
         embedding vector. The metadata filter is applied to the memories before retrieving them. The number of memories
@@ -238,12 +236,12 @@ class BaseVectorDatabaseHandler(ABC):
             threshold: Similarity threshold.
 
         Returns:
-            List: List of DocumentRecall.
+            List: List of ScoredPoint.
         """
         pass
 
     @abstractmethod
-    async def recall_all_memories(self, collection_name: str) -> List[DocumentRecall]:
+    async def recall_all_memories(self, collection_name: str) -> List[Record]:
         """
         Retrieve the entire memories. It is similar to `recall_memories_from_embedding`, but without the embedding
         vector. Like `get_all_points`, it retrieves all the memories in the collection. The memories are returned in the
@@ -253,7 +251,7 @@ class BaseVectorDatabaseHandler(ABC):
             collection_name: Name of the collection to retrieve memories from.
 
         Returns:
-            List: List of DocumentRecall, like `recall_memories_from_embedding`, but with the nulled 2nd element
+            List: List of Record, like `recall_memories_from_embedding`, but with the nulled 2nd element
             (the score).
 
         See Also:
@@ -675,7 +673,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         metadata: Dict | None = None,
         k: int | None = 5,
         threshold: float | None = None,
-    ) -> List[DocumentRecall]:
+    ) -> List[ScoredPoint]:
         conditions = self._build_metadata_conditions(metadata=metadata)
 
         embedding = [v for v in query_vectors.values()]
@@ -699,14 +697,11 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         )
 
         # convert Qdrant points to a structure containing langchain.Document and its information
-        retrieved_points = [ScoredPoint(**point.model_dump()) for point in query_response.points]
-        return [to_document_recall(m) for m in retrieved_points]
+        return [ScoredPoint(**point.model_dump()) for point in query_response.points]
 
-    async def recall_all_memories(self, collection_name: str) -> List[DocumentRecall]:
+    async def recall_all_memories(self, collection_name: str) -> List[Record]:
         all_points, _ = await self.get_all_points(collection_name)
-        memories = [to_document_recall(p) for p in all_points]
-
-        return memories
+        return all_points
 
     async def _get_all_points(
         self,

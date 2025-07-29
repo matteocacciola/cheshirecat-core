@@ -19,7 +19,13 @@ from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.tweedledee import Tweedledee
-from cat.memory.utils import ContentType, DocumentRecall, MultimodalContent, VectorMemoryCollectionTypes
+from cat.memory.utils import (
+    ContentType,
+    DocumentRecall,
+    MultimodalContent,
+    VectorMemoryCollectionTypes,
+    to_document_recall,
+)
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
 from cat.services.websocket_manager import WebsocketManager
@@ -242,7 +248,7 @@ class StrayCat:
             raise ValueError(error_message)
 
         if k:
-            memories = await cheshire_cat.vector_memory_handler.recall_memories_from_embedding(
+            points = await cheshire_cat.vector_memory_handler.recall_memories_from_embedding(
                 collection_name=collection_name,
                 query_vectors={ContentType.TEXT: query},
                 metadata=metadata,
@@ -250,7 +256,9 @@ class StrayCat:
                 threshold=threshold,
             )
         else:
-            memories = await cheshire_cat.vector_memory_handler.recall_all_memories(collection_name)
+            points = await cheshire_cat.vector_memory_handler.recall_all_memories(collection_name)
+
+        memories = [to_document_recall(p) for p in points]
 
         setattr(self.working_memory, f"{collection_name}_memories", memories)
         return memories

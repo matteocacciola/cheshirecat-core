@@ -100,7 +100,7 @@ class DocumentRecallItem(BaseModelDict):
     modality and the id of the memory.
     """
 
-    document: LangchainDocument| LangchainBlob
+    document: LangchainDocument | LangchainBlob
     score: float | None = None
     vector: VectorStruct
     id: str | None = None
@@ -171,13 +171,25 @@ def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
                 metadata = {}
         metadata = metadata[str(k)] if str(k) in metadata else metadata
 
-        doc = LangchainDocument(
-            page_content=page_content,
-            metadata=metadata,
-        ) if k == ContentType.TEXT else LangchainBlob(
-            data=page_content,
-            metadata=metadata
-        )
+        content_type = ContentType(k)
+
+        if content_type == ContentType.TEXT:
+            doc = LangchainDocument(
+                page_content=page_content,
+                metadata=metadata,
+            )
+        elif content_type == ContentType.IMAGE:
+            doc = LangchainBlob(
+                data=page_content if isinstance(page_content, (bytes, str)) else str(page_content),
+                metadata=metadata
+            )
+        else:
+            # Fallback for unknown content types
+            doc = LangchainDocument(
+                page_content=page_content,
+                metadata=metadata,
+            )
+
         item = DocumentRecallItem(
             document=doc,
             vector=v,
@@ -186,6 +198,7 @@ def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
 
         if isinstance(m, ScoredPoint):
             item.score = m.score
-        result[ContentType(k)] = item
+
+        result[content_type] = item
 
     return result
