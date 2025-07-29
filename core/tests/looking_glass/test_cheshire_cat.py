@@ -9,7 +9,7 @@ from cat.factory.custom_vector_db import BaseVectorDatabaseHandler
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.factory.custom_embedder import DumbEmbedder
 from cat.factory.custom_llm import LLMDefault
-from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.memory.utils import VectorMemoryCollectionTypes, ContentType
 
 
 def test_main_modules_loaded(cheshire_cat):
@@ -54,17 +54,17 @@ async def test_procedures_embedded(lizard, cheshire_cat):
         assert trigger_type in ["start_example", "description"]
 
         if trigger_type == "start_example":
-            assert content in ["what time is it", "get the time"]
+            assert content[str(ContentType.TEXT)] in ["what time is it", "get the time"]
         if trigger_type == "description":
             assert (
-                content
+                content[str(ContentType.TEXT)]
                 == "get_the_time: Useful to get the current time when asked. Input is always None."
             )
 
         # some check on the embedding
-        assert isinstance(p.vector, list)
-        expected_embed = embedder.embed_query(content)
-        assert len(p.vector) == len(expected_embed)  # same embed
+        assert isinstance(p.vector, dict)
+        expected_embed = embedder.embed_query(content[str(ContentType.TEXT)])
+        assert len(p.vector[str(ContentType.TEXT)]) == len(expected_embed)  # same embed
 
 
 @pytest.mark.asyncio
