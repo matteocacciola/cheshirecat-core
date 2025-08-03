@@ -491,7 +491,7 @@ def restore_original_model(d: _T | Dict | None, model: Type[_T]) -> _T | None:
 def empty_plugin_folder():
     # empty the plugin folder
     plugin_folder = get_plugins_path()
-    for _, _, folders in os.walk(plugin_folder):
+    for _, folders, _ in os.walk(plugin_folder):
         for folder in folders:
             item = os.path.join(plugin_folder, folder)
             if os.path.isfile(item) or not os.path.exists(item):

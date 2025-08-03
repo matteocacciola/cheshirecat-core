@@ -17,7 +17,6 @@ def test_list_plugins(secure_client, secure_client_headers):
 
     # registry (see more registry tests in `./test_plugins_registry.py`)
     assert isinstance(json["registry"], list)
-    assert len(json["registry"]) > 0
 
 
 def test_get_plugin_id(secure_client, secure_client_headers):

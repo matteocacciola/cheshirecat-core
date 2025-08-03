@@ -1,8 +1,9 @@
 import os
 import glob
 import shutil
+from typing import List
 
-from cat.db.cruds import settings as crud_settings
+from cat.db.cruds import settings as crud_settings, plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.db.models import Setting
 from cat.log import log
@@ -50,6 +51,21 @@ class Tweedledum(MadHatter):
 
         super().__init__()
 
+    def is_custom_endpoint(self, path: str, methods: List[str] | None = None):
+        """
+        Check if the given path and methods correspond to a custom endpoint.
+
+        Args:
+            path (str): The path of the endpoint to check.
+            methods (List[str] | None): The HTTP methods of the endpoint to check. If None, checks all methods.
+
+        Returns:
+            bool: True if the endpoint is a custom endpoint, False otherwise.
+        """
+        return any(
+            ep.real_path == path and (methods is None or set(ep.methods) == set(methods)) for ep in self.endpoints
+        )
+
     def install_plugin(self, package_plugin: str) -> str:
         utils.dispatch_event(self.on_start_plugin_install_callback)
 
@@ -59,11 +75,18 @@ class Tweedledum(MadHatter):
         plugin_id = extractor.id
 
         # create plugin obj, and eventually activate it
-        if plugin_id != "core_plugin" and self.__load_plugin(plugin_path):
+        if plugin_id != "core_plugin" and self._load_plugin(plugin_path):
+            # deactivate a plugin on reinstallation
+            if plugin_id in self.active_plugins:
+                self.deactivate_plugin(plugin_id)
+
             self.activate_plugin(plugin_id)
 
-        # notify install has finished (the Lizard will ensure to notify the already loaded Cheshire Cats about the
-        # plugin)
+        # activate the eventual custom endpoints
+        for endpoint in self.plugins[plugin_id].endpoints:
+            endpoint.activate()
+
+        # notify uninstallation has finished
         utils.dispatch_event(self.on_end_plugin_install_callback, plugin_id=plugin_id)
 
         return plugin_id
@@ -72,6 +95,10 @@ class Tweedledum(MadHatter):
         utils.dispatch_event(self.on_start_plugin_uninstall_callback, plugin_id=plugin_id)
 
         if self.plugin_exists(plugin_id) and plugin_id != "core_plugin":
+            # deactivate endpoints
+            for endpoint in self.plugins[plugin_id].endpoints:
+                endpoint.deactivate()
+
             # deactivate plugin if it is active (will sync cache)
             if plugin_id in self.active_plugins:
                 self.deactivate_plugin(plugin_id)
@@ -83,8 +110,9 @@ class Tweedledum(MadHatter):
             # remove plugin folder
             shutil.rmtree(plugin_path)
 
-        # notify uninstall has finished (the Lizard will ensure to completely remove the plugin from the system,
-        # including DB)
+        crud_plugins.destroy_plugin(plugin_id)
+
+        # notify uninstall has finished
         utils.dispatch_event(self.on_end_plugin_uninstall_callback, plugin_id=plugin_id)
 
     # check if plugin exists
@@ -113,7 +141,7 @@ class Tweedledum(MadHatter):
             if plugin_id in self.__skip_folders:
                 continue
 
-            if not self.__load_plugin(folder):
+            if not self._load_plugin(folder):
                 log.error(f"Plugin {plugin_id} could not be loaded")
                 continue
 
@@ -133,7 +161,7 @@ class Tweedledum(MadHatter):
 
         self._sync_hooks_tools_and_forms()
 
-    def __load_plugin(self, plugin_path: str) -> bool:
+    def _load_plugin(self, plugin_path: str) -> bool:
         # Instantiate plugin.
         #   If the plugin is inactive, only manifest will be loaded
         #   If active, also settings, tools and hooks

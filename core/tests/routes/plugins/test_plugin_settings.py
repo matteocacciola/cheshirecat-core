@@ -3,19 +3,19 @@ from tests.mocks.mock_plugin.mock_plugin_overrides import MockPluginSettings
 
 
 def test_get_all_plugin_settings(secure_client, secure_client_headers):
-    just_installed_plugin(secure_client, secure_client_headers)
+    just_installed_plugin(secure_client, secure_client_headers, activate=True)
 
     response = secure_client.get("/plugins/settings", headers=secure_client_headers)
     json = response.json()
 
-    installed_plugins = ["core_plugin", "mock_plugin"]
+    available_plugins = ["core_plugin", "mock_plugin"]
 
     assert response.status_code == 200
     assert isinstance(json["settings"], list)
-    assert len(json["settings"]) == len(installed_plugins)
+    assert len(json["settings"]) == len(available_plugins)
 
     for setting in json["settings"]:
-        assert setting["name"] in installed_plugins
+        assert setting["name"] in available_plugins
         if setting["name"] == "core_plugin":
             assert setting["value"] == {}
             assert setting["scheme"] == {}
@@ -38,7 +38,7 @@ def test_get_plugin_settings_non_existent(secure_client, secure_client_headers):
 
 # endpoint to get settings and settings schema
 def test_get_plugin_settings(secure_client, secure_client_headers):
-    just_installed_plugin(secure_client, secure_client_headers)
+    just_installed_plugin(secure_client, secure_client_headers, activate=True)
 
     response = secure_client.get("/plugins/settings/mock_plugin", headers=secure_client_headers)
     response_json = response.json()
@@ -50,7 +50,7 @@ def test_get_plugin_settings(secure_client, secure_client_headers):
 
 
 def test_save_wrong_plugin_settings(secure_client, secure_client_headers):
-    just_installed_plugin(secure_client, secure_client_headers)
+    just_installed_plugin(secure_client, secure_client_headers, activate=True)
 
     # save settings (wrong schema)
     fake_settings = {"a": "a", "c": 1}
@@ -66,7 +66,7 @@ def test_save_wrong_plugin_settings(secure_client, secure_client_headers):
 
 
 def test_save_plugin_settings(secure_client, secure_client_headers):
-    just_installed_plugin(secure_client, secure_client_headers)
+    just_installed_plugin(secure_client, secure_client_headers, activate=True)
 
     # save settings
     fake_settings = {"a": "a", "b": 1}

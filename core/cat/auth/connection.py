@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from fastapi import Request, WebSocket, HTTPException, WebSocketException
+from fastapi import Request, WebSocket, WebSocketException
 from fastapi.requests import HTTPConnection
 from pydantic import BaseModel, ConfigDict
 
@@ -13,6 +13,7 @@ from cat.auth.permissions import (
     get_base_permissions,
 )
 from cat.db.cruds import users as crud_users
+from cat.exceptions import CustomNotFoundException, CustomForbiddenException
 from cat.factory.custom_auth_handler import BaseAuthHandler
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.cheshire_cat import CheshireCat
@@ -33,6 +34,10 @@ class AdminConnectionAuth:
     def __call__(self, request: Request) -> BillTheLizard:
         lizard: BillTheLizard = request.app.state.lizard
 
+        # if the request comes from a custom endpoint, block it and return a 404 HTTP error
+        if lizard.plugin_manager.is_custom_endpoint(request.url.path):
+            raise CustomNotFoundException("Not Found")
+
         user: AuthUserInfo = lizard.core_auth_handler.authorize(
             request,
             self.resource,
@@ -47,7 +52,7 @@ class AdminConnectionAuth:
         return lizard
 
     def not_allowed(self, connection: Request, **kwargs):
-        raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
+        raise CustomForbiddenException("Invalid Credentials")
 
 
 class ConnectionAuth(ABC):
@@ -59,6 +64,14 @@ class ConnectionAuth(ABC):
         agent_id = extract_agent_id_from_request(connection)
         lizard: BillTheLizard = connection.app.state.lizard
         ccat = lizard.get_cheshire_cat(agent_id)
+
+        # if the request comes from a custom endpoint, and it is not available in the picked CheshireCat, block it and
+        # return a 404-HTTP error
+        if (
+                lizard.plugin_manager.is_custom_endpoint(connection.url.path)
+                and not ccat.plugin_manager.has_custom_endpoint(connection.url.path)
+        ):
+            raise CustomNotFoundException("Not Found")
 
         user = self.get_user_from_auth_handlers(connection, lizard, ccat)
         if not user:
@@ -122,7 +135,7 @@ class HTTPAuth(ConnectionAuth):
         return user
 
     def not_allowed(self, connection: Request, **kwargs):
-        raise HTTPException(status_code=403, detail={"error": "Invalid Credentials"})
+        raise CustomForbiddenException("Invalid Credentials")
 
 
 class HTTPAuthMessage(HTTPAuth):

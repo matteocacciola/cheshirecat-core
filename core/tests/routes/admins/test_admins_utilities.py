@@ -35,7 +35,7 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
     )
 
     assert response.status_code == 200
-    assert response.json() == {"deleted_settings": True, "deleted_memories": False, "deleted_plugin_folders": True}
+    assert response.json() == {"deleted_settings": True, "deleted_memories": True, "deleted_plugin_folders": True}
 
     settings = crud_settings.get_settings(cheshire_cat.id)
     assert len(settings) == 0

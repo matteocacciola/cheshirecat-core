@@ -1,6 +1,6 @@
 import pytest
 
-from tests.utils import just_installed_plugin, create_new_user, new_user_password, agent_id
+from tests.utils import just_installed_plugin, create_new_user, new_user_password, agent_id, get_client_admin_headers
 
 
 def test_custom_endpoint_base(client, secure_client, secure_client_headers):
@@ -34,6 +34,20 @@ def test_custom_endpoint_get(secure_client, secure_client_headers):
     assert response.json()["result"] == "ok"
     assert isinstance(response.json()["user_id"], str)
     assert len(response.json()["user_id"]) == 36
+
+
+def test_custom_endpoint_get_admin_not_found(client, secure_client, secure_client_headers):
+    just_installed_plugin(secure_client, secure_client_headers)
+
+    response = client.get("/tests/admin/crud", headers=get_client_admin_headers(client))
+    assert response.status_code == 404
+
+
+def test_custom_endpoint_get_not_found(secure_client, secure_client_headers):
+    just_installed_plugin(secure_client, secure_client_headers)
+
+    response = secure_client.get("/tests/crud", headers=secure_client_headers)
+    assert response.status_code == 404
 
 
 def test_custom_endpoint_post(client, secure_client, secure_client_headers):
@@ -74,28 +88,27 @@ def test_custom_endpoint_delete(client, secure_client, secure_client_headers):
     assert response.json()["id"] == 123
 
 
-@pytest.mark.parametrize("switch_type", ["deactivation", "uninstall"])
+@pytest.mark.parametrize("switch_type", ["deactivate", "uninstall"])
 def test_custom_endpoints_on_plugin_deactivation_or_uninstall(switch_type, secure_client, secure_client_headers):
-    just_installed_plugin(secure_client, secure_client_headers)
-    # activate the plugin
-    secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
+    # install and activate the plugin
+    just_installed_plugin(secure_client, secure_client_headers, activate=True)
 
     # endpoints added via mock_plugin (verb, endpoint, payload)
     custom_endpoints = [
-        ("GET", "/custom/endpoint", None),
-        ("GET", "/tests/endpoint", None),
-        ("GET", "/tests/crud", None),
-        ("POST", "/tests/crud", {"name": "the cat", "description": "it's magic"}),
-        ("PUT", "/tests/crud/123", {"name": "the cat", "description": "it's magic"}),
-        ("DELETE", "/tests/crud/123", None),
+        ("GET", "/custom/endpoint", None, False),
+        ("GET", "/tests/endpoint", None, False),
+        ("GET", "/tests/crud", None, True),
+        ("POST", "/tests/crud", {"name": "the cat", "description": "it's magic"}, False),
+        ("PUT", "/tests/crud/123", {"name": "the cat", "description": "it's magic"}, False),
+        ("DELETE", "/tests/crud/123", None, False),
     ]
 
     # custom endpoints are active
-    for verb, endpoint, payload in custom_endpoints:
+    for verb, endpoint, payload, _ in custom_endpoints:
         response = secure_client.request(verb, endpoint, json=payload, headers=secure_client_headers)
         assert response.status_code == 200
 
-    if switch_type == "deactivation":
+    if switch_type == "deactivate":
         # deactivate plugin
         response = secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
         assert response.status_code == 200
@@ -105,9 +118,11 @@ def test_custom_endpoints_on_plugin_deactivation_or_uninstall(switch_type, secur
         assert response.status_code == 200
 
     # no more custom endpoints
-    for verb, endpoint, payload in custom_endpoints:
+    for verb, endpoint, payload, upon_auth in custom_endpoints:
+        # the endpoint is still reachable, unless it is behind the authentication, on deactivation
         response = secure_client.request(verb, endpoint, json=payload, headers=secure_client_headers)
-        assert response.status_code == 404
+        print(verb, endpoint, payload, upon_auth, response.status_code)
+        assert response.status_code == (404 if switch_type == "uninstall" or upon_auth else 200)
 
 
 @pytest.mark.parametrize("resource", ["PLUGINS", "LLM"])

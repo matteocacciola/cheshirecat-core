@@ -2,7 +2,13 @@ from pydantic import BaseModel
 
 from cat.mad_hatter.decorators import endpoint
 from cat.auth.connection import AuthorizedInfo
-from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
+from cat.auth.permissions import (
+    AdminAuthResource,
+    AuthPermission,
+    AuthResource,
+    check_permissions,
+    check_admin_permissions,
+)
 
 
 class Item(BaseModel):
@@ -22,6 +28,11 @@ def test_endpoint_prefix():
 
 @endpoint.get(path="/crud", prefix="/tests", tags=["Tests"])
 def test_get(info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.LIST)):
+    return {"result": "ok", "user_id": info.user.id}
+
+
+@endpoint.get(path="/admin/crud", prefix="/tests", tags=["Tests"])
+def test_get_admin(info: AuthorizedInfo = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.LIST)):
     return {"result": "ok", "user_id": info.user.id}
 
 

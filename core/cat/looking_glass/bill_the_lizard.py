@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Literal
 from uuid import uuid4
 from langchain_community.document_loaders.parsers.audio import FasterWhisperParser
 from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
@@ -14,7 +14,7 @@ from cat.agents.main_agent import MainAgent
 from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
 from cat.auth.permissions import get_full_admin_permissions
 from cat.db import crud
-from cat.db.cruds import settings as crud_settings, users as crud_users, plugins as crud_plugins
+from cat.db.cruds import settings as crud_settings, users as crud_users
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.env import get_env
 from cat.exceptions import LoadMemoryException
@@ -87,9 +87,12 @@ class BillTheLizard:
         # Main agent instance (for reasoning)
         self.main_agent = MainAgent()
 
-        self.plugin_manager.on_end_plugin_install_callback = self.on_end_plugin_install_callback
-        self.plugin_manager.on_start_plugin_uninstall_callback = self.on_start_plugin_uninstall_callback
-        self.plugin_manager.on_end_plugin_uninstall_callback = self.on_end_plugin_uninstall_callback
+        self.plugin_manager.on_end_plugin_install_callback = (
+            lambda plugin_id: self.inform_cheshirecats_plugin(plugin_id, "install")
+        )
+        self.plugin_manager.on_start_plugin_uninstall_callback = (
+            lambda plugin_id: self.inform_cheshirecats_plugin(plugin_id, "uninstall")
+        )
 
         # Initialize the default admin if not present
         if not crud_users.get_users(self.__key):
@@ -102,42 +105,6 @@ class BillTheLizard:
         self.fastapi_app = app
         return self
 
-    def on_end_plugin_install_callback(self, plugin_id: str):
-        """
-        Callback executed when a plugin is installed. It informs the Cheshire Cats about the new plugin available in the
-        system. It also activates the endpoints of the plugin in the Mad Hatter.
-
-        Args:
-            plugin_id: The id of the installed plugin
-        """
-
-        for endpoint in self.endpoints:
-            endpoint.activate()
-
-        for ccat_id in crud.get_agents_main_keys():
-            # inform the Cheshire Cats about the new plugin available in the system
-            self.inform_cheshirecat_plugin(ccat_id)
-
-    def on_start_plugin_uninstall_callback(self, plugin_id: str):
-        """
-        Clean up the plugin uninstallation. It removes the plugin settings from the database for the different agents.
-
-        Args:
-            plugin_id: The id of the plugin to remove
-        """
-
-        for ccat_id in crud.get_agents_main_keys():
-            ccat = self.get_cheshire_cat(ccat_id)
-
-            # deactivate plugins in the Cheshire Cats
-            ccat.plugin_manager.deactivate_plugin(plugin_id)
-
-    def on_end_plugin_uninstall_callback(self, plugin_id: str):
-        for endpoint in self.endpoints:
-            endpoint.deactivate()
-
-        crud_plugins.destroy_plugin(plugin_id)
-
     async def on_replacing_embedder(self):
         """
         Callback executed when the embedder is replaced. It informs the Cheshire Cats about the new embedder available
@@ -149,17 +116,6 @@ class BillTheLizard:
 
             # inform the Cheshire Cats about the new embedder available in the system
             await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
-
-    async def reload_embed_procedures(self):
-        """
-        Reload the embedding of the procedures in the procedural memory for each Cheshire Cat.
-        """
-
-        for ccat_id in crud.get_agents_main_keys():
-            ccat = self.get_cheshire_cat(ccat_id)
-
-            # inform the Cheshire Cats about the new plugin available in the system
-            await ccat.embed_procedures()
 
     def initialize_users(self):
         admin_id = str(uuid4())
@@ -222,17 +178,20 @@ class BillTheLizard:
         # recreate tools embeddings
         self.plugin_manager.find_plugins()
 
-        await self.reload_embed_procedures()
+        for ccat_id in crud.get_agents_main_keys():
+            ccat = self.get_cheshire_cat(ccat_id)
+
+            # inform the Cheshire Cats about the new plugin available in the system
+            await ccat.embed_procedures()
 
         return ReplacedNLPConfig(name=language_embedder_name, value=updater.new_setting["value"])
 
-    def get_cheshire_cat(self, agent_id: str, fast: bool = False) -> CheshireCat | None:
+    def get_cheshire_cat(self, agent_id: str) -> CheshireCat | None:
         """
         Get the Cheshire Cat with the given id, directly from db.
 
         Args:
             agent_id: The id of the agent to get
-            fast: If True, it will load the plugin manager of the Cheshire Cat only
 
         Returns:
             The Cheshire Cat with the given id, or None if it doesn't exist
@@ -244,17 +203,27 @@ class BillTheLizard:
         if agent_id not in crud.get_agents_main_keys():
             raise ValueError(f"`{agent_id}` is not a valid agent id")
 
-        return CheshireCat(agent_id, fast_load=fast)
+        return CheshireCat(agent_id)
 
-    def inform_cheshirecat_plugin(self, agent_id: str) -> None:
+    def inform_cheshirecats_plugin(self, plugin_id: str, what: Literal["install", "uninstall"]):
         """
         Find the plugins for the given Cheshire Cat and update its plugin manager.
 
         Args:
-            agent_id: The id of the agent to get plugins for
+            plugin_id: The id of the plugin to install or uninstall
+            what: The action to perform, either "install" or "uninstall"
+
+        Returns:
+            The Cheshire Cat with the given id, or None if it doesn't exist
         """
 
-        self.get_cheshire_cat(agent_id, fast=True)
+        for ccat_id in crud.get_agents_main_keys():
+            # on installation, it's enough to get the Cheshire Cat, it will load the plugin manager,
+            # which will load the plugins
+            ccat = self.get_cheshire_cat(ccat_id)
+            if what == "uninstall":
+                # deactivate plugins in the Cheshire Cats
+                ccat.plugin_manager.deactivate_plugin(plugin_id)
 
     async def create_cheshire_cat(self, agent_id: str) -> CheshireCat:
         """
@@ -324,17 +293,6 @@ class BillTheLizard:
     @property
     def mad_hatter(self) -> MadHatter:
         return self.plugin_manager
-
-    @property
-    def endpoints(self):
-        if not self.fastapi_app:
-            return []
-
-        return [
-            endpoint
-            for endpoint in self.plugin_manager.endpoints
-            if endpoint.plugin_id in self.plugin_manager.active_plugins
-        ]
 
     @property
     def parsers(self):

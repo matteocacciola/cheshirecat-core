@@ -162,7 +162,6 @@ class MadHatter(ABC):
         return tea_cup
 
     # get plugin object (used from within a plugin)
-    # TODO: should we allow to take directly another plugins' obj?
     def get_plugin(self):
         name = utils.inspect_calling_folder()
         return self.plugins[name]
@@ -185,6 +184,10 @@ class MadHatter(ABC):
 
     @abstractmethod
     def on_plugin_deactivation(self, plugin_id: str):
+        pass
+
+    @abstractmethod
+    def _load_plugin(self, plugin_path: str) -> bool:
         pass
 
     @property

@@ -17,7 +17,7 @@ def test_endpoints_discovery(plugin_manager):
     assert mock_plugin_endpoints == plugin_manager.endpoints
 
     # discovered endpoints
-    assert len(mock_plugin_endpoints) == 6
+    assert len(mock_plugin_endpoints) == 7
 
     # basic properties
     for e in mock_plugin_endpoints:
