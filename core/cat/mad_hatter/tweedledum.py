@@ -1,7 +1,7 @@
 import os
 import glob
 import shutil
-from typing import List
+from typing import List, Tuple
 
 from cat.db.cruds import settings as crud_settings, plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
@@ -42,7 +42,7 @@ class Tweedledum(MadHatter):
         # this callback is set from outside to be notified when plugin install is started
         self.on_start_plugin_install_callback = lambda: None
         # this callback is set from outside to be notified when plugin install is completed
-        self.on_end_plugin_install_callback = lambda plugin_id: None
+        self.on_end_plugin_install_callback = lambda plugin_id, plugin_path: None
 
         # this callback is set from outside to be notified when plugin uninstall is started
         self.on_start_plugin_uninstall_callback = lambda plugin_id: None
@@ -67,6 +67,22 @@ class Tweedledum(MadHatter):
         )
 
     def install_plugin(self, package_plugin: str) -> str:
+        """
+        Install a plugin from a package file (zip/tar).
+
+        Args:
+            package_plugin (str): The path to the plugin package file.
+
+        Returns:
+            str: The ID of the installed plugin.
+        """
+        # extract the plugin from the package
+        plugin_id, plugin_path = self.extract_plugin(package_plugin)
+
+        # install the extracted plugin
+        return self.install_extracted_plugin(plugin_id, plugin_path)
+
+    def extract_plugin(self, package_plugin: str) -> Tuple[str, str]:
         utils.dispatch_event(self.on_start_plugin_install_callback)
 
         # extract zip/tar file into plugin folder
@@ -74,6 +90,9 @@ class Tweedledum(MadHatter):
         plugin_path = extractor.extract(self.__plugins_folder)
         plugin_id = extractor.id
 
+        return plugin_id, plugin_path
+
+    def install_extracted_plugin(self, plugin_id: str, plugin_path: str) -> str:
         # create plugin obj, and eventually activate it
         if plugin_id != "core_plugin" and self._load_plugin(plugin_path):
             # deactivate a plugin on reinstallation
@@ -83,7 +102,7 @@ class Tweedledum(MadHatter):
             self.activate_plugin(plugin_id)
 
         # notify uninstallation has finished
-        utils.dispatch_event(self.on_end_plugin_install_callback, plugin_id=plugin_id)
+        utils.dispatch_event(self.on_end_plugin_install_callback, plugin_id=plugin_id, plugin_path=plugin_path)
 
         return plugin_id
 

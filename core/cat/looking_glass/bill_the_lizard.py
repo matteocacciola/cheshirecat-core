@@ -1,5 +1,7 @@
+import json
+import threading
 from copy import deepcopy
-from typing import Dict, Literal
+from typing import Dict, Literal, List
 from uuid import uuid4
 from langchain_community.document_loaders.parsers.audio import FasterWhisperParser
 from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
@@ -25,6 +27,7 @@ from cat.factory.embedder import EmbedderFactory
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.mad_hatter.mad_hatter import MadHatter
+from cat.mad_hatter.march_hare import MarchHare, MarchHareConfig
 from cat.mad_hatter.tweedledum import Tweedledum
 from cat.memory.utils import VectorEmbedderSize
 from cat.parsers import YoutubeParser, TableParser, JSONParser, PowerPointParser
@@ -96,19 +99,74 @@ class BillTheLizard:
         # Main agent instance (for reasoning)
         self.main_agent = MainAgent()
 
+        # March Hare instance (for RabbitMQ management)
+        self.march_hare = MarchHare()
+
         # Initialize the default admin if not present
         if not crud_users.get_users(self.__key):
             self.initialize_users()
 
+        self._consumer_threads: List[threading.Thread] = []
+        self._start_consumer_threads()
+
     def __del__(self):
         dispatch_event(self.shutdown)
 
-    def on_end_plugin_install(self, plugin_id: str):
+    def _start_consumer_threads(self):
+        self._consumer_threads = [
+            threading.Thread(target=self._consume_plugin_events, daemon=True)
+        ]
+        for thread in self._consumer_threads:
+            thread.start()
+
+    def _end_consumer_threads(self):
+        """
+        Ends the consumer threads.
+        """
+        for thread in self._consumer_threads:
+            thread.join()
+        self._consumer_threads = []
+
+    def _consume_plugin_events(self):
+        """
+        Consumer thread that listens for activation events from RabbitMQ.
+        """
+
+        def callback(ch, method, properties, body):
+            """Handle the received message."""
+            try:
+                event = json.loads(body)
+                if event["event_type"] == MarchHareConfig.events["PLUGIN_INSTALLATION"]:
+                    payload = event["payload"]
+                    self.plugin_manager.install_extracted_plugin(payload["plugin_id"], payload["plugin_path"])
+                elif event["event_type"] == MarchHareConfig.events["PLUGIN_UNINSTALLATION"]:
+                    payload = event["payload"]
+                    self.plugin_manager.uninstall_plugin(payload["plugin_id"])
+                else:
+                    log.warning(f"Unknown event type: {event['event_type']}. Message body: {body}")
+            except json.JSONDecodeError as e:
+                log.error(f"Failed to decode JSON message: {e}. Message body: {body}")
+            except Exception as e:
+                log.error(f"Error processing message: {e}. Message body: {body}")
+
+        self.march_hare.consume_event(callback, MarchHareConfig.channels["PLUGIN_EVENTS"])
+
+    def on_end_plugin_install(self, plugin_id: str, plugin_path: str):
         # activate the eventual custom endpoints
         for endpoint in self.plugin_manager.plugins[plugin_id].endpoints:
             endpoint.activate(self.fastapi_app)
 
         self.inform_cheshirecats_plugin(plugin_id, "install")
+
+        # notify the RabbitMQ about the new plugin installed
+        self.march_hare.notify_event(
+            event_type=MarchHareConfig.events["PLUGIN_INSTALLATION"],
+            payload={
+                "plugin_id": plugin_id,
+                "plugin_path": plugin_path
+            },
+            exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
+        )
 
     def on_start_plugin_uninstall(self, plugin_id: str):
         self.inform_cheshirecats_plugin(plugin_id, "uninstall")
@@ -118,6 +176,13 @@ class BillTheLizard:
         for endpoint in endpoints:
             if endpoint.plugin_id == plugin_id:
                 endpoint.deactivate(self.fastapi_app)
+
+        # notify the RabbitMQ about the new uninstalled plugin
+        self.march_hare.notify_event(
+            event_type=MarchHareConfig.events["PLUGIN_UNINSTALLATION"],
+            payload={"plugin_id": plugin_id},
+            exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
+        )
 
     def on_finish_plugins_sync(self):
         # Store endpoints for later activation
@@ -302,6 +367,8 @@ class BillTheLizard:
 
         if self.websocket_manager:
             await self.websocket_manager.close_all_connections()
+
+        self._end_consumer_threads()
 
         self.core_auth_handler = None
         self.plugin_manager = None

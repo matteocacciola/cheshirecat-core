@@ -23,22 +23,22 @@ help:  ## Show help
 
 # build docker images for all docker-compose files
 build:  ## Build docker images
-	docker compose $(docker-compose-files) build
+	docker compose $(docker-compose-files) build ${args}
 
 build-no-cache:  ## Build docker images without cache
-	docker compose $(docker-compose-files) --compatibility build --no-cache
+	docker compose $(docker-compose-files) --compatibility build ${args} --no-cache
 
 up:  ## Start docker containers
 	docker compose ${docker-compose-files} up -d ${args}
 
 down:  ## Stop docker containers
-	docker compose ${docker-compose-files} down
+	docker compose ${docker-compose-files} down ${args}
 
 stop:  ## Stop docker containers
-	docker compose ${docker-compose-files} stop
+	docker compose ${docker-compose-files} stop ${args}
 
 restart:  ## Restart service [service=php]
-	docker compose ${docker-compose-files} restart
+	docker compose ${docker-compose-files} restart ${args}
 
 test:  ## Run tests
 	docker exec cheshire_cat_core python -m pytest --color=yes -vvv -W ignore ${args}
