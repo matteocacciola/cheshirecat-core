@@ -47,7 +47,7 @@ class Tweedledum(MadHatter):
         # this callback is set from outside to be notified when plugin uninstall is started
         self.on_start_plugin_uninstall_callback = lambda plugin_id: None
         # this callback is set from outside to be notified when plugin uninstall is completed
-        self.on_end_plugin_uninstall_callback = lambda plugin_id: None
+        self.on_end_plugin_uninstall_callback = lambda plugin_id, endpoints: None
 
         super().__init__()
 
@@ -82,10 +82,6 @@ class Tweedledum(MadHatter):
 
             self.activate_plugin(plugin_id)
 
-        # activate the eventual custom endpoints
-        for endpoint in self.plugins[plugin_id].endpoints:
-            endpoint.activate()
-
         # notify uninstallation has finished
         utils.dispatch_event(self.on_end_plugin_install_callback, plugin_id=plugin_id)
 
@@ -94,10 +90,9 @@ class Tweedledum(MadHatter):
     def uninstall_plugin(self, plugin_id: str):
         utils.dispatch_event(self.on_start_plugin_uninstall_callback, plugin_id=plugin_id)
 
+        endpoints = []
         if self.plugin_exists(plugin_id) and plugin_id != "core_plugin":
-            # deactivate endpoints
-            for endpoint in self.plugins[plugin_id].endpoints:
-                endpoint.deactivate()
+            endpoints = self.plugins[plugin_id].endpoints
 
             # deactivate plugin if it is active (will sync cache)
             if plugin_id in self.active_plugins:
@@ -113,7 +108,7 @@ class Tweedledum(MadHatter):
         crud_plugins.destroy_plugin(plugin_id)
 
         # notify uninstall has finished
-        utils.dispatch_event(self.on_end_plugin_uninstall_callback, plugin_id=plugin_id)
+        utils.dispatch_event(self.on_end_plugin_uninstall_callback, plugin_id=plugin_id, endpoints=endpoints)
 
     # check if plugin exists
     def plugin_exists(self, plugin_id: str):

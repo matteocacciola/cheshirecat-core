@@ -153,11 +153,16 @@ class CatLogEngine:
 
         The `handler_func` should accept two arguments: `msg` (str) and `level` (str).
         """
+        if handler_func in self._plugin_log_handlers:
+            self.warning(f"Attempted to register a log handler that is already registered: {handler_func.__name__}")
+            return
+
         if callable(handler_func):
             self._plugin_log_handlers.append(handler_func)
             self.info(f"Registered plugin log handler: {handler_func.__name__}")
-        else:
-            self.warning(f"Attempted to register non-callable as log handler: {handler_func}")
+            return
+
+        self.warning(f"Attempted to register non-callable as log handler: {handler_func}")
 
     def unregister_plugin_log_handler(self, handler_func: callable):
         """Unregisters a previously registered plugin log handler."""
@@ -208,11 +213,6 @@ class CatLogEngine:
         except ZeroDivisionError: # Catch specific error for clarity
             self.error("This error is just for demonstration purposes.")
 
-    @property
-    def plugin_log_handlers(self):
-        """Returns the list of registered plugin log handlers."""
-        return self._plugin_log_handlers
-
 
 class CatLogProcessor(ABC):
     def __init__(self):
@@ -236,8 +236,7 @@ class CatLogProcessor(ABC):
 
     # IMPORTANT: Implement a method for plugin shutdown/cleanup
     # The Cheshire Cat Core should ideally call this when unloading the plugin.
-    # If there's a specific "on_shutdown" hook, use that.
-    def on_plugin_shutdown(self):
+    def __del__(self):
         """
         Called when the plugin is being unloaded. Essential for cleanup.
         """

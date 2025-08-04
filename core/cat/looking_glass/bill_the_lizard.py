@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Dict, Literal
 from uuid import uuid4
 from langchain_community.document_loaders.parsers.audio import FasterWhisperParser
@@ -67,13 +68,21 @@ class BillTheLizard:
 
         self.__key = DEFAULT_SYSTEM_KEY
 
-        self.fastapi_app = None
+        self._fastapi_app = None
+        self._pending_endpoints = []
 
         self.embedder: Embeddings | None = None
         self.embedder_name: str | None = None
         self.embedder_size: VectorEmbedderSize | None = None
 
         self.plugin_manager = Tweedledum()
+        self.plugin_manager.on_end_plugin_install_callback = self.on_end_plugin_install
+        self.plugin_manager.on_start_plugin_uninstall_callback = self.on_start_plugin_uninstall
+        self.plugin_manager.on_end_plugin_uninstall_callback = self.on_end_plugin_uninstall
+        self.plugin_manager.on_finish_plugins_sync_callback = self.on_finish_plugins_sync
+        # load active plugins
+        self.plugin_manager.find_plugins()
+
         self.websocket_manager = WebsocketManager()
 
         # load embedder
@@ -87,13 +96,6 @@ class BillTheLizard:
         # Main agent instance (for reasoning)
         self.main_agent = MainAgent()
 
-        self.plugin_manager.on_end_plugin_install_callback = (
-            lambda plugin_id: self.inform_cheshirecats_plugin(plugin_id, "install")
-        )
-        self.plugin_manager.on_start_plugin_uninstall_callback = (
-            lambda plugin_id: self.inform_cheshirecats_plugin(plugin_id, "uninstall")
-        )
-
         # Initialize the default admin if not present
         if not crud_users.get_users(self.__key):
             self.initialize_users()
@@ -101,9 +103,34 @@ class BillTheLizard:
     def __del__(self):
         dispatch_event(self.shutdown)
 
-    def set_fastapi_app(self, app: FastAPI) -> "BillTheLizard":
-        self.fastapi_app = app
-        return self
+    def on_end_plugin_install(self, plugin_id: str):
+        # activate the eventual custom endpoints
+        for endpoint in self.plugin_manager.plugins[plugin_id].endpoints:
+            endpoint.activate(self.fastapi_app)
+
+        self.inform_cheshirecats_plugin(plugin_id, "install")
+
+    def on_start_plugin_uninstall(self, plugin_id: str):
+        self.inform_cheshirecats_plugin(plugin_id, "uninstall")
+
+    def on_end_plugin_uninstall(self, plugin_id: str, endpoints: list):
+        # deactivate the eventual custom endpoints
+        for endpoint in endpoints:
+            if endpoint.plugin_id == plugin_id:
+                endpoint.deactivate(self.fastapi_app)
+
+    def on_finish_plugins_sync(self):
+        # Store endpoints for later activation
+        self._pending_endpoints = deepcopy(self.plugin_manager.endpoints)
+
+        # If app is already available, activate immediately
+        if self.fastapi_app is not None:
+            self._activate_pending_endpoints()
+
+    def _activate_pending_endpoints(self):
+        for endpoint in self._pending_endpoints:
+            endpoint.activate(self.fastapi_app)
+        self._pending_endpoints.clear()
 
     async def on_replacing_embedder(self):
         """
@@ -285,6 +312,17 @@ class BillTheLizard:
         self.embedder_size = None
         self.websocket_manager = None
         self.fastapi_app = None
+
+    @property
+    def fastapi_app(self):
+        return self._fastapi_app
+
+    @fastapi_app.setter
+    def fastapi_app(self, app: FastAPI | None = None):
+        self._fastapi_app = app
+        # Activate any pending endpoints
+        if app is not None:
+            self._activate_pending_endpoints()
 
     @property
     def config_key(self):

@@ -64,6 +64,7 @@ class CheshireCat:
 
         # instantiate plugin manager (loads all plugins' hooks and tools)
         self.plugin_manager = Tweedledee(self.id)
+        self.plugin_manager.find_plugins()
 
         # allows plugins to do something before cat components are loaded
         self.plugin_manager.execute_hook("before_cat_bootstrap", cat=self)

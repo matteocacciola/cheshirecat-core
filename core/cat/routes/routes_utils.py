@@ -315,7 +315,8 @@ def format_upload_file(upload_file: UploadFile) -> UploadFile:
 
 async def startup_app(app):
     # load the Manager and the Job Handler
-    app.state.lizard = BillTheLizard().set_fastapi_app(app)
+    app.state.lizard = BillTheLizard()
+    app.state.lizard.fastapi_app = app
     app.state.white_rabbit = WhiteRabbit()
 
     await app.state.lizard.create_cheshire_cat(DEFAULT_AGENT_KEY)
@@ -327,9 +328,6 @@ async def shutdown_app(app):
     # shutdown Manager
     app.state.white_rabbit.shutdown()
     await app.state.lizard.shutdown()
-
-    for log_handler in log.plugin_log_handlers:
-        log_handler.on_plugin_shutdown()
 
     del app.state.lizard
     del app.state.white_rabbit

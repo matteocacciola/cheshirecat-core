@@ -41,10 +41,11 @@ class CustomEndpoint:
         methods_tuple = tuple(sorted(self.methods)) if self.methods else ()
         return hash((self.name, methods_tuple))
 
-    def activate(self):
-        log.info(f"Activating custom endpoint {self.methods} {self.name}")
+    def activate(self, cheshire_cat_api: FastAPI | None = None):
+        if not cheshire_cat_api:
+            return
 
-        cheshire_cat_api = self.cheshire_cat_api
+        log.info(f"Activating custom endpoint {self.methods} {self.name}")
 
         # Set the fastapi api_route into the Custom Endpoint
         if any(api_route.path == self.name and api_route.methods == self.methods for api_route in cheshire_cat_api.routes):
@@ -76,8 +77,9 @@ class CustomEndpoint:
         
         assert self.api_route.path == self.name
 
-    def deactivate(self):
-        cheshire_cat_api = self.cheshire_cat_api
+    def deactivate(self, cheshire_cat_api: FastAPI | None = None):
+        if not cheshire_cat_api:
+            return
 
         # Seems there is no official way to remove a route:
         # https://github.com/fastapi/fastapi/discussions/8088
@@ -93,11 +95,6 @@ class CustomEndpoint:
 
             cheshire_cat_api.routes.remove(to_remove)
             cheshire_cat_api.openapi_schema = None  # Flush the cached openapi schema
-
-    @property
-    def cheshire_cat_api(self) -> FastAPI:
-        from cat.looking_glass.bill_the_lizard import BillTheLizard
-        return BillTheLizard().fastapi_app
 
     @property
     def real_path(self) -> str:

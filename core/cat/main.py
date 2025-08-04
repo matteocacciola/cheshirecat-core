@@ -2,7 +2,7 @@ import os
 import uvicorn
 
 from cat.env import get_env, get_env_bool
-from cat.utils import get_plugins_path
+
 
 # RUN!
 if __name__ == "__main__":

@@ -29,8 +29,6 @@ class MadHatter(ABC):
         # this callback is set from outside to be notified when plugin sync is completed
         self.on_finish_plugins_sync_callback = lambda: None
 
-        self.find_plugins()
-
     # Load hooks, tools and forms of the active plugins into the plugin manager
     def _sync_hooks_tools_and_forms(self):
         # emptying tools, hooks and forms
@@ -55,10 +53,10 @@ class MadHatter(ABC):
         for hook_name in self.hooks.keys():
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
 
-        # notify sync has finished (the Lizard will ensure all tools are embedded in vector memory)
+        # notify sync has finished
         utils.dispatch_event(self.on_finish_plugins_sync_callback)
 
-    def load_active_plugins_from_db(self):
+    def load_active_plugins_from_db(self) -> List[str]:
         active_plugins = crud_settings.get_setting_by_name(self.agent_key, "active_plugins")
         active_plugins = [] if active_plugins is None else active_plugins["value"]
 
