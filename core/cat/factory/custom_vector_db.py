@@ -3,6 +3,7 @@ import sys
 from abc import ABC, abstractmethod
 import asyncio
 from typing import Any, List, Iterable, Dict, Tuple
+from urllib.parse import urlparse
 from qdrant_client import AsyncQdrantClient
 import os
 import uuid
@@ -40,7 +41,6 @@ from cat.memory.utils import (
     UpdateResult,
     to_document_recall, ScoredPoint,
 )
-from cat.utils import is_https, extract_domain_from_url
 
 
 class BaseVectorDatabaseHandler(ABC):
@@ -364,8 +364,13 @@ class QdrantHandler(BaseVectorDatabaseHandler):
 
         self.save_memory_snapshots = save_memory_snapshots
 
-        qdrant_https = is_https(host)
-        qdrant_host = extract_domain_from_url(host)
+        try:
+            parsed_url = urlparse(host)
+            qdrant_https = parsed_url.scheme == "https"
+            qdrant_host = parsed_url.netloc + parsed_url.path
+        except:
+            qdrant_https = False
+            qdrant_host = host
 
         qdrant_client_timeout = int(client_timeout) if client_timeout is not None else None
 

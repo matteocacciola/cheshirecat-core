@@ -113,6 +113,10 @@ class BillTheLizard:
         dispatch_event(self.shutdown)
 
     def _start_consumer_threads(self):
+        if not MarchHareConfig.is_enabled:
+            log.warning("RabbitMQ is not enabled. Skipping consumer thread initialization.")
+            return
+
         self._consumer_threads = [
             threading.Thread(target=self._consume_plugin_events, daemon=True)
         ]
@@ -124,7 +128,8 @@ class BillTheLizard:
         Ends the consumer threads.
         """
         for thread in self._consumer_threads:
-            thread.join()
+            if thread.is_alive():
+                thread.join(timeout=1)
         self._consumer_threads = []
 
     def _consume_plugin_events(self):

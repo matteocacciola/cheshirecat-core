@@ -13,12 +13,16 @@ class Database:
         self.db = self.get_redis_client()
 
     def get_redis_client(self) -> redis.Redis:
+        host = get_env("CCAT_REDIS_HOST")
+        if host is None:
+            raise ValueError("CCAT_REDIS_HOST environment variable is not set.")
+
         password = get_env("CCAT_REDIS_PASSWORD")
         tls = get_env("CCAT_REDIS_TLS")
 
         if password:
             return redis.Redis(
-                host=get_env("CCAT_REDIS_HOST"),
+                host=host,
                 port=int(get_env("CCAT_REDIS_PORT")),
                 db=get_env("CCAT_REDIS_DB"),
                 password=password,
@@ -28,7 +32,7 @@ class Database:
             )
 
         return redis.Redis(
-            host=get_env("CCAT_REDIS_HOST"),
+            host=host,
             port=int(get_env("CCAT_REDIS_PORT")),
             db=get_env("CCAT_REDIS_DB"),
             encoding="utf-8",

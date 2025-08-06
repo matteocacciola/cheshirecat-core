@@ -63,7 +63,7 @@ def get_base_permissions() -> Dict[str, List[str]]:
     }
 
 
-def check_permissions(resource: AuthResource, permission: AuthPermission) -> "ContextualCats":
+def check_permissions(resource: AuthResource, permission: AuthPermission) -> "AuthorizedInfo":
     """
     Helper function to inject cat and stray into endpoints after checking for required permissions.
 
@@ -72,7 +72,7 @@ def check_permissions(resource: AuthResource, permission: AuthPermission) -> "Co
         permission (AuthPermission): The permission that the user must have for the resource.
 
     Returns:
-        ContextualCats: an instance of CheshireCat and StrayCat
+        AuthorizedInfo: an instance of CheshireCat and the identified user
     """
 
     from cat.auth.connection import HTTPAuth
@@ -95,7 +95,7 @@ def check_admin_permissions(resource: AdminAuthResource, permission: AuthPermiss
     return Depends(AdminConnectionAuth(resource=resource, permission=permission))
 
 
-def check_message_permissions(resource: AuthResource, permission: AuthPermission) -> "ContextualCats":
+def check_message_permissions(resource: AuthResource, permission: AuthPermission) -> "AuthorizedInfo":
     """
     Helper function to inject cat and stray into endpoints after checking for required permissions.
 
@@ -104,14 +104,14 @@ def check_message_permissions(resource: AuthResource, permission: AuthPermission
         permission (AuthPermission): The permission that the user must have for the resource.
 
     Returns:
-        ContextualCats: an instance of CheshireCat and StrayCat
+        AuthorizedInfo: an instance of CheshireCat and the identified user
     """
 
     from cat.auth.connection import HTTPAuthMessage
     return Depends(HTTPAuthMessage(resource=resource, permission=permission))
 
 
-def check_websocket_permissions(resource: AuthResource, permission: AuthPermission) -> "ContextualCats":
+def check_websocket_permissions(resource: AuthResource, permission: AuthPermission) -> "AuthorizedInfo":
     """
     Helper function to inject cat and stray into endpoints after checking for required permissions.
 
@@ -120,7 +120,7 @@ def check_websocket_permissions(resource: AuthResource, permission: AuthPermissi
         permission (AuthPermission): The permission that the user must have for the resource.
 
     Returns:
-        ContextualCats: an instance of CheshireCat and StrayCat
+        AuthorizedInfo: an instance of CheshireCat and the identified user
     """
 
     from cat.auth.connection import WebSocketAuth

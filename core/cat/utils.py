@@ -12,10 +12,8 @@ from langchain_core.prompts import PromptTemplate
 from langchain_core.utils import get_colored_text
 import mimetypes
 import os
-import shutil
 import tomli
 from typing import Dict, Tuple, List, Type, TypeVar, Any, Callable
-from urllib.parse import urlparse
 import hashlib
 
 from cat.env import get_env
@@ -184,19 +182,6 @@ def get_base_path() -> str:
     return current_file_path + "/"
 
 
-def get_base_path_dotted_notation() -> str:
-    return get_base_path().replace("/", ".")
-
-
-def get_py_filename_dotted_notation(py_file: str) -> str:
-    base_path_dotted_notation = get_base_path_dotted_notation()
-    return (
-        py_file.replace(".py", "")
-        .replace("/", ".")
-        .replace(base_path_dotted_notation, "cat.")
-    )
-
-
 def get_plugins_path() -> str:
     """Allows exposing the plugins' path."""
     return os.path.join(get_base_path(), "plugins/")
@@ -215,22 +200,6 @@ def get_static_url() -> str:
 def get_static_path() -> str:
     """Allows exposing the static files' path."""
     return os.path.join(get_base_path(), "static/")
-
-
-def is_https(url) -> bool:
-    try:
-        parsed_url = urlparse(url)
-        return parsed_url.scheme == "https"
-    except:
-        return False
-
-
-def extract_domain_from_url(url: str) -> str:
-    try:
-        parsed_url = urlparse(url)
-        return parsed_url.netloc + parsed_url.path
-    except:
-        return url
 
 
 def explicit_error_message(e) -> str:
@@ -486,17 +455,6 @@ def restore_original_model(d: _T | Dict | None, model: Type[_T]) -> _T | None:
         return model(**d)
 
     return d
-
-
-def empty_plugin_folder():
-    # empty the plugin folder
-    plugin_folder = get_plugins_path()
-    for _, folders, _ in os.walk(plugin_folder):
-        for folder in folders:
-            item = os.path.join(plugin_folder, folder)
-            if os.path.isfile(item) or not os.path.exists(item):
-                continue
-            shutil.rmtree(item)
 
 
 def default_llm_answer_prompt() -> str:

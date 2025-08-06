@@ -1,3 +1,5 @@
+import os
+import shutil
 from typing import List
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
@@ -9,7 +11,7 @@ from cat.db.database import get_db
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.routes.routes_utils import startup_app, shutdown_app
-from cat.utils import empty_plugin_folder
+from cat.utils import get_plugins_path
 
 router = APIRouter()
 
@@ -56,7 +58,15 @@ async def factory_reset(
         deleted_settings = False
 
     try:
-        empty_plugin_folder()
+        # empty the plugin folder
+        plugin_folder = get_plugins_path()
+        for _, folders, _ in os.walk(plugin_folder):
+            for folder in folders:
+                item = os.path.join(plugin_folder, folder)
+                if os.path.isfile(item) or not os.path.exists(item):
+                    continue
+                shutil.rmtree(item)
+
         deleted_plugin_folders = True
     except Exception as e:
         log.error(f"Error deleting plugin folders: {e}")

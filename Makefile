@@ -29,7 +29,7 @@ build-no-cache:  ## Build docker images without cache
 	docker compose $(docker-compose-files) --compatibility build ${args} --no-cache
 
 up:  ## Start docker containers
-	docker compose ${docker-compose-files} up -d ${args}
+	docker compose ${docker-compose-files} up ${args} -d
 
 down:  ## Stop docker containers
 	docker compose ${docker-compose-files} down ${args}

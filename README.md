@@ -6,23 +6,24 @@
   <h2>Cheshire Cat AI</h2>
   <h3>🇮🇹 Stregatto - 🇨🇳 柴郡貓 - 🇮🇳 चेशायर बिल्ली - 🇷🇺 Чеширский кот</h3>
 <br/>
-  <a href="https://github.com/matteocacciola/cheshirecat-core">
+  <a href="https://www.github.com/matteocacciola/cheshirecat-core">
   <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/matteocacciola/cheshirecat-core?style=social">
 </a>
   <a href="https://discord.gg/bHX5sNFCYU">
         <img src="https://img.shields.io/discord/1092359754917089350?logo=discord"
             alt="chat on Discord"></a>
-  <a href="https://github.com/matteocacciola/cheshirecat-core/issues">
+  <a href="https://www.github.com/matteocacciola/cheshirecat-core/issues">
   <img alt="GitHub issues" src="https://img.shields.io/github/issues/matteocacciola/cheshirecat-core">
   </a>
-  <a href="https://github.com/matteocacciola/cheshirecat-core/tags">
+  <a href="https://www.github.com/matteocacciola/cheshirecat-core/tags">
   <img alt="GitHub tag (with filter)" src="https://img.shields.io/github/v/tag/matteocacciola/cheshirecat-core">
   </a>
   <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/matteocacciola/cheshirecat-core">
 </div>
 
-## AI agent as a microservice
+# AI agent as a microservice
 
+## Why use the Cat
 The Cheshire Cat is a framework to build custom AI agents:
 
 - ⚡️ API first, to easily add a conversational layer to your app
@@ -31,7 +32,7 @@ The Cheshire Cat is a framework to build custom AI agents:
 - 🐘 Customizable database for your documents, so that you can use your own storage (e.g., S3, MinIO, etc.)
 - 🚀 Extensible via plugins
 - 🪛 Event callbacks, function calling (tools), conversational forms
-- 🏛 Easy to use Admin Panel
+- 🏛 Easy to use Admin Panel (available with the repository [matteocacciola/cheshirecat-admin](https://www.github.com/matteocacciola/cheshirecat-admin))
 - 🌍 Supports any language model via langchain
 - 👥 Multiuser with granular permissions, compatible with any identity provider
 - 💬 Multi-chatbots, with configurable (even different) LLM, chunking strategy and other features per chatbot, plus specific knowledge per chatbot
@@ -41,54 +42,88 @@ The Cheshire Cat is a framework to build custom AI agents:
 - 🐋 100% dockerized
 - 🦄 Active [Discord community](https://discord.gg/bHX5sNFCYU) and easy to understand [docs](https://cheshire-cat-ai.github.io/docs/)
 
-### Key differences
+We are committed to openness, privacy and creativity, we want to bring AI to the long tail. If you want to know more
+about our vision and values, read the [Code of Ethics](CODE-OF-ETHICS.md).
 
-The current version is a multi-tenant fork of the original [Cheshire Cat](https://github.com/cheshire-cat-ai/core). Here are the main differences:
+# Key differences of this version
+The current version is a multi-tenant fork of the original [Cheshire Cat](https://www.github.com/cheshire-cat-ai/core). Here are the main differences:
 
-- **Multi-tenant**: the original version was designed to be a single-tenant application, meaning that it could only manage one chatbot at a time.
-  This version is designed to be multi-tenant, meaning that it can manage multiple chatbots at the same time, each with its own settings, plugins, LLMs, etc.
-  - **The way of "injecting" the identification of the Chatbot (RAG) is simple**:
-    - **in case of the HTTP API endpoints, use the `agent_id` key into the request headers or as a querystring parameter;**
-    - **in case of the WebSocket API, use the `agent_id` into the URL, e.g., `/ws/{agent_id}`.**
+## Multitenancy
+The original version was designed to be a single-tenant application, meaning that it could only manage one chatbot at a time.
+This version is designed to be multi-tenant, meaning that it can manage multiple chatbots at the same time, each with its own settings, plugins, LLMs, etc.
+**The way of "injecting" the identification of the Chatbot (RAG) is simple**:
+  - **in case of the HTTP API endpoints, use the `agent_id` key into the request headers or as a querystring parameter;**
+  - **in case of the WebSocket API, use the `agent_id` into the URL, e.g., `/ws/{agent_id}`.**
 
-- **Customizable RAG**: the original version used a fixed RAG implementation, meaning that it could only use a specific vector database and chunking strategy.
-  This version allows you to configure the RAG per chatbot, meaning that you can use your own vector database and chunking strategy.
-  - **The current version supports multiple vector databases**, such as Qdrant, Pinecone, Weaviate, etc.
-  - **The current version supports multiple chunking strategies**, such as text splitting or Semantic chunking.
+## RAG Customization**:
+The original version used a fixed RAG implementation, meaning that it could only use a specific vector database and chunking strategy.
+This version allows you to configure the RAG per chatbot, meaning that you can use your own vector database and chunking strategy.
+- **The current version supports multiple vector databases**, such as Qdrant, Pinecone, Weaviate, etc.
+- **The current version supports multiple chunking strategies**, such as text splitting or Semantic chunking.
 
-- **Customizable LLM**: the original version used a fixed LLM implementation, meaning that it could only use a specific language model.
-  This version allows you to configure the LLM per chatbot, meaning that you can use your own language model.
-  - **The current version supports multiple language models**, such as OpenAI, Ollama, Google, HuggingFace, etc.
-  - **The current version supports multiple LLMs**, meaning that you can use different language models for different chatbots.
+## Customizable LLM
+The original version used a fixed LLM implementation, meaning that it could only use a specific language model.
+This version allows you to configure the LLM per chatbot, meaning that you can use your own language model.
+- **The current version supports multiple language models**, such as OpenAI, Ollama, Google, HuggingFace, etc.
+- **The current version supports multiple LLMs**, meaning that you can use different language models for different chatbots.
 
-- **Customizable Storage**: the original did not use any storage solution for the documents composing your RAG, meaning that you were able to store the documents into the knowledge base of each RAG, but not into a remote storage.
-  This version allows you to configure the storage per chatbot, meaning that you can use your own storage solution.
-  - **The current version supports multiple storage solutions**, such as S3, MinIO, etc.
-  - **The current version supports multiple file managers**, meaning that you can use different file managers for different chatbots.
+## Customizable Storage
+The original did not use any storage solution for the documents composing your RAG, meaning that you were able to store the documents into the knowledge base of each RAG, but not into a remote storage.
+This version allows you to configure the storage per chatbot, meaning that you can use your own storage solution.
+- **The current version supports multiple storage solutions**, such as S3, MinIO, etc.
+- **The current version supports multiple file managers**, meaning that you can use different file managers for different chatbots.
 
-- **Cloud ready**: this version can be deployed in a cluster environment. Whilst the original version stored the settings into
-JSON files, **this version requires a Redis database** to store the  settings, the conversation histories, the plugins and so
-forth. You can **configure the Redis database by environment variables**. The [`compose.yml`](./compose.yml) file is provided as an example.
-The Cat is still stateless, so it can be easily scaled.
-In case of a cluster environment, we suggest to use a shared storage, mounted in the `cat/plugins` folder, to share the plugins.
+## Customizable Chunking strategy
+The original version used a fixed chunking strategy, meaning that it could only use a specific chunking strategy.
+This version allows you to configure the chunking strategy per chatbot, meaning that you can use your own chunking strategy.
+- **The current version supports multiple chunking strategies**, such as text splitting or Semantic chunking.
+- **The current version supports multiple chunkers**, meaning that you can use different chunkers for different chatbots.
+- **The current version supports the extension of the list of allowed chunkers**, so you can use your own chunking strategy.
+
+## Customizable Vector Database
+The original version used a fixed vector database, meaning that it could only use a specific vector database.
+This version allows you to configure the vector database per chatbot, meaning that you can use your own vector database.
+- **The current version supports multiple vector databases**, such as Qdrant, Pinecone, Weaviate, etc.
+- **The current version supports multiple vector databases**, meaning that you can use different vector databases for different chatbots.
+- **The current version supports the extension of the list of allowed vector databases**, so you can use your own vector database.
+
+## Cloud ready
+This version can be deployed in a cluster environment. Whilst the original version stored the settings into
+JSON files, **this version requires a Redis database** to store the settings, the conversation histories, the plugins and so
+forth.
+
+You can **configure the Redis database by environment variables**. The [`compose.yml`](./compose.yml) file is provided as an example. 
 Hence, the current version is multi-tenant, meaning that you can manage multiple RAGs and other language models at the same time.
 
-- **Security**: the original project is developed as a framework that could be used for a personal use as well as for single-tenant production.
+The Cat is still stateless, so it can be easily scaled.  In case of a cluster environment, we suggest to use a shared storage,
+mounted in the `cat/plugins` folder, to share the plugins.
+
+A **RabbitMQ message broker** is recommended in a cluster environment, so that the installation
+of plugins can be synchronized along all the PODs and the management of the Cat can be done in a distributed way. Its
+configuration is done via environment variables, too. The [`compose.yml`](./compose.yml) file is provided as an example.
+
+## Security
+The original project is developed as a framework that could be used for a personal use as well as for single-tenant production.
 In the latter case, the original [documentation](https://cheshire-cat-ai.github.io/docs/) clearly states to set up a secure environment
 by using an API Key. **If not configured properly (e.g. by setting up an API Key), the current version will not work, indeed**.
 In this way, I tried to make the Cat more secure and production-ready.
 
-- **Additional implementations**: here, the structure used for configuring `Embedder`, `LLMs`, `Authorization Handler` and `File Manager`
-is different from the original version: interfaces and factories have been used for the scope.
+## Additional implementations
+Here, the structure used for configuring `Embedder`, `LLMs`, `Authorization Handler`, `File Manager`, `Chunking Strategy`
+and `Vector Database` has been changed: interfaces and factories have been used for the scope, in order to optimize the code and to allow
+the extension of the list of allowed implementations. This way, you can use your own implementations of these components, if you want to.
 
-- **New features**: here, I have introduced some new features and improvements, such as:
+## New features
+Here, I have introduced some new features and improvements, such as:
   - The `Embedder` is centralized and can be used by multiple RAGs and other language models.
-  - New admin endpoints allowing to configure the `Embedder`.
-  - New endpoints allowing to configure the `File Manager`, per chatbot.
-  - New endpoints allowing to configure the chunking strategy, per chatbot.
-  - New endpoints allowing to configure the vector database, per chatbot.
+  - New API admin endpoints allowing to configure the `Embedder`.
+  - New API endpoints allowing to configure the `File Manager`, per chatbot.
+  - New API endpoints allowing to configure the chunking strategy, per chatbot.
+  - New API endpoints allowing to configure the vector database, per chatbot.
   - A new event system that allows you to get fine-grained control over the AI.
   - **The ability to manage multiple RAGs and other language models at the same time**.
+  - **The current version is agnostic to the vector database and chunking strategy**, meaning that you can use your own
+    vector database and chunking strategy.
 
 ## Compatibility with plugins
 
@@ -96,7 +131,19 @@ This new version is completely compatible with the original version, so you can 
 and settings to the new version. It is still in development, but you can already try it out by running the Docker image.
 New features will be added in the future. Please contact us if you want to contribute.
 
-## Quickstart
+The list of available hooks are available in the [documentation](https://cheshire-cat-ai.github.io/docs/plugins/plugins/).
+
+## List of available hooks
+The Cat provides a set of hooks that can be used to customize the behavior of the AI agent. Hooks are events that can be
+triggered at specific points in the conversation, allowing you to modify the behavior of the AI agent or to add custom functionality.
+The list of available hooks is available in the [documentation](https://cheshire-cat-ai.github.io/docs/plugins/plugins/).
+The current version introduces also the following additional hooks:
+- Factories:
+  - `factory_allowed_file_managers`: to extend the list of allowed file managers
+  - `factory_allowed_chunkers`: to extend the list of allowed chunkers
+  - `factory_allowed_vector_databases`: to extend the list of allowed vector databases (so allowing to use your own vector database)
+
+# Quickstart
 
 To make Cheshire Cat run on your machine, you just need [`docker`](https://docs.docker.com/get-docker/) installed:
 
@@ -105,14 +152,37 @@ docker run --rm -it -p 1865:80 ghcr.io/matteocacciola/cheshirecat-core:latest
 ```
 - Chat with the Cheshire Cat on [localhost:1865/docs](http://localhost:1865/docs).
 
-Since this version is intended as a microservice, the `admin` panel is no longer available. You can still use widgets from
-the [original project](https://github.com/cheshire-cat-ai/) to manage the Cat.
+Since this version is intended as a microservice, the `admin` panel is no longer automatically installed with the package.
 
-As a first thing, the Cat will ask you to configure your favourite language model.
-It can be done directly via the interface in the Settings page (top right in the admin).
+As a first thing, set the **Embedder** for the Cat. A favourite **LLM** must be set for each chatbot; each chatbot can have
+its own language model, with custom settings.
+Everything can be done via the [Admin Panel](https://www.github.com/matteocacciola/cheshirecat-admin) or via the REST API endpoints.
 
 Enjoy the Cat!  
 Follow instructions on how to run it with [docker compose and volumes](https://cheshire-cat-ai.github.io/docs/quickstart/installation-configuration/).
+
+# Admin panel and UI widget
+
+You can install an admin panel by using the [`cheshirecat-admin`](https://www.github.com/matteocacciola/cheshirecat-admin) repository.
+The admin panel is a separate project that allows you to manage the Cat and its settings, plugins, and chatbots.
+It is built with Streamlit and is designed to be easy to use and customizable.
+
+Moreover, a suitable widget for the current fork is available at [my Github account](https://cheshire-cat-ai.github.io/docs/plugins/plugins/)
+to chat the Cat.
+
+# Best practices
+
+## Custom endpoints and permissions
+
+When implementing custom endpoints, you can use the `@endpoint` decorator to create a new endpoint. Please, refer to the
+[documentation](https://cheshire-cat-ai.github.io/docs/plugins/endpoints/) for more information.
+
+> [!IMPORTANT]
+> **Each endpoint implemented for chatbots must use the `check_permissions` method to authenticate**. See for instance this
+[`endpoint`](https://github.com/matteocacciola/cheshirecat-core/blob/main/core/tests/mocks/mock_plugin/mock_endpoint.py#L30).
+> 
+> **Each endpoint implemented at a system level must use the `check_admin_permissions` method to authenticate**. See for instance this
+[`endpoint`](https://github.com/matteocacciola/cheshirecat-core/blob/main/core/tests/mocks/mock_plugin/mock_endpoint.py#L35).
 
 ## Minimal plugin example
 
@@ -197,7 +267,7 @@ class PizzaForm(CatForm):
 ```
 </details>
 
-## Docs and Resources
+# Docs and Resources
 
 **For your PHP based projects**, I developed a [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk) that allows you to
 easily interact with the Cat. Please, refer to the [SDK documentation](https://www.github.com/matteocacciola/cheshirecat-php-sdk/blob/master/README.md) for more information.
@@ -214,36 +284,20 @@ List of resources:
 - [Website](https://cheshirecat.ai/)
 - [Tutorial - Write your first plugin](https://cheshirecat.ai/write-your-first-plugin/)
 
-## Why use the Cat
-
-- ⚡️ API first, so you get a microservice to easily add a conversational layer to your app
-- 🐘 Remembers conversations and documents and uses them in conversation
-- 🚀 Extensible via plugins (public plugin registry + private plugins allowed)
-- 🎚 Event callbacks, function calling (tools), conversational forms
-- 🏛 Easy to use admin panel (chat, visualize memory and plugins, adjust settings)
-- 🌍 Supports any language model (works with OpenAI, Google, Ollama, HuggingFace, custom services)
-- 💬 Multi-chatbots, with configurable (even different) LLM per chatbot, plus specific knowledge per chatbot
-- ☁️ Cloud Ready, working even with horizontal autoscaling
-- 🐋 Production ready - 100% [dockerized](https://docs.docker.com/get-docker/)
-- 👩‍👧‍👦 Active [Discord community](https://discord.gg/bHX5sNFCYU) and easy to understand [docs](https://cheshire-cat-ai.github.io/docs/)
- 
-We are committed to openness, privacy and creativity, we want to bring AI to the long tail. If you want to know more
-about our vision and values, read the [Code of Ethics](CODE-OF-ETHICS.md).
-
-## Roadmap & Contributing
+# Roadmap & Contributing
 
 All contributions are welcome! Fork the project, create a branch, and make your changes.
 Then, follow the [contribution guidelines](CONTRIBUTING.md) to submit your pull request.
 
 If you like this project, give it a star ⭐! It is very important to have your support. Thanks again!🙏
 
-## License and trademark
+# License and trademark
 
 Code is licensed under [GPL3](LICENSE).  
 The Cheshire Cat AI logo and name are property of Piero Savastano (founder and maintainer). The current fork is created,
 refactored and maintained by [Matteo Cacciola](mailto:matteo.cacciola@gmail.com).
 
-## Which way to go?
+# Which way to go?
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

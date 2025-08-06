@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.mad_hatter.decorators import endpoint
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import (
@@ -32,8 +33,8 @@ def test_get(info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, Auth
 
 
 @endpoint.get(path="/admin/crud", prefix="/tests", tags=["Tests"])
-def test_get_admin(info: AuthorizedInfo = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.LIST)):
-    return {"result": "ok", "user_id": info.user.id}
+def test_get_admin(lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.LIST)):
+    return {"result": "ok"}
 
 
 @endpoint.post(path="/crud", prefix="/tests", tags=["Tests"])

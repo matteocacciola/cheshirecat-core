@@ -14,7 +14,7 @@ from cat.db.cruds import plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.experimental.form.cat_form import CatForm
 from cat.mad_hatter.decorators import CustomEndpoint, CatHook, CatPluginDecorator, CatTool
-from cat.utils import to_camel_case, inspect_calling_agent, get_py_filename_dotted_notation
+from cat.utils import to_camel_case, inspect_calling_agent, get_base_path
 from cat.log import log
 
 
@@ -133,6 +133,14 @@ class Plugin:
         # default schema (empty)
         return PluginSettingsModel.model_json_schema()
 
+    def _get_py_filename_dotted_notation(self, py_file: str) -> str:
+        base_path_dotted_notation = get_base_path().replace("/", ".")
+        return (
+            py_file.replace(".py", "")
+            .replace("/", ".")
+            .replace(base_path_dotted_notation, "cat.")
+        )
+
     # get plugin settings Pydantic model
     def settings_model(self):
         # is "settings_model" hook defined in the plugin?
@@ -156,7 +164,7 @@ class Plugin:
             # if the pydantic class is a string, try to load it from the plugin
             # find where a Pydantic model with name pydantic_class is defined within the folder self._path
             for py_file in self._py_files:
-                py_filename = get_py_filename_dotted_notation(py_file)
+                py_filename = self._get_py_filename_dotted_notation(py_file)
                 try:
                     module = importlib.import_module(py_filename)
                     if hasattr(module, pydantic_class):
@@ -351,7 +359,7 @@ class Plugin:
         plugin_overrides = []
 
         for py_file in self._py_files:
-            py_filename = get_py_filename_dotted_notation(py_file)
+            py_filename = self._get_py_filename_dotted_notation(py_file)
 
             log.debug(f"Import module {py_filename}")
 

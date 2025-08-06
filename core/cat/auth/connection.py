@@ -34,10 +34,6 @@ class AdminConnectionAuth:
     def __call__(self, request: Request) -> BillTheLizard:
         lizard: BillTheLizard = request.app.state.lizard
 
-        # if the request comes from a custom endpoint, block it and return a 404 HTTP error
-        if lizard.plugin_manager.is_custom_endpoint(request.url.path):
-            raise CustomNotFoundException("Not Found")
-
         user: AuthUserInfo = lizard.core_auth_handler.authorize(
             request,
             self.resource,

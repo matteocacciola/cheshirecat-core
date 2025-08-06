@@ -40,7 +40,7 @@ def test_custom_endpoint_get_admin_not_found(client, secure_client, secure_clien
     just_installed_plugin(secure_client, secure_client_headers)
 
     response = client.get("/tests/admin/crud", headers=get_client_admin_headers(client))
-    assert response.status_code == 404
+    assert response.status_code == 200
 
 
 def test_custom_endpoint_get_not_found(secure_client, secure_client_headers):

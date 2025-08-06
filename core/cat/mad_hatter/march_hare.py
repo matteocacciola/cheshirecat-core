@@ -21,6 +21,8 @@ class MarchHareConfig:
         "PLUGIN_UNINSTALLATION": "plugin_uninstallation",
     }
 
+    is_enabled = getenv("CCAT_RABBITMQ_HOST") is not None
+
 
 @singleton
 class MarchHare:
@@ -44,6 +46,9 @@ class MarchHare:
             exchange (str): The name of the exchange to publish the event to.
             exchange_type (str): The type of the exchange to use. Defaults to "fanout".
         """
+        if not MarchHareConfig.is_enabled:
+            return
+
         connection = None
         try:
             connection = pika.BlockingConnection(self._connection_parameters)
@@ -67,6 +72,9 @@ class MarchHare:
                 connection.close()
 
     def consume_event(self, callback: callable, exchange: str, exchange_type: str = "fanout"):
+        if not MarchHareConfig.is_enabled:
+            return
+
         connection = None
         while True:
             try:

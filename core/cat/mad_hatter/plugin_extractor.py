@@ -46,36 +46,39 @@ class PluginExtractor:
         file_name_no_extension = os.path.splitext(file_name)[0]
         return slugify(file_name_no_extension, separator="_")
 
-    def __is_safe_python_file(self, file_path: str) -> bool:
-        """
-        Performs static analysis on a Python file to check for malicious constructs.
-        """
-        with open(file_path, "r", encoding="utf-8") as f:
-            try:
-                tree = ast.parse(f.read())
-            except SyntaxError as e:
-                log.debug(f"Syntax error in {file_path}: {e}")
-                return False
-
-        visitor = PythonSecurityVisitor(file_path)
-        try:
-            visitor.visit(tree)
-            return not visitor.found_malicious
-        except MaliciousCodeError as e:
-            log.error(f"Malicious code detected: {e}")
-            return False
-
-    def __is_safe_plugin(self, folder_path: str) -> bool:
+    def _is_safe_plugin(self, folder_path: str) -> bool:
         """
         Check all Python files in the plugin folder for safety.
+
+        Args:
+            folder_path (str): Path to the plugin folder.
+
+        Returns:
+            bool: True if all Python files are safe, False if any file contains malicious code.
         """
+
+        def is_safe_python_file() -> bool:
+            with open(file_path, "r", encoding="utf-8") as f:
+                try:
+                    tree = ast.parse(f.read())
+                except SyntaxError as e:
+                    log.debug(f"Syntax error in {file_path}: {e}")
+                    return False
+            visitor = PythonSecurityVisitor(file_path)
+            try:
+                visitor.visit(tree)
+                return not visitor.found_malicious
+            except MaliciousCodeError as e:
+                log.error(f"Malicious code detected: {e}")
+                return False
+
         for root, _, files in os.walk(folder_path):
             for file in files:
                 if not file.endswith(".py"):
                     continue
 
                 file_path = os.path.join(root, file)
-                if not self.__is_safe_python_file(file_path):
+                if not is_safe_python_file():
                     return False
         return True
 
@@ -97,7 +100,7 @@ class PluginExtractor:
 
         try:
             # check if plugin is safe
-            if not self.__is_safe_plugin(tmp_folder_to):
+            if not self._is_safe_plugin(tmp_folder_to):
                 raise ValueError("Plugin contains unsafe Python files")
 
             # proceed with installation if checks pass
