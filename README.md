@@ -55,7 +55,7 @@ This version is designed to be multi-tenant, meaning that it can manage multiple
   - **in case of the HTTP API endpoints, use the `agent_id` key into the request headers or as a querystring parameter;**
   - **in case of the WebSocket API, use the `agent_id` into the URL, e.g., `/ws/{agent_id}`.**
 
-## RAG Customization**:
+## RAG Customization:
 The original version used a fixed RAG implementation, meaning that it could only use a specific vector database and chunking strategy.
 This version allows you to configure the RAG per chatbot, meaning that you can use your own vector database and chunking strategy.
 - **The current version supports multiple vector databases**, such as Qdrant, Pinecone, Weaviate, etc.
@@ -138,7 +138,8 @@ The Cat provides a set of hooks that can be used to customize the behavior of th
 triggered at specific points in the conversation, allowing you to modify the behavior of the AI agent or to add custom functionality.
 The list of available hooks is available in the [documentation](https://cheshire-cat-ai.github.io/docs/plugins/plugins/).
 The current version introduces also the following additional hooks:
-- Factories:
+
+### Factories:
   - `factory_allowed_file_managers`: to extend the list of allowed file managers
   - `factory_allowed_chunkers`: to extend the list of allowed chunkers
   - `factory_allowed_vector_databases`: to extend the list of allowed vector databases (so allowing to use your own vector database)
@@ -167,7 +168,7 @@ You can install an admin panel by using the [`cheshirecat-admin`](https://www.gi
 The admin panel is a separate project that allows you to manage the Cat and its settings, plugins, and chatbots.
 It is built with Streamlit and is designed to be easy to use and customizable.
 
-Moreover, a suitable widget for the current fork is available at [my Github account](https://cheshire-cat-ai.github.io/docs/plugins/plugins/)
+Moreover, a suitable widget for the current fork is available at [my Github account](https://github.com/matteocacciola/cheshirecat-widget-vue)
 to chat the Cat.
 
 # Best practices
@@ -178,11 +179,11 @@ When implementing custom endpoints, you can use the `@endpoint` decorator to cre
 [documentation](https://cheshire-cat-ai.github.io/docs/plugins/endpoints/) for more information.
 
 > [!IMPORTANT]
-> **Each endpoint implemented for chatbots must use the `check_permissions` method to authenticate**. See for instance this
-[`endpoint`](https://github.com/matteocacciola/cheshirecat-core/blob/main/core/tests/mocks/mock_plugin/mock_endpoint.py#L30).
+> **Each endpoint implemented for chatbots must use the `check_permissions` method to authenticate**. See this
+[`example`](https://github.com/matteocacciola/cheshirecat-core/blob/main/core/tests/mocks/mock_plugin/mock_endpoint.py#L30).
 > 
-> **Each endpoint implemented at a system level must use the `check_admin_permissions` method to authenticate**. See for instance this
-[`endpoint`](https://github.com/matteocacciola/cheshirecat-core/blob/main/core/tests/mocks/mock_plugin/mock_endpoint.py#L35).
+> **Each endpoint implemented at a system level must use the `check_admin_permissions` method to authenticate**. See this
+[`example`](https://github.com/matteocacciola/cheshirecat-core/blob/main/core/tests/mocks/mock_plugin/mock_endpoint.py#L35).
 
 ## Minimal plugin example
 
@@ -272,8 +273,8 @@ class PizzaForm(CatForm):
 **For your PHP based projects**, I developed a [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk) that allows you to
 easily interact with the Cat. Please, refer to the [SDK documentation](https://www.github.com/matteocacciola/cheshirecat-php-sdk/blob/master/README.md) for more information.
 
-**For your Node.js based projects**, I developed a [Node.js SDK](https://www.github.com/matteocacciola/cheshirecat-nodejs-sdk) that allows you to
-easily interact with the Cat. Please, refer to the [SDK documentation](https://www.github.com/matteocacciola/cheshirecat-nodejs-sdk/blob/master/README.md) for more information.
+**For your Node.js / React.js / Vue.js based projects**, I developed a [Typescript library](https://www.github.com/matteocacciola/cheshirecat-nodejs-sdk) that allows you to
+easily interact with the Cat. Please, refer to the [library documentation](https://www.github.com/matteocacciola/cheshirecat-nodejs-sdk/blob/master/README.md) for more information.
 
 List of resources:
 - [Official Documentation](https://cheshire-cat-ai.github.io/docs/)
@@ -289,7 +290,7 @@ List of resources:
 All contributions are welcome! Fork the project, create a branch, and make your changes.
 Then, follow the [contribution guidelines](CONTRIBUTING.md) to submit your pull request.
 
-If you like this project, give it a star ⭐! It is very important to have your support. Thanks again!🙏
+If you like this fork, give it a star ⭐! It is very important to have your support. Thanks again!🙏
 
 # License and trademark
 
