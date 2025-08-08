@@ -46,16 +46,17 @@ class DumbEmbedder(Embeddings):
 class CustomOpenAIEmbeddings(Embeddings):
     """Use LLAMA2 as embedder by calling a self-hosted lama-cpp-python instance."""
 
-    def __init__(self, url):
+    def __init__(self, url, model):
         self.url = os.path.join(url, "v1/embeddings")
+        self.model = model
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        ret = httpx.post(self.url, data={"input": texts}, timeout=None)
+        ret = httpx.post(self.url, data={"model": self.model , "input": texts}, timeout=None)
         ret.raise_for_status()
         return [e["embedding"] for e in ret.json()["data"]]
 
     def embed_query(self, text: str) -> List[float]:
-        ret = httpx.post(self.url, data={"input": text}, timeout=None)
+        ret = httpx.post(self.url, data={"model": self.model , "input": text}, timeout=None)
         ret.raise_for_status()
         return ret.json()["data"][0]["embedding"]
 

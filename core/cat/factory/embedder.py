@@ -235,7 +235,6 @@ class EmbedderOllamaConfig(EmbedderSettings):
             "humanReadableName": "Ollama embedding models",
             "description": "Configuration for Ollama embeddings API",
             "link": "",
-            "model": "mxbai-embed-large",
         }
     )
 
