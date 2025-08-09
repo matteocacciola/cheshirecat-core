@@ -2,7 +2,7 @@ UID := $(shell id -u)
 GID := $(shell id -g)
 PWD = $(shell pwd)
 
-LOCAL_DIR = $(PWD)/core/venv/bin
+LOCAL_DIR = $(PWD)/venv/bin
 PYTHON = $(LOCAL_DIR)/python
 PYTHON3 = python3.10
 PIP_SYNC = $(PYTHON) -m piptools sync --python-executable $(PYTHON)
@@ -44,14 +44,13 @@ test:  ## Run tests
 	docker exec cheshire_cat_core python -m pytest --color=yes -vvv -W ignore ${args}
 
 sync-requirements: ## Update the local virtual environment with the latest requirements.
-	@cd core && $(PYTHON) -m pip install --upgrade pip-tools pip wheel
-	@cd core && $(PIP_SYNC) requirements.txt
-	@cd core && $(PYTHON) -m pip install -r requirements.txt
-	@cd ..
+	$(PYTHON) -m pip install --upgrade pip-tools pip wheel
+	$(PIP_SYNC) requirements.txt
+	$(PYTHON) -m pip install -r requirements.txt
 
 compile-requirements: ## Compile requirements for the local virtual environment.
-	@cd core && $(PYTHON) -m pip install --upgrade pip-tools pip wheel
-	@cd core && $(PIP_COMPILE) --no-upgrade --output-file requirements.txt pyproject.toml
+	$(PYTHON) -m pip install --upgrade pip-tools pip wheel
+	$(PIP_COMPILE) --no-upgrade --output-file requirements.txt pyproject.toml
 
 update-requirements: ## Compile requirements for the local virtual environment.
-	@cd core && $(PIP_COMPILE) --upgrade --output-file requirements.txt pyproject.toml
+	$(PIP_COMPILE) --upgrade --output-file requirements.txt pyproject.toml

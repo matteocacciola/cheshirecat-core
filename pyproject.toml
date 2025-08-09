@@ -1,0 +1,93 @@
+[project]
+name = "Cheshire-Cat"
+description = "Production ready AI assistant framework"
+version = "2.4.1"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Matteo Cacciola" },
+    { name = "Piero Savastano" },
+    { name = "Cheshire Cat AI Contributors" },
+]
+dependencies = [
+    "aiofiles",
+    "APScheduler",
+    "autopep8",
+    "azure-storage-blob",
+    "bcrypt",
+    "beautifulsoup4",
+    "boto3",
+    "cohere==5.14.2",
+    "fastapi",
+    "fastembed",
+    "google-cloud-storage",
+    "gunicorn",
+    "httpx",
+    "huggingface-hub",
+    "langchain",
+    "langchain-anthropic",
+    "langchain-cohere",
+    "langchain-google-genai",
+    "langchain-groq",
+    "langchain-litellm",
+    "langchain-mistralai",
+    "langchain-ollama",
+    "langchain-openai",
+    "langchain-voyageai",
+    "loguru",
+    "pandas",
+    "pdfminer.six",
+    "perflint",
+    "pika",
+    "pydantic",
+    "PyJWT",
+    "pylint",
+    "pylint-actions",
+    "pymupdf",
+    "pytest",
+    "pytest-asyncio",
+    "python-multipart",
+    "python-slugify",
+    "pytube",
+    "qdrant_client",
+    "rapidfuzz",
+    "redis",
+    "ruff",
+    "scalar-fastapi",
+    "scikit-learn",
+    "sentence-transformers",
+    "spacy",
+    "text_generation",
+    "tiktoken",
+    "tomli",
+    "torch==2.4.1",
+    "unstructured",
+    "uvicorn[standard]",
+    "websockets",
+    "youtube-transcript-api",
+]
+
+[tool.coverage.run]
+source = ["src/cat"]
+
+[tool.pylint]
+max-line-length = 180
+disable = [
+    "C0301",
+    "C0103",
+    "C0114",
+    "E1120",
+    "E0401",
+    "C0115",
+    "C0116",
+    "E1101",
+    "R0801",
+    "C0202",
+    "W0406",
+    "W1514",
+    "W0201",
+    "W0511",
+]
+
+[tool.pylint.main]
+load-plugins = "pylint_actions, perflint"
