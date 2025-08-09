@@ -113,7 +113,7 @@ async def recall_memory_points_from_text(
             metadata.pop("source", None)
         points = await ccat.vector_memory_handler.recall_memories_from_embedding(
             collection_name=str(c),
-            query_vectors={ContentType.TEXT: query_embedding},
+            embedding={ContentType.TEXT: query_embedding},
             k=k,
             metadata=metadata,
         )

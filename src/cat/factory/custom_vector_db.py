@@ -28,6 +28,7 @@ from qdrant_client.http.models import (
     SearchParams,
     QuantizationSearchParams,
     PointStruct as QdrantPointStruct,
+    Prefetch,
 )
 
 from cat.log import log
@@ -213,7 +214,7 @@ class BaseVectorDatabaseHandler(ABC):
     async def recall_memories_from_embedding(
         self,
         collection_name: str,
-        query_vectors: Dict[ContentType, List[float]],
+        embedding: Dict[ContentType, List[float]],
         metadata: Dict | None = None,
         k: int | None = 5,
         threshold: float | None = None,
@@ -230,7 +231,7 @@ class BaseVectorDatabaseHandler(ABC):
 
         Args:
             collection_name: Name of the collection to search in.
-            query_vectors: Embedding vector to search for, keyed by ContentType.
+            embedding: Embedding vector to search for, keyed by ContentType.
             metadata: Dictionary containing metadata filter.
             k: Number of memories to retrieve.
             threshold: Similarity threshold.
@@ -636,8 +637,9 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         if not ids:
             ids = [uuid.uuid4().hex for _ in range(len(payloads))]
 
-        if len(ids) != len(payloads) or len(ids) != len(vectors):
-            raise ValueError("ids, payloads and vectors must have the same length")
+        for content_type, vector_list in vectors.items():
+            if len(ids) != len(payloads) or len(ids) != len(vector_list):
+                raise ValueError(f"ids, payloads and vectors must have the same length for content type {content_type}")
 
         payloads = [{**p, **{"tenant_id": self.agent_id}} for p in payloads]
         points = Batch(ids=ids, payloads=payloads, vectors={str(k): v for k, v in vectors.items()})
@@ -665,38 +667,77 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             operation_id=res.operation_id,
         )
 
-    # retrieve similar memories from embedding
     async def recall_memories_from_embedding(
         self,
         collection_name: str,
-        query_vectors: Dict[ContentType, List[float]],
+        embedding: Dict[ContentType, List[float]],
         metadata: Dict | None = None,
         k: int | None = 5,
         threshold: float | None = None,
     ) -> List[ScoredPoint]:
         conditions = self._build_metadata_conditions(metadata=metadata)
 
-        embedding = [v for v in query_vectors.values()]
+        # Build prefetch queries for each vector type
+        prefetch_queries = []
+        primary_query = None
+        primary_using = None
 
-        # retrieve memories
-        query_response = await self._client.query_points(
-            collection_name=collection_name,
-            query=embedding,
-            query_filter=Filter(must=conditions),
-            with_payload=True,
-            with_vectors=True,
-            limit=k,
-            score_threshold=threshold,
-            search_params=SearchParams(
-                quantization=QuantizationSearchParams(
-                    ignore=False,
-                    rescore=True,
-                    oversampling=2.0,  # Available as of v1.3.0
+        for content_type, vector in embedding.items():
+            vector_name = str(content_type)
+
+            if primary_query is None:  # Use first vector as primary
+                primary_query = vector
+                primary_using = vector_name
+            else:  # Add others as prefetch
+                prefetch_queries.append(
+                    Prefetch(
+                        query=vector,
+                        using=vector_name,
+                        limit=k * 2,  # Get more candidates for reranking
+                        filter=Filter(must=conditions),
+                    )
                 )
-            ),
-        )
 
-        # convert Qdrant points to a structure containing langchain.Document and its information
+        # Perform the hybrid search
+        if prefetch_queries:
+            query_response = await self._client.query_points(
+                collection_name=collection_name,
+                prefetch=prefetch_queries,
+                query=primary_query,
+                using=primary_using,
+                query_filter=Filter(must=conditions),
+                with_payload=True,
+                with_vectors=True,
+                limit=k,
+                score_threshold=threshold,
+                search_params=SearchParams(
+                    quantization=QuantizationSearchParams(
+                        ignore=False,
+                        rescore=True,
+                        oversampling=2.0,
+                    )
+                ),
+            )
+        else:
+            # Single vector search
+            query_response = await self._client.query_points(
+                collection_name=collection_name,
+                query=primary_query,
+                using=primary_using,
+                query_filter=Filter(must=conditions),
+                with_payload=True,
+                with_vectors=True,
+                limit=k,
+                score_threshold=threshold,
+                search_params=SearchParams(
+                    quantization=QuantizationSearchParams(
+                        ignore=False,
+                        rescore=True,
+                        oversampling=2.0,
+                    )
+                ),
+            )
+
         return [ScoredPoint(**point.model_dump()) for point in query_response.points]
 
     async def recall_all_memories(self, collection_name: str) -> List[Record]:

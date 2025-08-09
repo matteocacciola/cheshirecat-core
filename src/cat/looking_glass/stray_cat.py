@@ -250,13 +250,14 @@ class StrayCat:
         if k:
             points = await cheshire_cat.vector_memory_handler.recall_memories_from_embedding(
                 collection_name=collection_name,
-                query_vectors={ContentType.TEXT: query},
+                embedding={ContentType.TEXT: query},
                 metadata=metadata,
                 k=k,
                 threshold=threshold,
             )
         else:
             points = await cheshire_cat.vector_memory_handler.recall_all_memories(collection_name)
+
 
         memories = [to_document_recall(p) for p in points]
 

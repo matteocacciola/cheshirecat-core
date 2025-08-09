@@ -68,7 +68,7 @@ dependencies = [
 ]
 
 [tool.coverage.run]
-source = ["cat"]
+source = ["src/cat"]
 
 [tool.pylint]
 max-line-length = 180
