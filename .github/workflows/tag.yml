@@ -23,7 +23,7 @@ jobs:
         uses: SebRollen/toml-action@v1.0.2
         id: read_toml
         with:
-          file: 'core/pyproject.toml'
+          file: 'pyproject.toml'
           field: 'project.version'
       - name: Publish tag
         uses: richardsimko/update-tag@v1
@@ -78,7 +78,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-         context: core/
+         context: src/
          push: true
          tags: ghcr.io/${{ github.repository }}:latest , ghcr.io/${{ github.repository }}:${{ needs.tag.outputs.tag }}
          platforms: linux/amd64,linux/arm64

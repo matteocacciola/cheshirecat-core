@@ -24,7 +24,7 @@ RUN pip install -U pip && \
 FROM libraries AS build
 
 ### COPY CAT CODE INSIDE THE CONTAINER (so it can be run standalone) ###
-COPY ./cat /app/cat
+COPY ./src/cat /app/cat
 
 ### INSTALL PYTHON DEPENDENCIES (Plugins) ###
 COPY ./install_plugin_dependencies.py /app/install_plugin_dependencies.py
