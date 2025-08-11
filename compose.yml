@@ -29,6 +29,8 @@ services:
     volumes:
       - ./src:/app
       - ./tests:/app/tests
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./requirements.txt:/app/requirements.txt
     command:
       - python
       - "-m"
