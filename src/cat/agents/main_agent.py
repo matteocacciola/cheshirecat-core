@@ -6,7 +6,7 @@ from cat.agents import AgentInput, AgentOutput, BaseAgent
 from cat.agents.memory_agent import MemoryAgent
 from cat.agents.procedures_agent import ProceduresAgent
 from cat.looking_glass import prompts
-from cat.memory.utils import DocumentRecall
+from cat.memory.utils import DocumentRecall, ContentType
 from cat.utils import verbal_timedelta, restore_original_model
 from cat.env import get_env
 
@@ -122,14 +122,15 @@ class MainAgent(BaseAgent):
                 String of retrieved context from the episodic memory.
         """
         # convert docs to simple text
-        memory_texts = [m.document.page_content.replace("\n", ". ") for m in memory_docs]
+        memory_texts = [m[ContentType.TEXT].document.page_content.replace("\n", ". ") for m in memory_docs]
 
         # add time information (e.g. "2 days ago")
         # Get Time information in the Document metadata
         # Get Current Time - Time when memory was stored
         # Convert and Save timestamps to Verbal (e.g. "2 days ago")
         memory_timestamps = [
-            f" ({verbal_timedelta(timedelta(seconds=(time.time() - m.document.metadata['when'])))})" for m in memory_docs
+            f" ({verbal_timedelta(timedelta(seconds=(time.time() - m[ContentType.TEXT].document.metadata['when'])))})"
+            for m in memory_docs
         ]
 
         # Join Document text content with related temporal information
@@ -143,7 +144,7 @@ class MainAgent(BaseAgent):
             + memories_separator.join(memory_texts)
         )
 
-        # if no data is retrieved from memory don't erite anithing in the prompt
+        # if no data is retrieved from memory, don't write anything in the prompt
         if len(memory_texts) == 0:
             memory_content = ""
 
@@ -161,15 +162,15 @@ class MainAgent(BaseAgent):
                 String of retrieved context from the declarative memory.
         """
         # convert docs to simple text
-        memory_texts = [m.document.page_content.replace("\n", ". ") for m in memory_docs]
+        memory_texts = [m[ContentType.TEXT].document.page_content.replace("\n", ". ") for m in memory_docs]
 
         # add source information (e.g. "extracted from file.txt")
         # Get and save the source of the memory
-        memory_sources = [f" (extracted from {m.document.metadata['source']})" for m in memory_docs]
+        memory_sources = [f" (extracted from {m[ContentType.TEXT].document.metadata['source']})" for m in memory_docs]
         # Join Document text content with related source information
         memory_texts = [a + b for a, b in zip(memory_texts, memory_sources)]
 
-        # if no data is retrieved from memory don't write anything in the prompt
+        # if no data is retrieved from memory, don't write anything in the prompt
         if len(memory_texts) == 0:
             return ""
 

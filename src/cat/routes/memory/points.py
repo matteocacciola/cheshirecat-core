@@ -14,7 +14,7 @@ from cat.routes.routes_utils import (
     memory_collection_is_accessible,
     create_dict_parser,
 )
-from cat.memory.utils import DocumentRecall, VectorMemoryCollectionTypes, UpdateResult, Record
+from cat.memory.utils import ContentType, DocumentRecall, VectorMemoryCollectionTypes, UpdateResult, Record
 
 router = APIRouter()
 
@@ -89,11 +89,12 @@ async def recall_memory_points_from_text(
     ```
     """
     def build_memory_dict(document_recall: DocumentRecall) -> Dict[str, Any]:
-        memory_dict = dict(document_recall.document)
+        doc = document_recall[ContentType.TEXT]
+        memory_dict = dict(doc.document)
         memory_dict.pop("lc_kwargs", None)  # langchain stuff, not needed
-        memory_dict["id"] = document_recall.id
-        memory_dict["score"] = float(document_recall.score) if document_recall.score else None
-        memory_dict["vector"] = document_recall.vector
+        memory_dict["id"] = doc.id
+        memory_dict["score"] = float(doc.score) if doc.score else None
+        memory_dict["vector"] = doc.vector
         return memory_dict
 
     async def get_memories(c: VectorMemoryCollectionTypes) -> List:
@@ -103,7 +104,10 @@ async def recall_memory_points_from_text(
         else:
             metadata.pop("source", None)
         return await ccat.vector_memory_handler.recall_memories_from_embedding(
-            str(c), query_embedding, k=k, metadata=metadata
+            collection_name=str(c),
+            query_vectors={ContentType.TEXT: query_embedding},
+            k=k,
+            metadata=metadata,
         )
 
     ccat = info.cheshire_cat

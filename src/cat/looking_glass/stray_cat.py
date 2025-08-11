@@ -19,7 +19,7 @@ from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter.tweedledee import Tweedledee
-from cat.memory.utils import DocumentRecall, VectorMemoryCollectionTypes
+from cat.memory.utils import ContentType, DocumentRecall, MultimodalContent, VectorMemoryCollectionTypes
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
 from cat.services.websocket_manager import WebsocketManager
@@ -69,10 +69,14 @@ class StrayCat:
             log.error(f"Runtime error occurred while sending data: {e}")
 
     def _build_why(self, agent_output: AgentOutput | None = None) -> MessageWhy:
-        memory = {str(c): [dict(d.document) | {
-            "score": float(d.score) if d.score else None,
-            "id": d.id,
-        } for d in getattr(self.working_memory, f"{c}_memories")] for c in VectorMemoryCollectionTypes}
+        memory = {str(c): [
+            dict(d[t].document) | {
+                "score": float(d[t].score) if d[t].score else None,
+                "id": d[t].id,
+            }
+            for d in getattr(self.working_memory, f"{c}_memories")
+            for t in ContentType if t in d
+        ] for c in VectorMemoryCollectionTypes}
 
         # why this response?
         return MessageWhy(
@@ -233,7 +237,11 @@ class StrayCat:
 
         if k:
             memories = await cheshire_cat.vector_memory_handler.recall_memories_from_embedding(
-                collection_name, query, metadata, k, threshold
+                collection_name=collection_name,
+                query_vectors={ContentType.TEXT: query},
+                metadata=metadata,
+                k=k,
+                threshold=threshold,
             )
         else:
             memories = await cheshire_cat.vector_memory_handler.recall_all_memories(collection_name)
@@ -447,10 +455,10 @@ class StrayCat:
             cheshire_cat = self.cheshire_cat
             user_message_embedding = cheshire_cat.embedder.embed_documents([self.working_memory.user_message.text])
             await cheshire_cat.vector_memory_handler.add_point(
-                str(VectorMemoryCollectionTypes.EPISODIC),
-                doc.page_content,
-                user_message_embedding[0],
-                doc.metadata,
+                collection_name=str(VectorMemoryCollectionTypes.EPISODIC),
+                content=MultimodalContent(text=doc.page_content),
+                vectors={ContentType.TEXT: user_message_embedding[0]},
+                metadata=doc.metadata,
             )
 
             # update conversation history (AI turn)
@@ -531,6 +539,7 @@ Allowed classes are:
 {labels_list}{examples_list}
 
 Just output the class, nothing else."""
+
         response = self.llm(prompt)
 
         # find the closest match and its score with levenshtein distance
