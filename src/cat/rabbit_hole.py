@@ -3,19 +3,19 @@ import tempfile
 import time
 import json
 import mimetypes
+from collections import defaultdict
 import httpx
 from typing import List, Dict, Tuple
 from urllib.parse import urlparse
 from urllib.error import HTTPError
 from starlette.datastructures import UploadFile
-from langchain_core.documents import Document
+from langchain_core.documents.base import Document, Blob
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
-from langchain.document_loaders.blob_loaders.schema import Blob
 
 from cat.env import get_env_bool
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.memory.utils import VectorMemoryCollectionTypes, PointStruct
+from cat.memory.utils import VectorMemoryCollectionTypes, PointStruct, ContentType, MultimodalContent
 from cat.utils import singleton
 
 
@@ -58,21 +58,21 @@ class RabbitHole:
 
         # Store data to upload the memories in batch
         ids = [m["id"] for m in declarative_memories]
-        payloads = [
-            {"page_content": m["page_content"], "metadata": m["metadata"]}
-            for m in declarative_memories
-        ]
-        vectors = [m["vector"] for m in declarative_memories]
+        payloads = [{"page_content": m["page_content"], "metadata": m["metadata"]} for m in declarative_memories]
+        vectors = defaultdict(list)
+        for m in declarative_memories:
+            for k, v in m["vector"].items():
+                vectors[ContentType(k)].append(v)
 
         log.info(f"Agent id: {ccat.id}. Preparing to load {len(vectors)} vector memories")
 
         # Check embedding size is correct
-        embedder_size = ccat.lizard.embedder_size.text
-        len_mismatch = [len(v) == embedder_size for v in vectors]
+        embedder_size = ccat.lizard.embedder_size
+        len_mismatch = [len(v_inner) == getattr(embedder_size, str(k)) for k, v in vectors.items() for v_inner in v]
 
         if not any(len_mismatch):
             raise Exception(
-                f"Embedding size mismatch: vectors length should be {embedder_size}"
+                f"Embedding size mismatch: lengths of vectors should be {embedder_size}"
             )
 
         # Upsert memories in batch mode
@@ -117,7 +117,7 @@ class RabbitHole:
         self, stray: "StrayCat", file: str | UploadFile
     ) -> Tuple[bytes, str | None, List[Document]]:
         """
-        Load and convert files to Langchain `Document`.
+        Load and convert files to a list of Langchain `Document`.
 
         This method takes a file either from a Python script, from the `/rabbithole/` or `/rabbithole/web` endpoints.
         Hence, it loads it in memory and splits it in overlapped chunks of text.
@@ -131,7 +131,7 @@ class RabbitHole:
 
         Returns:
             (bytes, content_type, docs): Tuple[bytes, List[Document]]
-                The file bytes, the content type and the list of Langchain `Document` of chunked text.
+                The file bytes, the content type and the list of Langchain `Document` of chunked content.
 
         Notes
         -----
@@ -276,10 +276,10 @@ class RabbitHole:
             if doc.page_content != "":
                 doc_embedding = embedder.embed_documents([doc.page_content])
                 if (stored_point := await ccat.vector_memory_handler.add_point(
-                    str(VectorMemoryCollectionTypes.DECLARATIVE),
-                    doc.page_content,
-                    doc_embedding[0],
-                    doc.metadata,
+                    collection_name=str(VectorMemoryCollectionTypes.DECLARATIVE),
+                    content=MultimodalContent(text=doc.page_content),
+                    vectors={ContentType.TEXT: doc_embedding[0]},
+                    metadata=doc.metadata,
                 )) is not None:
                     stored_points.append(stored_point)
 
