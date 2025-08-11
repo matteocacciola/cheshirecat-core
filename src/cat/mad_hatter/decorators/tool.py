@@ -67,7 +67,6 @@ def tool(
                 \"\"\"Searches the API for the query.\"\"\"
                 return "https://api.com/search?q=" + query
     """
-
     examples = examples or []
 
     def _make_with_name(tool_name: str) -> Callable:

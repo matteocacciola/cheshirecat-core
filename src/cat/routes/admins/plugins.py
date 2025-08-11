@@ -46,7 +46,6 @@ async def install_plugin(
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.WRITE),
 ) -> InstallPluginResponse:
     """Install a new plugin from a zip file"""
-
     plugin_archive_path = await load_uploaded_file(file, get_allowed_plugins_mime_types())
 
     try:
@@ -67,7 +66,6 @@ async def install_plugin_from_registry(
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.WRITE),
 ) -> InstallPluginFromRegistryResponse:
     """Install a new plugin from registry"""
-
     # download zip from registry
     try:
         tmp_plugin_path = await registry_download_plugin(payload["url"])
@@ -83,7 +81,6 @@ async def get_lizard_plugins_settings(
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.READ),
 ) -> PluginsSettingsResponse:
     """Returns the default settings of all the plugins"""
-
     return get_plugins_settings(lizard.plugin_manager, lizard.config_key)
 
 
@@ -93,7 +90,6 @@ async def get_lizard_plugin_settings(
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Returns the default settings of a specific plugin"""
-
     return get_plugin_settings(lizard.plugin_manager, plugin_id, lizard.config_key)
 
 
@@ -103,7 +99,6 @@ async def get_plugin_details(
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.READ),
 ) -> GetPluginDetailsResponse:
     """Returns information on a single plugin, at a system level"""
-
     plugin_id = slugify(plugin_id, separator="_")
 
     if not lizard.plugin_manager.plugin_exists(plugin_id):
@@ -132,7 +127,6 @@ async def uninstall_plugin(
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.DELETE),
 ) -> DeletePluginResponse:
     """Physically remove plugin at a system level."""
-
     plugin_id = slugify(plugin_id, separator="_")
 
     if not lizard.plugin_manager.plugin_exists(plugin_id):

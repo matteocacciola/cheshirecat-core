@@ -31,7 +31,6 @@ class CatForm:  # base model of forms
         Args:
             cat: StrayCat instance
         """
-
         self._state = CatFormState.INCOMPLETE
         self._model: Dict = {}
 

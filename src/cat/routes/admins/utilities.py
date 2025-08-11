@@ -33,7 +33,6 @@ async def factory_reset(
     """
     Factory reset the entire application. This will delete all settings, memories, and metadata.
     """
-
     # remove memories
     cheshire_cats_ids = crud.get_agents_main_keys()
     deleted_memories = False
@@ -86,7 +85,6 @@ async def get_agents() -> List[str]:
     """
     Get all agents.
     """
-
     try:
         return sorted(crud.get_agents_main_keys())
     except Exception as e:
@@ -102,7 +100,6 @@ async def agent_create(
     """
     Reset a single agent. This will delete all settings, memories, and metadata, for the agent.
     """
-
     try:
         agent_id = extract_agent_id_from_request(request)
         await lizard.create_cheshire_cat(agent_id)
@@ -122,7 +119,6 @@ async def agent_destroy(
     Destroy a single agent. This will completely delete all settings, memories, and metadata, for the agent.
     This is a permanent action and cannot be undone.
     """
-
     agent_id = extract_agent_id_from_request(request)
     ccat = lizard.get_cheshire_cat_from_db(agent_id)
     if not ccat:
@@ -152,7 +148,6 @@ async def agent_reset(
     """
     Reset a single agent. This will delete all settings, memories, and metadata, for the agent.
     """
-
     result = await agent_destroy(request, lizard)
 
     agent_id = extract_agent_id_from_request(request)

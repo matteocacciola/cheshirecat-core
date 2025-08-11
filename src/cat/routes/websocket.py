@@ -18,7 +18,6 @@ async def websocket_endpoint(
     """
     Endpoint to handle incoming WebSocket connections by user id, process messages, and check for messages.
     """
-
     # Extract the StrayCat object from the DependingCats object.
     stray = StrayCat(user_data=info.user, agent_id=info.cheshire_cat.id)
 

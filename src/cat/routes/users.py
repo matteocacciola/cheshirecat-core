@@ -12,7 +12,7 @@ router = APIRouter()
 
 
 class UserBase(BaseModel):
-    username: str = Field(min_length=2)
+    username: str = Field(min_length=3)
     permissions: Dict[str, List[str]] = Field(default_factory=get_base_permissions)
 
     @field_validator("permissions")
@@ -40,8 +40,8 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(UserBase):
-    username: str = Field(default=None, min_length=2)
-    password: str = Field(default=None, min_length=4)
+    username: str = Field(default=None, min_length=3)
+    password: str = Field(default=None, min_length=5)
     permissions: Dict[str, List[str]] = None
     model_config = ConfigDict(extra="forbid")
 

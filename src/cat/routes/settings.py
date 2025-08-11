@@ -29,7 +29,6 @@ async def get_settings(
     info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.LIST),
 ) -> GetSettingsResponse:
     """Get the entire list of settings available in the database"""
-
     settings = crud_settings.get_settings(info.cheshire_cat.id, search=search)
 
     return GetSettingsResponse(settings=settings)
@@ -41,7 +40,6 @@ async def create_setting(
     info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.WRITE),
 ) -> SettingResponse:
     """Create a new setting in the database"""
-
     # complete the payload with setting_id and updated_at
     payload = models.Setting(**payload.model_dump())
 
@@ -57,7 +55,6 @@ async def get_setting(
     info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.READ),
 ) -> SettingResponse:
     """Get the specific setting from the database"""
-
     setting = crud_settings.get_setting_by_id(info.cheshire_cat.id, setting_id)
     if not setting:
         raise CustomNotFoundException(f"No setting with this id: {setting_id}")
@@ -71,7 +68,6 @@ async def update_setting(
     info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.EDIT),
 ) -> SettingResponse:
     """Update a specific setting in the database if it exists"""
-
     agent_id = info.cheshire_cat.id
 
     # does the setting exist?
@@ -84,7 +80,7 @@ async def update_setting(
     payload.setting_id = setting_id  # force this to be the setting_id
 
     # save to DB
-    updated_setting = crud_settings.update_setting_by_id(agent_id, payload)
+    updated_setting = crud_settings.upsert_setting_by_id(agent_id, payload)
 
     return SettingResponse(setting=updated_setting)
 
@@ -95,7 +91,6 @@ async def delete_setting(
     info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.DELETE),
 ) -> DeleteSettingResponse:
     """Delete a specific setting in the database"""
-
     agent_id = info.cheshire_cat.id
 
     # does the setting exist?

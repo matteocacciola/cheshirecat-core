@@ -92,7 +92,6 @@ class MetaEnum(EnumMeta):
     if el not in Elements:
         raise ValueError("invalid element")
     """
-
     def __contains__(cls, item):
         try:
             cls(item)
@@ -109,6 +108,9 @@ class Enum(BaseEnum, metaclass=MetaEnum):
         if isinstance(other, Enum):
             return self.value == other.value
         return self.value == other
+
+    def __hash__(self):
+        return hash(self.value)
 
 
 def to_camel_case(text: str) -> str:
@@ -154,7 +156,6 @@ def verbal_timedelta(td: timedelta) -> str:
     >>> print(verbal_timedelta(timedelta(days=2, weeks=1))
     'One week and two days ago'
     """
-
     if td.days != 0:
         abs_days = abs(td.days)
         abs_delta = "{} weeks".format(td.days // 7) if abs_days > 7 else "{} days".format(td.days)
@@ -249,7 +250,6 @@ def parse_json(json_string: str, pydantic_model: BaseModel = None) -> Dict:
 
 def match_prompt_variables(prompt_variables: Dict, prompt_template: str) -> Tuple[Dict, str]:
     """Ensure prompt variables and prompt placeholders map, so there are no issues on mismatches"""
-
     tmp_prompt = PromptTemplate.from_template(
         template=prompt_template
     )
@@ -303,7 +303,6 @@ def get_caller_info(skip: int | None = 2, return_short: bool = True, return_stri
 
     None is returned if skipped levels exceed stack height.
     """
-
     stack = inspect.stack()
     start = 0 + skip
     if len(stack) < start + 1:

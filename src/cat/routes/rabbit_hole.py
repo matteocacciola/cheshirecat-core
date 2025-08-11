@@ -92,7 +92,6 @@ async def upload_file(
         )
     ```
     """
-
     lizard: BillTheLizard = request.app.state.lizard
     ccat = info.cheshire_cat
 
@@ -214,7 +213,6 @@ async def upload_url(
 ) -> UploadUrlResponse:
     """Upload an url. Website content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory."""
-
     # check that URL is valid
     try:
         # Send a HEAD request to the specified URL
@@ -246,7 +244,6 @@ async def upload_memory(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
 ) -> UploadSingleFileResponse:
     """Upload a memory json file to the cat memory"""
-
     # Get file mime type
     content_type, _ = mimetypes.guess_type(file.filename)
     log.info(f"Uploading {content_type} down the rabbit hole")
@@ -271,7 +268,6 @@ async def get_allowed_mimetypes(
     info: AuthorizedInfo = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
 ) -> AllowedMimeTypesResponse:
     """Retrieve the allowed mimetypes that can be ingested by the Rabbit Hole"""
-
     return AllowedMimeTypesResponse(allowed=list(info.cheshire_cat.file_handlers.keys()))
 
 
@@ -280,7 +276,6 @@ async def get_source_urls(
     info: AuthorizedInfo = check_permissions(AuthResource.UPLOAD, AuthPermission.READ),
 ) -> List[str]:
     """Retrieve the list of source URLs that have been uploaded to the Rabbit Hole"""
-
     # Get all points
     memory_points, _ = await info.cheshire_cat.vector_memory_handler.get_all_points_from_web(
         str(VectorMemoryCollectionTypes.DECLARATIVE)

@@ -14,7 +14,6 @@ from cat.db.database import DEFAULT_AGENT_KEY
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
 from cat.factory.base_factory import ReplacedNLPConfig, BaseFactory
-from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.white_rabbit import WhiteRabbit
@@ -43,7 +42,6 @@ class UpsertSettingResponse(ReplacedNLPConfig):
     @model_serializer
     def serialize_model(self) -> Dict[str, Any]:
         """Custom serializer that will be used by FastAPI"""
-
         value = self.value.copy()  # Create a copy to avoid modifying the original value
         value = {
             k: "********" if isinstance(v, str) and any(suffix in k for suffix in ["_key", "_secret"]) else v
@@ -62,7 +60,6 @@ class GetSettingResponse(UpsertSettingResponse):
     @model_serializer
     def serialize_model(self) -> Dict[str, Any]:
         """Custom serializer that will be used by FastAPI"""
-
         serialized = super().serialize_model()
         serialized["scheme"] = self.scheme
         return serialized
@@ -121,7 +118,6 @@ async def auth_token(credentials: UserCredentials, agent_id: str):
     """Endpoint called from client to get a JWT from local identity provider.
     This endpoint receives username and password as form-data, validates credentials and issues a JWT.
     """
-
     # use username and password to authenticate user from local identity provider and get token
     access_token = issue_jwt(credentials.username, credentials.password, key_id=agent_id)
 
@@ -144,7 +140,6 @@ async def get_plugins(plugin_manager: MadHatter, query: str | None = None) -> Pl
     Returns:
         The list of plugins
     """
-
     def create_manifest(plugin: Plugin) -> Dict[str, Any]:
         # get manifest
         manifest = deepcopy(plugin.manifest)  # we make a copy to avoid modifying the plugin obj
@@ -189,7 +184,6 @@ async def get_available_plugins(
     # tag: str = None, to be activated in case of more granular search
 ) -> GetAvailablePluginsResponse:
     """List available plugins"""
-
     plugins = await get_plugins(plugin_manager, query)
 
     return GetAvailablePluginsResponse(
@@ -226,7 +220,6 @@ def get_plugins_settings(plugin_manager: MadHatter, agent_id: str) -> PluginsSet
 
 def get_plugin_settings(plugin_manager: MadHatter, plugin_id: str, agent_id: str) -> GetSettingResponse:
     """Returns the settings of a specific plugin"""
-
     if not plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 

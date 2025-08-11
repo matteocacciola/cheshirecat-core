@@ -21,7 +21,6 @@ async def get_auth_handler_settings(
     info: AuthorizedInfo = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.LIST),
 ) -> GetSettingsResponse:
     """Get the list of the AuthHandlers"""
-
     ccat = info.cheshire_cat
     return get_factory_settings(ccat.id, AuthHandlerFactory(ccat.plugin_manager))
 
@@ -32,7 +31,6 @@ async def get_auth_handler_setting(
     info: AuthorizedInfo = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Get the settings of a specific AuthHandler"""
-
     ccat = info.cheshire_cat
     return get_factory_setting(ccat.id, auth_handler_name, AuthHandlerFactory(ccat.plugin_manager))
 
@@ -44,7 +42,6 @@ async def upsert_authenticator_setting(
     payload: Dict = Body(...),
 ) -> UpsertSettingResponse:
     """Upsert the settings of a specific AuthHandler"""
-
     ccat = info.cheshire_cat
     on_upsert_factory_setting(auth_handler_name, AuthHandlerFactory(ccat.plugin_manager))
 

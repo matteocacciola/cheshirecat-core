@@ -17,7 +17,6 @@ class Tweedledee(MadHatter):
     config_key: str
         The key to use to store the active plugins in the database settings. Default is DEFAULT_SYSTEM_KEY.
     """
-
     def __init__(self, agent_key: str):
         self.__agent_key = agent_key
 
@@ -34,7 +33,6 @@ class Tweedledee(MadHatter):
         Returns:
             bool: True if the endpoint exists, False otherwise.
         """
-
         for plugin in self.plugins.values():
             # Check if the plugin has an endpoint with the given path and methods
             for ep in plugin.endpoints:

@@ -15,7 +15,6 @@ class NewTokenHandler(BaseCallbackHandler):
         Args:
             stray: StrayCat instance
         """
-
         self.stray = stray
 
     async def on_llm_new_token(self, token: str, **kwargs) -> None:
@@ -26,14 +25,12 @@ class ModelInteractionHandler(BaseCallbackHandler):
     """
     Langchain callback handler for tracking model interactions.
     """
-
     def __init__(self, stray, source: str):
         """
         Args:
             stray: StrayCat instance
             source: Source of the model interaction
         """
-
         self.stray = stray
         self.stray.working_memory.model_interactions.append(
             LLMModelInteraction(

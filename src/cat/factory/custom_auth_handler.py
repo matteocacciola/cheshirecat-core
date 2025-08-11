@@ -17,7 +17,6 @@ class BaseAuthHandler(ABC):
     Methods `authorize_user_from_credential`
     MUST be implemented by subclasses.
     """
-
     # when there is no JWT, user id is passed via `user_id: xxx` header or via websocket path
     # with JWT, the user id is in the token ad has priority
     def authorize(
@@ -42,7 +41,6 @@ class BaseAuthHandler(ABC):
         Returns:
             An AuthUserInfo object if the user is authorized, None otherwise.
         """
-
         # get protocol from Starlette request
         protocol = request.scope.get("type")
 
@@ -79,7 +77,6 @@ class BaseAuthHandler(ABC):
         Returns:
             The token if it is found, None otherwise.
         """
-
         # will raise: NotImplementedError
         pass
 
@@ -95,7 +92,6 @@ class BaseAuthHandler(ABC):
         Returns:
             The token if it is found, None otherwise.
         """
-
         # will raise: NotImplementedError
         pass
 
@@ -112,7 +108,6 @@ class BaseAuthHandler(ABC):
         Returns:
             The user_id if it is found, None otherwise.
         """
-
         # will raise: NotImplementedError
         pass
 
@@ -129,7 +124,6 @@ class BaseAuthHandler(ABC):
         Returns:
             The user_id if it is found, None otherwise.
         """
-
         # will raise: NotImplementedError
         pass
 
@@ -153,7 +147,6 @@ class BaseAuthHandler(ABC):
         Returns:
             An AuthUserInfo object if the user is authorized, None otherwise.
         """
-
         # will raise: NotImplementedError
         pass
 
@@ -180,7 +173,6 @@ class BaseAuthHandler(ABC):
         Returns:
             An AuthUserInfo object if the user is authorized, None otherwise.
         """
-
         # will raise: NotImplementedError
         pass
 

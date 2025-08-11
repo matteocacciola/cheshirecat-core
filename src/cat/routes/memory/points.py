@@ -88,7 +88,6 @@ async def recall_memory_points_from_text(
     print(json)
     ```
     """
-
     def build_memory_dict(document_recall: DocumentRecall) -> Dict[str, Any]:
         memory_dict = dict(document_recall.document)
         memory_dict.pop("lc_kwargs", None)  # langchain stuff, not needed
@@ -136,7 +135,6 @@ async def create_memory_point(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
 ) -> MemoryPoint:
     """Create a point in memory"""
-
     memory_collection_is_accessible(collection_id)
 
     return await upsert_memory_point(collection_id, point, info)
@@ -184,7 +182,6 @@ async def edit_memory_point(
     print(json)
     ```
     """
-
     memory_collection_is_accessible(collection_id)
     await verify_memory_point_existence(info.cheshire_cat, collection_id, point_id)
 
@@ -198,7 +195,6 @@ async def delete_memory_point(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteMemoryPointResponse:
     """Delete a specific point in memory"""
-
     memory_collection_is_accessible(collection_id)
 
     await verify_memory_point_existence(info.cheshire_cat, collection_id, point_id)
@@ -216,7 +212,6 @@ async def delete_memory_points_by_metadata(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteMemoryPointsByMetadataResponse:
     """Delete points in memory by filter"""
-
     ccat = info.cheshire_cat
     memory_collection_is_accessible(collection_id)
 
@@ -300,7 +295,6 @@ async def get_points_in_collection(
             break
     ```
     """
-
     memory_collection_is_accessible(collection_id)
 
     # if offset is an empty string set to null

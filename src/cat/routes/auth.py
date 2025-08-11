@@ -19,7 +19,6 @@ async def agent_auth_token(request: Request, credentials: UserCredentials) -> JW
     """Endpoint called from client to get a JWT from local identity provider.
     This endpoint receives username and password as form-data, validates credentials and issues a JWT.
     """
-
     agent_id = extract_agent_id_from_request(request)
 
     return await fnc_auth_token(credentials, agent_id)

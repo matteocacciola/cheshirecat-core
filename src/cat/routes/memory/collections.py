@@ -29,7 +29,6 @@ async def get_collections(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> GetCollectionsResponse:
     """Get the list of available collections"""
-
     collections_metadata = [GetCollectionsItem(
         name=str(c),
         vectors_count=await info.cheshire_cat.vector_memory_handler.get_vectors_count(str(c))
@@ -44,7 +43,6 @@ async def destroy_all_collection_points(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> WipeCollectionsResponse:
     """Delete and create all collections"""
-
     ccat = info.cheshire_cat
 
     to_return = {
@@ -66,7 +64,6 @@ async def destroy_all_single_collection_points(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> WipeCollectionsResponse:
     """Delete and recreate a collection"""
-
     # check if collection exists
     if collection_id not in VectorMemoryCollectionTypes:
         raise CustomNotFoundException("Collection does not exist.")

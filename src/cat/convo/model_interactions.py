@@ -19,7 +19,6 @@ class ModelInteraction(BaseModel):
     started_at : float
         The timestamp when the interaction started. Defaults to the current time.
     """
-
     model_type: Literal["llm", "embedder"]
     source: str
     prompt: List[str]
@@ -48,7 +47,6 @@ class LLMModelInteraction(ModelInteraction):
     ended_at : float
         The timestamp when the interaction ended.
     """
-
     model_type: Literal["llm"] = Field(default="llm")
     reply: str
     output_tokens: int

@@ -28,7 +28,6 @@ class BaseFileManager(ABC):
     Base class for file storage managers. It defines the interface that all storage managers must implement. It is used
     to upload files and folders to a storage service.
     """
-
     def __init__(self):
         self._excluded_dirs = ["__pycache__"]
         self._excluded_files = [".gitignore", ".DS_Store", ".gitkeep", ".git", ".dockerignore"]
@@ -49,7 +48,6 @@ class BaseFileManager(ABC):
         Returns:
             The path of the file on the storage, None if the file has not been uploaded
         """
-
         remote_root_dir = os.path.join(self._root_dir, remote_root_dir) if remote_root_dir else self._root_dir
         destination_path = os.path.join(
             remote_root_dir, os.path.basename(file_path) if remote_filename is None else remote_filename
@@ -69,7 +67,6 @@ class BaseFileManager(ABC):
         Returns:
             The path of the file on the storage, None if the file has not been downloaded
         """
-
         file_path = os.path.join(self._root_dir, file_path)
         return self._download(file_path)
 
@@ -92,7 +89,6 @@ class BaseFileManager(ABC):
         Returns:
             The path of the file locally if the file has been downloaded, None otherwise
         """
-
         local_dir = os.path.join(self._root_dir, local_dir)
 
         local_path = os.path.join(local_dir, os.path.basename(file_path))
@@ -116,7 +112,6 @@ class BaseFileManager(ABC):
         Returns:
             True if the file has been removed, False otherwise
         """
-
         file_path = os.path.join(self._root_dir, file_path)
         return self._remove_file_from_storage(file_path)
 
@@ -132,7 +127,6 @@ class BaseFileManager(ABC):
         Returns:
             True if the storage has been removed, False otherwise
         """
-
         remote_root_dir = os.path.join(self._root_dir, remote_root_dir) if remote_root_dir else self._root_dir
         return self._remove_folder_from_storage(remote_root_dir)
 
@@ -150,7 +144,6 @@ class BaseFileManager(ABC):
         Returns:
             List of the files on the storage: path, size, last modified date
         """
-
         remote_root_dir = os.path.join(self._root_dir, remote_root_dir) if remote_root_dir else self._root_dir
         files = self._list_files(remote_root_dir)
 
@@ -177,7 +170,6 @@ class BaseFileManager(ABC):
         Returns:
             List of the paths of the files on the storage
         """
-
         local_dir = os.path.join(self._root_dir, local_dir)
 
         return [
@@ -198,7 +190,6 @@ class BaseFileManager(ABC):
         Returns:
             List of the paths of the files locally
         """
-
         return [
             self.download_file_from_storage(file.path, local_dir)
             for file in self.get_attributes(remote_root_dir).files
@@ -212,7 +203,6 @@ class BaseFileManager(ABC):
             file_manager_from: The file manager to transfer the files from
             remote_root_dir: The directory on the storage where the files are contained
         """
-
         try:
             with tempfile.TemporaryDirectory() as tmp_folder_name:
                 # try to download the files from the old file manager to the `tmp_folder_name`

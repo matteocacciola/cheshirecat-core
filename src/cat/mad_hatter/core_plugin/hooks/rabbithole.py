@@ -5,7 +5,6 @@ Here is a collection of methods to hook into the RabbitHole execution pipeline.
 These hooks allow to intercept the uploaded documents at different places before they are saved into memory.
 
 """
-
 from typing import List, Dict
 from langchain_core.documents import Document
 
@@ -49,7 +48,6 @@ def rabbithole_instantiates_splitter(text_splitter: BaseChunker, cat) -> BaseChu
         text_splitter: TextSplitter
             An instance of a TextSplitter subclass.
     """
-
     # example on how to change chunking
     # text_splitter._chunk_size = 64
     # text_splitter._chunk_overlap = 8
@@ -106,7 +104,6 @@ def before_rabbithole_splits_text(docs: List[Document], cat) -> List[Document]:
         docs: List[Document]
             Edited Langchain `Document`s.
     """
-
     return docs
 
 
@@ -128,7 +125,6 @@ def after_rabbithole_splitted_text(chunks: List[Document], cat) -> List[Document
         chunks: List[Document]
             List of modified chunked langchain documents to be stored in the episodic memory.
     """
-
     return chunks
 
 
@@ -156,7 +152,6 @@ def before_rabbithole_stores_documents(docs: List[Document], cat) -> List[Docume
         docs: List[Document]
             List of edited Langchain documents.
     """
-
     return docs
 
 

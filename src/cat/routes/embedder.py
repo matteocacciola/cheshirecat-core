@@ -22,7 +22,6 @@ async def get_embedders_settings(
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.EMBEDDER, AuthPermission.LIST),
 ) -> GetSettingsResponse:
     """Get the list of the Embedders"""
-
     return get_factory_settings(lizard.config_key, EmbedderFactory(lizard.plugin_manager))
 
 
@@ -32,7 +31,6 @@ async def get_embedder_settings(
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.EMBEDDER, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Embedder"""
-
     return get_factory_setting(lizard.config_key, embedder_name, EmbedderFactory(lizard.plugin_manager))
 
 
@@ -43,7 +41,6 @@ async def upsert_embedder_setting(
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.EMBEDDER, AuthPermission.EDIT),
 ) -> UpsertSettingResponse:
     """Upsert the Embedder setting"""
-
     on_upsert_factory_setting(embedder_name, EmbedderFactory(lizard.plugin_manager))
 
     response = await lizard.replace_embedder(embedder_name, payload)

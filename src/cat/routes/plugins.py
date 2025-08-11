@@ -28,7 +28,6 @@ async def get_cheshirecat_available_plugins(
     # tag: str = None, to be activated in case of more granular search
 ) -> GetAvailablePluginsResponse:
     """List available plugins"""
-
     if query is not None:
         query = slugify(query, separator="_")
 
@@ -41,7 +40,6 @@ async def toggle_plugin(
     info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.WRITE),
 ) -> TogglePluginResponse:
     """Enable or disable a single plugin"""
-
     plugin_id = slugify(plugin_id, separator="_")
 
     # access cat instance
@@ -61,7 +59,6 @@ async def get_cheshirecat_plugins_settings(
     info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.READ),
 ) -> PluginsSettingsResponse:
     """Returns the settings of all the plugins"""
-
     ccat = info.cheshire_cat
     return get_plugins_settings(ccat.plugin_manager, ccat.id)
 
@@ -72,7 +69,6 @@ async def get_cheshirecat_plugin_settings(
     info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Returns the settings of a specific plugin"""
-
     plugin_id = slugify(plugin_id, separator="_")
 
     ccat = info.cheshire_cat
@@ -86,7 +82,6 @@ async def upsert_cheshirecat_plugin_settings(
     info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.EDIT),
 ) -> GetSettingResponse:
     """Updates the settings of a specific plugin"""
-
     plugin_id = slugify(plugin_id, separator="_")
 
     # access cat instance

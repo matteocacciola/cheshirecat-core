@@ -125,7 +125,6 @@ def cat_recall_query(user_message: str, cat) -> str:
        arXiv preprint arXiv:2212.10496.
 
     """
-
     # here we just return the latest user message as is
     return user_message
 
@@ -291,7 +290,6 @@ def before_cat_sends_message(message: Dict, cat) -> Dict:
             }
 
     """
-
     return message
 
 
@@ -354,5 +352,4 @@ def fast_reply(f_reply: Dict, cat) -> Dict | None:
         }
     ```
     """
-
     return f_reply

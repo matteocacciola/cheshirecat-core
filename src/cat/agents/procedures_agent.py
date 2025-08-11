@@ -61,7 +61,6 @@ class ProceduresAgent(BaseAgent):
         Returns:
             AgentOutput instance
         """
-
         plugin_manager = stray.cheshire_cat.plugin_manager
 
         # get procedures prompt from plugins
@@ -102,7 +101,6 @@ class ProceduresAgent(BaseAgent):
         Returns:
             LLMAction instance
         """
-
         # Prepare info to fill up the prompt
         prompt_variables = {
             "tools": "\n".join(
@@ -159,7 +157,6 @@ class ProceduresAgent(BaseAgent):
         Returns:
             AgentOutput instance
         """
-
         if not llm_action.action:
             return AgentOutput(output="")
 

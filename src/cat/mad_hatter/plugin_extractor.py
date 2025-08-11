@@ -56,7 +56,6 @@ class PluginExtractor:
         Returns:
             bool: True if all Python files are safe, False if any file contains malicious code.
         """
-
         def is_safe_python_file() -> bool:
             with open(file_path, "r", encoding="utf-8") as f:
                 try:

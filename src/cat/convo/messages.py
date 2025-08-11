@@ -31,7 +31,6 @@ class MessageWhy(BaseModelDict):
         memory (Dict): memory
         model_interactions (List[LLMModelInteraction | EmbedderModelInteraction]): model interactions
     """
-
     input: str
     intermediate_steps: List
     memory: Dict
@@ -47,7 +46,6 @@ class BaseMessage(BaseModelDict, ABC):
         image: (Optional[str], default=None): image file URL or base64 data URI that represent image associated with
             the message.
     """
-
     text: str
     image: str | None = None
 
@@ -62,7 +60,6 @@ class CatMessage(BaseMessage):
             the message
         why (MessageWhy): why the agent replied with the message
     """
-
     why: MessageWhy | None = None
     error: str | None = None
 
@@ -117,7 +114,6 @@ class ConversationHistoryItem(BaseModelDict):
         when (float): when the message was sent in seconds since epoch (default: time.time())
         content (BaseMessage): content of the message
     """
-
     who: Role
     when: float | None = time.time()
     content: CatMessage | UserMessage
@@ -209,7 +205,6 @@ def convert_to_langchain_message(history_info: ConversationHistoryItem) -> BaseL
     Returns:
         BaseLangchainMessage: The langchain message
     """
-
     if history_info.who == Role.AI:
         return AIMessage(name=str(history_info.who), content=history_info.content.text)
 

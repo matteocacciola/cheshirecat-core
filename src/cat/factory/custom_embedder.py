@@ -21,7 +21,6 @@ class DumbEmbedder(Embeddings):
     Namely, it looks for pairs of characters in text starting form a vocabulary with all possible pairs of
     printable characters, digits excluded.
     """
-
     def __init__(self):
         # Get all printable characters numbers excluded and make everything lowercase
         chars = [p.lower() for p in string.printable[10:]]
@@ -45,7 +44,6 @@ class DumbEmbedder(Embeddings):
 
 class CustomOpenAIEmbeddings(Embeddings):
     """Use LLAMA2 as embedder by calling a self-hosted lama-cpp-python instance."""
-
     def __init__(self, url, model):
         self.url = os.path.join(url, "v1/embeddings")
         self.model = model
@@ -63,7 +61,6 @@ class CustomOpenAIEmbeddings(Embeddings):
 
 class CustomOllamaEmbeddings(Embeddings):
     """Use Ollama to serve embedding models."""
-
     def __init__(self, base_url, model):
         self.url = os.path.join(base_url, "api/embed")
         self.model = model

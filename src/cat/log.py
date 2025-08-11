@@ -1,5 +1,4 @@
 """The log engine."""
-
 import logging
 import sys
 import json
@@ -42,7 +41,6 @@ class CatLogEngine:
 
     Default to `CCAT_LOG_LEVEL` env variable (`INFO`).
     """
-
     def __init__(self):
         self.LOG_LEVEL = get_log_level()
         self.default_log()
@@ -65,7 +63,6 @@ class CatLogEngine:
 
     def default_log(self):
         """Set the same debug level to all the project dependencies."""
-
         time = "<green>[{time:YYYY-MM-DD HH:mm:ss.SSS}]</green>"
         level = "<level>{level}:</level>"
         # origin = "<level>{extra[original_name]}.{extra[original_class]}.{extra[original_caller]}::{extra[original_line]}</level>"
@@ -123,7 +120,6 @@ class CatLogEngine:
                 Message to be logged.
             level: str
                 Logging level."""
-
         # prettify
         if isinstance(msg, str):
             pass
@@ -198,7 +194,6 @@ class CatLogEngine:
 
     def log_examples(self):
         """Log examples for the log engine."""
-
         for c in [self, "Hello there!", {"ready", "set", "go"}, [1, 4, "sdfsf"], {"a": 1, "b": {"c": 2}}]:
             self.debug(c)
             self.info(c)

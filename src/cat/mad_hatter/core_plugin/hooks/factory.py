@@ -57,7 +57,6 @@ def factory_allowed_auth_handlers(allowed: List[AuthHandlerConfig], cat) -> List
         supported: List of AuthHandlerConfig classes
             list of allowed auth_handlers
     """
-
     return allowed
 
 
@@ -75,7 +74,6 @@ def factory_allowed_file_managers(allowed: List[FileManagerConfig], cat) -> List
         supported: List of FileManagerConfig classes
             list of allowed file managers
     """
-
     return allowed
 
 @hook(priority=0)
@@ -92,7 +90,6 @@ def factory_allowed_chunkers(allowed: List[ChunkerSettings], cat) -> List:
         supported: List of ChunkerSettings classes
             list of allowed chunkers
     """
-
     return allowed
 
 @hook(priority=0)
@@ -109,5 +106,4 @@ def factory_allowed_vector_databases(allowed: List[VectorDatabaseSettings], cat)
         supported: List of VectorDatabaseSettings classes
             list of allowed vector databases
     """
-
     return allowed

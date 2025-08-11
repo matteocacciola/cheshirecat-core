@@ -22,7 +22,6 @@ async def get_vector_databases_settings(
     info: AuthorizedInfo = check_permissions(AuthResource.VECTOR_DATABASE, AuthPermission.LIST),
 ) -> GetSettingsResponse:
     """Get the list of the Vector Databases settings and their configuration schemas"""
-
     ccat = info.cheshire_cat
     return get_factory_settings(ccat.id, VectorDatabaseFactory(ccat.plugin_manager))
 
@@ -35,7 +34,6 @@ async def get_vector_database_settings(
     info: AuthorizedInfo = check_permissions(AuthResource.VECTOR_DATABASE, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Vector Database"""
-
     ccat = info.cheshire_cat
     return get_factory_setting(ccat.id, vector_database_name, VectorDatabaseFactory(ccat.plugin_manager))
 
@@ -49,7 +47,6 @@ async def upsert_vector_database_setting(
     info: AuthorizedInfo = check_permissions(AuthResource.VECTOR_DATABASE, AuthPermission.EDIT),
 ) -> UpsertSettingResponse:
     """Upsert the Vector Database setting"""
-
     ccat = info.cheshire_cat
     on_upsert_factory_setting(vector_database_name, VectorDatabaseFactory(ccat.plugin_manager))
 

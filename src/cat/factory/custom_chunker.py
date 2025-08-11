@@ -20,7 +20,6 @@ class BaseChunker(ABC):
     smaller chunks. The chunkers are used to split text into smaller chunks that can be processed by the model.
     MUST be implemented by subclasses.
     """
-
     @abstractmethod
     def split_documents(self, documents: Iterable[Document]) -> List[Document]:
         """
@@ -32,7 +31,6 @@ class BaseChunker(ABC):
         Returns:
             The list of documents after splitting
         """
-
         pass
 
     @property

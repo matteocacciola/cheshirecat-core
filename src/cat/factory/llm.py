@@ -267,7 +267,6 @@ class LLMGeminiChatConfig(LLMSettings):
 
     The `LLMGeminiChatConfig` class is used to create an instance of the Gemini LLM model, which can be used to generate text in natural language.
     """
-
     google_api_key: str
     model: str = "gemini-1.5-pro-latest"
     temperature: float = 0.1

@@ -50,7 +50,6 @@ class CheshireCat:
 
     In most cases you will not need to interact with this class directly, but rather with class `StrayCat` which will be available in your plugin's hooks, tools, forms end endpoints.
     """
-
     def __init__(self, agent_id: str):
         """
         Cat initialization. At init time, the Cat executes the bootstrap.
@@ -59,7 +58,6 @@ class CheshireCat:
         -----
         Bootstrapping is the process of loading the plugins, the LLM, the memories.
         """
-
         self.id = agent_id
 
         # instantiate plugin manager (loads all plugins' hooks and tools)
@@ -136,7 +134,6 @@ class CheshireCat:
 
     async def destroy(self):
         """Destroy all data from the cat."""
-
         log.info(f"Agent id: {self.id}. Destroying all data from the cat")
         # destroy all memories
         await self.destroy_memory()
@@ -206,7 +203,6 @@ class CheshireCat:
         Returns:
             str: The generated response.
         """
-
         # Add a token counter to the callbacks
         caller = get_caller_info()
 
@@ -234,7 +230,6 @@ class CheshireCat:
         Returns:
             The dictionary resuming the new name and settings of the LLM
         """
-
         factory = LLMFactory(self.plugin_manager)
         updater = get_updated_factory_object(self.id, factory, language_model_name, settings)
 
@@ -267,7 +262,6 @@ class CheshireCat:
         Returns:
             The dictionary resuming the new name and settings of the Auth Handler
         """
-
         factory = AuthHandlerFactory(self.plugin_manager)
         updater = get_updated_factory_object(self.id, factory, auth_handler_name, settings)
 
@@ -286,7 +280,6 @@ class CheshireCat:
         Returns:
             The dictionary resuming the new name and settings of the file manager
         """
-
         factory = FileManagerFactory(self.plugin_manager)
         updater = get_updated_factory_object(self.id, factory, file_manager_name, settings)
 
@@ -320,7 +313,6 @@ class CheshireCat:
         Returns:
             The dictionary resuming the new name and settings of the Auth Handler
         """
-
         factory = ChunkerFactory(self.plugin_manager)
         updater = get_updated_factory_object(self.id, factory, chunker_name, settings)
 
@@ -340,7 +332,6 @@ class CheshireCat:
         Returns:
             The dictionary resuming the new name and settings of the Vector Memory Handler
         """
-
         factory = VectorDatabaseFactory(self.plugin_manager)
         updater = get_updated_factory_object(self.id, factory, vector_memory_name, settings)
 
@@ -360,7 +351,6 @@ class CheshireCat:
             lizard: BillTheLizard
                 Instance of langchain `BillTheLizard`.
         """
-
         from cat.looking_glass.bill_the_lizard import BillTheLizard
         return BillTheLizard()
 
@@ -388,7 +378,6 @@ class CheshireCat:
         >>> cat.embedder.embed_query("Oh dear!")
         [0.2, 0.02, 0.4, ...]
         """
-
         return self.lizard.embedder
 
     @property
@@ -403,7 +392,6 @@ class CheshireCat:
         --------
         >>> cat.rabbit_hole.ingest_file(...)
         """
-
         return self.lizard.rabbit_hole
 
     @property
@@ -415,7 +403,6 @@ class CheshireCat:
             core_auth_handler: CoreAuthHandler
                 Core authentication handler of the Cat
         """
-
         return self.lizard.core_auth_handler
 
     @property
@@ -427,7 +414,6 @@ class CheshireCat:
             main_agent: MainAgent
                 Main agent of the Cat
         """
-
         return self.lizard.main_agent
 
     @property
@@ -448,7 +434,6 @@ class CheshireCat:
         >>> cat.mad_hatter.get_plugin().load_settings()
         {"num_cats": 44, "rows": 6, "remainder": 0}
         """
-
         return self.plugin_manager
 
     @property
@@ -457,7 +442,6 @@ class CheshireCat:
         Instance of langchain `LLM`.
         Only use it if you directly want to deal with langchain, prefer method `cat.llm(prompt)` otherwise.
         """
-
         return self.large_language_model
 
     # each time we access the file handlers, plugins can intervene

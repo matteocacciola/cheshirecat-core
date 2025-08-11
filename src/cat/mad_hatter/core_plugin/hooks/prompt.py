@@ -3,8 +3,6 @@
 Here is a collection of methods to hook the prompts components that instruct the *Agent*.
 
 """
-
-
 from cat.mad_hatter.decorators import hook
 
 
@@ -31,7 +29,6 @@ def agent_prompt_prefix(prefix: str, cat) -> str:
     -----
     The default prefix describe who the AI is and how it is expected to answer the Human.
     """
-
     return prefix
 
 
@@ -55,7 +52,6 @@ def agent_prompt_instructions(instructions: str, cat) -> str:
     -----
     This prompt explains the *Agent* how to select a tool or form.
     """
-
     return instructions
 
 
@@ -86,5 +82,4 @@ def agent_prompt_suffix(prompt_suffix: str, cat) -> str:
     - {input} provides the last user's input
     - {agent_scratchpad} is where the *Agent* can concatenate tools use and multiple calls to the LLM.
     """
-
     return prompt_suffix

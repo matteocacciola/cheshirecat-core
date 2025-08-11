@@ -21,7 +21,6 @@ async def get_chunker_settings(
     info: AuthorizedInfo = check_permissions(AuthResource.CHUNKER, AuthPermission.LIST),
 ) -> GetSettingsResponse:
     """Get the list of the Chunkers"""
-
     ccat = info.cheshire_cat
     return get_factory_settings(ccat.id, ChunkerFactory(ccat.plugin_manager))
 
@@ -32,7 +31,6 @@ async def get_chunker_setting(
     info: AuthorizedInfo = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Get the settings of a specific Chunker"""
-
     ccat = info.cheshire_cat
     return get_factory_setting(ccat.id, chunker_name, ChunkerFactory(ccat.plugin_manager))
 
@@ -44,7 +42,6 @@ async def upsert_chunker_setting(
     payload: Dict = Body(...),
 ) -> UpsertSettingResponse:
     """Upsert the settings of a specific Chunker"""
-
     ccat = info.cheshire_cat
     on_upsert_factory_setting(chunker_name, ChunkerFactory(ccat.plugin_manager))
 

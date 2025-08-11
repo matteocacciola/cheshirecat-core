@@ -134,7 +134,7 @@ def test_update_setting_by_id(cheshire_cat):
 
     expected = add.copy()
     expected["name"] = "CoreOnlyAuthConfig3"
-    crud_settings.update_setting_by_id(agent_id, models.Setting(**expected))
+    crud_settings.upsert_setting_by_id(agent_id, models.Setting(**expected))
 
     value = crud_settings.get_setting_by_id(agent_id, setting_id)
     assert value == expected

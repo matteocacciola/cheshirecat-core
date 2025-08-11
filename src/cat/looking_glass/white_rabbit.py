@@ -25,7 +25,6 @@ class WhiteRabbit:
     Here the cron magic happens
 
     """
-
     def __init__(self):
         log.debug("Initializing WhiteRabbit...")
 
@@ -290,7 +289,6 @@ class WhiteRabbit:
             str
                 The job id.
         """
-
         # Check that the function is callable
         if not callable(job):
             log.error("WhiteRabbit: The job should be callable!")
@@ -368,7 +366,6 @@ class WhiteRabbit:
             str
                 The job id.
         """
-
         # Check that the function is callable
         if not callable(job):
             log.error("WhiteRabbit: The job should be callable!")
@@ -435,7 +432,6 @@ class WhiteRabbit:
             str
                 The job id.
         """
-
         # Calculate time
         schedule = datetime.today() + timedelta(
             days=days,

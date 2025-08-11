@@ -22,7 +22,6 @@ class DocumentRecall(BaseModelDict):
     Langchain `Document` retrieved from the episodic memory, with the similarity score, the list of embeddings and the
     id of the memory.
     """
-
     document: LangchainDocument
     score: float | None = None
     vector: List[float] = Field(default_factory=list)
@@ -33,7 +32,6 @@ class SparseVector(BaseModel, extra="forbid"):
     """
     Sparse vector structure
     """
-
     indices: List[int] = Field(..., description="Indices must be unique")
     values: List[float] = Field(..., description="Values and indices must be the same length")
 
@@ -42,7 +40,6 @@ class Document(BaseModel, extra="forbid"):
     """
     WARN: Work-in-progress, unimplemented  Text document for embedding. Requires inference infrastructure, unimplemented.
     """
-
     text: str = Field(..., description="Text of the document This field will be used as input for the embedding model")
     model: str = Field(
         ..., description="Name of the model used to generate the vector List of available models depends on a provider"
@@ -56,7 +53,6 @@ class Image(BaseModel, extra="forbid"):
     """
     WARN: Work-in-progress, unimplemented  Image object for embedding. Requires inference infrastructure, unimplemented.
     """
-
     image: Any = Field(..., description="Image data: base64 encoded image or an URL")
     model: str = Field(
         ..., description="Name of the model used to generate the vector List of available models depends on a provider"
@@ -70,7 +66,6 @@ class InferenceObject(BaseModel, extra="forbid"):
     """
     WARN: Work-in-progress, unimplemented  Custom object for embedding. Requires inference infrastructure, unimplemented.
     """
-
     object: Any = Field(
         ...,
         description="Arbitrary data, used as input for the embedding model Used if the model requires more than one input or a custom input",
@@ -94,7 +89,6 @@ class Record(BaseModel):
     """
     Point data
     """
-
     id: int | str = Field(..., description="Point data")
     payload: Payload | None = Field(default=None, description="Payload - values assigned to the point")
     vector: VectorStructOutput | None = Field(default=None, description="Vector of the point")
@@ -106,7 +100,6 @@ class ScoredPoint(BaseModel):
     """
     Search result
     """
-
     id: int | str = Field(..., description="Search result")
     version: int = Field(..., description="Point version")
     score: float = Field(..., description="Points vector distance to the query vector")
@@ -137,7 +130,6 @@ def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
     Returns:
         DocumentRecall: The converted DocumentRecall object
     """
-
     page_content = m.payload.get("page_content", "") if m.payload else ""
     if isinstance(page_content, dict):
         page_content = json.dumps(page_content)

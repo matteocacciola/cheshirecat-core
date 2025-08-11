@@ -109,7 +109,6 @@ def issue_jwt(username: str, password: str, **kwargs) -> str | None:
     Returns:
         A JWT token if the user is authenticated, None otherwise.
     """
-
     from cat.db.cruds import users as crud_users
 
     key_id = kwargs.get("key_id")

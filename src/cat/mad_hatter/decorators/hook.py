@@ -29,7 +29,6 @@ def hook(*args: str | Callable, priority: int = 1) -> Callable:
             def on_message(message: Message) -> str:
                 return "Hello!"
     """
-
     def _make_with_name(hook_name: str) -> Callable:
         def _make_hook(func: Callable[[str], str]) -> CatHook:
             hook_ = CatHook(name=hook_name, func=func, priority=priority)

@@ -15,7 +15,6 @@ class MadHatter(ABC):
     """
     This is the abstract class that defines the methods that the plugin managers should implement.
     """
-
     def __init__(self):
         self.plugins: Dict[str, Plugin] = {}  # plugins dictionary
 

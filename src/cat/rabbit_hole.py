@@ -22,7 +22,6 @@ from cat.utils import singleton
 @singleton
 class RabbitHole:
     """Manages content ingestion. I'm late... I'm late!"""
-
     async def ingest_memory(self, ccat: CheshireCat, file: UploadFile):
         """Upload memories to the declarative memory from a JSON file.
 
@@ -39,7 +38,6 @@ class RabbitHole:
         when uploading.
         The method also performs a check on the dimensionality of the embeddings (i.e. length of each vector).
         """
-
         # Get file bytes
         file_bytes = file.file.read()
 
@@ -105,7 +103,6 @@ class RabbitHole:
         Currently supported formats are `.txt`, `.pdf` and `.md`.
         You cn add custom ones or substitute the above via RabbitHole hooks.
         """
-
         # split file into a list of docs
         file_bytes, content_type, docs = await self._file_to_docs(stray=stray, file=file)
         metadata = metadata or {}
@@ -141,7 +138,6 @@ class RabbitHole:
         This method is used by both `/rabbithole/` and `/rabbithole/web` endpoints.
         Currently supported files are `.txt`, `.pdf`, `.md` and web pages.
         """
-
         file_bytes = None
 
         # Check type of incoming file.
@@ -243,7 +239,6 @@ class RabbitHole:
         At this point, it is possible to customize the Cat's behavior using the `before_rabbithole_insert_memory` hook
         to edit the memories before they are inserted in the vector database.
         """
-
         ccat = stray.cheshire_cat
         log.info(f"Agent id: {ccat.id}. Preparing to memorize {len(docs)} vectors")
 
@@ -337,7 +332,6 @@ class RabbitHole:
         `before_rabbithole_splits_text` and `after_rabbithole_splitted_text` hooks return the original input without
         any modification.
         """
-
         plugin_manager = stray.mad_hatter
         text_splitter = stray.text_splitter
 
@@ -375,7 +369,6 @@ class RabbitHole:
             source: str
                 The source of the file, e.g. the file name or URL.
         """
-
         if not get_env_bool("CCAT_RABBIT_HOLE_STORAGE_ENABLED"):
             return
 

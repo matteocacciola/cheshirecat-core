@@ -30,7 +30,6 @@ def settings_schema():
         schema: Dict
             JSON schema of the settings.
     """
-
     # In core_plugin we pass an empty JSON schema
     return CorePluginSettings.model_json_schema()
 
@@ -48,7 +47,6 @@ def settings_model():
         model: class
             Pydantic model of the settings.
     """
-
     # In core_plugin we pass an empty model
     return CorePluginSettings
 
@@ -66,7 +64,6 @@ def load_settings():
         settings: Dict
             Settings.
     """
-
     # In core_plugin we do nothing (for now).
     return {}
 
@@ -89,7 +86,6 @@ def save_settings(settings):
         settings: Dict
             Saved settings.
     """
-
     # In core_plugin we do nothing (for now).
     return {}
 

@@ -34,7 +34,6 @@ class BaseAgent(ABC):
             agent_output: AgentOutput
                 Reply of the agent, instance of AgentOutput.
         """
-
         pass
 
     def __str__(self):

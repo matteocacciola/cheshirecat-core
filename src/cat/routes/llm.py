@@ -22,7 +22,6 @@ async def get_llms_settings(
     info: AuthorizedInfo = check_permissions(AuthResource.LLM, AuthPermission.LIST),
 ) -> GetSettingsResponse:
     """Get the list of the Large Language Models"""
-
     ccat = info.cheshire_cat
     return get_factory_settings(ccat.id, LLMFactory(ccat.plugin_manager))
 
@@ -33,7 +32,6 @@ async def get_llm_settings(
     info: AuthorizedInfo = check_permissions(AuthResource.LLM, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Large Language Model"""
-
     ccat = info.cheshire_cat
     return get_factory_setting(ccat.id, language_model_name, LLMFactory(ccat.plugin_manager))
 
@@ -45,7 +43,6 @@ async def upsert_llm_setting(
     info: AuthorizedInfo = check_permissions(AuthResource.LLM, AuthPermission.EDIT),
 ) -> UpsertSettingResponse:
     """Upsert the Large Language Model setting"""
-
     ccat = info.cheshire_cat
     on_upsert_factory_setting(language_model_name, LLMFactory(ccat.plugin_manager))
 

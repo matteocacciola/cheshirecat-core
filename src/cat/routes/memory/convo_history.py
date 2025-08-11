@@ -30,7 +30,6 @@ async def destroy_conversation_history(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteConversationHistoryResponse:
     """Delete the specified user's conversation history from working memory"""
-
     stray = StrayCat(user_data=info.user, agent_id=info.cheshire_cat.id)
     stray.working_memory.reset_history()
 
@@ -43,7 +42,6 @@ async def get_conversation_history(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> GetConversationHistoryResponse:
     """Get the specified user's conversation history from working memory"""
-
     stray = StrayCat(user_data=info.user, agent_id=info.cheshire_cat.id)
 
     return GetConversationHistoryResponse(history=stray.working_memory.history)
@@ -56,7 +54,6 @@ async def add_conversation_history(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
 ) -> GetConversationHistoryResponse:
     """Insert the specified conversation item into the working memory"""
-
     payload_dict = payload.model_dump()
     content = UserMessage(**payload_dict) if payload.who == Role.HUMAN else CatMessage(**payload_dict)
 

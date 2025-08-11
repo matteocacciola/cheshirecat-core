@@ -40,7 +40,6 @@ def get_env(name):
     - covers default supported variables and their default value
     - automagically handles legacy env variables missing the prefix "CCAT_"
     """
-
     cat_default_env_variables = get_supported_env_variables()
 
     default = None

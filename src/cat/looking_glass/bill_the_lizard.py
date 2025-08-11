@@ -57,7 +57,6 @@ class BillTheLizard:
     - Getting the Cheshire Cat of a stray
     - Getting the strays of a Cheshire Cat
     """
-
     def __init__(self):
         """
         Bill the Lizard initialization.
@@ -68,7 +67,6 @@ class BillTheLizard:
         Bootstrapping is the process of loading the plugins, the Embedder, the *Main Agent*, the *Rabbit Hole* and
         the *White Rabbit*.
         """
-
         self.__key = DEFAULT_SYSTEM_KEY
 
         self._fastapi_app = None
@@ -136,7 +134,6 @@ class BillTheLizard:
         """
         Consumer thread that listens for activation events from RabbitMQ.
         """
-
         def callback(ch, method, properties, body):
             """Handle the received message."""
             try:
@@ -207,7 +204,6 @@ class BillTheLizard:
         Callback executed when the embedder is replaced. It informs the Cheshire Cats about the new embedder available
         in the system.
         """
-
         for ccat_id in crud.get_agents_main_keys():
             ccat = self.get_cheshire_cat(ccat_id)
 
@@ -231,7 +227,6 @@ class BillTheLizard:
         """
         Hook into the embedder selection. Allows to modify how the Lizard selects the embedder at bootstrap time.
         """
-
         factory = EmbedderFactory(self.plugin_manager)
 
         self.embedder = get_factory_object(self.__key, factory)
@@ -252,7 +247,6 @@ class BillTheLizard:
         Returns:
             The dictionary resuming the new name and settings of the embedder
         """
-
         factory = EmbedderFactory(self.plugin_manager)
         updater = get_updated_factory_object(self.__key, factory, language_embedder_name, settings)
 
@@ -293,7 +287,6 @@ class BillTheLizard:
         Returns:
             The Cheshire Cat with the given id, or None if it doesn't exist
         """
-
         if agent_id == DEFAULT_SYSTEM_KEY:
             raise ValueError(f"`{DEFAULT_SYSTEM_KEY}` is a reserved name for agents")
 
@@ -313,7 +306,6 @@ class BillTheLizard:
         Returns:
             The Cheshire Cat with the given id, or None if it doesn't exist
         """
-
         for ccat_id in crud.get_agents_main_keys():
             # on installation, it's enough to get the Cheshire Cat, it will load the plugin manager,
             # which will load the plugins
@@ -332,7 +324,6 @@ class BillTheLizard:
         Returns:
             The Cheshire Cat with the given id, or None if it doesn't exist
         """
-
         if agent_id in [DEFAULT_SYSTEM_KEY]:
             raise ValueError(f"{DEFAULT_SYSTEM_KEY} is a reserved name for agents")
 
@@ -355,7 +346,6 @@ class BillTheLizard:
         Returns:
             The Cheshire Cat with the given id, or None if it doesn't exist
         """
-
         agent_settings = crud_settings.get_settings(agent_id)
         if not agent_settings:
             return None
@@ -369,7 +359,6 @@ class BillTheLizard:
         Returns:
             None
         """
-
         if self.websocket_manager:
             await self.websocket_manager.close_all_connections()
 

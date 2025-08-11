@@ -37,7 +37,7 @@ from tests.utils import (
 
 pytest_plugins = ["pytest_asyncio"]
 
-redis_client = redis.Redis(host=get_env("CCAT_REDIS_HOST"), db="1", encoding="utf-8", decode_responses=True)
+redis_client = redis.Redis(host=get_env("CCAT_REDIS_HOST"), db=1, encoding="utf-8", decode_responses=True)
 memory_client = AsyncQdrantClient(":memory:")
 
 

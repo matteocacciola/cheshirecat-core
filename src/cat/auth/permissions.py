@@ -74,7 +74,6 @@ def check_permissions(resource: AuthResource, permission: AuthPermission) -> "Au
     Returns:
         AuthorizedInfo: an instance of CheshireCat and the identified user
     """
-
     from cat.auth.connection import HTTPAuth
     return Depends(HTTPAuth(resource=resource, permission=permission))
 
@@ -90,7 +89,6 @@ def check_admin_permissions(resource: AdminAuthResource, permission: AuthPermiss
     Returns:
         BillTheLizard: an instance of BillTheLizard
     """
-
     from cat.auth.connection import AdminConnectionAuth
     return Depends(AdminConnectionAuth(resource=resource, permission=permission))
 
@@ -106,7 +104,6 @@ def check_message_permissions(resource: AuthResource, permission: AuthPermission
     Returns:
         AuthorizedInfo: an instance of CheshireCat and the identified user
     """
-
     from cat.auth.connection import HTTPAuthMessage
     return Depends(HTTPAuthMessage(resource=resource, permission=permission))
 
@@ -122,7 +119,6 @@ def check_websocket_permissions(resource: AuthResource, permission: AuthPermissi
     Returns:
         AuthorizedInfo: an instance of CheshireCat and the identified user
     """
-
     from cat.auth.connection import WebSocketAuth
     return Depends(WebSocketAuth(resource=resource, permission=permission))
 
@@ -133,7 +129,6 @@ class AuthUserInfo(BaseModelDict):
     Will be created by AuthHandler(s) to standardize their output.
     Core will use this object to retrieve or create a StrayCat (session)
     """
-
     id: str
     name: str
 

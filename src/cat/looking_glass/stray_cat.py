@@ -39,7 +39,6 @@ class RecallSettings(utils.BaseModelDict):
 # The Stray cat goes around tools and hook, making troubles
 class StrayCat:
     """User/session based object containing working memory and a few utility pointers"""
-
     def __init__(self, agent_id: str, user_data: AuthUserInfo):
         self.__agent_id = agent_id
 
@@ -108,7 +107,6 @@ class StrayCat:
         Send custom data
         >>> cat.send_ws_message({"What day it is?": "It's my unbirthday"})
         """
-
         options = get_args(MSG_TYPES)
 
         if msg_type not in options:
@@ -139,7 +137,6 @@ class StrayCat:
         >>> message = CatMessage(text="Hello, dear!", user_id=cat.user.id)
         ... cat.send_chat_message(message)
         """
-
         if isinstance(message, str):
             message = CatMessage(text=message, why=self._build_why())
 
@@ -158,7 +155,6 @@ class StrayCat:
         Send a notification to the user
         >>> cat.send_notification("It's late!")
         """
-
         await self.send_ws_message(content=content, msg_type="notification")
 
     async def send_error(self, error: str | Exception):
@@ -176,7 +172,6 @@ class StrayCat:
         or
         >>> cat.send_error(CustomException("Something went wrong!"))
         """
-
         if isinstance(error, str):
             error_message = {
                 "type": "error",
@@ -227,7 +222,6 @@ class StrayCat:
             memories: List[DocumentRecall]
                 List of retrieved memories.
         """
-
         cheshire_cat = self.cheshire_cat
 
         if collection_name not in VectorMemoryCollectionTypes:
@@ -346,7 +340,6 @@ class StrayCat:
         >>> cat.llm("Tell me which way to go?", stream=True)
         "It doesn't matter which way you go"
         """
-
         # should we stream the tokens?
         callbacks = [] if not stream else NewTokenHandler(self)
 
@@ -376,7 +369,6 @@ class StrayCat:
         The retrieved context is formatted properly and given in input to the Agent that uses the LLM to produce the
         answer. This is formatted in a dictionary to be sent as a JSON via Websocket to the client.
         """
-
         # set up working memory for this convo turn
         # keeping track of model interactions
         self.working_memory.model_interactions = []
@@ -520,7 +512,6 @@ class StrayCat:
         ... cat.classify("it is a bad day", labels=example_labels)
         "negative"
         """
-
         if isinstance(labels, Dict):
             labels_names = labels.keys()
             examples_list = "\n\nExamples:"
@@ -540,7 +531,6 @@ Allowed classes are:
 {labels_list}{examples_list}
 
 Just output the class, nothing else."""
-
         response = self.llm(prompt)
 
         # find the closest match and its score with levenshtein distance
@@ -598,7 +588,6 @@ Just output the class, nothing else."""
         Instance of langchain `LLM`.
         Only use it if you directly want to deal with langchain, prefer method `cat.llm(prompt)` otherwise.
         """
-
         return self.cheshire_cat.large_language_model
 
     @property
@@ -622,7 +611,6 @@ Just output the class, nothing else."""
         >>> cat.embedder.embed_query("Oh dear!")
         [0.2, 0.02, 0.4, ...]
         """
-
         return self.lizard.embedder
 
     @property
@@ -637,7 +625,6 @@ Just output the class, nothing else."""
         --------
         >>> cat.rabbit_hole.ingest_file(...)
         """
-
         return self.lizard.rabbit_hole
 
     @property
@@ -668,7 +655,6 @@ Just output the class, nothing else."""
         >>> cat.mad_hatter.get_plugin().load_settings()
         {"num_cats": 44, "rows": 6, "remainder": 0}
         """
-
         return self.plugin_manager
 
     @property
@@ -680,7 +666,6 @@ Just output the class, nothing else."""
             main_agent: MainAgent
                 Main agent of the Cat
         """
-
         return self.lizard.main_agent
 
     @property
@@ -700,7 +685,6 @@ Just output the class, nothing else."""
         ...
         ... cat.white_rabbit.schedule_job(ring_alarm_api, seconds=30)
         """
-
         return WhiteRabbit()
 
     # each time we access the file handlers, plugins can intervene

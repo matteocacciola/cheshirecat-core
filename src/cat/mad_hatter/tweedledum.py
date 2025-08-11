@@ -34,7 +34,6 @@ class Tweedledum(MadHatter):
     - orders plugged in hooks by name and priority
     - exposes functionality to the lizard and cats to execute hooks and tools
     """
-
     def __init__(self):
         self.__skip_folders = ["__pycache__", "lost+found"]
         self.__plugins_folder = utils.get_plugins_path()

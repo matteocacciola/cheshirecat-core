@@ -252,7 +252,6 @@ class BaseVectorDatabaseHandler(ABC):
             VectorMemoryCollection.recall_memories_from_embedding
             VectorMemoryCollection.get_all_points
         """
-
     @abstractmethod
     async def get_all_points(
         self,
@@ -484,7 +483,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             embedder_size: Size of the embedding vectors
             collection_name: Name of the collection to create
         """
-
         log.warning(f"Creating collection `{collection_name}` for the agent `{self.agent_id}`...")
 
         try:
@@ -607,7 +605,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         Returns:
             the list of points
         """
-
         points_found, _ = await self._client.scroll(
             collection_name=collection_name,
             scroll_filter=Filter(
@@ -642,7 +639,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         Returns:
             PointStruct: The stored point.
         """
-
         point = QdrantPointStruct(
             id=id or uuid.uuid4().hex,
             payload={
@@ -676,7 +672,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         Returns:
             the response of the upsert operation
         """
-
         if not ids:
             ids = [uuid.uuid4().hex for _ in range(len(payloads))]
 
@@ -738,7 +733,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         Returns:
             List: List of DocumentRecall.
         """
-
         conditions = self._build_metadata_conditions(metadata=metadata)
 
         # retrieve memories
@@ -836,7 +830,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         Returns:
             Tuple: A tuple containing the list of points and the next offset.
         """
-
         conditions = self._build_metadata_conditions(metadata)
         return await self._get_all_points(
             collection_name=collection_name, scroll_filter=Filter(must=conditions), limit=limit, offset=offset

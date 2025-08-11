@@ -26,7 +26,6 @@ async def get_file_managers_settings(
     info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.LIST),
 ) -> GetSettingsResponse:
     """Get the list of the File Managers and their settings"""
-
     ccat = info.cheshire_cat
     return get_factory_settings(ccat.id, FileManagerFactory(ccat.plugin_manager))
 
@@ -37,7 +36,6 @@ async def get_file_manager_settings(
     info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified File Manager"""
-
     ccat = info.cheshire_cat
     factory = FileManagerFactory(ccat.plugin_manager)
     return get_factory_setting(ccat.id, file_manager_name, factory)
@@ -50,7 +48,6 @@ async def upsert_file_manager_setting(
     info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.EDIT),
 ) -> UpsertSettingResponse:
     """Upsert the File Manager setting"""
-
     ccat = info.cheshire_cat
     on_upsert_factory_setting(file_manager_name, FileManagerFactory(ccat.plugin_manager))
 

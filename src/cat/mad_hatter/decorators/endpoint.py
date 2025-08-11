@@ -127,7 +127,6 @@ class Endpoint:
                 def my_endpoint():
                     return {"Hello":"Alice"}
         """
-
         tags = tags or self.default_tags
 
         def _make_endpoint(endpoint_function: Callable):
@@ -163,7 +162,6 @@ class Endpoint:
                 def my_get_endpoint():
                     return {"Hello":"Alice"}
         """
-
         tags = tags or self.default_tags
 
         return self.endpoint(
@@ -200,7 +198,6 @@ class Endpoint:
                 def my_post_endpoint(item: Item):
                     return {"Hello": item.name, "Description": item.description}
         """
-
         tags = tags or self.default_tags
 
         return self.endpoint(
@@ -237,7 +234,6 @@ class Endpoint:
                 def my_put_endpoint(item: Item):
                     return {"Hello": item.name, "Description": item.description}
         """
-
         tags = tags or self.default_tags
 
         return self.endpoint(
@@ -274,7 +270,6 @@ class Endpoint:
                 def my_delete_endpoint(item: Item):
                     return {"Hello": item.name, "Description": item.description}
         """
-
         tags = tags or self.default_tags
 
         return self.endpoint(

@@ -164,7 +164,6 @@ class EmbedderGeminiChatConfig(EmbedderSettings):
 
     This class contains the configuration for the Gemini Embedder.
     """
-
     google_api_key: str
     # Default model https://python.langchain.com/docs/integrations/text_embedding/google_generative_ai
     model: str = "models/embedding-001"
@@ -186,7 +185,6 @@ class EmbedderMistralAIChatConfig(EmbedderSettings):
 
     This class contains the configuration for the Mistral AI Embedder.
     """
-
     api_key: str
     model: str = "mistral-embed"
     max_retries: int = 5
@@ -209,7 +207,6 @@ class EmbedderVoyageAIChatConfig(EmbedderSettings):
 
     This class contains the configuration for the Voyage AI Text Embedder.
     """
-
     api_key: str
     model: str = "voyage-3"
     batch_size: int

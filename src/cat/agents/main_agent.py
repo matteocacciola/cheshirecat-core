@@ -13,7 +13,6 @@ from cat.env import get_env
 
 class MainAgent(BaseAgent):
     """Main Agent. This class manages sub agents that in turn use the LLM."""
-
     def __init__(self):
         self.verbose = False
         if get_env("CCAT_LOG_LEVEL") in ["DEBUG", "INFO"]:
@@ -92,7 +91,6 @@ class MainAgent(BaseAgent):
         information are inserted in the main prompt.
         All the formatting pipeline is hookable and memories can be edited.
         """
-
         # format memories to be inserted in the prompt
         episodic_memory_formatted_content = self.agent_prompt_episodic_memories(
             stray.working_memory.episodic_memories
@@ -123,7 +121,6 @@ class MainAgent(BaseAgent):
             memory_content: str
                 String of retrieved context from the episodic memory.
         """
-
         # convert docs to simple text
         memory_texts = [m.document.page_content.replace("\n", ". ") for m in memory_docs]
 
@@ -163,7 +160,6 @@ class MainAgent(BaseAgent):
             memory_content: str
                 String of retrieved context from the declarative memory.
         """
-
         # convert docs to simple text
         memory_texts = [m.document.page_content.replace("\n", ". ") for m in memory_docs]
 

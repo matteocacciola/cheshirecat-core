@@ -3,9 +3,7 @@
 Here is a collection of methods to hook into the *Agent* execution pipeline.
 
 """
-
 from typing import List, Dict
-from cat.agents import AgentOutput
 
 from cat.mad_hatter.decorators import hook
 
@@ -24,7 +22,6 @@ def before_agent_starts(agent_input: Dict, cat) -> Dict:
     Returns:
         Agent Input as Dictionary
     """
-
     return agent_input
 
 
@@ -59,7 +56,6 @@ def agent_fast_reply(ag_fast_reply: Dict, cat) -> Dict | None:
         }
     ```
     """
-
     return ag_fast_reply
 
 
@@ -83,5 +79,4 @@ def agent_allowed_tools(allowed_tools: List[str], cat) -> List[str]:
         tools: List[str]
             List of allowed Langchain tools.
     """
-
     return allowed_tools

@@ -48,7 +48,6 @@ class WorkingMemory(BaseModelDict):
     model_interactions: List[ModelInteraction]
         A list of interactions with models.
     """
-
     agent_id: str
     user_id: str
 
@@ -83,10 +82,7 @@ class WorkingMemory(BaseModelDict):
         Returns:
             The current instance of the WorkingMemory class.
         """
-
-        crud_history.set_history(
-            self.agent_id, self.user_id, [message.model_dump() for message in conversation_history]
-        )
+        crud_history.set_history(self.agent_id, self.user_id, conversation_history)
         self.history = conversation_history
 
         return self
@@ -98,7 +94,6 @@ class WorkingMemory(BaseModelDict):
         Returns:
             The current instance of the WorkingMemory class.
         """
-
         crud_history.set_history(self.agent_id, self.user_id, [])
         self.history = []
 
@@ -127,7 +122,6 @@ class WorkingMemory(BaseModelDict):
             why: MessageWhy, optional
                 The reason why the message was said. Default is None.
         """
-
         message = CatMessage(
             text=message, image=image, why=why
         ) if who == Role.AI else UserMessage(text=message, image=image)
@@ -142,7 +136,6 @@ class WorkingMemory(BaseModelDict):
             who: Role, who said the message. Can either be Role.Human or Role.AI.
             content: BaseMessage, the message said.
         """
-
         # we are sure that who is not change in the current call
         conversation_history_item = ConversationHistoryItem(who=who, content=content)
 
@@ -155,14 +148,11 @@ class WorkingMemory(BaseModelDict):
         """
         Pop the last message if it was said by the human.
         """
-
         if not self.history or self.history[-1].who != Role.HUMAN:
             return
 
         self.history.pop()
-        crud_history.set_history(
-            self.agent_id, self.user_id, [message.model_dump() for message in self.history]
-        )
+        crud_history.set_history(self.agent_id, self.user_id, self.history)
 
     def stringify_chat_history(self, latest_n: int = 10) -> str:
         """
@@ -185,7 +175,6 @@ class WorkingMemory(BaseModelDict):
             'who': the name of who said the utterance;
             'content': the utterance.
         """
-
         history = self.history[-latest_n:]
         history = [h.model_dump() for h in history]
 
@@ -202,7 +191,6 @@ class WorkingMemory(BaseModelDict):
         Returns:
             List[BaseMessage]: List of Langchain messages.
         """
-
         chat_history = self.history[-latest_n:]
 
         return [convert_to_langchain_message(h) for h in chat_history]
