@@ -155,7 +155,7 @@ def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
     for k, v in m.vector.items():
         page_content = m.payload.get("page_content", "") if m.payload else ""
         if isinstance(page_content, dict):
-            page_content = json.dumps(page_content[str(k)] if str(k) in page_content else page_content)
+            page_content = page_content.get(str(k), "")
 
         metadata = m.payload.get("metadata", {}) if m.payload else {}
         if isinstance(metadata, str):
@@ -165,9 +165,7 @@ def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
                 metadata = {}
         metadata = metadata[str(k)] if str(k) in metadata else metadata
 
-        content_type = ContentType(k)
-
-        if content_type == ContentType.TEXT:
+        if k == ContentType.TEXT:
             doc = LangchainDocument(
                 page_content=page_content,
                 metadata=metadata,
@@ -187,6 +185,6 @@ def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
         if isinstance(m, ScoredPoint):
             item.score = m.score
 
-        result[content_type] = item
+        result[ContentType(k)] = item
 
     return result

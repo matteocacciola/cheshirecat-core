@@ -59,10 +59,10 @@ class RabbitHole:
         # Store data to upload the memories in batch
         ids = [m["id"] for m in declarative_memories]
         payloads = [{"page_content": m["page_content"], "metadata": m["metadata"]} for m in declarative_memories]
-        vectors = dict(defaultdict(list, {
-            ContentType(k): [v for m in declarative_memories for k_inner, v in m["vector"].items() if k == k_inner]
-            for k in {k for m in declarative_memories for k in m["vector"]}
-        }))
+        vectors = defaultdict(list)
+        for m in declarative_memories:
+            for k, v in m["vector"].items():
+                vectors[ContentType(k)].append(v)
 
         log.info(f"Agent id: {ccat.id}. Preparing to load {len(vectors)} vector memories")
 
