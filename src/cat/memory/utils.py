@@ -1,9 +1,14 @@
 import json
-from typing import List, Any, Dict
-from langchain_core.documents import Document as LangchainDocument
+from typing import List, Any, Dict, TypeAlias
+from langchain_core.documents.base import Document as LangchainDocument, Blob as LangchainBlob
 from pydantic import BaseModel, Field
 
 from cat.utils import Enum as BaseEnum, BaseModelDict
+
+
+class ContentType(BaseEnum):
+    TEXT = "text"
+    IMAGE = "image"
 
 
 class VectorMemoryCollectionTypes(BaseEnum):
@@ -12,20 +17,15 @@ class VectorMemoryCollectionTypes(BaseEnum):
     PROCEDURAL = "procedural"
 
 
-class VectorEmbedderSize(BaseModel):
-    text: int
-    image: int | None = None
+class VectorMemoryConfig(BaseModelDict):
+    embedder_name: str
+    embedder_size: int
 
 
-class DocumentRecall(BaseModelDict):
-    """
-    Langchain `Document` retrieved from the episodic memory, with the similarity score, the list of embeddings and the
-    id of the memory.
-    """
-    document: LangchainDocument
-    score: float | None = None
-    vector: List[float] = Field(default_factory=list)
-    id: str | None = None
+class MultimodalContent(BaseModel):
+    """Represents multimodal content with optional text and image data"""
+    text: str | None = None
+    image_url: str | None = None
 
 
 class SparseVector(BaseModel, extra="forbid"):
@@ -85,10 +85,26 @@ VectorStructOutput = List[float] | List[List[float]] | Dict[str, VectorOutput]
 Payload = Dict[str, Any]
 
 
+class DocumentRecallItem(BaseModelDict):
+    """
+    Langchain `Document` or `Blob` retrieved from the episodic memory, with the similarity score, the vectors for each
+    modality and the id of the memory.
+    """
+
+    document: LangchainDocument | LangchainBlob
+    score: float | None = None
+    vector: VectorStruct
+    id: str | None = None
+
+
+DocumentRecall: TypeAlias = Dict[ContentType, DocumentRecallItem]
+
+
 class Record(BaseModel):
     """
     Point data
     """
+
     id: int | str = Field(..., description="Point data")
     payload: Payload | None = Field(default=None, description="Payload - values assigned to the point")
     vector: VectorStructOutput | None = Field(default=None, description="Vector of the point")
@@ -130,27 +146,40 @@ def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
     Returns:
         DocumentRecall: The converted DocumentRecall object
     """
-    page_content = m.payload.get("page_content", "") if m.payload else ""
-    if isinstance(page_content, dict):
-        page_content = json.dumps(page_content)
+    result = {}
+    for k, v in m.vector.items():
+        page_content = m.payload.get("page_content", "") if m.payload else ""
+        if isinstance(page_content, dict):
+            page_content = page_content.get(str(k), "")
 
-    metadata = m.payload.get("metadata", {}) if m.payload else {}
-    if isinstance(metadata, str):
-        try:
-            metadata = json.loads(metadata)
-        except json.JSONDecodeError:
-            metadata = {}
+        metadata = m.payload.get("metadata", {}) if m.payload else {}
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except json.JSONDecodeError:
+                metadata = {}
+        metadata = metadata[str(k)] if str(k) in metadata else metadata
 
-    document = DocumentRecall(
-        document=LangchainDocument(
-            page_content=page_content,
-            metadata=metadata,
-        ),
-        vector=m.vector,
-        id=m.id,
-    )
+        if k == ContentType.TEXT:
+            doc = LangchainDocument(
+                page_content=page_content,
+                metadata=metadata,
+            )
+        else:
+            doc = LangchainBlob(
+                data=page_content if isinstance(page_content, (bytes, str)) else str(page_content),
+                metadata=metadata
+            )
 
-    if isinstance(m, ScoredPoint):
-        document.score = m.score
+        item = DocumentRecallItem(
+            document=doc,
+            vector=v,
+            id=m.id,
+        )
 
-    return document
+        if isinstance(m, ScoredPoint):
+            item.score = m.score
+
+        result[ContentType(k)] = item
+
+    return result
