@@ -35,7 +35,6 @@ from cat.log import log
 from cat.memory.utils import (
     ContentType,
     VectorMemoryCollectionTypes,
-    VectorEmbedderSize,
     Payload,
     PointStruct,
     Record,
@@ -73,12 +72,13 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def initialize(self, embedder_name: str, embedder_size: VectorEmbedderSize):
+    async def initialize(self, embedder_name: str, embedder_size: int, is_multimodal_embedder: bool):
         """
         Initializes the vector database with the specified embedder name and size.
         Args:
             embedder_name: str, the name of the embedder to use.
-            embedder_size: VectorEmbedderSize, the size of the vector embeddings.
+            embedder_size: int, the size of the vector embeddings.
+            is_multimodal_embedder: bool, whether the embedder is multimodal or not.
         """
         pass
 
@@ -414,7 +414,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             ])
         return conditions
 
-    async def initialize(self, embedder_name: str, embedder_size: VectorEmbedderSize):
+    async def initialize(self, embedder_name: str, embedder_size: int, is_multimodal_embedder: bool):
         for collection_name in VectorMemoryCollectionTypes:
             is_collection_existing = await self._check_collection_existence(str(collection_name))
             has_same_size = (
@@ -432,7 +432,8 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             if is_collection_existing:
                 await self._client.delete_collection(collection_name=str(collection_name))
                 log.warning(f"Collection `{collection_name}` for the agent `{self.agent_id}` deleted")
-            await self._create_collection(embedder_name, embedder_size, str(collection_name))
+
+            await self._create_collection(embedder_name, embedder_size, str(collection_name), is_multimodal_embedder)
 
     async def _check_collection_existence(self, collection_name: str) -> bool:
         collections_response = await self._client.get_collections()
@@ -447,7 +448,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         return f"{embedder_name}_{collection_name}"
 
     async def _check_embedding_size(
-        self, embedder_name: str, embedder_size: VectorEmbedderSize, collection_name: str
+        self, embedder_name: str, embedder_size: int, collection_name: str
     ) -> bool:
         # Multiple vector configurations
         vectors_config = (await self._client.get_collection(collection_name=collection_name)).config.params.vectors
@@ -455,10 +456,8 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         text_lbl = str(ContentType.TEXT)
         image_lbl = str(ContentType.IMAGE)
 
-        text_condition = text_lbl in vectors_config and vectors_config[text_lbl].size == embedder_size.text
-        image_condition = (
-                image_lbl in vectors_config and vectors_config[image_lbl].size == embedder_size.image
-        ) if embedder_size.image else True
+        text_condition = text_lbl in vectors_config and vectors_config[text_lbl].size == embedder_size
+        image_condition = image_lbl in vectors_config and vectors_config[image_lbl].size == embedder_size
 
         # having the same size does not necessarily imply being the same embedder
         # having vectors with the same size but from different embedder in the same vector space is wrong
@@ -475,16 +474,16 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         return False
 
     # create collection
-    async def _create_collection(self, embedder_name: str, embedder_size: VectorEmbedderSize, collection_name: str):
+    async def _create_collection(
+        self, embedder_name: str, embedder_size: int, collection_name: str, is_multimodal_embedder: bool
+    ):
         log.warning(f"Creating collection `{collection_name}` for the agent `{self.agent_id}`...")
 
         vectors_config = {
-            str(ContentType.TEXT): VectorParams(size=embedder_size.text, distance=Distance.COSINE)
+            str(ContentType.TEXT): VectorParams(size=embedder_size, distance=Distance.COSINE)
         }
-        if embedder_size.image:
-            vectors_config[str(ContentType.IMAGE)] = VectorParams(
-                size=embedder_size.image, distance=Distance.COSINE
-            )
+        if is_multimodal_embedder:
+            vectors_config[str(ContentType.IMAGE)] = VectorParams(size=embedder_size, distance=Distance.COSINE)
 
         try:
             await self._client.create_collection(

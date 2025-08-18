@@ -340,7 +340,9 @@ class CheshireCat:
         self.vector_memory_handler = get_factory_object(self.id, factory)
 
         lizard = self.lizard
-        await self.vector_memory_handler.initialize(lizard.embedder_name, lizard.embedder_size)
+        await self.vector_memory_handler.initialize(
+            lizard.embedder_name, lizard.embedder_size, lizard.is_multimodal_embedder
+        )
 
         return ReplacedNLPConfig(name=vector_memory_name, value=updater.new_setting["value"])
 

@@ -17,14 +17,9 @@ class VectorMemoryCollectionTypes(BaseEnum):
     PROCEDURAL = "procedural"
 
 
-class VectorEmbedderSize(BaseModel):
-    text: int
-    image: int | None = None
-
-
 class VectorMemoryConfig(BaseModelDict):
     embedder_name: str
-    embedder_size: VectorEmbedderSize
+    embedder_size: int
 
 
 class MultimodalContent(BaseModel):
