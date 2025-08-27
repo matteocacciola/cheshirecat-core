@@ -16,31 +16,28 @@ endif
 
 docker-compose-files=-f ${dockerfile}
 
-run_in_docker=docker compose ${docker-compose-files} exec php-web
-
-help:  ## Show help
+help:  ## Show help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m\033[0m\n"} /^[$$()% a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-# build docker images for all docker-compose files
-build:  ## Build docker images
+build:  ## Build docker image(s) [args="<name_of_image>"].
 	docker compose $(docker-compose-files) build ${args}
 
-build-no-cache:  ## Build docker images without cache
+build-no-cache:  ## Build docker image(s) without cache [args="<name_of_image>"].
 	docker compose $(docker-compose-files) --compatibility build ${args} --no-cache
 
-up:  ## Start docker containers
+up:  ## Start docker container(s) [args="<name_of_service>"].
 	docker compose ${docker-compose-files} up ${args} -d
 
-down:  ## Stop docker containers
+down:  ## Stop docker container(s) [args="<name_of_service>"].
 	docker compose ${docker-compose-files} down ${args}
 
-stop:  ## Stop docker containers
+stop:  ## Stop docker containers [args="<name_of_service>"].
 	docker compose ${docker-compose-files} stop ${args}
 
-restart:  ## Restart service [service=php]
+restart:  ## Restart service(s) [args="<name_of_service>"].
 	docker compose ${docker-compose-files} restart ${args}
 
-test:  ## Run tests
+test:  ## Run tests.
 	docker exec cheshire_cat_core python -m pytest --color=yes -vvv -W ignore ${args}
 
 sync-requirements: ## Update the local virtual environment with the latest requirements.

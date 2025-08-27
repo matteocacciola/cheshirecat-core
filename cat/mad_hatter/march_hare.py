@@ -27,14 +27,16 @@ class MarchHareConfig:
 @singleton
 class MarchHare:
     def __init__(self):
-        self._connection_parameters = pika.ConnectionParameters(
-            host=getenv("CCAT_RABBITMQ_HOST"),
-            port=int(getenv("CCAT_RABBITMQ_PORT")),
-            credentials=pika.PlainCredentials(
-                username=getenv("CCAT_RABBITMQ_USER"),
-                password=getenv("CCAT_RABBITMQ_PASSWORD")
+        self._connection_parameters = None
+        if MarchHareConfig.is_enabled:
+            self._connection_parameters = pika.ConnectionParameters(
+                host=getenv("CCAT_RABBITMQ_HOST"),
+                port=int(getenv("CCAT_RABBITMQ_PORT")),
+                credentials=pika.PlainCredentials(
+                    username=getenv("CCAT_RABBITMQ_USER"),
+                    password=getenv("CCAT_RABBITMQ_PASSWORD")
+                )
             )
-        )
 
     def notify_event(self, event_type: str, payload: Dict, exchange: str, exchange_type: str = "fanout"):
         """
@@ -46,7 +48,7 @@ class MarchHare:
             exchange (str): The name of the exchange to publish the event to.
             exchange_type (str): The type of the exchange to use. Defaults to "fanout".
         """
-        if not MarchHareConfig.is_enabled:
+        if self._connection_parameters is None:
             return
 
         connection = None
@@ -72,7 +74,7 @@ class MarchHare:
                 connection.close()
 
     def consume_event(self, callback: callable, exchange: str, exchange_type: str = "fanout"):
-        if not MarchHareConfig.is_enabled:
+        if self._connection_parameters is None:
             return
 
         connection = None

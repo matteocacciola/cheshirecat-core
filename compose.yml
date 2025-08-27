@@ -27,7 +27,7 @@ services:
       - CCAT_RABBITMQ_USER=guest
       - CCAT_RABBITMQ_PASSWORD=guest
     volumes:
-      - ./src:/app
+      - ./cat:/app/cat
       - ./tests:/app/tests
       - ./pyproject.toml:/app/pyproject.toml
       - ./requirements.txt:/app/requirements.txt
@@ -66,7 +66,7 @@ services:
     ports:
       - "6333:6333"
     volumes:
-      - ./src/cat/data/long_term_memory/vector:/qdrant/storage
+      - ./cat/data/long_term_memory/vector:/qdrant/storage
     restart: unless-stopped
 
   cheshire-cat-healthcheck:
