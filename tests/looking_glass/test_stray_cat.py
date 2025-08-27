@@ -2,6 +2,7 @@ import pytest
 
 from cat.convo.messages import MessageWhy, CatMessage, UserMessage
 from cat.looking_glass.stray_cat import StrayCat
+from cat.memory.utils import ContentType
 from cat.memory.working_memory import WorkingMemory
 
 from tests.utils import api_key, create_mock_plugin_zip
@@ -64,7 +65,7 @@ async def test_recall_to_working_memory(stray_no_memory, mocked_default_llm_answ
     assert stray_no_memory.working_memory.history[0].content.text == msg_text
     assert stray_no_memory.working_memory.recall_query == msg_text
     assert len(stray_no_memory.working_memory.episodic_memories) == 1
-    assert stray_no_memory.working_memory.episodic_memories[0].document.page_content == msg_text
+    assert stray_no_memory.working_memory.episodic_memories[0][ContentType.TEXT].document.page_content == msg_text
 
 
 @pytest.mark.asyncio
@@ -86,9 +87,16 @@ async def test_stray_recall_query(stray, lizard, mocked_default_llm_answer_promp
     memories = await stray.recall(query, "episodic")
 
     assert len(memories) == 1
-    assert memories[0].document.page_content == msg_text
-    assert isinstance(memories[0].score, float)
-    assert isinstance(memories[0].vector, list)
+
+    for k in ContentType:
+        if k in memories[0]:
+            assert isinstance(memories[0][k].vector, list)
+
+    m = memories[0][ContentType.TEXT]
+
+    assert m.document.page_content == msg_text
+    assert isinstance(m.score, float)
+    assert isinstance(m.vector, list)
 
 
 @pytest.mark.asyncio
@@ -136,7 +144,7 @@ async def test_stray_recall_override_working_memory(stray, lizard, mocked_defaul
 
     assert stray.working_memory.episodic_memories == memories
     assert len(stray.working_memory.episodic_memories) == 1
-    assert stray.working_memory.episodic_memories[0].document.page_content == msg_text
+    assert stray.working_memory.episodic_memories[0][ContentType.TEXT].document.page_content == msg_text
 
 
 @pytest.mark.asyncio
@@ -163,7 +171,7 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
     memories = await stray.recall(query, "declarative", metadata={"source": file_name})
     assert len(memories) == expected_chunks
     for mem in memories:
-        assert mem.document.metadata["source"] == file_name
+        assert mem[ContentType.TEXT].document.metadata["source"] == file_name
 
 
 @pytest.mark.asyncio

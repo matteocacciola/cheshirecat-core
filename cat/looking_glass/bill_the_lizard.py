@@ -29,7 +29,6 @@ from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.march_hare import MarchHare, MarchHareConfig
 from cat.mad_hatter.tweedledum import Tweedledum
-from cat.memory.utils import VectorEmbedderSize
 from cat.parsers import YoutubeParser, TableParser, JSONParser, PowerPointParser
 from cat.rabbit_hole import RabbitHole
 from cat.services.websocket_manager import WebsocketManager
@@ -74,7 +73,8 @@ class BillTheLizard:
 
         self.embedder: Embeddings | None = None
         self.embedder_name: str | None = None
-        self.embedder_size: VectorEmbedderSize | None = None
+        self.embedder_size: int | None = None
+        self.is_multimodal_embedder: bool = False
 
         self.plugin_manager = Tweedledum()
         self.plugin_manager.on_end_plugin_install_callback = self.on_end_plugin_install
@@ -208,7 +208,9 @@ class BillTheLizard:
             ccat = self.get_cheshire_cat(ccat_id)
 
             # inform the Cheshire Cats about the new embedder available in the system
-            await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
+            await ccat.vector_memory_handler.initialize(
+                self.embedder_name, self.embedder_size, self.is_multimodal_embedder
+            )
 
     def initialize_users(self):
         admin_id = str(uuid4())
@@ -231,10 +233,10 @@ class BillTheLizard:
 
         self.embedder = get_factory_object(self.__key, factory)
         self.embedder_name = get_embedder_name(self.embedder)
+        self.is_multimodal_embedder = factory.get_config_class_from_adapter(self.embedder.__class__).is_multimodal
 
         # Get embedder size (langchain classes do not store it)
-        embedder_size = len(self.embedder.embed_query("hello world"))
-        self.embedder_size = VectorEmbedderSize(text=embedder_size)
+        self.embedder_size = len(self.embedder.embed_query("hello world"))
 
     async def replace_embedder(self, language_embedder_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
@@ -331,7 +333,9 @@ class BillTheLizard:
             return self.get_cheshire_cat(agent_id)
 
         ccat = CheshireCat(agent_id)
-        await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
+        await ccat.vector_memory_handler.initialize(
+            self.embedder_name, self.embedder_size, self.is_multimodal_embedder
+        )
         await ccat.embed_procedures()
 
         return ccat
@@ -371,6 +375,7 @@ class BillTheLizard:
         self.embedder = None
         self.embedder_name = None
         self.embedder_size = None
+        self.is_multimodal_embedder = False
         self.websocket_manager = None
         self.fastapi_app = None
 
