@@ -25,7 +25,6 @@ def test_upload_memory(secure_client, secure_client_headers):
         collections_n_points["declarative"] == 1
     )  # new declarative memory (just uploaded)
     assert collections_n_points["procedural"] == 3  # default tool
-    assert collections_n_points["episodic"] == 0
 
 
 # upload a file different than a JSON

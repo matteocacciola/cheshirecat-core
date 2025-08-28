@@ -3,10 +3,6 @@ from typing import Dict
 from uuid import uuid4
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
-from langchain_core.messages import HumanMessage
-from langchain_core.runnables import RunnableLambda
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers.string import StrOutputParser
 
 from cat.auth.auth_utils import hash_password, DEFAULT_USER_USERNAME
 from cat.auth.permissions import get_base_permissions
@@ -30,14 +26,7 @@ from cat.factory.vector_db import VectorDatabaseFactory
 from cat.log import log
 from cat.mad_hatter.tweedledee import Tweedledee
 from cat.memory.utils import VectorMemoryCollectionTypes
-from cat.utils import (
-    langchain_log_prompt,
-    langchain_log_output,
-    get_caller_info,
-    get_factory_object,
-    get_updated_factory_object,
-    rollback_factory_config,
-)
+from cat.utils import get_factory_object, get_updated_factory_object, rollback_factory_config
 
 
 # main class
@@ -189,36 +178,6 @@ class CheshireCat:
 
     def send_ws_message(self, content: str, msg_type="notification"):
         log.error(f"Agent id: {self.id}. No websocket connection open")
-
-    # REFACTOR: cat.llm should be available here, without streaming clearly
-    # (one could be interested in calling the LLM anytime, not only when there is a session)
-    def llm(self, prompt, *args, **kwargs) -> str:
-        """Generate a response using the LLM model.
-
-        This method is useful for generating a response with both a chat and a completion model using the same syntax
-
-        Args:
-            prompt (str): The prompt for generating the response.
-
-        Returns:
-            str: The generated response.
-        """
-        # Add a token counter to the callbacks
-        caller = get_caller_info()
-
-        # here we deal with Langchain
-        prompt = ChatPromptTemplate(messages=[HumanMessage(content=prompt)])
-
-        chain = (
-            prompt
-            | RunnableLambda(lambda x: langchain_log_prompt(x, f"{caller} prompt"))
-            | self.large_language_model
-            | RunnableLambda(lambda x: langchain_log_output(x, f"{caller} prompt output"))
-            | StrOutputParser()
-        )
-
-        # in case we need to pass info to the template
-        return chain.invoke({}, config=kwargs.get("config", None))
 
     def replace_llm(self, language_model_name: str, settings: Dict) -> ReplacedNLPConfig:
         """
@@ -406,17 +365,6 @@ class CheshireCat:
         return self.lizard.core_auth_handler
 
     @property
-    def main_agent(self) -> "MainAgent":
-        """
-        Gives access to the `MainAgent` object. Use it to interact with the Cat's main agent.
-
-        Returns:
-            main_agent: MainAgent
-                Main agent of the Cat
-        """
-        return self.lizard.main_agent
-
-    @property
     def mad_hatter(self) -> Tweedledee:
         """
         Gives access to the `Tweedledee` plugin manager.
@@ -435,14 +383,6 @@ class CheshireCat:
         {"num_cats": 44, "rows": 6, "remainder": 0}
         """
         return self.plugin_manager
-
-    @property
-    def _llm(self) -> BaseLanguageModel:
-        """
-        Instance of langchain `LLM`.
-        Only use it if you directly want to deal with langchain, prefer method `cat.llm(prompt)` otherwise.
-        """
-        return self.large_language_model
 
     # each time we access the file handlers, plugins can intervene
     @property

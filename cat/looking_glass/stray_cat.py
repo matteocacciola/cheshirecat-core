@@ -1,10 +1,10 @@
-import time
 import tiktoken
-from typing import Literal, List, Dict, Any, get_args
-from langchain_core.documents import Document
+from typing import Literal, List, Dict, Any, get_args, Final
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
-from langchain_core.runnables import RunnableConfig
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate, BasePromptTemplate, HumanMessagePromptTemplate
+from langchain_core.runnables import RunnableConfig, RunnableLambda
 from websockets.exceptions import ConnectionClosedOK
 
 from cat import utils
@@ -40,22 +40,23 @@ class RecallSettings(utils.BaseModelDict):
 class StrayCat:
     """User/session based object containing working memory and a few utility pointers"""
     def __init__(self, agent_id: str, user_data: AuthUserInfo):
-        self.__agent_id = agent_id
+        self.agent_id: Final[str] = agent_id
+        self.user: Final[AuthUserInfo] = user_data
 
-        self.__user = user_data
-        self.working_memory = WorkingMemory(agent_id=self.__agent_id, user_id=self.__user.id)
+        # Main agent instance (for reasoning)
+        self.main_agent: Final[MainAgent] = MainAgent(self)
+
+        self.working_memory = WorkingMemory(agent_id=self.agent_id, user_id=self.user.id)
 
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""
-        if not isinstance(other, StrayCat):
-            return False
-        return self.__user.id == other.user.id
+        return self.user.id == other.user.id
 
     def __hash__(self):
-        return hash(self.__user.id)
+        return hash(self.user.id)
 
     def __repr__(self):
-        return f"StrayCat(user_id={self.__user.id}, agent_id={self.__agent_id})"
+        return f"StrayCat(user_id={self.user.id}, agent_id={self.agent_id})"
 
     async def _send_ws_json(self, data: Any):
         ws_connection = self.websocket_manager.get_connection(self.user.id)
@@ -208,7 +209,7 @@ class StrayCat:
                 Please first run cheshire_cat.embedder.embed_query(query) if you have a string query to pass here.
             collection_name: str
                 The name of the collection to perform the search.
-                Available collections are: *episodic*, *declarative*, *procedural*.
+                Available collections are: *declarative*, *procedural*.
             k: int | None
                 The number of memories to retrieve.
                 If `None` retrieves all the available memories.
@@ -254,7 +255,6 @@ class StrayCat:
         See Also:
             cat_recall_query
             before_cat_recalls_memories
-            before_cat_recalls_episodic_memories
             before_cat_recalls_declarative_memories
             before_cat_recalls_procedural_memories
             after_cat_recalls_memories
@@ -274,7 +274,7 @@ class StrayCat:
 
         # We may want to search in memory. If a query is not provided, use the user's message as the query
         recall_query = plugin_manager.execute_hook("cat_recall_query", query, cat=self)
-        log.info(f"Agent id: {self.__agent_id}. Recall query: '{recall_query}'")
+        log.info(f"Agent id: {self.agent_id}. Recall query: '{recall_query}'")
 
         # Embed recall query
         recall_query_embedding = cheshire_cat.embedder.embed_query(recall_query)
@@ -296,7 +296,6 @@ class StrayCat:
         # Setting default recall configs for each memory + hooks to change recall configs for each memory
         metadata = self.working_memory.user_message.get("metadata", {})
         for memory_type in VectorMemoryCollectionTypes:
-            metadata |= {"source": self.__user.id} if memory_type == VectorMemoryCollectionTypes.EPISODIC else metadata
             config = utils.restore_original_model(
                 plugin_manager.execute_hook(
                     f"before_cat_recalls_{str(memory_type)}_memories",
@@ -317,7 +316,7 @@ class StrayCat:
         # hook to modify/enrich retrieved memories
         plugin_manager.execute_hook("after_cat_recalls_memories", cat=self)
 
-    def llm(self, prompt: str, stream: bool = False) -> str:
+    def llm(self, prompt: BasePromptTemplate, inputs: Dict[str, Any] = None, stream: bool = False, **kwargs) -> str:
         """
         Generate a response using the LLM model.
         This method is useful for generating a response with both a chat and a completion model using the same syntax.
@@ -325,29 +324,33 @@ class StrayCat:
         Args:
             prompt: str
                 The prompt for generating the response.
+            inputs: Dict[str, Any]
+                The inputs to be passed to the prompt template.
             stream: bool, optional
                 Whether to stream the tokens or not.
 
         Returns: The generated LLM response.
-
-        Examples
-        -------
-        Detect profanity in a message
-        >>> message = cat.working_memory.user_message_json.text
-        ... cat.llm(f"Does this message contain profanity: '{message}'?  Reply with 'yes' or 'no'.")
-        "no"
-        Run the LLM and stream the tokens via websocket
-        >>> cat.llm("Tell me which way to go?", stream=True)
-        "It doesn't matter which way you go"
         """
-        # should we stream the tokens?
-        callbacks = [] if not stream else NewTokenHandler(self)
+        output_parser = kwargs.pop("output_parser", StrOutputParser())
+        return_short = kwargs.pop("caller_return_short", False)
+        skip = kwargs.pop("caller_skip", 2)
 
         # Add a token counter to the callbacks
-        caller = utils.get_caller_info(return_short=False)
-        callbacks.append(ModelInteractionHandler(self, caller or "StrayCat"))
+        caller = utils.get_caller_info(skip=skip, return_short=return_short)
 
-        return self.cheshire_cat.llm(prompt, caller=caller, config=RunnableConfig(callbacks=callbacks))
+        # should we stream the tokens?
+        callbacks = ([] if not stream else [NewTokenHandler(self)]) + [ModelInteractionHandler(self, caller or "StrayCat")]
+
+        chain = (
+            prompt
+            | RunnableLambda(lambda x: utils.langchain_log_prompt(x, f"{caller} prompt"))
+            | self.large_language_model
+            | RunnableLambda(lambda x: utils.langchain_log_output(x, f"{caller} prompt output"))
+            | output_parser
+        )
+
+        # in case we need to pass info to the template
+        return chain.invoke(inputs or {}, config=RunnableConfig(callbacks=callbacks))
 
     async def __call__(self, user_message: UserMessage) -> CatMessage:
         """
@@ -393,11 +396,11 @@ class StrayCat:
         # update conversation history (Human turn)
         self.working_memory.update_history(who=Role.HUMAN, content=self.working_memory.user_message)
 
-        # recall episodic and declarative memories from vector collections and store them in working_memory
+        # recall declarative memory from vector collections and store them in working_memory
         try:
             await self.recall_relevant_memories_to_working_memory(self.working_memory.user_message.text)
         except Exception as e:
-            log.error(f"Agent id: {self.__agent_id}. Error during recall {e}")
+            log.error(f"Agent id: {self.agent_id}. Error during recall {e}")
 
             raise VectorMemoryError("An error occurred while recalling relevant memories.")
 
@@ -411,7 +414,7 @@ class StrayCat:
             # We grab the LLM output here anyway, so small and non-instruction-fine-tuned models can still be used.
             error_description = str(e)
 
-            log.error(f"Agent id: {self.__agent_id}. Error: {error_description}")
+            log.error(f"Agent id: {self.agent_id}. Error: {error_description}")
             if "Could not parse LLM output: `" not in error_description:
                 raise e
 
@@ -420,7 +423,7 @@ class StrayCat:
             ).replace("`", "")
             agent_output = AgentOutput(output=unparsable_llm_output, with_llm_error=True)
 
-        log.info(f"Agent id: {self.__agent_id}. Agent output returned to stray:")
+        log.info(f"Agent id: {self.agent_id}. Agent output returned to stray:")
         log.info(agent_output)
 
         # prepare a final cat message
@@ -435,24 +438,6 @@ class StrayCat:
         if agent_output.with_llm_error:
             self.working_memory.pop_last_message_if_human()
         else:
-            # store a user message in episodic memory
-            doc = Document(
-                page_content=self.working_memory.user_message.text,
-                metadata={"source": self.__user.id, "when": time.time()},
-            )
-            doc = self.plugin_manager.execute_hook(
-                "before_cat_stores_episodic_memory", doc, cat=self
-            )
-            # TODO: vectorize and store also conversation chunks (not raw dialog, but summarization)
-            cheshire_cat = self.cheshire_cat
-            user_message_embedding = cheshire_cat.embedder.embed_documents([self.working_memory.user_message.text])
-            await cheshire_cat.vector_memory_handler.add_point(
-                str(VectorMemoryCollectionTypes.EPISODIC),
-                doc.page_content,
-                user_message_embedding[0],
-                doc.metadata,
-            )
-
             # update conversation history (AI turn)
             self.working_memory.update_history(who=Role.AI, content=final_output)
 
@@ -463,7 +448,7 @@ class StrayCat:
             return await self(user_message)
         except Exception as e:
             # Log any unexpected errors
-            log.error(f"Agent id: {self.__agent_id}. Error {e}")
+            log.error(f"Agent id: {self.agent_id}. Error {e}")
             return CatMessage(text="", error=str(e))
 
     async def run_websocket(self, user_message: UserMessage) -> None:
@@ -473,12 +458,12 @@ class StrayCat:
             await self.send_chat_message(cat_message)
         except Exception as e:
             # Log any unexpected errors
-            log.error(f"Agent id: {self.__agent_id}. Error {e}")
+            log.error(f"Agent id: {self.agent_id}. Error {e}")
             try:
                 # Send error as a websocket message
                 await self.send_error(e)
             except ConnectionClosedOK as ex:
-                log.warning(f"Agent id: {self.__agent_id}. Warning {ex}")
+                log.warning(f"Agent id: {self.agent_id}. Warning {ex}")
 
     def classify(
         self, sentence: str, labels: List[str] | Dict[str, List[str]], score_threshold: float = 0.5
@@ -531,7 +516,11 @@ Allowed classes are:
 {labels_list}{examples_list}
 
 Just output the class, nothing else."""
-        response = self.llm(prompt)
+        response = self.llm(
+            ChatPromptTemplate.from_messages([
+                HumanMessagePromptTemplate.from_template(template=prompt)
+            ])
+        )
 
         # find the closest match and its score with levenshtein distance
         best_label, score = min(
@@ -540,14 +529,6 @@ Just output the class, nothing else."""
         )
 
         return best_label if score < score_threshold else None
-
-    @property
-    def user(self) -> AuthUserInfo:
-        return self.__user
-
-    @property
-    def agent_id(self) -> str:
-        return self.__agent_id
 
     @property
     def lizard(self) -> BillTheLizard:
@@ -580,23 +561,15 @@ Just output the class, nothing else."""
             cheshire_cat: CheshireCat
                 Instance of `CheshireCat`.
         """
-        return self.lizard.get_cheshire_cat(self.__agent_id)
+        return self.lizard.get_cheshire_cat(self.agent_id)
 
     @property
     def large_language_model(self) -> BaseLanguageModel:
         """
         Instance of langchain `LLM`.
-        Only use it if you directly want to deal with langchain, prefer method `cat.llm(prompt)` otherwise.
+        Only use it if you directly want to deal with langchain, prefer method `stray.llm(prompt)` otherwise.
         """
         return self.cheshire_cat.large_language_model
-
-    @property
-    def _llm(self) -> BaseLanguageModel:
-        """
-        Instance of langchain `LLM`.
-        Only use it if you directly want to deal with langchain, prefer method `cat.llm(prompt)` otherwise.
-        """
-        return self.large_language_model
 
     @property
     def embedder(self) -> Embeddings:
@@ -656,17 +629,6 @@ Just output the class, nothing else."""
         {"num_cats": 44, "rows": 6, "remainder": 0}
         """
         return self.plugin_manager
-
-    @property
-    def main_agent(self) -> MainAgent:
-        """
-        Gives access to the `MainAgent` object. Use it to interact with the Cat's main agent.
-
-        Returns:
-            main_agent: MainAgent
-                Main agent of the Cat
-        """
-        return self.lizard.main_agent
 
     @property
     def white_rabbit(self) -> WhiteRabbit:

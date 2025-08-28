@@ -107,28 +107,6 @@ def before_rabbithole_splits_text(docs: List[Document], cat) -> List[Document]:
     return docs
 
 
-# Hook called after rabbithole have splitted text into chunks.
-#   Input is the chunks
-@hook(priority=0)
-def after_rabbithole_splitted_text(chunks: List[Document], cat) -> List[Document]:
-    """Hook the `Document` after is split.
-
-    Allows editing the list of `Document` right after the *RabbitHole* chunked them in smaller ones.
-
-    Args:
-        chunks: List[Document]
-            List of Langchain `Document`.
-        cat: StrayCat
-            Stray Cat instance.
-
-    Returns:
-        chunks: List[Document]
-            List of modified chunked langchain documents to be stored in the episodic memory.
-    """
-    return chunks
-
-
-# TODO_HOOK: is this useful or just a duplication of `after_rabbithole_splitted_text` ?
 # Hook called when a list of Document is going to be inserted in memory from the rabbit hole.
 # Here you can edit/summarize the documents before inserting them in memory
 # Should return a list of documents (each is a langchain Document)

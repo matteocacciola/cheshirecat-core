@@ -64,7 +64,7 @@ async def recall_memory_points_from_text(
     Example
     ----------
     ```
-    collection = "episodic"
+    collection = "declarative"
     content = "MIAO!"
     metadata = {"custom_key": "custom_value"}
     req_json = {
@@ -97,11 +97,7 @@ async def recall_memory_points_from_text(
         return memory_dict
 
     async def get_memories(c: VectorMemoryCollectionTypes) -> List:
-        # only episodic collection has users, and then a source
-        if c == VectorMemoryCollectionTypes.EPISODIC:
-            metadata["source"] = info.user.id
-        else:
-            metadata.pop("source", None)
+        metadata.pop("source", None)
         return await ccat.vector_memory_handler.recall_memories_from_embedding(
             str(c), query_embedding, k=k, metadata=metadata
         )

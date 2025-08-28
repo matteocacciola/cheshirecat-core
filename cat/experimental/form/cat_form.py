@@ -1,5 +1,6 @@
 import json
 from typing import List, Dict
+from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 from pydantic import BaseModel, ValidationError
 
 from cat.log import log
@@ -34,7 +35,7 @@ class CatForm:  # base model of forms
         self._state = CatFormState.INCOMPLETE
         self._model: Dict = {}
 
-        self._cat = cat
+        self._stray = cat
 
         self._errors: List[str] = []
         self._missing_fields: List[str] = []
@@ -45,7 +46,7 @@ class CatForm:  # base model of forms
         Returns:
             StrayCat: StrayCat instance
         """
-        return self._cat
+        return self._stray
 
     def model_getter(self) -> BaseModel:
         return self.model_class
@@ -64,7 +65,7 @@ class CatForm:  # base model of forms
     # Check user confirm the form data
     def confirm(self) -> bool:
         # Get user message
-        user_message = self.cat.working_memory.user_message.text
+        user_message = self._stray.cheshire_cat.working_memory.user_message.text
 
         # Confirm prompt
         confirm_prompt = f"""Your task is to produce a JSON representing whether a user is confirming or not.
@@ -82,14 +83,18 @@ JSON:
     "confirm": """
 
         # Queries the LLM and check if user is agree or not
-        response = self.cat.llm(confirm_prompt)
+        response = self._stray.llm(
+            ChatPromptTemplate.from_messages([
+                HumanMessagePromptTemplate.from_template(template=confirm_prompt)
+            ])
+        )
         return "true" in response.lower()
 
     # Check if the user wants to exit the form
     # it is run at the beginning of every form.next()
     def check_exit_intent(self) -> bool:
         # Get user message
-        user_message = self.cat.working_memory.user_message.text
+        user_message = self._stray.cheshire_cat.working_memory.user_message.text
 
         # Stop examples
         stop_examples = """
@@ -116,14 +121,15 @@ JSON:
 """
 
         # Queries the LLM and check if user is agree or not
-        response = self.cat.llm(check_exit_prompt)
+        response = self._stray.llm(
+            ChatPromptTemplate.from_messages([
+                HumanMessagePromptTemplate.from_template(template=check_exit_prompt)
+            ])
+        )
         return "true" in response.lower()
 
     # Execute the dialogue step
     def next(self):
-        # could we enrich prompt completion with episodic/declarative memories?
-        # self.cat.working_memory.episodic_memories = []
-
         # If state is WAIT_CONFIRM, check user confirm response.
         if self._state == CatFormState.WAIT_CONFIRM:
             if self.confirm():
@@ -209,9 +215,11 @@ JSON:
 
     # Extract model information from user message
     def extract(self):
-        prompt = self.extraction_prompt()
-
-        json_str = self.cat.llm(prompt)
+        json_str = self._stray.llm(
+            ChatPromptTemplate.from_messages([
+                HumanMessagePromptTemplate.from_template(template=self.extraction_prompt())
+            ])
+        )
 
         # json parser
         try:
@@ -223,8 +231,8 @@ JSON:
 
         return output_model
 
-    def extraction_prompt(self):
-        history = self.cat.working_memory.stringify_chat_history()
+    def extraction_prompt(self, latest_n: int = 10):
+        history = "".join([str(h) for h in self._stray.cheshire_cat.working_memory.history[-latest_n:]])
 
         # JSON structure
         # BaseModel.__fields__['my_field'].type_

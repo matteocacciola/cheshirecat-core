@@ -2,7 +2,7 @@ from os import getenv
 from typing import Dict, List, Any
 from redis.exceptions import RedisError
 
-from cat.convo.messages import ConversationHistoryItem, ConversationHistory
+from cat.convo.messages import ConversationHistoryItem
 from cat.db import crud
 from cat.log import log
 
@@ -59,7 +59,7 @@ def get_history(agent_id: str, user_id: str) -> List[Dict[str, Any]]:
         raise
 
 
-def set_history(agent_id: str, user_id: str, history: ConversationHistory) -> List[Dict[str, Any]]:
+def set_history(agent_id: str, user_id: str, history: List[ConversationHistoryItem]) -> List[Dict[str, Any]]:
     """
     Store conversation history in Redis with optional TTL.
 

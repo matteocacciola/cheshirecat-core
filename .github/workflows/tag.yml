@@ -78,7 +78,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-         context: src/
+         context: ./
          push: true
          tags: ghcr.io/${{ github.repository }}:latest , ghcr.io/${{ github.repository }}:${{ needs.tag.outputs.tag }}
          platforms: linux/amd64,linux/arm64

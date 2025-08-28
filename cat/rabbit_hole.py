@@ -324,32 +324,23 @@ class RabbitHole:
 
         See Also:
             before_rabbithole_splits_text
-            after_rabbithole_splitted_text
 
         Notes
         -----
-        The default behavior splits the text and executes the hooks, before and after the splitting, respectively.
-        `before_rabbithole_splits_text` and `after_rabbithole_splitted_text` hooks return the original input without
-        any modification.
+        The default behavior splits the text and executes the hooks, before the splitting.
+        `before_rabbithole_splits_text` hook returns the original input without any modification.
         """
         plugin_manager = stray.mad_hatter
-        text_splitter = stray.text_splitter
 
         # do something on the text before it is split
         text = plugin_manager.execute_hook("before_rabbithole_splits_text", text, cat=stray)
 
         # split text
+        text_splitter = stray.text_splitter
         docs = text_splitter.split_documents(text)
         # remove short texts (page numbers, isolated words, etc.)
         # TODO: join each short chunk with previous one, instead of deleting them
-        docs = list(filter(lambda d: len(d.page_content) > 10, docs))
-
-        # do something on the text after it is split
-        docs = plugin_manager.execute_hook(
-            "after_rabbithole_splitted_text", docs, cat=stray
-        )
-
-        return docs
+        return list(filter(lambda d: len(d.page_content) > 10, docs))
 
     async def _save_file(
         self, stray: "StrayCat", file_bytes: bytes, content_type: str, source: str

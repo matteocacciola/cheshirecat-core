@@ -1,9 +1,10 @@
+from typing import List
 from fastapi import APIRouter
 from pydantic import BaseModel
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
-from cat.convo.messages import ConversationHistory, MessageWhy, CatMessage, UserMessage, Role
+from cat.convo.messages import ConversationHistoryItem, MessageWhy, CatMessage, UserMessage, Role
 from cat.looking_glass.stray_cat import StrayCat
 
 router = APIRouter()
@@ -14,7 +15,7 @@ class DeleteConversationHistoryResponse(BaseModel):
 
 
 class GetConversationHistoryResponse(BaseModel):
-    history: ConversationHistory
+    history: List[ConversationHistoryItem]
 
 
 class PostConversationHistoryPayload(BaseModel):

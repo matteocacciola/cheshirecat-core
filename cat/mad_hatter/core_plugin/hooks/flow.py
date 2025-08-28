@@ -149,34 +149,6 @@ def before_cat_recalls_memories(cat) -> None:
 
 
 @hook(priority=0)
-def before_cat_recalls_episodic_memories(episodic_recall_config: Dict, cat) -> Dict:
-    """
-    Hook into semantic search in memories.
-
-    Allows to intercept when the Cat queries the memories using the embedded user's input.
-
-    The hook is executed just before the Cat searches for the meaningful context in both memories
-    and stores it in the *Working Memory*.
-
-    The hook return the values for maximum number (k) of items to retrieve from memory and the score threshold applied
-    to the query in the vector memory (items with score under threshold are not retrieved).
-    It also returns the embedded query (embedding) and the conditions on recall (metadata).
-
-    Args:
-        episodic_recall_config: Dict | RecallSettings
-            Data needed to recall episodic memories
-        cat: StrayCat
-            Stray Cat instance.
-
-    Returns:
-        episodic_recall_config: Dict
-            Edited dictionary that will be fed to the embedder.
-
-    """
-    return episodic_recall_config
-
-
-@hook(priority=0)
 def before_cat_recalls_declarative_memories(declarative_recall_config: Dict, cat) -> Dict:
     """
     Hook into semantic search in memories.
@@ -275,14 +247,14 @@ def before_cat_sends_message(message: Dict, cat) -> Dict:
 
             {
                 "type": "chat",
-                "content": cat_message["output"],
+                "text": cat_message["output"],
+                "image": cat_message["image"],
+                "error": "...",
                 "why": {
                     "input": cat_message["input"],
-                    "output": cat_message["output"],
                     "intermediate_steps": cat_message["intermediate_steps"],
                     "memory": {
                         "vectors": {
-                            "episodic": episodic_report,
                             "declarative": declarative_report
                         }
                     },
@@ -291,36 +263,6 @@ def before_cat_sends_message(message: Dict, cat) -> Dict:
 
     """
     return message
-
-
-# Hook called just before of inserting the user message document in vector memory
-@hook(priority=0)
-def before_cat_stores_episodic_memory(doc: Document, cat) -> Document:
-    """
-    Hook the user message `Document` before is inserted in the vector memory.
-
-    Allows editing and enhancing a single `Document` before the Cat add it to the episodic vector memory.
-
-    Args:
-        doc: Document
-            Langchain `Document` to be inserted in memory.
-        cat: StrayCat
-            Stray Cat instance.
-
-    Returns:
-        doc: Document
-            Langchain `Document` that is added in the episodic vector memory.
-
-    Notes
-    -----
-    The `Document` has two properties::
-
-        `page_content`: the string with the text to save in memory;
-        `metadata`: a dictionary with at least two keys:
-            `source`: where the text comes from;
-            `when`: timestamp to track when it's been uploaded.
-    """
-    return doc
 
 
 @hook(priority=0)

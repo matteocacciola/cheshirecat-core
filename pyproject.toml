@@ -1,7 +1,7 @@
 [project]
 name = "Cheshire-Cat"
 description = "Production ready AI assistant framework"
-version = "2.5.2"
+version = "2.6.0"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [
@@ -60,7 +60,6 @@ dependencies = [
     "text_generation",
     "tiktoken",
     "tomli",
-    "torch==2.4.1",
     "unstructured",
     "uvicorn[standard]",
     "websockets",
@@ -68,7 +67,7 @@ dependencies = [
 ]
 
 [tool.coverage.run]
-source = ["src/cat"]
+source = ["cat"]
 
 [tool.pylint]
 max-line-length = 180

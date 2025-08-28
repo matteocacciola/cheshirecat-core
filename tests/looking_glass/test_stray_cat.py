@@ -1,10 +1,11 @@
 import pytest
+from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
 from cat.convo.messages import MessageWhy, CatMessage, UserMessage
 from cat.looking_glass.stray_cat import StrayCat
 from cat.memory.working_memory import WorkingMemory
 
-from tests.utils import api_key, create_mock_plugin_zip
+from tests.utils import api_key, create_mock_plugin_zip, send_file
 
 
 def test_stray_initialization(stray_no_memory):
@@ -14,7 +15,11 @@ def test_stray_initialization(stray_no_memory):
 
 
 def test_stray_nlp(stray_no_memory):
-    res = stray_no_memory.llm("hey")
+    res = stray_no_memory.llm(
+        ChatPromptTemplate.from_messages([
+            HumanMessagePromptTemplate.from_template(template="hey")
+        ])
+    )
     assert "You did not configure" in res
 
     embedding = stray_no_memory.embedder.embed_documents(["hey"])
@@ -44,9 +49,8 @@ def test_stray_classify(stray_no_memory):
 
 @pytest.mark.asyncio
 async def test_recall_to_working_memory(stray_no_memory, mocked_default_llm_answer_prompt):
-    # empty working memory / episodic
+    # empty working memory / history of conversation
     assert len(stray_no_memory.working_memory.history) == 0
-    assert stray_no_memory.working_memory.episodic_memories == []
 
     msg_text = "Where do I go?"
     msg = {"text": msg_text}
@@ -55,16 +59,16 @@ async def test_recall_to_working_memory(stray_no_memory, mocked_default_llm_answ
     await stray_no_memory(UserMessage(**msg))
     assert len(stray_no_memory.working_memory.history) == 2
 
-    # recall after episodic memory was stored
+    # recall after memory was stored
     await stray_no_memory.recall_relevant_memories_to_working_memory(msg_text)
 
+    assert len(stray_no_memory.working_memory.declarative_memories) == 0
+    assert len(stray_no_memory.working_memory.procedural_memories) == 0
     assert stray_no_memory.working_memory.user_message.text == msg_text
     assert stray_no_memory.working_memory.user_message_json.text == msg_text
     assert stray_no_memory.working_memory.history[0].content.text == msg_text
-    assert stray_no_memory.working_memory.history[0].content.text == msg_text
+    assert stray_no_memory.working_memory.history[1].content.text != msg_text  # the cat's reply
     assert stray_no_memory.working_memory.recall_query == msg_text
-    assert len(stray_no_memory.working_memory.episodic_memories) == 1
-    assert stray_no_memory.working_memory.episodic_memories[0].document.page_content == msg_text
 
 
 @pytest.mark.asyncio
@@ -75,68 +79,17 @@ async def test_stray_recall_invalid_collection_name(stray, lizard):
 
 
 @pytest.mark.asyncio
-async def test_stray_recall_query(stray, lizard, mocked_default_llm_answer_prompt):
-    msg_text = "Hello! I'm Alice"
-    msg = {"text": msg_text}
-
-    # send message
-    await stray(UserMessage(**msg))
-
-    query = lizard.embedder.embed_query(msg_text)
-    memories = await stray.recall(query, "episodic")
-
-    assert len(memories) == 1
-    assert memories[0].document.page_content == msg_text
-    assert isinstance(memories[0].score, float)
-    assert isinstance(memories[0].vector, list)
-
-
-@pytest.mark.asyncio
-async def test_stray_recall_with_threshold(stray, lizard):
-    msg_text = "Hello! I'm Alice"
-    msg = {"text": msg_text}
-
-    # send message
-    await stray(UserMessage(**msg))
-
-    query = lizard.embedder.embed_query("Alice")
-    memories = await stray.recall(query, "episodic", threshold=1)
-    assert len(memories) == 0
-
-
-@pytest.mark.asyncio
 async def test_stray_recall_all_memories(secure_client, secure_client_headers, stray, lizard):
     expected_chunks = 4
-    content_type = "application/pdf"
-    file_name = "sample.pdf"
-    file_path = f"tests/mocks/{file_name}"
-    with open(file_path, "rb") as f:
-        files = {"file": (file_name, f, content_type)}
-        _ = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
+    send_file("sample.pdf", "application/pdf", secure_client, secure_client_headers)
 
     query = lizard.embedder.embed_query("")
     memories = await stray.recall(query, "declarative", k=None)
 
     assert len(memories) == expected_chunks
-
-
-@pytest.mark.asyncio
-async def test_stray_recall_override_working_memory(stray, lizard, mocked_default_llm_answer_prompt):
-    # empty working memory / episodic
-    assert stray.working_memory.episodic_memories == []
-
-    msg_text = "Hello! I'm Alice"
-    msg = {"text": msg_text}
-
-    # send message
-    await stray(UserMessage(**msg))
-
-    query = lizard.embedder.embed_query("Alice")
-    memories = await stray.recall(query, "episodic")
-
-    assert stray.working_memory.episodic_memories == memories
-    assert len(stray.working_memory.episodic_memories) == 1
-    assert stray.working_memory.episodic_memories[0].document.page_content == msg_text
+    for mem in memories:
+        assert mem.score is None
+        assert isinstance(mem.vector, list)
 
 
 @pytest.mark.asyncio
@@ -146,10 +99,7 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
     query = lizard.embedder.embed_query("late")
 
     file_name = "sample.pdf"
-    file_path = f"tests/mocks/{file_name}"
-    with open(file_path, "rb") as f:
-        files = {"file": (file_name, f, content_type)}
-        _ = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
+    _, file_path = send_file(file_name, content_type, secure_client, secure_client_headers)
 
     memories = await stray.recall(query, "declarative", metadata={"source": file_name})
     assert len(memories) == expected_chunks
@@ -195,5 +145,3 @@ async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray
     # there should be NO side effects
     assert stray.working_memory.user_message.text == "hello"
     assert len(stray.working_memory.history) == 0
-    await stray.recall_relevant_memories_to_working_memory("hello")
-    assert len(stray.working_memory.episodic_memories) == 0

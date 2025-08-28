@@ -24,7 +24,6 @@ def test_create_working_memory():
     assert wm.user_message_json is None
     assert wm.active_form is None
     assert wm.recall_query == ""
-    assert wm.episodic_memories == []
     assert wm.declarative_memories == []
     assert wm.procedural_memories == []
     assert wm.model_interactions == []
@@ -47,14 +46,9 @@ def test_update_history():
     assert wm.history[1].content.text == "Meow"
 
 
-def test_stringify_chat_history():
-    wm = create_working_memory_with_convo_history()
-    assert wm.stringify_chat_history() == "\n - Human: Hi\n - AI: Meow"
-
-
 def test_langchainfy_chat_history():
     wm = create_working_memory_with_convo_history()
-    langchain_convo = wm.langchainfy_chat_history()
+    langchain_convo = [h.langchainfy() for h in wm.history[-5:]]
 
     assert len(langchain_convo) == len(wm.history)
 

@@ -94,9 +94,6 @@ class BillTheLizard:
 
         self.core_auth_handler = CoreAuthHandler()
 
-        # Main agent instance (for reasoning)
-        self.main_agent = MainAgent()
-
         # March Hare instance (for RabbitMQ management)
         self.march_hare = MarchHare()
 
@@ -367,7 +364,6 @@ class BillTheLizard:
         self.core_auth_handler = None
         self.plugin_manager = None
         self.rabbit_hole = None
-        self.main_agent = None
         self.embedder = None
         self.embedder_name = None
         self.embedder_size = None

@@ -2,7 +2,6 @@ import random
 from typing import Dict, Any
 from langchain.prompts import ChatPromptTemplate
 from langchain_core.prompts.chat import SystemMessagePromptTemplate
-from langchain_core.runnables import RunnableConfig, RunnableLambda
 
 from cat.agents.base_agent import BaseAgent, AgentOutput
 from cat.agents.form_agent import FormAgent
@@ -12,27 +11,29 @@ from cat.experimental.form.cat_form import CatForm
 from cat.mad_hatter.decorators import CatTool
 from cat.mad_hatter.plugin import Plugin
 from cat.log import log
-from cat.looking_glass.callbacks import ModelInteractionHandler
 from cat import utils
 
 
 class ProceduresAgent(BaseAgent):
-    form_agent = FormAgent()
     allowed_procedures: Dict[str, CatTool | CatForm] = {}
 
-    def execute(self, stray, *args, **kwargs) -> AgentOutput:
-        # Run active form if present
-        form_output: AgentOutput = self.form_agent.execute(stray)
+    def __init__(self, stray):
+        super().__init__(stray)
+        self._form_agent = FormAgent(self._stray)
+
+    def execute(self, *args, **kwargs) -> AgentOutput:
+        # run active form if present
+        form_output = self._form_agent.execute()
         if form_output.return_direct:
             return form_output
-        
+
         # Select and run useful procedures
-        procedural_memories = stray.working_memory.procedural_memories
+        procedural_memories = self._stray.working_memory.procedural_memories
         if len(procedural_memories) > 0:
             log.debug(f"Procedural memories retrieved: {len(procedural_memories)}.")
 
             try:
-                procedures_result = self.execute_procedures(stray)
+                procedures_result = self.execute_procedures()
                 if procedures_result.return_direct:
                     # exit agent if a return_direct procedure was executed
                     return procedures_result
@@ -42,8 +43,8 @@ class ProceduresAgent(BaseAgent):
 
                 # Adding the tools_output key in agent input, needed by the memory chain
                 if len(intermediate_steps) > 0:
-                    stray.working_memory.agent_input.tools_output = "## Context of executed system tools: \n"
-                    stray.working_memory.agent_input.tools_output += " - ".join([
+                    self._stray.working_memory.agent_input.tools_output = "## Context of executed system tools: \n"
+                    self._stray.working_memory.agent_input.tools_output += " - ".join([
                         f"{proc_res[0][0]}: {proc_res[1]}\n" for proc_res in intermediate_steps
                     ])
                 return procedures_result
@@ -52,49 +53,73 @@ class ProceduresAgent(BaseAgent):
 
         return AgentOutput()
 
-    def execute_procedures(self, stray) -> AgentOutput:
+    def execute_procedures(self) -> AgentOutput:
         """
         Execute procedures.
-        Args:
-            stray: StrayCat instance
 
         Returns:
             AgentOutput instance
         """
-        plugin_manager = stray.cheshire_cat.plugin_manager
+        plugin_manager = self._stray.cheshire_cat.plugin_manager
 
         # get procedures prompt from plugins
         procedures_prompt_template = plugin_manager.execute_hook(
-            "agent_prompt_instructions", prompts.TOOL_PROMPT, cat=stray
+            "agent_prompt_instructions", prompts.TOOL_PROMPT, cat=self._stray
         )
 
         # Gather recalled procedures
         recalled_procedures_names = {
-            p.document.metadata["source"] for p in stray.working_memory.procedural_memories if
+            p.document.metadata["source"] for p in self._stray.working_memory.procedural_memories if
             p.document.metadata["type"] in ["tool", "form"] and p.document.metadata["trigger_type"] in [
                 "description", "start_example"
             ]
         }
         recalled_procedures_names = plugin_manager.execute_hook(
-            "agent_allowed_tools", recalled_procedures_names, cat=stray
+            "agent_allowed_tools", recalled_procedures_names, cat=self._stray
         )
 
         # Prepare allowed procedures (tools instances and form classes)
         allowed_procedures = {p.name: p for p in plugin_manager.procedures if p.name in recalled_procedures_names}
 
         # Execute chain and obtain a choice of procedure from the LLM
-        llm_action = self.execute_chain(stray, procedures_prompt_template, allowed_procedures)
+        llm_action = self.execute_chain(procedures_prompt_template, allowed_procedures)
 
         # route execution to sub-agents
-        return self.execute_subagents(stray, llm_action, allowed_procedures)
+        if not llm_action.action:
+            return AgentOutput(output="")
+
+        # execute chosen tool / form
+        # loop over allowed tools and forms
+        chosen_procedure = allowed_procedures.get(llm_action.action, None)
+        try:
+            if Plugin.is_cat_tool(chosen_procedure):
+                # execute tool
+                tool_output = chosen_procedure.run(llm_action.action_input, stray=self._stray)
+                return AgentOutput(
+                    output=tool_output,
+                    return_direct=chosen_procedure.return_direct,
+                    intermediate_steps=[
+                        ((llm_action.action, llm_action.action_input), tool_output)
+                    ]
+                )
+            if Plugin.is_cat_form(chosen_procedure):
+                # create form
+                form_instance = chosen_procedure(self._stray)
+                # store active form in working memory
+                self._stray.working_memory.active_form = form_instance
+                # execute form
+                return self._form_agent.execute(self._stray)
+        except Exception as e:
+            log.error(f"Error executing {chosen_procedure.procedure_type} `{chosen_procedure.name}`: {e}")
+
+        return AgentOutput(output="")
 
     def execute_chain(
-        self, stray, procedures_prompt_template: Any, allowed_procedures: Dict[str, CatTool | CatForm]
+        self, procedures_prompt_template: Any, allowed_procedures: Dict[str, CatTool | CatForm]
     ) -> LLMAction:
         """
         Execute the chain to choose a procedure.
         Args:
-            stray: StrayCat instance
             procedures_prompt_template: Any
             allowed_procedures: Dict[str, CatTool | CatForm]
 
@@ -108,7 +133,6 @@ class ProceduresAgent(BaseAgent):
                 for tool in allowed_procedures.values()
             ),
             "tool_names": '"' + '", "'.join(allowed_procedures.keys()) + '"',
-            #"chat_history": stray.working_memory.stringify_chat_history(),
             "examples": self.generate_examples(allowed_procedures),
         }
 
@@ -119,72 +143,23 @@ class ProceduresAgent(BaseAgent):
 
         # Generate prompt
         prompt = ChatPromptTemplate(
-            messages=[
-                SystemMessagePromptTemplate.from_template(
-                    template=procedures_prompt_template
-                ),
-                *(stray.working_memory.langchainfy_chat_history()),
+            [
+                SystemMessagePromptTemplate.from_template(template=procedures_prompt_template),
+                *self._stray.working_memory.agent_input.history,
             ]
         )
 
-        chain = (
-            prompt
-            | RunnableLambda(lambda x: utils.langchain_log_prompt(x, "TOOL PROMPT"))
-            | stray.cheshire_cat.large_language_model
-            | RunnableLambda(lambda x: utils.langchain_log_output(x, "TOOL PROMPT OUTPUT"))
-            | ChooseProcedureOutputParser() # ensures output is a LLMAction
-        )
-
-        llm_action: LLMAction = chain.invoke(
-            prompt_variables,
-            config=RunnableConfig(callbacks=[
-                ModelInteractionHandler(stray, utils.get_caller_info(skip=1))
-            ])
+        # Format the prompt template with the actual values to get a string
+        # Convert to string - this will combine all messages into a single string
+        llm_action: LLMAction = self._stray.llm(
+            prompt,
+            inputs=prompt_variables,
+            output_parser=ChooseProcedureOutputParser(), # ensures output is a LLMAction
+            caller_return_short=True,
+            caller_skip=2,
         )
 
         return llm_action
-    
-    def execute_subagents(
-        self, stray, llm_action: LLMAction, allowed_procedures: Dict[str, CatTool | CatForm]
-    ) -> AgentOutput:
-        """
-        Execute sub-agents.
-        Args:
-            stray: StrayCat instance
-            llm_action: LLMAction instance
-            allowed_procedures: Dict[str, CatTool | CatForm]
-
-        Returns:
-            AgentOutput instance
-        """
-        if not llm_action.action:
-            return AgentOutput(output="")
-
-        # execute chosen tool / form
-        # loop over allowed tools and forms
-        chosen_procedure = allowed_procedures.get(llm_action.action, None)
-        try:
-            if Plugin.is_cat_tool(chosen_procedure):
-                # execute tool
-                tool_output = chosen_procedure.run(llm_action.action_input, stray=stray)
-                return AgentOutput(
-                    output=tool_output,
-                    return_direct=chosen_procedure.return_direct,
-                    intermediate_steps=[
-                        ((llm_action.action, llm_action.action_input), tool_output)
-                    ]
-                )
-            if Plugin.is_cat_form(chosen_procedure):
-                # create form
-                form_instance = chosen_procedure(stray)
-                # store active form in working memory
-                stray.working_memory.active_form = form_instance
-                # execute form
-                return self.form_agent.execute(stray)
-        except Exception as e:
-            log.error(f"Error executing {chosen_procedure.procedure_type} `{chosen_procedure.name}`: {e}")
-
-        return AgentOutput(output="")
 
     def generate_examples(self, allowed_procedures: Dict[str, CatTool | CatForm]) -> str:
         def get_example(proc):

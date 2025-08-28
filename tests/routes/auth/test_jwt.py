@@ -6,7 +6,7 @@ from cat.env import get_env
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.auth_utils import is_jwt
 
-from tests.utils import send_websocket_message, agent_id
+from tests.utils import agent_id
 
 
 def test_is_jwt():
@@ -147,20 +147,8 @@ def test_jwt_imposes_user_id(client, cheshire_cat):
     assert res.status_code == 200
     token = res.json()["access_token"]
 
-
     # send user specific message via http
     headers = {"Authorization": f"Bearer {token}"}
     params = {"agent_id": agent_id}
     response = client.post("/message", headers=headers, json=message, params=params)
     assert response.status_code == 200
-
-    # send user specific request via ws
-    send_websocket_message(message, client, query_params={"token": token})
-
-    # we now recall episodic memories from the user, there should be none of them, since we have not set a valid LLM
-    params = {"text": "hey", "agent_id": agent_id}
-    response = client.get("/memory/recall/", headers=headers, params=params)
-    json = response.json()
-    assert response.status_code == 200
-    episodic_memories = json["vectors"]["collections"]["episodic"]
-    assert len(episodic_memories) == 0

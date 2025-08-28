@@ -24,9 +24,6 @@ def test_main_modules_loaded(cheshire_cat):
 def test_default_llm_loaded(cheshire_cat):
     assert isinstance(cheshire_cat.large_language_model, LLMDefault)
 
-    out = cheshire_cat.llm("Hey")
-    assert "You did not configure a Language Model" in out
-
 
 def test_default_embedder_loaded(lizard):
     embedder = lizard.embedder

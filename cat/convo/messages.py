@@ -1,7 +1,7 @@
 import time
 from abc import ABC
-from typing import List, Dict, TypeAlias
-from langchain_core.messages import AIMessage, HumanMessage, BaseMessage as BaseLangchainMessage
+from typing import List, Dict
+from langchain_core.messages import AIMessage, HumanMessage, BaseMessage as BaseLangChainMessage
 from pydantic import computed_field
 from typing_extensions import deprecated
 
@@ -59,6 +59,7 @@ class CatMessage(BaseMessage):
         image: (Optional[str], default=None): image file URL or base64 data URI that represent image associated with
             the message
         why (MessageWhy): why the agent replied with the message
+        error (Optional[str], default=None): error message if any error occurred while generating the message
     """
     why: MessageWhy | None = None
     error: str | None = None
@@ -122,6 +123,9 @@ class ConversationHistoryItem(BaseModelDict):
         super().__init__(**kwargs)
         content_dict = self.content.model_dump()
         self.content = CatMessage(**content_dict) if self.who == Role.AI else UserMessage(**content_dict)
+
+    def __str__(self):
+        return f"\n - {str(self.who)}: {self.content.text}"
 
     @computed_field
     @property
@@ -190,55 +194,20 @@ class ConversationHistoryItem(BaseModelDict):
         """
         self.who = value
 
+    def langchainfy(self) -> BaseLangChainMessage:
+        """
+        Convert the internal ConversationHistoryItem to a LangChain BaseMessage.
 
-ConversationHistory: TypeAlias = List[ConversationHistoryItem]
+        Returns
+        -------
+        BaseLangChainMessage
+            The LangChain BaseMessage converted from the internal ConversationHistoryItem.
+        """
+        if self.who == Role.AI:
+            return AIMessage(name=str(self.who), content=self.content.text)
 
+        content = [{"type": "text", "text": self.content.text}]
+        if self.content.image:
+            content.append({"type": "image_url", "image_url": {"url": self.content.image}})
 
-def convert_to_langchain_message(history_info: ConversationHistoryItem) -> BaseLangchainMessage:
-    """
-    Convert a conversation history info to a langchain message. The langchain message can be either an AI message or a
-    human message.
-
-    Args:
-        history_info: ConversationHistoryInfo, the conversation history info to convert
-
-    Returns:
-        BaseLangchainMessage: The langchain message
-    """
-    if history_info.who == Role.AI:
-        return AIMessage(name=str(history_info.who), content=history_info.content.text)
-
-    content = [{"type": "text", "text": history_info.content.text}]
-    if history_info.content.image:
-        content.append({"type": "image_url", "image_url": {"url": history_info.content.image}})
-
-    return HumanMessage(name=str(history_info.who), content=content)
-
-
-def convert_to_cat_message(ai_message: AIMessage, why: MessageWhy) -> CatMessage:
-    content = ai_message.content
-
-    if isinstance(content, str):
-        return CatMessage(text=content, why=why)
-
-    image = None
-    text = None
-    for item in content:
-        if isinstance(item, str):
-            text = item
-            continue
-
-        if "type" not in item:
-            continue
-
-        match item["type"]:
-            case "text":
-                text = item
-            case "image_url":
-                image = item["image_url"]["url"]
-
-    return CatMessage(text=text, image=image, why=why)
-
-
-def convert_to_conversation_history(infos: List[Dict]) -> ConversationHistory:
-    return [ConversationHistoryItem(**info) for info in infos]
+        return HumanMessage(name=str(self.who), content=content)

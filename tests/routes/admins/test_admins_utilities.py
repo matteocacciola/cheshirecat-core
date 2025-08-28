@@ -46,7 +46,7 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
 
     # check that the vector database is not empty
     c = await cheshire_cat.vector_memory_handler._client.get_collections()
-    assert len(c.collections) == 3
+    assert len(c.collections) == 2
 
     histories = get_db().get(crud_history.format_key(cheshire_cat.id, "*"))
     assert histories is None

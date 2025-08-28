@@ -20,7 +20,7 @@ def check_correct_websocket_reply(reply):
     assert isinstance(why["input"], str)
     assert isinstance(why["intermediate_steps"], list)
     assert isinstance(why["memory"], dict)
-    assert {"procedural", "declarative", "episodic"} == set(why["memory"].keys())
+    assert {"procedural", "declarative"} == set(why["memory"].keys())
     assert isinstance(why["model_interactions"], list)
     
     # model interactions

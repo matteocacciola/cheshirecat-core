@@ -10,9 +10,6 @@ from cat.convo.messages import (
     UserMessage,
     MessageWhy,
     ConversationHistoryItem,
-    ConversationHistory,
-    convert_to_conversation_history,
-    convert_to_langchain_message,
 )
 from cat.convo.model_interactions import LLMModelInteraction, EmbedderModelInteraction
 from cat.db.cruds import history as crud_history
@@ -39,8 +36,6 @@ class WorkingMemory(BaseModelDict):
         An optional reference to a CatForm currently in use.
     recall_query: str, default=""
         A string that stores the last recall query.
-    episodic_memories: List
-        A list for storing episodic memories.
     declarative_memories: List
         A list for storing declarative memories.
     procedural_memories: List
@@ -52,13 +47,12 @@ class WorkingMemory(BaseModelDict):
     user_id: str
 
     # stores conversation history
-    history: ConversationHistory | None = Field(default_factory=list)
+    history: List[ConversationHistoryItem] | None = Field(default_factory=list)
     user_message: UserMessage | None = None
     active_form: CatForm | None = None
 
     # recalled memories attributes
     recall_query: str = ""
-    episodic_memories: List[DocumentRecall] = Field(default_factory=list)
     declarative_memories: List[DocumentRecall] = Field(default_factory=list)
     procedural_memories: List[DocumentRecall] = Field(default_factory=list)
 
@@ -70,9 +64,11 @@ class WorkingMemory(BaseModelDict):
     def __init__(self, **data: Any):
         super().__init__(**data)
 
-        self.history = convert_to_conversation_history(crud_history.get_history(self.agent_id, self.user_id))
+        self.history = [
+            ConversationHistoryItem(**info) for info in crud_history.get_history(self.agent_id, self.user_id)
+        ]
 
-    def set_history(self, conversation_history: ConversationHistory) -> "WorkingMemory":
+    def set_history(self, conversation_history: List[ConversationHistoryItem]) -> "WorkingMemory":
         """
         Set the conversation history.
 
@@ -140,9 +136,10 @@ class WorkingMemory(BaseModelDict):
         conversation_history_item = ConversationHistoryItem(who=who, content=content)
 
         # append the latest message in conversation
-        self.history = convert_to_conversation_history(
-            crud_history.update_history(self.agent_id, self.user_id, conversation_history_item)
-        )
+        self.history = [
+            ConversationHistoryItem(**info)
+            for info in crud_history.update_history(self.agent_id, self.user_id, conversation_history_item)
+        ]
 
     def pop_last_message_if_human(self) -> None:
         """
@@ -153,47 +150,6 @@ class WorkingMemory(BaseModelDict):
 
         self.history.pop()
         crud_history.set_history(self.agent_id, self.user_id, self.history)
-
-    def stringify_chat_history(self, latest_n: int = 10) -> str:
-        """
-        Serialize chat history.
-        Converts to text the recent conversation turns.
-        Useful for backward compatibility with old non-chat models and to easily insert convo into a prompt without
-        using dedicated objects and libraries.
-
-        Args:
-            latest_n (int. optional): How many latest turns to stringify. Default to 5.
-
-        Returns:
-            str: String with recent conversation turns.
-
-        Notes
-        -----
-        Such context is placed in the `agent_prompt_suffix` in the place held by {chat_history}.
-
-        The chat history is a dictionary with keys::
-            'who': the name of who said the utterance;
-            'content': the utterance.
-        """
-        history = self.history[-latest_n:]
-        history = [h.model_dump() for h in history]
-
-        history_strings = [f"\n - {str(turn.get('who'))}: {turn.get('content', {}).get('text')}" for turn in history]
-        return "".join(history_strings)
-
-    def langchainfy_chat_history(self, latest_n: int = 5) -> List[BaseMessage]:
-        """
-        Convert chat history in working memory to Langchain objects.
-
-        Args:
-            latest_n (int, optional): Number of latest messages to get. Default to 5.
-
-        Returns:
-            List[BaseMessage]: List of Langchain messages.
-        """
-        chat_history = self.history[-latest_n:]
-
-        return [convert_to_langchain_message(h) for h in chat_history]
 
     @property
     def user_message_json(self) -> UserMessage | None:

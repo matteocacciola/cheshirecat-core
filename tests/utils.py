@@ -21,6 +21,14 @@ def get_class_from_decorated_singleton(singleton):
     return singleton().__class__
 
 
+def send_file(file_name, content_type, client, headers, payload=None):
+    file_path = f"tests/mocks/{file_name}"
+    with open(file_path, "rb") as f:
+        files = {"file": (file_name, f, content_type)}
+        response = client.post("/rabbithole/", files=files, data=payload, headers=headers)
+    return response, file_path
+
+
 # utility function to communicate with the cat via websocket
 def send_websocket_message(msg, client, query_params):
     url = f"/ws/{agent_id}?" + urlencode(query_params)

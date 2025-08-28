@@ -1,4 +1,4 @@
-from tests.utils import send_websocket_message, get_collections_names_and_point_count, api_key
+from tests.utils import send_websocket_message, get_collections_names_and_point_count, api_key, send_file
 
 
 def test_memory_collections_created(secure_client, secure_client_headers):
@@ -8,7 +8,7 @@ def test_memory_collections_created(secure_client, secure_client_headers):
     assert response.status_code == 200
 
     # check default collections are created
-    default_collections = ["episodic", "declarative", "procedural"]
+    default_collections = ["declarative", "procedural"]
     assert len(json["collections"]) == len(default_collections)
 
     # check correct number of default points
@@ -16,25 +16,7 @@ def test_memory_collections_created(secure_client, secure_client_headers):
     # there is at least an embedded tool in procedural collection
     assert collections_n_points["procedural"] == 3
     # all other collections should be empty
-    assert collections_n_points["episodic"] == 0
     assert collections_n_points["declarative"] == 0
-
-
-def test_memory_collection_episodic_stores_messages(
-    secure_client, secure_client_headers, mocked_default_llm_answer_prompt
-):
-    # before sending messages, episodic memory should be empty
-    collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
-    assert collections_n_points["episodic"] == 0
-
-    # send message via websocket
-    message = {"text": "Meow"}
-    res = send_websocket_message(message, secure_client, {"apikey": api_key})
-    assert isinstance(res["content"], str)
-
-    # episodic memory should now contain one point
-    collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
-    assert collections_n_points["episodic"] == 1
 
 
 def test_memory_collection_non_existent_clear(secure_client, secure_client_headers):
@@ -43,27 +25,6 @@ def test_memory_collection_non_existent_clear(secure_client, secure_client_heade
     json = response.json()
     assert response.status_code == 404
     assert "Collection does not exist" in json["detail"]["error"]
-
-
-def test_memory_collection_episodic_cleared(
-    secure_client, secure_client_headers, cheshire_cat, mocked_default_llm_answer_prompt
-):
-    # send message via websocket
-    message = {"text": "Meow"}
-    res = send_websocket_message(message, secure_client, {"apikey": api_key})
-    assert isinstance(res["content"], str)
-
-    # episodic memory should now contain one point
-    collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
-    assert collections_n_points["episodic"] == 1
-
-    # delete episodic memory
-    response = secure_client.delete("/memory/collections/episodic", headers=secure_client_headers)
-    assert response.status_code == 200
-
-    # episodic memory should be empty
-    collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
-    assert collections_n_points["episodic"] == 0
 
 
 def test_memory_collection_procedural_has_tools_after_clear(secure_client, secure_client_headers):
@@ -83,20 +44,14 @@ def test_memory_collection_procedural_has_tools_after_clear(secure_client, secur
 def test_memory_collections_wipe(
     secure_client, secure_client_headers, mocked_default_llm_answer_prompt
 ):
-    # create episodic memory
     message = {"text": "Meow"}
     send_websocket_message(message, secure_client, {"apikey": api_key})
 
     # create declarative memories
-    file_name = "sample.txt"
-    file_path = f"tests/mocks/{file_name}"
-    with open(file_path, "rb") as f:
-        files = {"file": (file_name, f, "text/plain")}
-        secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
+    send_file("sample.txt", "text/plain", secure_client, secure_client_headers)
 
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
     assert collections_n_points["procedural"] == 3  # default tool
-    assert collections_n_points["episodic"] == 1  # websocket msg
     assert collections_n_points["declarative"] > 1  # several chunks
 
     # wipe out all memories
@@ -105,5 +60,4 @@ def test_memory_collections_wipe(
 
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
     assert collections_n_points["procedural"] == 3  # default tool is re-embedded
-    assert collections_n_points["episodic"] == 0
     assert collections_n_points["declarative"] == 0

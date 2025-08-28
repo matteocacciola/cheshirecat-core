@@ -1,16 +1,17 @@
 from typing import List
 from abc import ABC, abstractmethod
+from langchain_core.messages import BaseMessage
+from langchain_core.documents import Document
 from pydantic import Field
 
 from cat.utils import BaseModelDict
 
 
 class AgentInput(BaseModelDict):
-    episodic_memory: str
-    declarative_memory: str
-    tools_output: str
+    context: List[Document]
+    tools_output: str | None = None
     input: str
-    chat_history: str
+    history: List[BaseMessage] = Field(default_factory=list)
 
 
 class AgentOutput(BaseModelDict):
@@ -21,6 +22,11 @@ class AgentOutput(BaseModelDict):
 
 
 class BaseAgent(ABC):
+    def __init__(self, stray):
+        # important so all agents have the session and utilities at disposal
+        # if you subclass and override the constructor, remember to set it or call super()
+        self._stray = stray
+
     @abstractmethod
     def execute(self, stray, *args, **kwargs) -> AgentOutput:
         """
