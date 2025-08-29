@@ -1,5 +1,4 @@
 from cat.auth.permissions import AuthUserInfo
-from cat.convo.messages import Role
 from cat.looking_glass.stray_cat import StrayCat
 
 from tests.utils import send_websocket_message, api_key, agent_id, create_new_user, new_user_password
@@ -34,7 +33,7 @@ def test_session_creation_from_websocket(
 
     convo = stray_cat.working_memory.history
     assert len(convo) == 2
-    assert convo[0].who == Role.HUMAN
+    assert convo[0].who == "user"
     assert convo[0].content.text == mex["text"]
 
 

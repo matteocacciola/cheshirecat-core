@@ -1,24 +1,12 @@
 import time
 from abc import ABC
-from typing import List, Dict
+from typing import List, Dict, Literal
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage as BaseLangChainMessage
 from pydantic import computed_field
 from typing_extensions import deprecated
 
 from cat.convo.model_interactions import LLMModelInteraction, EmbedderModelInteraction
-from cat.utils import BaseModelDict, Enum
-
-
-class Role(Enum):
-    """
-    Enum for role of the agent in the conversation history info. It can be either AI or Human (Enum).
-
-    Variables:
-        AI (str): AI
-        HUMAN (str): Human
-    """
-    AI = "AI"
-    HUMAN = "Human"
+from cat.utils import BaseModelDict
 
 
 class MessageWhy(BaseModelDict):
@@ -115,14 +103,14 @@ class ConversationHistoryItem(BaseModelDict):
         when (float): when the message was sent in seconds since epoch (default: time.time())
         content (BaseMessage): content of the message
     """
-    who: Role
+    who: Literal["user", "assistant"]
     when: float | None = time.time()
     content: CatMessage | UserMessage
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         content_dict = self.content.model_dump()
-        self.content = CatMessage(**content_dict) if self.who == Role.AI else UserMessage(**content_dict)
+        self.content = CatMessage(**content_dict) if self.who == "assistant" else UserMessage(**content_dict)
 
     def __str__(self):
         return f"\n - {str(self.who)}: {self.content.text}"
@@ -175,7 +163,7 @@ class ConversationHistoryItem(BaseModelDict):
     @computed_field
     @property
     @deprecated("This attribute is deprecated. Use `who` instead")
-    def role(self) -> Role:
+    def role(self) -> Literal["user", "assistant"]:
         """
         This attribute is deprecated. Use `who` instead. Get the name of the message author.
 
@@ -185,7 +173,7 @@ class ConversationHistoryItem(BaseModelDict):
         return self.who
 
     @role.setter
-    def role(self, value: Role):
+    def role(self, value: Literal["user", "assistant"]):
         """
         This attribute is deprecated. Use `who` instead. Set the name of the message author.
 
@@ -203,11 +191,11 @@ class ConversationHistoryItem(BaseModelDict):
         BaseLangChainMessage
             The LangChain BaseMessage converted from the internal ConversationHistoryItem.
         """
-        if self.who == Role.AI:
-            return AIMessage(name=str(self.who), content=self.content.text)
+        if self.who == "assistant":
+            return AIMessage(name=self.who, content=self.content.text)
 
         content = [{"type": "text", "text": self.content.text}]
         if self.content.image:
             content.append({"type": "image_url", "image_url": {"url": self.content.image}})
 
-        return HumanMessage(name=str(self.who), content=content)
+        return HumanMessage(name=self.who, content=content)

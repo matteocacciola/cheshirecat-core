@@ -1,10 +1,9 @@
-from typing import List, Any
+from typing import List, Any, Literal
 from typing_extensions import deprecated
 from pydantic import Field
 
 from cat.agents import AgentInput
 from cat.convo.messages import (
-    Role,
     BaseMessage,
     CatMessage,
     UserMessage,
@@ -98,7 +97,7 @@ class WorkingMemory(BaseModelDict):
     @deprecated("use `update_history` instead.")
     def update_conversation_history(
         self,
-        who: Role,
+        who: Literal["user", "assistant"],
         message: str,
         image: str | None = None,
         why: MessageWhy | None = None,
@@ -120,16 +119,16 @@ class WorkingMemory(BaseModelDict):
         """
         message = CatMessage(
             text=message, image=image, why=why
-        ) if who == Role.AI else UserMessage(text=message, image=image)
+        ) if who == "assistant" else UserMessage(text=message, image=image)
 
         return self.update_history(who, message)
 
-    def update_history(self, who: Role, content: BaseMessage):
+    def update_history(self, who: Literal["user", "assistant"], content: BaseMessage):
         """
         Update the conversation history.
 
         Args
-            who: Role, who said the message. Can either be Role.Human or Role.AI.
+            who: str, who said the message. Can either be "user" or "assistant".
             content: BaseMessage, the message said.
         """
         # we are sure that who is not change in the current call
@@ -145,7 +144,7 @@ class WorkingMemory(BaseModelDict):
         """
         Pop the last message if it was said by the human.
         """
-        if not self.history or self.history[-1].who != Role.HUMAN:
+        if not self.history or self.history[-1].who != "user":
             return
 
         self.history.pop()

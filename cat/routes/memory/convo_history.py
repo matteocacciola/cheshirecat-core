@@ -1,10 +1,10 @@
-from typing import List
+from typing import List, Literal
 from fastapi import APIRouter
 from pydantic import BaseModel
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
-from cat.convo.messages import ConversationHistoryItem, MessageWhy, CatMessage, UserMessage, Role
+from cat.convo.messages import ConversationHistoryItem, MessageWhy, CatMessage, UserMessage
 from cat.looking_glass.stray_cat import StrayCat
 
 router = APIRouter()
@@ -19,7 +19,7 @@ class GetConversationHistoryResponse(BaseModel):
 
 
 class PostConversationHistoryPayload(BaseModel):
-    who: str
+    who: Literal["user", "assistant"]
     text: str
     image: str | None = None
     why: MessageWhy | None = None
@@ -56,9 +56,9 @@ async def add_conversation_history(
 ) -> GetConversationHistoryResponse:
     """Insert the specified conversation item into the working memory"""
     payload_dict = payload.model_dump()
-    content = UserMessage(**payload_dict) if payload.who == Role.HUMAN else CatMessage(**payload_dict)
+    content = UserMessage(**payload_dict) if payload.who == "user" else CatMessage(**payload_dict)
 
     stray = StrayCat(user_data=info.user, agent_id=info.cheshire_cat.id)
-    stray.working_memory.update_history(Role(payload.who), content)
+    stray.working_memory.update_history(payload.who, content)
 
     return GetConversationHistoryResponse(history=stray.working_memory.history)

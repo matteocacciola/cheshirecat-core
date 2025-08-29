@@ -1,6 +1,5 @@
 import time
 
-from cat.convo.messages import Role
 from cat.db.cruds import users as crud_users
 
 from tests.utils import send_websocket_message, agent_id, api_key, create_new_user, new_user_password
@@ -47,7 +46,7 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
 
     picked_history = json["history"][0]
 
-    assert picked_history["who"] == str(Role.HUMAN)
+    assert picked_history["who"] == "user"
     assert picked_history["message"] == message
     assert picked_history["content"]["text"] == message
     assert picked_history["why"] is None
@@ -119,11 +118,11 @@ def test_convo_history_by_user(secure_client, secure_client_headers, client, moc
             assert "text" in m["content"]
             if m_idx % 2 == 0:  # even message
                 m_number_from_user = int(m_idx / 2)
-                assert m["who"] == str(Role.HUMAN)
+                assert m["who"] == "user"
                 assert m["message"] == f"Mex n.{m_number_from_user} from {username}"
                 assert m["content"]["text"] == f"Mex n.{m_number_from_user} from {username}"
             else:
-                assert m["who"] == str(Role.AI)
+                assert m["who"] == "assistant"
 
     # delete White Rabbit convo
     response = client.delete(

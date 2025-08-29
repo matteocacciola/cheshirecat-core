@@ -11,7 +11,7 @@ from cat import utils
 from cat.agents.base_agent import AgentOutput
 from cat.agents.main_agent import MainAgent
 from cat.auth.permissions import AuthUserInfo
-from cat.convo.messages import CatMessage, Role, MessageWhy, UserMessage
+from cat.convo.messages import CatMessage, MessageWhy, UserMessage
 from cat.convo.model_interactions import EmbedderModelInteraction
 from cat.exceptions import VectorMemoryError
 from cat.log import log
@@ -394,7 +394,7 @@ class StrayCat:
         )
 
         # update conversation history (Human turn)
-        self.working_memory.update_history(who=Role.HUMAN, content=self.working_memory.user_message)
+        self.working_memory.update_history(who="user", content=self.working_memory.user_message)
 
         # recall declarative memory from vector collections and store them in working_memory
         try:
@@ -439,7 +439,7 @@ class StrayCat:
             self.working_memory.pop_last_message_if_human()
         else:
             # update conversation history (AI turn)
-            self.working_memory.update_history(who=Role.AI, content=final_output)
+            self.working_memory.update_history(who="assistant", content=final_output)
 
         return final_output
 
