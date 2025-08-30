@@ -4,8 +4,8 @@ from pydantic import BaseModel
 
 from cat.auth.permissions import AuthPermission, AuthResource, check_message_permissions
 from cat.auth.connection import AuthorizedInfo
-from cat.convo.messages import CatMessage, UserMessage
-from cat.looking_glass.stray_cat import StrayCat
+from cat.convo import CatMessage, UserMessage
+from cat.looking_glass import StrayCat
 from cat.utils import get_cat_version
 
 router = APIRouter()

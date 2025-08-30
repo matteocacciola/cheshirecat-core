@@ -2,7 +2,7 @@ from typing import List, Dict
 from fastapi.websockets import WebSocket
 
 
-class WebsocketManager:
+class WebSocketManager:
     def __init__(self):
         # Keep connections in dictionary: user_id -> WebSocket
         self.connections = {}

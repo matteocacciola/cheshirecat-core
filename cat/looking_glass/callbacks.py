@@ -5,7 +5,7 @@ from langchain_core.outputs.llm_result import LLMResult
 import tiktoken
 import time
 
-from cat.convo.model_interactions import LLMModelInteraction
+from cat.convo import LLMModelInteraction
 from cat.log import log
 
 
@@ -25,7 +25,7 @@ class ModelInteractionHandler(BaseCallbackHandler):
     """
     Langchain callback handler for tracking model interactions.
     """
-    def __init__(self, stray, source: str):
+    def __init__(self, stray: "StrayCat", source: str):
         """
         Args:
             stray: StrayCat instance
@@ -51,7 +51,6 @@ class ModelInteractionHandler(BaseCallbackHandler):
     def on_chat_model_start(self, serialized: Dict[str, Any], messages: List[List[BaseMessage]], **kwargs) -> None:
         input_tokens = 0
         input_prompt = []
-        # TODO V2: how the hell do we count image tokens? is it a separate count because they have a different pricing?
         # guide here: https://platform.openai.com/docs/guides/vision/calculating-costs#calculating-costs
         for m in messages[0]:
             if isinstance(m.content, str):

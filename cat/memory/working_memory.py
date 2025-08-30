@@ -2,15 +2,15 @@ from typing import List, Any, Literal
 from typing_extensions import deprecated
 from pydantic import Field
 
-from cat.agents import AgentInput
-from cat.convo.messages import (
+from cat.convo import (
     BaseMessage,
     CatMessage,
     UserMessage,
     MessageWhy,
     ConversationHistoryItem,
+    LLMModelInteraction,
+    EmbedderModelInteraction,
 )
-from cat.convo.model_interactions import LLMModelInteraction, EmbedderModelInteraction
 from cat.db.cruds import history as crud_history
 from cat.experimental.form.cat_form import CatForm
 from cat.memory.utils import DocumentRecall
@@ -54,8 +54,6 @@ class WorkingMemory(BaseModelDict):
     recall_query: str = ""
     declarative_memories: List[DocumentRecall] = Field(default_factory=list)
     procedural_memories: List[DocumentRecall] = Field(default_factory=list)
-
-    agent_input: AgentInput | None = None
 
     # track models usage
     model_interactions: List[LLMModelInteraction | EmbedderModelInteraction] = Field(default_factory=list)

@@ -1,4 +1,4 @@
-from cat.mad_hatter.decorators import tool
+from cat.mad_hatter import tool
 
 tool_examples = ["mock tool example 1", "mock tool example 2"]
 

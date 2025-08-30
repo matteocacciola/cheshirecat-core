@@ -2,7 +2,7 @@ from os import getenv
 from typing import Dict, List, Any
 from redis.exceptions import RedisError
 
-from cat.convo.messages import ConversationHistoryItem
+from cat.convo import ConversationHistoryItem
 from cat.db import crud
 from cat.log import log
 

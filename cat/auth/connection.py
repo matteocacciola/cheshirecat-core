@@ -15,8 +15,7 @@ from cat.auth.permissions import (
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException
 from cat.factory.custom_auth_handler import BaseAuthHandler
-from cat.looking_glass.bill_the_lizard import BillTheLizard
-from cat.looking_glass.cheshire_cat import CheshireCat
+from cat.looking_glass import BillTheLizard, CheshireCat
 
 
 class AuthorizedInfo(BaseModel):

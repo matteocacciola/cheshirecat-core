@@ -9,7 +9,6 @@ from rapidfuzz.distance import Levenshtein
 from langchain_core.embeddings import Embeddings
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.prompts import PromptTemplate
-from langchain_core.utils import get_colored_text
 import mimetypes
 import os
 import tomli
@@ -153,7 +152,7 @@ def verbal_timedelta(td: timedelta) -> str:
 
     Examples
     --------
-    >>> print(verbal_timedelta(timedelta(days=2, weeks=1))
+    >> print(verbal_timedelta(timedelta(days=2, weeks=1))
     'One week and two days ago'
     """
     if td.days != 0:
@@ -339,38 +338,6 @@ def get_caller_info(skip: int | None = 2, return_short: bool = True, return_stri
     if return_string:
         return f"{klass}.{caller}" if return_short else f"{package}.{module}.{klass}.{caller}::{line}"
     return package, module, klass, caller, line
-
-
-def langchain_log_prompt(langchain_prompt, title):
-    if get_env("CCAT_DEBUG") == "true":
-        print("\n")
-        print(get_colored_text(f"===== {title} =====", "green"))
-        for m in langchain_prompt.messages:
-            print(get_colored_text(type(m).__name__, "green"))
-            if isinstance(m.content, list):
-                for sub_m in m.content:
-                    if sub_m.get("type") == "text":
-                        print(sub_m["text"])
-                    elif sub_m.get("type") == "image_url":
-                        print("(image)")
-                    else:
-                        print(" -- Could not log content:", sub_m.keys())
-            else:
-                print(m.content)
-        print(get_colored_text("========================================", "green"))
-    return langchain_prompt
-
-
-def langchain_log_output(langchain_output, title):
-    if get_env("CCAT_DEBUG") == "true":
-        print("\n")
-        print(get_colored_text(f"===== {title} =====", "blue"))
-        if hasattr(langchain_output, 'content'):
-            print(langchain_output.content)
-        else:
-            print(langchain_output)
-        print(get_colored_text("========================================", "blue"))
-    return langchain_output
 
 
 async def load_uploaded_file(file: UploadFile, allowed_mime_types: List[str]) -> str:

@@ -4,8 +4,10 @@ Here is a collection of methods to hook into the Cat execution pipeline.
 
 """
 from typing import Dict
-from langchain_core.documents import Document
 
+from cat.agents import AgentOutput
+from cat.convo import MessageWhy
+from cat.memory import VectorMemoryCollectionTypes
 from cat.mad_hatter.decorators import hook
 
 
@@ -223,7 +225,7 @@ def after_cat_recalls_memories(cat) -> None:
 
 # Hook called just before sending response to a client.
 @hook(priority=0)
-def before_cat_sends_message(message: Dict, cat) -> Dict:
+def before_cat_sends_message(message: Dict, agent_output: AgentOutput, cat) -> Dict:
     """
     Hook the outgoing Cat's message.
 
@@ -234,6 +236,8 @@ def before_cat_sends_message(message: Dict, cat) -> Dict:
     Args:
         message: Dict
             JSON dictionary to be sent to the WebSocket client.
+        agent_output: AgentOutput
+            The output of the agent if an agent is used, None otherwise.
         cat: StrayCat
             Stray Cat instance.
 
@@ -244,7 +248,6 @@ def before_cat_sends_message(message: Dict, cat) -> Dict:
     Notes
     -----
     Default `message` is::
-
             {
                 "type": "chat",
                 "text": cat_message["output"],
@@ -252,16 +255,25 @@ def before_cat_sends_message(message: Dict, cat) -> Dict:
                 "error": "...",
                 "why": {
                     "input": cat_message["input"],
-                    "intermediate_steps": cat_message["intermediate_steps"],
+                    "intermediate_steps": [...],
                     "memory": {
-                        "vectors": {
-                            "declarative": declarative_report
-                        }
+                        "declarative": declarative_report
+                        "procedural": procedural_report
                     },
                 },
             }
-
     """
+    memory = {str(c): [dict(d.document) | {
+        "score": float(d.score) if d.score else None,
+        "id": d.id,
+    } for d in getattr(cat.working_memory, f"{c}_memories")] for c in VectorMemoryCollectionTypes}
+
+    # why this response?
+    message["why"] = MessageWhy(
+        input=cat.working_memory.user_message.text,
+        intermediate_steps=agent_output.intermediate_steps,
+        memory=memory,
+    )
     return message
 
 

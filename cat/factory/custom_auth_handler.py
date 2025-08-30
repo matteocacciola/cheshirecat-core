@@ -3,7 +3,6 @@ from typing import Literal, Dict, List
 import jwt
 from fastapi.requests import HTTPConnection
 
-
 from cat.auth.auth_utils import is_jwt, extract_token, extract_user_info_on_api_key
 from cat.auth.permissions import AdminAuthResource, AuthPermission, AuthResource, AuthUserInfo
 from cat.db.cruds import users as crud_users

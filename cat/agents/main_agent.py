@@ -1,8 +1,8 @@
-from cat.agents import AgentInput, AgentOutput, BaseAgent
-from cat.agents.memory_agent import MemoryAgent
-from cat.agents.procedures_agent import ProceduresAgent
+from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
+
+from cat import utils
+from cat.agents.base_agent import AgentInput, AgentOutput, BaseAgent, LLMAction
 from cat.looking_glass import prompts
-from cat.utils import restore_original_model
 from cat.env import get_env
 
 
@@ -21,43 +21,67 @@ class MainAgent(BaseAgent):
         # Note: agent_input works both as a dict and as an object
         latest_n_history = kwargs.get("latest_n_history", 5)
 
-        plugin_manager = self._stray.cheshire_cat.plugin_manager
-
         agent_input = AgentInput(
             context=[m.document for m in self._stray.working_memory.declarative_memories],
             input=self._stray.working_memory.user_message.text,
             history=[h.langchainfy() for h in self._stray.working_memory.history[-latest_n_history:]]
         )
-        agent_input = restore_original_model(
-            plugin_manager.execute_hook("before_agent_starts", agent_input, cat=self._stray), AgentInput
+        agent_input = utils.restore_original_model(
+            self._plugin_manager.execute_hook("before_agent_starts", agent_input, cat=self._stray), AgentInput
         )
 
-        # store the agent input inside the working memory
-        self._stray.working_memory.agent_input = agent_input
-
         # should we run the default agents?
-        agent_fast_reply = restore_original_model(
-            plugin_manager.execute_hook("agent_fast_reply", {}, cat=self._stray),
+        agent_fast_reply = utils.restore_original_model(
+            self._plugin_manager.execute_hook("agent_fast_reply", {}, cat=self._stray),
             AgentOutput
         )
         if agent_fast_reply and agent_fast_reply.output:
             return agent_fast_reply
 
-        # run tools and forms
-        procedures_agent = ProceduresAgent(self._stray)
-        procedures_agent_out = procedures_agent.execute()
-        if procedures_agent_out.return_direct:
-            return procedures_agent_out
-
         # obtain prompt parts from plugins
-        prompt = plugin_manager.execute_hook("agent_prompt", prompts.MAIN_PROMPT, cat=self._stray)
+        prompt = self._plugin_manager.execute_hook("agent_system_prompt", prompts.MAIN_PROMPT, cat=self._stray)
 
         # we run memory agent if:
         # - no procedures were recalled or selected or
         # - procedures have all return_direct=False
-        memory_agent = MemoryAgent(self._stray)
-        memory_agent_out = memory_agent.execute(prompt=prompt)
+        prompt_variables = {"context": agent_input.context}
 
-        memory_agent_out.intermediate_steps += procedures_agent_out.intermediate_steps
+        # Ensure prompt inputs and prompt placeholders map
+        prompt_variables, prompt_template = utils.match_prompt_variables(
+            prompt_variables, prompt
+        )
 
-        return memory_agent_out
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                SystemMessagePromptTemplate.from_template(template=prompt_template),
+                *agent_input.history,
+                HumanMessagePromptTemplate.from_template("{input}"),
+            ]
+        )
+        prompt_variables["input"] = agent_input.input
+
+        # Format the prompt template with the actual values to get a string
+        # Convert to string - this will combine all messages into a single string
+        llm_output = self._stray.llm(
+            prompt,
+            prompt_variables=prompt_variables,
+            tools=self._get_tools(),
+            stream=True,
+            caller_return_short=True,
+            caller_skip=2,
+        )
+
+        if type(llm_output) is str:
+            # simple string message
+            return AgentOutput(output=llm_output)
+
+        if type(llm_output) is LLMAction:
+            # LLM has chosen a tool, run it to get the output
+            for t in self._get_tools():
+                if t.name == llm_output.name:
+                    # update the action with an output, actually executing the tool
+                    llm_output = t.execute(self._stray, llm_output)
+
+            return AgentOutput(output=llm_output.output, actions=[llm_output])
+
+        return AgentOutput()

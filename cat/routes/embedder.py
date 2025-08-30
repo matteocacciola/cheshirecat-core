@@ -3,7 +3,7 @@ from fastapi import APIRouter, Body
 
 from cat.auth.permissions import AdminAuthResource, AuthPermission, check_admin_permissions
 from cat.factory.embedder import EmbedderFactory
-from cat.looking_glass.bill_the_lizard import BillTheLizard
+from cat.looking_glass import BillTheLizard
 from cat.routes.routes_utils import (
     GetSettingsResponse,
     GetSettingResponse,

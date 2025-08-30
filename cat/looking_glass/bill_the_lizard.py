@@ -13,7 +13,6 @@ from langchain_core.embeddings import Embeddings
 from fastapi import FastAPI
 
 from cat import utils
-from cat.agents.main_agent import MainAgent
 from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
 from cat.auth.permissions import get_full_admin_permissions
 from cat.db import crud
@@ -26,13 +25,11 @@ from cat.factory.custom_auth_handler import CoreAuthHandler
 from cat.factory.embedder import EmbedderFactory
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.mad_hatter.mad_hatter import MadHatter
-from cat.mad_hatter.march_hare import MarchHare, MarchHareConfig
-from cat.mad_hatter.tweedledum import Tweedledum
-from cat.memory.utils import VectorEmbedderSize
+from cat.mad_hatter import MadHatter, MarchHare, MarchHareConfig, Tweedledum
+from cat.memory import VectorEmbedderSize
 from cat.parsers import YoutubeParser, TableParser, JSONParser, PowerPointParser
 from cat.rabbit_hole import RabbitHole
-from cat.services.websocket_manager import WebsocketManager
+from cat.services.websocket_manager import WebSocketManager
 from cat.utils import (
     singleton,
     get_embedder_name,
@@ -84,7 +81,7 @@ class BillTheLizard:
         # load active plugins
         self.plugin_manager.find_plugins()
 
-        self.websocket_manager = WebsocketManager()
+        self.websocket_manager = WebSocketManager()
 
         # load embedder
         self.load_language_embedder()

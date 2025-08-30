@@ -14,7 +14,7 @@ from cat.routes.routes_utils import (
     memory_collection_is_accessible,
     create_dict_parser,
 )
-from cat.memory.utils import DocumentRecall, VectorMemoryCollectionTypes, UpdateResult, Record
+from cat.memory import DocumentRecall, VectorMemoryCollectionTypes, UpdateResult, Record
 
 router = APIRouter()
 

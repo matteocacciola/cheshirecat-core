@@ -6,10 +6,10 @@ from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.factory.custom_chunker import BaseChunker
 from cat.factory.custom_file_manager import BaseFileManager
 from cat.factory.custom_vector_db import BaseVectorDatabaseHandler
-from cat.mad_hatter.tweedledee import Tweedledee
+from cat.mad_hatter import Tweedledee
 from cat.factory.custom_embedder import DumbEmbedder
 from cat.factory.custom_llm import LLMDefault
-from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.memory import VectorMemoryCollectionTypes
 
 
 def test_main_modules_loaded(cheshire_cat):

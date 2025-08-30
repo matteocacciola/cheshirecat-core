@@ -1,5 +1,7 @@
+import functools
 import inspect
 from typing import Callable, List
+from langchain_core.tools import StructuredTool
 from pydantic import ConfigDict
 
 
@@ -7,17 +9,18 @@ from pydantic import ConfigDict
 # The difference between base langchain Tool and CatTool is that CatTool has an instance of the cat as attribute
 # (set by the plugin manager)
 class CatTool:
+    model_config = ConfigDict(extra="allow")
+
     def __init__(
         self,
         name: str,
         func: Callable,
         return_direct: bool = False,
         examples: List[str] = None,
-        plugin_id: str | None = None
+        plugin_id: str | None = None,
     ):
         examples = examples or []
-
-        description = func.__doc__.strip()
+        description = func.__doc__.strip() if func.__doc__ else ""
 
         self.func = func
         self.procedure_type = "tool"
@@ -43,7 +46,88 @@ class CatTool:
     def run(self, input_by_llm: str, stray: "StrayCat") -> str:
         return self.func(input_by_llm, cat=stray)
 
-    model_config = ConfigDict(extra = "allow")
+    async def arun(self, input_by_llm: dict, stray: "StrayCat") -> str:
+        return self.func(input_by_llm, cat=stray)
+
+    def execute(self, stray: "StrayCat", action: "LLMAction") -> "LLMAction":
+        """
+        Execute a CatTool with the provided LLMAction.
+        Will store tool output in action.output.
+
+        Parameters
+        ----------
+        action: LLMAction
+            Object representing the choice of tool made by the LLM
+        stray: StrayCat
+            Session object.
+
+        Returns
+        -------
+        LLMAction
+            Updated LLM action, with valued output.
+        """
+        if action.input is None:
+            action.input = {}
+        tool_output = self.func(**action.input, cat=stray)
+
+        # Ensure the output is a string or None,
+        if (tool_output is not None) and (not isinstance(tool_output, str)):
+            tool_output = str(tool_output)
+
+        # store tool output
+        action.output = tool_output
+
+        # TODO: should return something analogous to:
+        #   https://modelcontextprotocol.info/specification/2024-11-05/server/tools/#tool-result
+        #   Only supporting text for now
+        return action
+
+    def _remove_cat_from_args(self, function: Callable) -> Callable:
+        """
+        Remove 'stray' and '_' parameters from function signature for LangChain compatibility.
+
+        Parameters
+        ----------
+        function : Callable
+            The function to modify.
+
+        Returns
+        -------
+        Callable
+            The modified function without 'cat' and '_' parameters.
+        """
+        signature = inspect.signature(function)
+        parameters = list(signature.parameters.values())
+
+        filtered_parameters = [p for p in parameters if p.name != 'cat' and p.name != '_']
+        new_signature = signature.replace(parameters=filtered_parameters)
+
+        @functools.wraps(function)
+        def wrapper(*args, **kwargs):
+            if "stray" in kwargs:
+                del kwargs["stray"]
+            return function(*args, **kwargs)
+
+        wrapper.__signature__ = new_signature
+        return wrapper
+
+    def langchainfy(self):
+        """Convert CatTool to a langchain compatible StructuredTool object"""
+        if getattr(self, "arg_schema", None) is not None:
+            new_tool = StructuredTool(
+                name=self.name.strip().replace(" ", "_"),
+                description=self.description,
+                func=self._remove_cat_from_args(self.func),
+                args_schema=getattr(self, "arg_schema"),
+            )
+        else:
+            new_tool = StructuredTool.from_function(
+                name=self.name.strip().replace(" ", "_"),
+                description=self.description,
+                func=self._remove_cat_from_args(self.func),
+            )
+
+        return new_tool
 
 
 # @tool decorator, a modified version of a langchain Tool that also takes a Cat instance as argument
@@ -54,17 +138,17 @@ def tool(
     """
     Make tools out of functions, can be used with or without arguments.
     Requires:
-        - Function must be of type (str, cat) -> str
+        - Function must contain the cat argument -> str
         - Function must have a docstring
     Examples:
         .. code-block:: python
             @tool
             def search_api(query: str, cat) -> str:
-                \"\"\"Searches the API for the query.\"\"\"
+                # Searches the API for the query.
                 return "https://api.com/search?q=" + query
             @tool("search", return_direct=True)
             def search_api(query: str, cat) -> str:
-                \"\"\"Searches the API for the query.\"\"\"
+                # Searches the API for the query.
                 return "https://api.com/search?q=" + query
     """
     examples = examples or []

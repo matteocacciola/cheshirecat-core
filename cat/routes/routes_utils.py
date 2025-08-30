@@ -14,13 +14,9 @@ from cat.db.database import DEFAULT_AGENT_KEY
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
 from cat.factory.base_factory import ReplacedNLPConfig, BaseFactory
-from cat.looking_glass.bill_the_lizard import BillTheLizard
-from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.looking_glass.white_rabbit import WhiteRabbit
-from cat.mad_hatter.mad_hatter import MadHatter
-from cat.mad_hatter.plugin import Plugin
-from cat.mad_hatter.registry import registry_search_plugins
-from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.looking_glass import BillTheLizard, CheshireCat, WhiteRabbit
+from cat.mad_hatter import MadHatter, Plugin, registry_search_plugins
+from cat.memory import VectorMemoryCollectionTypes
 
 
 class Plugins(BaseModel):

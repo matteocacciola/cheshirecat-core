@@ -1,10 +1,10 @@
-from cat.auth.permissions import AuthPermission, AuthResource, check_websocket_permissions
-from cat.auth.connection import AuthorizedInfo
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from cat.convo.messages import UserMessage
+from cat.auth.permissions import AuthPermission, AuthResource, check_websocket_permissions
+from cat.auth.connection import AuthorizedInfo
+from cat.convo import UserMessage
 from cat.log import log
-from cat.looking_glass.stray_cat import StrayCat
+from cat.looking_glass import StrayCat
 
 router = APIRouter()
 

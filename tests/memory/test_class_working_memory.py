@@ -1,8 +1,8 @@
 from langchain_core.messages import AIMessage, HumanMessage
 
-from cat.convo.messages import UserMessage, CatMessage, ConversationHistoryItem
+from cat.convo import UserMessage, CatMessage, ConversationHistoryItem
 from cat.db.models import generate_uuid
-from cat.memory.working_memory import WorkingMemory
+from cat.memory import WorkingMemory
 
 from tests.utils import agent_id
 

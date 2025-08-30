@@ -24,8 +24,8 @@ from cat.factory.file_manager import FileManagerFactory
 from cat.factory.llm import LLMFactory
 from cat.factory.vector_db import VectorDatabaseFactory
 from cat.log import log
-from cat.mad_hatter.tweedledee import Tweedledee
-from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.mad_hatter import Tweedledee
+from cat.memory import VectorMemoryCollectionTypes
 from cat.utils import get_factory_object, get_updated_factory_object, rollback_factory_config
 
 
@@ -310,7 +310,7 @@ class CheshireCat:
             lizard: BillTheLizard
                 Instance of langchain `BillTheLizard`.
         """
-        from cat.looking_glass.bill_the_lizard import BillTheLizard
+        from cat.looking_glass import BillTheLizard
         return BillTheLizard()
 
     @property
@@ -334,7 +334,7 @@ class CheshireCat:
 
         Examples
         --------
-        >>> cat.embedder.embed_query("Oh dear!")
+        >> cat.embedder.embed_query("Oh dear!")
         [0.2, 0.02, 0.4, ...]
         """
         return self.lizard.embedder
@@ -349,7 +349,7 @@ class CheshireCat:
             Module to ingest documents and URLs for RAG.
         Examples
         --------
-        >>> cat.rabbit_hole.ingest_file(...)
+        >> cat.rabbit_hole.ingest_file(...)
         """
         return self.lizard.rabbit_hole
 
@@ -376,10 +376,10 @@ class CheshireCat:
         Examples
         --------
         Obtain the path in which your plugin is located
-        >>> cat.mad_hatter.get_plugin().path
+        >> cat.mad_hatter.get_plugin().path
         /app/cat/plugins/my_plugin
         Obtain plugin settings
-        >>> cat.mad_hatter.get_plugin().load_settings()
+        >> cat.mad_hatter.get_plugin().load_settings()
         {"num_cats": 44, "rows": 6, "remainder": 0}
         """
         return self.plugin_manager

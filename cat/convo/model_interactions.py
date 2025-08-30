@@ -2,6 +2,7 @@ import time
 from typing import List, Literal
 from pydantic import BaseModel, Field, ConfigDict
 
+
 class ModelInteraction(BaseModel):
     """
     Base class for interactions with models, capturing essential attributes common to all model interactions.

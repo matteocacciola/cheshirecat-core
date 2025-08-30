@@ -1,9 +1,9 @@
 import pytest
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
-from cat.convo.messages import MessageWhy, CatMessage, UserMessage
-from cat.looking_glass.stray_cat import StrayCat
-from cat.memory.working_memory import WorkingMemory
+from cat.convo import MessageWhy, CatMessage, UserMessage
+from cat.looking_glass import StrayCat
+from cat.memory import WorkingMemory
 
 from tests.utils import api_key, create_mock_plugin_zip, send_file
 

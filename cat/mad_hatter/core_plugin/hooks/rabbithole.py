@@ -10,7 +10,7 @@ from langchain_core.documents import Document
 
 from cat.factory.custom_chunker import BaseChunker
 from cat.mad_hatter.decorators import hook
-from cat.memory.utils import PointStruct
+from cat.memory import PointStruct
 
 
 @hook(priority=0)

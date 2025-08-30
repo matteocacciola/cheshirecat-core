@@ -14,15 +14,14 @@ from langchain.document_loaders.blob_loaders.schema import Blob
 
 from cat.env import get_env_bool
 from cat.log import log
-from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.memory.utils import VectorMemoryCollectionTypes, PointStruct
+from cat.memory import VectorMemoryCollectionTypes, PointStruct
 from cat.utils import singleton
 
 
 @singleton
 class RabbitHole:
     """Manages content ingestion. I'm late... I'm late!"""
-    async def ingest_memory(self, ccat: CheshireCat, file: UploadFile):
+    async def ingest_memory(self, ccat: "CheshireCat", file: UploadFile):
         """Upload memories to the declarative memory from a JSON file.
 
         Args:

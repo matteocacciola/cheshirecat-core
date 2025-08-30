@@ -2,27 +2,23 @@ import tiktoken
 from typing import Literal, List, Dict, Any, get_args, Final
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
-from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, BasePromptTemplate, HumanMessagePromptTemplate
 from langchain_core.runnables import RunnableConfig, RunnableLambda
 from websockets.exceptions import ConnectionClosedOK
 
 from cat import utils
-from cat.agents.base_agent import AgentOutput
-from cat.agents.main_agent import MainAgent
+from cat.agents import AgentOutput, LLMAction, MainAgent
 from cat.auth.permissions import AuthUserInfo
-from cat.convo.messages import CatMessage, MessageWhy, UserMessage
-from cat.convo.model_interactions import EmbedderModelInteraction
+from cat.convo import CatMessage, UserMessage, EmbedderModelInteraction
 from cat.exceptions import VectorMemoryError
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
-from cat.mad_hatter.tweedledee import Tweedledee
-from cat.memory.utils import DocumentRecall, VectorMemoryCollectionTypes
-from cat.memory.working_memory import WorkingMemory
+from cat.mad_hatter import CatTool, Tweedledee
+from cat.memory import DocumentRecall, VectorMemoryCollectionTypes, WorkingMemory
 from cat.rabbit_hole import RabbitHole
-from cat.services.websocket_manager import WebsocketManager
+from cat.services.websocket_manager import WebSocketManager
 
 MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
 DEFAULT_K = 3
@@ -42,9 +38,6 @@ class StrayCat:
     def __init__(self, agent_id: str, user_data: AuthUserInfo):
         self.agent_id: Final[str] = agent_id
         self.user: Final[AuthUserInfo] = user_data
-
-        # Main agent instance (for reasoning)
-        self.main_agent: Final[MainAgent] = MainAgent(self)
 
         self.working_memory = WorkingMemory(agent_id=self.agent_id, user_id=self.user.id)
 
@@ -69,20 +62,6 @@ class StrayCat:
         except RuntimeError as e:
             log.error(f"Runtime error occurred while sending data: {e}")
 
-    def _build_why(self, agent_output: AgentOutput | None = None) -> MessageWhy:
-        memory = {str(c): [dict(d.document) | {
-            "score": float(d.score) if d.score else None,
-            "id": d.id,
-        } for d in getattr(self.working_memory, f"{c}_memories")] for c in VectorMemoryCollectionTypes}
-
-        # why this response?
-        return MessageWhy(
-            input=self.working_memory.user_message.text,
-            intermediate_steps=agent_output.intermediate_steps if agent_output else [],
-            memory=memory,
-            model_interactions=self.working_memory.model_interactions,
-        )
-
     async def send_ws_message(self, content: str, msg_type: MSG_TYPES = "notification"):
         """
         Send a message via websocket.
@@ -99,14 +78,14 @@ class StrayCat:
         Examples
         --------
         Send a notification via websocket
-        >>> cat.send_ws_message("Hello, I'm a notification!")
+        >> cat.send_ws_message("Hello, I'm a notification!")
         Send a chat message via websocket
-        >>> cat.send_ws_message("Meooow!", msg_type="chat")
+        >> cat.send_ws_message("Meooow!", msg_type="chat")
 
         Send an error message via websocket
-        >>> cat.send_ws_message("Something went wrong", msg_type="error")
+        >> cat.send_ws_message("Something went wrong", msg_type="error")
         Send custom data
-        >>> cat.send_ws_message({"What day it is?": "It's my unbirthday"})
+        >> cat.send_ws_message({"What day it is?": "It's my unbirthday"})
         """
         options = get_args(MSG_TYPES)
 
@@ -133,13 +112,13 @@ class StrayCat:
         Examples
         --------
         Send a chat message during conversation from a hook, tool or form
-        >>> cat.send_chat_message("Hello, dear!")
+        >> cat.send_chat_message("Hello, dear!")
         Using a `CatMessage` object
-        >>> message = CatMessage(text="Hello, dear!", user_id=cat.user.id)
+        >> message = CatMessage(text="Hello, dear!", user_id=cat.user.id)
         ... cat.send_chat_message(message)
         """
         if isinstance(message, str):
-            message = CatMessage(text=message, why=self._build_why())
+            message = CatMessage(text=message)
 
         await self._send_ws_json(message.model_dump())
 
@@ -154,7 +133,7 @@ class StrayCat:
         Examples
         --------
         Send a notification to the user
-        >>> cat.send_notification("It's late!")
+        >> cat.send_notification("It's late!")
         """
         await self.send_ws_message(content=content, msg_type="notification")
 
@@ -169,9 +148,9 @@ class StrayCat:
         Examples
         --------
         Send an error message to the user
-        >>> cat.send_error("Something went wrong!")
+        >> cat.send_error("Something went wrong!")
         or
-        >>> cat.send_error(CustomException("Something went wrong!"))
+        >> cat.send_error(CustomException("Something went wrong!"))
         """
         if isinstance(error, str):
             error_message = {
@@ -262,7 +241,7 @@ class StrayCat:
         Examples
         --------
         Recall memories from custom query
-        >>> cat.recall_relevant_memories_to_working_memory(query="What was written on the bottle?")
+        >> cat.recall_relevant_memories_to_working_memory(query="What was written on the bottle?")
 
         Notes
         -----
@@ -316,7 +295,14 @@ class StrayCat:
         # hook to modify/enrich retrieved memories
         plugin_manager.execute_hook("after_cat_recalls_memories", cat=self)
 
-    def llm(self, prompt: BasePromptTemplate, inputs: Dict[str, Any] = None, stream: bool = False, **kwargs) -> str:
+    def llm(
+        self,
+        prompt: BasePromptTemplate,
+        prompt_variables: Dict[str, Any] = None,
+        tools: List[CatTool] = None,
+        stream: bool = False,
+        **kwargs
+    ) -> str | LLMAction:
         """
         Generate a response using the LLM model.
         This method is useful for generating a response with both a chat and a completion model using the same syntax.
@@ -324,14 +310,16 @@ class StrayCat:
         Args:
             prompt: str
                 The prompt for generating the response.
-            inputs: Dict[str, Any]
+            prompt_variables: Dict[str, Any]
                 The inputs to be passed to the prompt template.
+            tools: List[CatTool], optional
+                List of tools to be used by the LLM.
             stream: bool, optional
                 Whether to stream the tokens or not.
 
-        Returns: The generated LLM response.
+        Returns: The generated LLM response as a string or an LLMAction if a tool is called.
+            str | LLMAction
         """
-        output_parser = kwargs.pop("output_parser", StrOutputParser())
         return_short = kwargs.pop("caller_return_short", False)
         skip = kwargs.pop("caller_skip", 2)
 
@@ -341,16 +329,33 @@ class StrayCat:
         # should we stream the tokens?
         callbacks = ([] if not stream else [NewTokenHandler(self)]) + [ModelInteractionHandler(self, caller or "StrayCat")]
 
+        llm_with_tools = self.large_language_model
+        if hasattr(self.large_language_model, "bind_tools"):
+            llm_with_tools = self.large_language_model.bind_tools([
+                t.langchainfy() for t in tools
+            ])
+
         chain = (
             prompt
-            | RunnableLambda(lambda x: utils.langchain_log_prompt(x, f"{caller} prompt"))
-            | self.large_language_model
-            | RunnableLambda(lambda x: utils.langchain_log_output(x, f"{caller} prompt output"))
-            | output_parser
+            | RunnableLambda(lambda x: log.langchain_log_prompt(x, f"{caller} prompt"))
+            | llm_with_tools
+            | RunnableLambda(lambda x: log.langchain_log_output(x, f"{caller} prompt output"))
         )
 
         # in case we need to pass info to the template
-        return chain.invoke(inputs or {}, config=RunnableConfig(callbacks=callbacks))
+        langchain_msg = chain.invoke(prompt_variables or {}, config=RunnableConfig(callbacks=callbacks))
+
+        if hasattr(langchain_msg, "tool_calls") and len(langchain_msg.tool_calls) > 0:
+            langchain_tool_call = langchain_msg.tool_calls[0]  # can they be more than one?
+            return LLMAction(
+                id=langchain_tool_call["id"],
+                name=langchain_tool_call["name"],
+                input=langchain_tool_call["args"],
+                output=langchain_msg.content
+            )
+
+        # if no tools involved, just return the string
+        return langchain_msg.content
 
     async def __call__(self, user_message: UserMessage) -> CatMessage:
         """
@@ -406,32 +411,21 @@ class StrayCat:
 
         # reply with agent
         try:
-            agent_output: AgentOutput = self.main_agent.execute(self)
+            agent_output: AgentOutput = MainAgent(self).execute(self)
             if agent_output.output == utils.default_llm_answer_prompt():
                 agent_output.with_llm_error = True
         except Exception as e:
-            # This error happens when the LLM does not respect prompt instructions.
-            # We grab the LLM output here anyway, so small and non-instruction-fine-tuned models can still be used.
-            error_description = str(e)
-
-            log.error(f"Agent id: {self.agent_id}. Error: {error_description}")
-            if "Could not parse LLM output: `" not in error_description:
-                raise e
-
-            unparsable_llm_output = error_description.replace(
-                "Could not parse LLM output: `", ""
-            ).replace("`", "")
-            agent_output = AgentOutput(output=unparsable_llm_output, with_llm_error=True)
-
-        log.info(f"Agent id: {self.agent_id}. Agent output returned to stray:")
-        log.info(agent_output)
+            log.error(f"Agent id: {self.agent_id}. Error: {e}")
+            raise e
 
         # prepare a final cat message
-        final_output = CatMessage(text=str(agent_output.output), why=self._build_why(agent_output))
+        final_output = CatMessage(text=str(agent_output.output))
 
         # run a message through plugins
         final_output = utils.restore_original_model(
-            self.plugin_manager.execute_hook("before_cat_sends_message", final_output, cat=self),
+            self.plugin_manager.execute_hook(
+                "before_cat_sends_message", final_output, agent_output, cat=self
+            ),
             CatMessage,
         )
 
@@ -440,6 +434,9 @@ class StrayCat:
         else:
             # update conversation history (AI turn)
             self.working_memory.update_history(who="assistant", content=final_output)
+
+        log.info(f"Agent id: {self.agent_id}. Agent output returned to stray:")
+        log.info(agent_output)
 
         return final_output
 
@@ -485,12 +482,12 @@ class StrayCat:
 
         Examples
         -------
-        >>> cat.classify("I feel good", labels=["positive", "negative"])
+        >> cat.classify("I feel good", labels=["positive", "negative"])
         "positive"
 
         Or giving examples for each category:
 
-        >>> example_labels = {
+        >> example_labels = {
         ...     "positive": ["I feel nice", "happy today"],
         ...     "negative": ["I feel bad", "not my best day"],
         ... }
@@ -542,7 +539,7 @@ Just output the class, nothing else."""
         return BillTheLizard()
 
     @property
-    def websocket_manager(self) -> WebsocketManager:
+    def websocket_manager(self) -> WebSocketManager:
         """
         Instance of `WebsocketManager`. Use it to access the manager of the Websocket connections.
 
@@ -581,7 +578,7 @@ Just output the class, nothing else."""
 
         Examples
         --------
-        >>> cat.embedder.embed_query("Oh dear!")
+        >> cat.embedder.embed_query("Oh dear!")
         [0.2, 0.02, 0.4, ...]
         """
         return self.lizard.embedder
@@ -596,7 +593,7 @@ Just output the class, nothing else."""
             Module to ingest documents and URLs for RAG.
         Examples
         --------
-        >>> cat.rabbit_hole.ingest_file(...)
+        >> cat.rabbit_hole.ingest_file(...)
         """
         return self.lizard.rabbit_hole
 
@@ -622,10 +619,10 @@ Just output the class, nothing else."""
         Examples
         --------
         Obtain the path in which your plugin is located
-        >>> cat.mad_hatter.get_plugin().path
+        >> cat.mad_hatter.get_plugin().path
         /app/cat/plugins/my_plugin
         Obtain plugin settings
-        >>> cat.mad_hatter.get_plugin().load_settings()
+        >> cat.mad_hatter.get_plugin().load_settings()
         {"num_cats": 44, "rows": 6, "remainder": 0}
         """
         return self.plugin_manager
@@ -642,7 +639,7 @@ Just output the class, nothing else."""
         Examples
         --------
         Send a websocket message after 30 seconds
-        >>> def ring_alarm_api():
+        >> def ring_alarm_api():
         ...     cat.send_chat_message("It's late!")
         ...
         ... cat.white_rabbit.schedule_job(ring_alarm_api, seconds=30)

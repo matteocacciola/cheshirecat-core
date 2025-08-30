@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from cat.db.cruds import settings as crud_settings
 from cat.log import log
-from cat.mad_hatter.mad_hatter import MadHatter
+from cat.mad_hatter import MadHatter
 from cat.services.string_crypto import StringCrypto
 
 

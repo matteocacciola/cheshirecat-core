@@ -3,9 +3,7 @@ import pytest
 from inspect import isfunction
 
 import cat.utils as utils
-from cat.mad_hatter.decorators.hook import CatHook
-from cat.mad_hatter.decorators.tool import CatTool
-from cat.mad_hatter.plugin import Plugin
+from cat.mad_hatter import CatHook, CatTool, Plugin
 
 from tests.utils import create_mock_plugin_zip
 

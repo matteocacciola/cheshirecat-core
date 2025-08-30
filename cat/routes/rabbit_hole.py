@@ -10,9 +10,8 @@ from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException
 from cat.log import log
-from cat.looking_glass.bill_the_lizard import BillTheLizard
-from cat.looking_glass.stray_cat import StrayCat
-from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.looking_glass import BillTheLizard, StrayCat
+from cat.memory import VectorMemoryCollectionTypes
 from cat.routes.routes_utils import format_upload_file
 
 router = APIRouter()

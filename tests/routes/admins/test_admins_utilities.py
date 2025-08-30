@@ -10,7 +10,7 @@ from cat.db.cruds import (
 )
 from cat.db.database import get_db
 from cat.env import get_env
-from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.memory import VectorMemoryCollectionTypes
 
 from tests.utils import create_new_user, get_client_admin_headers, new_user_password
 

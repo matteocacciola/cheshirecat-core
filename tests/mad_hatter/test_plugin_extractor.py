@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from cat.mad_hatter.plugin_extractor import PluginExtractor
+from cat.mad_hatter import PluginExtractor
 
 from tests.utils import create_mock_plugin_zip
 

@@ -31,15 +31,16 @@ from qdrant_client.http.models import (
 )
 
 from cat.log import log
-from cat.memory.utils import (
+from cat.memory import (
     VectorMemoryCollectionTypes,
     VectorEmbedderSize,
     DocumentRecall,
     Payload,
     PointStruct,
     Record,
+    ScoredPoint,
     UpdateResult,
-    to_document_recall, ScoredPoint,
+    to_document_recall,
 )
 
 

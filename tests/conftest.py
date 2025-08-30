@@ -12,15 +12,12 @@ import time
 
 from cat.auth import auth_utils
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
-from cat.convo.messages import UserMessage
+from cat.convo import UserMessage
 from cat.db.database import Database
 from cat.env import get_env
 from cat.factory.custom_vector_db import QdrantHandler
-from cat.looking_glass.bill_the_lizard import BillTheLizard
-from cat.looking_glass.stray_cat import StrayCat
-from cat.looking_glass.white_rabbit import WhiteRabbit
-from cat.mad_hatter.march_hare import MarchHare
-from cat.mad_hatter.plugin import Plugin
+from cat.looking_glass import BillTheLizard, StrayCat, WhiteRabbit
+from cat.mad_hatter import MarchHare, Plugin
 from cat.startup import cheshire_cat_api
 import cat.utils as utils
 
