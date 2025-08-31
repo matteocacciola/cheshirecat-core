@@ -4,7 +4,7 @@ from pydantic import ConfigDict
 
 from langchain_community.chat_models.fake import FakeListChatModel
 
-from cat.mad_hatter import hook
+from cat.mad_hatter.decorators import hook
 from cat.factory.llm import LLMSettings
 
 class FakeLLMConfig(LLMSettings):

@@ -15,7 +15,8 @@ from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.callbacks import NewTokenHandler, ModelInteractionHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
-from cat.mad_hatter import CatTool, Tweedledee
+from cat.mad_hatter import Tweedledee
+from cat.mad_hatter.decorators import CatTool
 from cat.memory import DocumentRecall, VectorMemoryCollectionTypes, WorkingMemory
 from cat.rabbit_hole import RabbitHole
 from cat.services.websocket_manager import WebSocketManager

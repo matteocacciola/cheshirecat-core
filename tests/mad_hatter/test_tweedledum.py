@@ -2,8 +2,8 @@ import os
 import pytest
 from inspect import isfunction
 
-import cat.utils as utils
-from cat.mad_hatter import CatHook, CatTool, Plugin
+from cat.mad_hatter import Plugin
+from cat.mad_hatter.decorators import CatHook, CatTool
 
 from tests.utils import create_mock_plugin_zip
 

@@ -5,7 +5,7 @@ from langchain_core.documents import Document
 from pydantic import Field
 
 from cat.utils import BaseModelDict
-from cat.mad_hatter import CatTool
+from cat.mad_hatter.decorators import CatTool
 
 
 class LLMAction(BaseModelDict):

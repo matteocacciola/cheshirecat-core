@@ -1,5 +1,5 @@
 from cat.convo import CatMessage
-from cat.mad_hatter import CatHook
+from cat.mad_hatter.decorators import CatHook
 
 
 def test_hook_discovery(plugin_manager):

@@ -5,7 +5,8 @@ import subprocess
 from inspect import isfunction
 
 from cat.db.database import DEFAULT_SYSTEM_KEY
-from cat.mad_hatter import Plugin, CatHook, CatTool
+from cat.mad_hatter import Plugin
+from cat.mad_hatter.decorators import CatHook, CatTool
 
 from tests.conftest import clean_up
 from tests.utils import mock_plugin_path
