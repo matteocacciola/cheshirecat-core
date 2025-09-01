@@ -17,19 +17,21 @@ def _check_activation(secure_client, secure_client_headers):
 
     # check whether procedures have been embedded
     procedures = get_procedural_memory_contents(secure_client, headers=secure_client_headers)
-    assert len(procedures) == 9  # two tools, 4 tools examples, 3  form triggers
+    assert len(procedures) == 13  # 4 tools, 6 tools examples, 3 form triggers
     procedures_names = list(map(lambda t: t["metadata"]["source"], procedures))
     assert procedures_names.count("mock_tool") == 3
     assert procedures_names.count("get_the_time") == 3
+    assert procedures_names.count("read_working_memory") == 3
+    assert procedures_names.count("get_weather") == 1
     assert procedures_names.count("PizzaForm") == 3
 
     procedures_sources = list(map(lambda t: t["metadata"]["type"], procedures))
-    assert procedures_sources.count("tool") == 6
+    assert procedures_sources.count("tool") == 10
     assert procedures_sources.count("form") == 3
 
     procedures_triggers = list(map(lambda t: t["metadata"]["trigger_type"], procedures))
-    assert procedures_triggers.count("start_example") == 6
-    assert procedures_triggers.count("description") == 3
+    assert procedures_triggers.count("start_example") == 8
+    assert procedures_triggers.count("description") == 5
 
 
 def test_toggle_non_existent_plugin(secure_client, secure_client_headers):
@@ -71,7 +73,7 @@ def test_deactivate_plugin(secure_client, secure_client_headers):
 
     # tool has been taken away
     procedures = get_procedural_memory_contents(secure_client, headers=secure_client_headers)
-    assert len(procedures) == 3
+    assert len(procedures) == 7
     procedures_sources = list(map(lambda t: t["metadata"]["source"], procedures))
     assert "mock_tool" not in procedures_sources
     assert "PizzaForm" not in procedures_sources
@@ -79,11 +81,11 @@ def test_deactivate_plugin(secure_client, secure_client_headers):
 
     # only examples for core tool
     procedures_types = list(map(lambda t: t["metadata"]["type"], procedures))
-    assert procedures_types.count("tool") == 3
+    assert procedures_types.count("tool") == 7
     assert procedures_types.count("form") == 0
     procedures_triggers = list(map(lambda t: t["metadata"]["trigger_type"], procedures))
-    assert procedures_triggers.count("start_example") == 2
-    assert procedures_triggers.count("description") == 1
+    assert procedures_triggers.count("start_example") == 4
+    assert procedures_triggers.count("description") == 3
 
 
 def test_reactivate_plugin(secure_client, secure_client_headers):

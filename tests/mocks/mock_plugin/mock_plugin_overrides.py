@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from cat.mad_hatter.decorators import plugin
+from cheshirecat.mad_hatter.decorators import plugin
 
 
 class MockPluginSettings(BaseModel):

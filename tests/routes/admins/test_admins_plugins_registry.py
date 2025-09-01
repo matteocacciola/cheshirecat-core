@@ -44,7 +44,7 @@ def test_list_registry_plugins_by_query(secure_client, secure_client_headers):
 def test_plugin_install_from_registry(secure_client, secure_client_headers, monkeypatch):
     # Mock the download from the registry creating a zip on-the-fly
     monkeypatch.setattr(
-        "cat.routes.admins.plugins.registry_download_plugin", mock_registry_download_plugin
+        "cheshirecat.routes.admins.plugins.registry_download_plugin", mock_registry_download_plugin
     )
 
     # during tests, the cat uses a different folder for plugins

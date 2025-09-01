@@ -1,9 +1,9 @@
 import os
 import pytest
 
-from cat.db import crud
-from cat.db.cruds import plugins as crud_plugins
-from cat.db.database import DEFAULT_SYSTEM_KEY
+from cheshirecat.db import crud
+from cheshirecat.db.cruds import plugins as crud_plugins
+from cheshirecat.db.database import DEFAULT_SYSTEM_KEY
 
 from tests.utils import api_key, create_mock_plugin_zip, agent_id, just_installed_plugin
 

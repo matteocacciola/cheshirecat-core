@@ -1,8 +1,8 @@
 from langchain_core.messages import AIMessage, HumanMessage
 
-from cat.convo import UserMessage, CatMessage, ConversationHistoryItem
-from cat.db.models import generate_uuid
-from cat.memory import WorkingMemory
+from cheshirecat.db.models import generate_uuid
+from cheshirecat.memory.messages import UserMessage, CatMessage, ConversationHistoryItem
+from cheshirecat.memory.working_memory import WorkingMemory
 
 from tests.utils import agent_id
 
@@ -53,12 +53,12 @@ def test_langchainfy_chat_history():
     assert len(langchain_convo) == len(wm.history)
 
     assert isinstance(langchain_convo[0], HumanMessage)
-    assert langchain_convo[0].name == "Human"
+    assert langchain_convo[0].name == "user"
     assert isinstance(langchain_convo[0].content, list)
     assert langchain_convo[0].content[0] == {"type": "text", "text": "Hi"}
 
     assert isinstance(langchain_convo[1], AIMessage)
-    assert langchain_convo[1].name == "AI"
+    assert langchain_convo[1].name == "assistant"
     assert langchain_convo[1].content == "Meow"
 
 

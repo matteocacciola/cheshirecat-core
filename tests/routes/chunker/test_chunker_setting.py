@@ -1,7 +1,7 @@
 from json import dumps
 from fastapi.encoders import jsonable_encoder
 
-from cat.factory.chunker import ChunkerFactory
+from cheshirecat.factory.chunker import ChunkerFactory
 
 from tests.utils import create_new_user, new_user_password, agent_id
 

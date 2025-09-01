@@ -1,7 +1,7 @@
 from json import dumps
 from fastapi.encoders import jsonable_encoder
 
-from cat.factory.file_manager import FileManagerFactory
+from cheshirecat.factory.file_manager import FileManagerFactory
 
 
 def test_get_all_file_manager_settings(secure_client, secure_client_headers, cheshire_cat):

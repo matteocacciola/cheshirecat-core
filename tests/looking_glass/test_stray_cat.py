@@ -1,9 +1,10 @@
 import pytest
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
-from cat.convo import MessageWhy, CatMessage, UserMessage
-from cat.looking_glass import StrayCat
-from cat.memory import WorkingMemory
+from cheshirecat.core_plugin.utils.memory import recall
+from cheshirecat.looking_glass import StrayCat
+from cheshirecat.memory.messages import CatMessage, UserMessage, MessageWhy
+from cheshirecat.memory.working_memory import WorkingMemory
 
 from tests.utils import api_key, create_mock_plugin_zip, send_file
 
@@ -48,33 +49,9 @@ def test_stray_classify(stray_no_memory):
 
 
 @pytest.mark.asyncio
-async def test_recall_to_working_memory(stray_no_memory, mocked_default_llm_answer_prompt):
-    # empty working memory / history of conversation
-    assert len(stray_no_memory.working_memory.history) == 0
-
-    msg_text = "Where do I go?"
-    msg = {"text": msg_text}
-
-    # send message
-    await stray_no_memory(UserMessage(**msg))
-    assert len(stray_no_memory.working_memory.history) == 2
-
-    # recall after memory was stored
-    await stray_no_memory.recall_relevant_memories_to_working_memory(msg_text)
-
-    assert len(stray_no_memory.working_memory.declarative_memories) == 0
-    assert len(stray_no_memory.working_memory.procedural_memories) == 0
-    assert stray_no_memory.working_memory.user_message.text == msg_text
-    assert stray_no_memory.working_memory.user_message_json.text == msg_text
-    assert stray_no_memory.working_memory.history[0].content.text == msg_text
-    assert stray_no_memory.working_memory.history[1].content.text != msg_text  # the cat's reply
-    assert stray_no_memory.working_memory.recall_query == msg_text
-
-
-@pytest.mark.asyncio
 async def test_stray_recall_invalid_collection_name(stray, lizard):
     with pytest.raises(ValueError) as exc_info:
-        await stray.recall(lizard.embedder.embed_query("Hello, I'm Alice"), "invalid_collection")
+        await recall(stray, lizard.embedder.embed_query("Hello, I'm Alice"), "invalid_collection")
     assert "invalid_collection is not a valid collection" in str(exc_info.value)
 
 
@@ -84,7 +61,7 @@ async def test_stray_recall_all_memories(secure_client, secure_client_headers, s
     send_file("sample.pdf", "application/pdf", secure_client, secure_client_headers)
 
     query = lizard.embedder.embed_query("")
-    memories = await stray.recall(query, "declarative", k=None)
+    memories = await recall(stray, query, "declarative", k=None)
 
     assert len(memories) == expected_chunks
     for mem in memories:
@@ -101,7 +78,7 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
     file_name = "sample.pdf"
     _, file_path = send_file(file_name, content_type, secure_client, secure_client_headers)
 
-    memories = await stray.recall(query, "declarative", metadata={"source": file_name})
+    memories = await recall(stray, query, "declarative", metadata={"source": file_name})
     assert len(memories) == expected_chunks
     for mem in memories:
         assert mem.document.metadata["source"] == file_name
@@ -110,7 +87,7 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
         files = {"file": ("sample2.pdf", f, content_type)}
         _ = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
 
-    memories = await stray.recall(query, "declarative", metadata={"source": file_name})
+    memories = await recall(stray, query, "declarative", metadata={"source": file_name})
     assert len(memories) == expected_chunks
     for mem in memories:
         assert mem.document.metadata["source"] == file_name

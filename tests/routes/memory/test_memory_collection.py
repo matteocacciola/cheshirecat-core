@@ -14,7 +14,7 @@ def test_memory_collections_created(secure_client, secure_client_headers):
     # check correct number of default points
     collections_n_points = {c["name"]: c["vectors_count"] for c in json["collections"]}
     # there is at least an embedded tool in procedural collection
-    assert collections_n_points["procedural"] == 3
+    assert collections_n_points["procedural"] == 7
     # all other collections should be empty
     assert collections_n_points["declarative"] == 0
 
@@ -30,7 +30,7 @@ def test_memory_collection_non_existent_clear(secure_client, secure_client_heade
 def test_memory_collection_procedural_has_tools_after_clear(secure_client, secure_client_headers):
     # procedural memory contains one tool (get_the_time)
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
-    assert collections_n_points["procedural"] == 3
+    assert collections_n_points["procedural"] == 7
 
     # delete procedural memory
     response = secure_client.delete("/memory/collections/procedural", headers=secure_client_headers)
@@ -38,7 +38,7 @@ def test_memory_collection_procedural_has_tools_after_clear(secure_client, secur
 
     # tool should be automatically re-embedded after memory deletion
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
-    assert collections_n_points["procedural"] == 3
+    assert collections_n_points["procedural"] == 7
 
 
 def test_memory_collections_wipe(
@@ -51,7 +51,7 @@ def test_memory_collections_wipe(
     send_file("sample.txt", "text/plain", secure_client, secure_client_headers)
 
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
-    assert collections_n_points["procedural"] == 3  # default tool
+    assert collections_n_points["procedural"] == 7  # default tool
     assert collections_n_points["declarative"] > 1  # several chunks
 
     # wipe out all memories
@@ -59,5 +59,5 @@ def test_memory_collections_wipe(
     assert response.status_code == 200
 
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
-    assert collections_n_points["procedural"] == 3  # default tool is re-embedded
+    assert collections_n_points["procedural"] == 7  # default tool is re-embedded
     assert collections_n_points["declarative"] == 0

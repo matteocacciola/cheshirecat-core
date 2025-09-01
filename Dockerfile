@@ -18,17 +18,13 @@ COPY ./requirements.txt /app/requirements.txt
 ### INSTALL PYTHON DEPENDENCIES (Core) ###
 WORKDIR /app
 RUN pip install -U pip && \
-    pip install --no-cache-dir -r requirements.txt &&\
-    python3 -c "import nltk; nltk.download('punkt');nltk.download('averaged_perceptron_tagger')"
+    pip install --no-cache-dir -r requirements.txt
+# RUN python3 -c "import nltk; nltk.download('punkt');nltk.download('averaged_perceptron_tagger');import tiktoken;tiktoken.get_encoding('cl100k_base')"
 
 FROM libraries AS build
 
 ### COPY CAT CODE INSIDE THE CONTAINER (so it can be run standalone) ###
-COPY ./cat /app/cat
-
-### INSTALL PYTHON DEPENDENCIES (Plugins) ###
-COPY ./install_plugin_dependencies.py /app/install_plugin_dependencies.py
-RUN python3 install_plugin_dependencies.py
+COPY cheshirecat /app/cheshirecat
 
 ### FINISH ###
-CMD python3 -m cat.main
+CMD python3 -m cheshirecat.main

@@ -2,15 +2,15 @@ import uuid
 from qdrant_client.http.models import Filter, FieldCondition, MatchValue
 import pytest
 
-from cat.db.cruds import (
+from cheshirecat.db.cruds import (
     settings as crud_settings,
     history as crud_history,
     plugins as crud_plugins,
     users as crud_users,
 )
-from cat.db.database import get_db
-from cat.env import get_env
-from cat.memory import VectorMemoryCollectionTypes
+from cheshirecat.db.database import get_db
+from cheshirecat.env import get_env
+from cheshirecat.memory.utils import VectorMemoryCollectionTypes
 
 from tests.utils import create_new_user, get_client_admin_headers, new_user_password
 

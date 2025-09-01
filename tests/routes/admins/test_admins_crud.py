@@ -1,9 +1,9 @@
 import pytest
 from pydantic import ValidationError
 
-from cat.auth.permissions import get_full_admin_permissions
-from cat.env import get_env
-from cat.routes.admins.crud import AdminBase, AdminUpdate
+from cheshirecat.auth.permissions import get_full_admin_permissions
+from cheshirecat.env import get_env
+from cheshirecat.routes.admins.crud import AdminBase, AdminUpdate
 
 from tests.utils import create_new_user, check_user_fields, get_client_admin_headers, new_user_password
 

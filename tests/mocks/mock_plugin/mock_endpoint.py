@@ -1,16 +1,16 @@
 from pydantic import BaseModel
 
 
-from cat.auth.connection import AuthorizedInfo
-from cat.auth.permissions import (
+from cheshirecat.auth.connection import AuthorizedInfo
+from cheshirecat.auth.permissions import (
     AdminAuthResource,
     AuthPermission,
     AuthResource,
     check_permissions,
     check_admin_permissions,
 )
-from cat.looking_glass import BillTheLizard
-from cat.mad_hatter.decorators import endpoint
+from cheshirecat.looking_glass import BillTheLizard
+from cheshirecat.mad_hatter.decorators import endpoint
 
 
 class Item(BaseModel):

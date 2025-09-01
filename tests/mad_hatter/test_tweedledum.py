@@ -2,8 +2,9 @@ import os
 import pytest
 from inspect import isfunction
 
-from cat.mad_hatter import Plugin
-from cat.mad_hatter.decorators import CatHook, CatTool
+import cheshirecat.utils as utils
+from cheshirecat.mad_hatter import Plugin
+from cheshirecat.mad_hatter.decorators import CatHook, CatTool
 
 from tests.utils import create_mock_plugin_zip
 
@@ -28,20 +29,28 @@ def test_instantiation_discovery(lizard):
         assert h.priority == 0.0
 
     # finds tool
-    assert len(plugin_manager.tools) == 1
-    tool = plugin_manager.tools[0]
-    assert isinstance(tool, CatTool)
-    assert tool.plugin_id == "core_plugin"
-    assert tool.name == "get_the_time"
-    assert (
-        tool.description
-        == "Useful to get the current time when asked. Input is always None."
-    )
-    assert isfunction(tool.func)
-    assert not tool.return_direct
-    assert len(tool.start_examples) == 2
-    assert "what time is it" in tool.start_examples
-    assert "get the time" in tool.start_examples
+    assert len(plugin_manager.tools) == 3
+    for tool in plugin_manager.tools:
+        assert isinstance(tool, CatTool)
+        assert tool.plugin_id == "core_plugin"
+        assert tool.name in ["get_the_time", "read_working_memory", "get_weather"]
+        assert tool.description in [
+            "Useful to get the current time when asked. Input is always None.",
+            "Get the content of the Working Memory.",
+            "Get the weather for a given city and date."
+        ]
+        assert isfunction(tool.func)
+        assert not tool.return_direct
+        if tool.name == "get_the_time":
+            assert len(tool.start_examples) == 2
+            assert "what time is it" in tool.start_examples
+            assert "get the time" in tool.start_examples
+        elif tool.name == "read_working_memory":
+            assert len(tool.start_examples) == 2
+            assert "log working memory" in tool.start_examples
+            assert "show me the contents of working memory" in tool.start_examples
+        elif tool.name == "get_weather":
+            assert len(tool.start_examples) == 0
 
     # list of active plugins in DB is correct
     active_plugins = plugin_manager.load_active_plugins_from_db()
@@ -76,7 +85,7 @@ def test_plugin_install(lizard, plugin_is_flat):
     # tool found
     new_tool = plugin_manager.plugins["mock_plugin"].tools[0]
     assert new_tool.plugin_id == "mock_plugin"
-    assert id(new_tool) == id(plugin_manager.tools[1])  # cached and same object in memory!
+    assert id(new_tool) == id(plugin_manager.tools[3])  # cached and same object in memory!
     # tool examples found
     assert len(new_tool.start_examples) == 2
     assert "mock tool example 1" in new_tool.start_examples
@@ -144,7 +153,7 @@ def test_plugin_uninstall(lizard, plugin_is_flat):
     for h_name, h_list in plugin_manager.hooks.items():
         assert len(h_list) == 1
         assert h_list[0].plugin_id == "core_plugin"
-    assert len(plugin_manager.tools) == 1
+    assert len(plugin_manager.tools) == 3
     assert len(plugin_manager.forms) == 0
 
     # list of active plugins in DB is correct

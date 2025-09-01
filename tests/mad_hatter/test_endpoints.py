@@ -1,4 +1,4 @@
-from cat.mad_hatter.decorators import CustomEndpoint
+from cheshirecat.mad_hatter.decorators import CustomEndpoint
 
 
 def get_endpoint(plugin_manager, uri, method=None):

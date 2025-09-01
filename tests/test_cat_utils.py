@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from cat import utils
+from cheshirecat import utils
 
 from tests.utils import agent_id
 
@@ -18,21 +18,23 @@ def test_get_base_url():
 
 
 def test_get_base_path():
-    assert utils.get_base_path() == "/app/cat/"
+    assert utils.get_base_path() == "/app/cheshirecat/"
 
 
 def test_get_plugin_path():
-    # plugin folder is "cat/plugins/" in production, "tests/mocks/mock_plugin_folder/" during tests
-    # assert utils.get_plugins_path() == 'cat/plugins/'
+    # plugin folder is "cheshirecat/plugins/" in production, "tests/mocks/mock_plugin_folder/" during tests
+    # assert utils.get_plugins_path() == 'cheshirecat/plugins/'
     assert utils.get_plugins_path() == "tests/mocks/mock_plugin_folder/"
 
 
-def test_get_static_path():
-    assert utils.get_static_path() == "/app/cat/static/"
+def test_get_data_path(client):
+    # "data" in production, "mocks/data" during tests
+    assert utils.get_data_path() == os.path.join(utils.get_project_path(), "data")
 
 
-def test_get_static_url():
-    assert utils.get_static_url() == "http://localhost:1865/static/"
+def test_get_static_path(client):
+    # "statis" in production, "mocks/static" during tests
+    assert utils.get_static_path() == os.path.join(utils.get_project_path(), "static")
 
 
 def test_levenshtein_distance():

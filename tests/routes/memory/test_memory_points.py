@@ -1,4 +1,4 @@
-from cat.db.cruds import users as crud_users
+from cheshirecat.db.cruds import users as crud_users
 
 from tests.utils import (
     get_declarative_memory_contents,

@@ -4,8 +4,8 @@ import uuid
 import random
 from urllib.parse import urlencode
 
-from cat.db.cruds import users as crud_users
-from cat.env import get_env
+from cheshirecat.db.cruds import users as crud_users
+from cheshirecat.env import get_env
 
 agent_id = "agent_test"
 api_key = "meow_http"

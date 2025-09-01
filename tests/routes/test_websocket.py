@@ -1,7 +1,7 @@
 import time
 import uuid
 
-from cat.db.cruds import users as crud_users
+from cheshirecat.db.cruds import users as crud_users
 
 from tests.utils import send_websocket_message, send_n_websocket_messages, agent_id, api_key, create_new_user
 
@@ -16,38 +16,11 @@ def check_correct_websocket_reply(reply):
 
     # why
     why = reply["why"]
-    assert {"input", "intermediate_steps", "memory", "model_interactions"} == set(why.keys())
+    assert {"input", "intermediate_steps", "memory"} == set(why.keys())
     assert isinstance(why["input"], str)
     assert isinstance(why["intermediate_steps"], list)
     assert isinstance(why["memory"], dict)
     assert {"procedural", "declarative"} == set(why["memory"].keys())
-    assert isinstance(why["model_interactions"], list)
-    
-    # model interactions
-    for mi in why["model_interactions"]:
-        assert mi["model_type"] in ["llm", "embedder"]
-        assert isinstance(mi["source"], str)
-        assert isinstance(mi["prompt"], list)
-        for p in mi["prompt"]:
-            assert isinstance(p, str)
-        assert isinstance(mi["input_tokens"], int)
-        # assert mi["input_tokens"] > 0 # TODO V2: default LLM is not a ChatModel
-        assert isinstance(mi["started_at"], float)
-        assert mi["started_at"] < time.time()
-
-        if mi["model_type"] == "llm":
-            assert isinstance(mi["reply"], str)
-            assert "You did not configure" in mi["reply"]
-            assert isinstance(mi["output_tokens"], int)
-            assert mi["output_tokens"] > 0
-            assert isinstance(mi["ended_at"], float)
-            assert mi["ended_at"] > mi["started_at"]
-            assert mi["source"] == "MemoryAgent.execute"
-        else:
-            assert mi["model_type"] == "embedder"
-            assert isinstance(mi["reply"], list)
-            assert isinstance(mi["reply"][0], float)
-            assert mi["source"] == "StrayCat.recall_relevant_memories_to_working_memory"
 
 
 def test_websocket(secure_client):

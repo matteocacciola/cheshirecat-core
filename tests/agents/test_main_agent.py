@@ -1,19 +1,21 @@
 import pytest
 
-from cat.agents.main_agent import MainAgent
-from cat.agents.base_agent import AgentOutput
-from cat.utils import default_llm_answer_prompt
+from cheshirecat.agents.main_agent import MainAgent
+from cheshirecat.agents.base_agent import AgentOutput
+from cheshirecat.utils import default_llm_answer_prompt
 
 
 def test_main_agent_instantiation(stray):
-    assert isinstance(stray.main_agent, MainAgent)
-    assert stray.main_agent.verbose in [True, False]
+    main_agent = MainAgent(stray)
+    assert main_agent.verbose in [True, False]
 
 
 @pytest.mark.asyncio
 async def test_execute_main_agent(stray):
+    main_agent = MainAgent(stray)
+
     # empty agent execution
-    out = stray.main_agent.execute()
+    out = main_agent.execute()
     assert isinstance(out, AgentOutput)
     assert out.intermediate_steps == []
     assert out.output == default_llm_answer_prompt()

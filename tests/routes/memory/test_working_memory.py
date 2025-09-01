@@ -1,6 +1,6 @@
 import time
 
-from cat.db.cruds import users as crud_users
+from cheshirecat.db.cruds import users as crud_users
 
 from tests.utils import send_websocket_message, agent_id, api_key, create_new_user, new_user_password
 
@@ -160,7 +160,7 @@ def test_add_items_to_convo_history(secure_client, secure_client_headers, cheshi
     response = secure_client.post(
         "/memory/conversation_history",
         headers={**secure_client_headers, **{"user_id": user["id"]}},
-        json={"who": "Human", "text": "Hello, Alice!"}
+        json={"who": "user", "text": "Hello, Alice!"}
     )
     assert response.status_code == 200
 
@@ -169,7 +169,7 @@ def test_add_items_to_convo_history(secure_client, secure_client_headers, cheshi
         "/memory/conversation_history",
         headers={**secure_client_headers, **{"user_id": user["id"]}},
         json={
-            "who": "AI",
+            "who": "assistant",
             "text": "Hello, how are you?",
             "why": {"input": "This is an input", "intermediate_steps": [], "model_interactions": [], "memory": {}}
         }
@@ -186,11 +186,11 @@ def test_add_items_to_convo_history(secure_client, secure_client_headers, cheshi
     assert len(json["history"]) == 2
 
     # check items
-    assert json["history"][0]["who"] == "Human"
+    assert json["history"][0]["who"] == "user"
     assert json["history"][0]["message"] == "Hello, Alice!"
     assert json["history"][0]["content"]["text"] == "Hello, Alice!"
     assert json["history"][0]["why"] is None
-    assert json["history"][1]["who"] == "AI"
+    assert json["history"][1]["who"] == "assistant"
     assert json["history"][1]["message"] == "Hello, how are you?"
     assert json["history"][1]["content"]["text"] == "Hello, how are you?"
     assert json["history"][1]["why"]["input"] == "This is an input"

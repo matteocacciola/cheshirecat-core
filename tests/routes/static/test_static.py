@@ -22,7 +22,7 @@ def test_call_by_jwt(secure_client, secure_client_headers, client):
 
     # insert a new file in static folder
     static_file_name = "Meooow.txt"
-    static_file_path = f"/app/cat/static/{static_file_name}"
+    static_file_path = f"/app/static/{static_file_name}"
     with open(static_file_path, "w") as f:
         f.write("Meow")
 
@@ -49,7 +49,7 @@ def test_forbidden_call_by_jwt(secure_client, secure_client_headers, client):
 
 def test_call_specific_file(secure_client, secure_client_headers):
     static_file_name = "Meooow.txt"
-    static_file_path = f"/app/cat/static/{static_file_name}"
+    static_file_path = f"/app/static/{static_file_name}"
 
     # ask for inexistent file
     response = secure_client.get(f"/static/{static_file_name}", headers=secure_client_headers)
