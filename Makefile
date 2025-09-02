@@ -44,6 +44,8 @@ install: ## Update the local virtual environment with the latest requirements.
 	@$(PYTHON) -m pip install --upgrade pip-tools pip wheel
 	@$(PIP_SYNC) requirements.txt
 	@$(PYTHON) -m pip install -r requirements.txt
+	# look for requirements.txt in subdirectories of core_plugins and install them
+	@find $(PWD)/cheshirecat/core_plugins -name requirements.txt -exec $(PYTHON) -m pip install -r {} \;
 
 compile: ## Compile requirements for the local virtual environment.
 	@$(PIP_COMPILE) --no-upgrade --output-file requirements.txt pyproject.toml

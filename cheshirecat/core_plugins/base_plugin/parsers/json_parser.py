@@ -1,8 +1,7 @@
 import json
 from typing import Iterator
-from langchain_core.documents import Document
+from langchain_core.documents.base import Document, Blob
 from langchain.document_loaders.base import BaseBlobParser
-from langchain.document_loaders.blob_loaders.schema import Blob
 
 
 class JSONParser(BaseBlobParser):

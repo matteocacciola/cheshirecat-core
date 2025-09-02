@@ -2,13 +2,14 @@ from tests.utils import just_installed_plugin
 from tests.mocks.mock_plugin.mock_plugin_overrides import MockPluginSettings
 
 
-def test_get_all_plugin_settings(secure_client, secure_client_headers):
+def test_get_all_plugin_settings(lizard, secure_client, secure_client_headers):
     just_installed_plugin(secure_client, secure_client_headers, activate=True)
 
     response = secure_client.get("/plugins/settings", headers=secure_client_headers)
     json = response.json()
 
-    available_plugins = ["core_plugin", "mock_plugin"]
+    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
+    available_plugins = core_plugins + ["mock_plugin"]
 
     assert response.status_code == 200
     assert isinstance(json["settings"], list)
@@ -16,13 +17,13 @@ def test_get_all_plugin_settings(secure_client, secure_client_headers):
 
     for setting in json["settings"]:
         assert setting["name"] in available_plugins
-        if setting["name"] == "core_plugin":
-            assert setting["value"] == {}
-            assert setting["scheme"] == {}
-        elif setting["name"] == "mock_plugin":
+        if setting["name"] == "mock_plugin":
             assert setting["name"] == "mock_plugin"
             assert setting["value"] == {"a": "a", "b": 0}
             assert setting["scheme"] == MockPluginSettings.model_json_schema()
+        else:
+            assert setting["value"] == {}
+            assert setting["scheme"] == {}
 
 
 def test_get_plugin_settings_non_existent(secure_client, secure_client_headers):
@@ -93,24 +94,24 @@ def test_save_plugin_settings(secure_client, secure_client_headers):
     assert saved_config[0]["value"] == fake_settings
 
 
-# core_plugin has no settings and ignores them when saved (for the moment)
-def test_core_plugin_settings(secure_client, secure_client_headers):
-    # write a new setting, and then overwrite it (core_plugin should ignore this)
+# base_plugin has no settings and ignores them when saved (for the moment)
+def test_base_plugin_settings(secure_client, secure_client_headers):
+    # write a new setting, and then overwrite it (base_plugin should ignore this)
     fake_settings = {"a": "a", "b": 1}
 
     # save settings
-    response = secure_client.put("/plugins/settings/core_plugin", json=fake_settings, headers=secure_client_headers)
+    response = secure_client.put("/plugins/settings/base_plugin", json=fake_settings, headers=secure_client_headers)
 
     # check immediate response
     json = response.json()
     assert response.status_code == 200
-    assert json["name"] == "core_plugin"
+    assert json["name"] == "base_plugin"
     assert json["value"] == {}
 
-    # get settings back (should be empty as core_plugin does not (yet) accept settings
-    response = secure_client.get("/plugins/settings/core_plugin", headers=secure_client_headers)
+    # get settings back (should be empty as base_plugin does not (yet) accept settings
+    response = secure_client.get("/plugins/settings/base_plugin", headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
-    assert json["name"] == "core_plugin"
+    assert json["name"] == "base_plugin"
     assert json["value"] == {}
     assert json["scheme"] == {}

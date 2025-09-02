@@ -84,7 +84,7 @@ class Tweedledee(MadHatter):
         self.plugins[plugin_id].activate_settings(self.agent_key)
 
     def on_plugin_deactivation(self, plugin_id: str):
-        if plugin_id == "core_plugin" or not self.__local_plugin_exists(plugin_id):
+        if plugin_id == "base_plugin" or not self.__local_plugin_exists(plugin_id):
             return
 
         # Deactivate the plugin

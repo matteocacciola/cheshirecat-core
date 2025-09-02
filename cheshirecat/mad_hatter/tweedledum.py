@@ -92,35 +92,36 @@ class Tweedledum(MadHatter):
 
     def install_extracted_plugin(self, plugin_id: str, plugin_path: str) -> str:
         # create plugin obj, and eventually activate it
-        if plugin_id != "core_plugin" and self._load_plugin(plugin_path):
+        if plugin_id not in self.get_core_plugins_ids() and self._load_plugin(plugin_path):
             # deactivate a plugin on reinstallation
             if plugin_id in self.active_plugins:
                 self.deactivate_plugin(plugin_id)
 
             self.activate_plugin(plugin_id)
 
-        # notify uninstallation has finished
-        utils.dispatch_event(self.on_end_plugin_install_callback, plugin_id=plugin_id, plugin_path=plugin_path)
+            # notify uninstallation has finished
+            utils.dispatch_event(self.on_end_plugin_install_callback, plugin_id=plugin_id, plugin_path=plugin_path)
 
         return plugin_id
 
     def uninstall_plugin(self, plugin_id: str):
+        if not self.plugin_exists(plugin_id) or plugin_id in self.get_core_plugins_ids():
+            return
+
         utils.dispatch_event(self.on_start_plugin_uninstall_callback, plugin_id=plugin_id)
 
-        endpoints = []
-        if self.plugin_exists(plugin_id) and plugin_id != "core_plugin":
-            endpoints = self.plugins[plugin_id].endpoints
+        endpoints = self.plugins[plugin_id].endpoints
 
-            # deactivate plugin if it is active (will sync cache)
-            if plugin_id in self.active_plugins:
-                self.deactivate_plugin(plugin_id)
+        # deactivate plugin if it is active (will sync cache)
+        if plugin_id in self.active_plugins:
+            self.deactivate_plugin(plugin_id)
 
-            # remove plugin from cache
-            plugin_path = self.plugins[plugin_id].path
-            del self.plugins[plugin_id]
+        # remove plugin from cache
+        plugin_path = self.plugins[plugin_id].path
+        del self.plugins[plugin_id]
 
-            # remove plugin folder
-            shutil.rmtree(plugin_path)
+        # remove plugin folder
+        shutil.rmtree(plugin_path)
 
         crud_plugins.destroy_plugin(plugin_id)
 
@@ -140,9 +141,8 @@ class Tweedledum(MadHatter):
         # plugins are found in the plugins folder,
         # plus the default core plugin (where default hooks and tools are defined)
         # plugin folder is "cat/plugins/" in production, "tests/mocks/mock_plugin_folder/" during tests
-
         all_plugin_folders = (
-            glob.glob(f"{utils.get_core_plugins_path()}") + glob.glob(f"{utils.get_plugins_path()}/*/")
+            glob.glob(f"{utils.get_core_plugins_path()}/*/") + glob.glob(f"{utils.get_plugins_path()}/*/")
         )
 
         # discover plugins, folder by folder

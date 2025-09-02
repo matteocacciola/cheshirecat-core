@@ -8,9 +8,8 @@ from typing import List, Dict, Tuple
 from urllib.parse import urlparse
 from urllib.error import HTTPError
 from starlette.datastructures import UploadFile
-from langchain_core.documents import Document
+from langchain_core.documents.base import Document, Blob
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
-from langchain.document_loaders.blob_loaders.schema import Blob
 
 from cheshirecat.env import get_env_bool
 from cheshirecat.log import log
@@ -262,11 +261,13 @@ class RabbitHole:
                 await stray.send_ws_message(read_message)
                 log.info(read_message)
 
-            # add default metadata
-            doc.metadata["source"] = source
-            doc.metadata["when"] = time.time()
-            # add custom metadata (sent via endpoint)
-            doc.metadata = {**doc.metadata, **{k: v for k, v in metadata.items()}}
+            # add custom metadata (sent via endpoint) and default metadata (source and when)
+            doc.metadata = {
+                **doc.metadata,
+                **{k: v for k, v in metadata.items()},
+                "source": source,
+                "when": time.time(),
+            }
 
             doc = plugin_manager.execute_hook(
                 "before_rabbithole_insert_memory", doc, cat=stray

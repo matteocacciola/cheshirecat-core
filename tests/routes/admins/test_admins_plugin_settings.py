@@ -3,12 +3,12 @@ from tests.mocks.mock_plugin.mock_plugin_overrides import MockPluginSettings
 
 
 # endpoint to get settings and settings schema
-def test_get_all_plugin_settings(secure_client, secure_client_headers):
+def test_get_all_plugin_settings(lizard, secure_client, secure_client_headers):
     just_installed_plugin(secure_client, secure_client_headers)
     response = secure_client.get("/admins/plugins/settings", headers=secure_client_headers)
     json = response.json()
 
-    installed_plugins = ["core_plugin", "mock_plugin"]
+    installed_plugins = lizard.plugin_manager.get_core_plugins_ids() + ["mock_plugin"]
 
     assert response.status_code == 200
     assert isinstance(json["settings"], list)
@@ -16,13 +16,13 @@ def test_get_all_plugin_settings(secure_client, secure_client_headers):
 
     for setting in json["settings"]:
         assert setting["name"] in installed_plugins
-        if setting["name"] == "core_plugin":
-            assert setting["value"] == {}
-            assert setting["scheme"] == {}
-        elif setting["name"] == "mock_plugin":
+        if setting["name"] == "mock_plugin":
             assert setting["name"] == "mock_plugin"
             assert setting["value"] == {"a": "a", "b": 0}
             assert setting["scheme"] == MockPluginSettings.model_json_schema()
+        else:
+            assert setting["value"] == {}
+            assert setting["scheme"] == {}
 
 
 def test_get_plugin_settings_non_existent(secure_client, secure_client_headers):

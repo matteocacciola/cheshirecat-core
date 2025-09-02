@@ -76,6 +76,7 @@ def factory_allowed_file_managers(allowed: List[FileManagerConfig], cat) -> List
     """
     return allowed
 
+
 @hook(priority=0)
 def factory_allowed_chunkers(allowed: List[ChunkerSettings], cat) -> List:
     """Hook to extend list of supported chunkers.
@@ -91,6 +92,7 @@ def factory_allowed_chunkers(allowed: List[ChunkerSettings], cat) -> List:
             list of allowed chunkers
     """
     return allowed
+
 
 @hook(priority=0)
 def factory_allowed_vector_databases(allowed: List[VectorDatabaseSettings], cat) -> List:

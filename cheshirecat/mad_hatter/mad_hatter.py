@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
+from pathlib import Path
 from typing import List, Dict
 
 from cheshirecat.db.cruds import settings as crud_settings
@@ -55,15 +56,19 @@ class MadHatter(ABC):
         # notify sync has finished
         utils.dispatch_event(self.on_finish_plugins_sync_callback)
 
+    def get_core_plugins_ids(self) -> List[str]:
+        path = Path(utils.get_core_plugins_path())
+        core_plugins = [p.name for p in path.iterdir() if p.is_dir()]
+        return core_plugins
+
     def load_active_plugins_from_db(self) -> List[str]:
-        active_plugins = crud_settings.get_setting_by_name(self.agent_key, "active_plugins")
-        active_plugins = [] if active_plugins is None else active_plugins["value"]
+        active_plugins_from_db = crud_settings.get_setting_by_name(self.agent_key, "active_plugins")
+        active_plugins: List[str] = [] if active_plugins_from_db is None else active_plugins_from_db["value"]
 
-        # core_plugin is always active
-        if "core_plugin" not in active_plugins:
-            active_plugins += ["core_plugin"]
+        # if any of `_get_core_plugins_ids` is missing, add it
+        active_plugins.extend(self.get_core_plugins_ids())
 
-        return active_plugins
+        return list(set(active_plugins))  # remove duplicates
 
     def deactivate_plugin(self, plugin_id: str):
         if not self.plugin_exists(plugin_id):
@@ -71,8 +76,8 @@ class MadHatter(ABC):
 
         plugin_is_active = plugin_id in self.active_plugins
 
-        # update list of active plugins, `core_plugin` cannot be deactivated
-        if not plugin_is_active or plugin_id == "core_plugin":
+        # update list of active plugins, `base_plugin` cannot be deactivated
+        if not plugin_is_active or plugin_id == "base_plugin":
             return
 
         # Deactivate the plugin

@@ -6,8 +6,7 @@ from starlette.responses import StreamingResponse
 from cheshirecat.auth.connection import AuthorizedInfo
 from cheshirecat.auth.permissions import AuthResource, AuthPermission, check_permissions
 from cheshirecat.exceptions import CustomNotFoundException
-from cheshirecat.factory.custom_file_manager import FileManagerAttributes
-from cheshirecat.factory.file_manager import FileManagerFactory
+from cheshirecat.factory.file_manager import FileManagerFactory, FileManagerAttributes
 from cheshirecat.routes.routes_utils import (
     GetSettingsResponse,
     GetSettingResponse,

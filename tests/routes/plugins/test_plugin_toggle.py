@@ -51,14 +51,15 @@ def test_activate_plugin(secure_client, secure_client_headers):
     _check_activation(secure_client, secure_client_headers)
 
 
-def test_deactivate_plugin(secure_client, secure_client_headers):
+def test_deactivate_plugin(lizard, secure_client, secure_client_headers):
     # install and activate
     just_installed_plugin(secure_client, secure_client_headers, activate=True)
+    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
 
     # verify that the plugin is active
     response = secure_client.get("/plugins", headers=secure_client_headers)
     available_plugins = response.json()["installed"]
-    assert len(available_plugins) == 2  # core_plugin and mock_plugin
+    assert len(available_plugins) == len(core_plugins) + 1  # core plugins and mock_plugin
 
     # deactivate
     secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
@@ -66,7 +67,7 @@ def test_deactivate_plugin(secure_client, secure_client_headers):
     # the mock_plugin is no longer available
     response = secure_client.get("/plugins", headers=secure_client_headers)
     available_plugins = response.json()["installed"]
-    assert len(available_plugins) == 1  # core_plugin
+    assert len(available_plugins) == len(core_plugins)  # core plugins only
 
     mock_plugin = [p for p in available_plugins if p["id"] == "mock_plugin"]
     assert len(mock_plugin) == 0  # plugin not available
@@ -77,7 +78,7 @@ def test_deactivate_plugin(secure_client, secure_client_headers):
     procedures_sources = list(map(lambda t: t["metadata"]["source"], procedures))
     assert "mock_tool" not in procedures_sources
     assert "PizzaForm" not in procedures_sources
-    assert "get_the_time" in procedures_sources  # from core_plugin
+    assert "get_the_time" in procedures_sources  # from base_plugin
 
     # only examples for core tool
     procedures_types = list(map(lambda t: t["metadata"]["type"], procedures))

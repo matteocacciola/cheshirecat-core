@@ -16,10 +16,10 @@ from langchain_community.document_loaders.parsers.msword import MsWordParser
 
 from cheshirecat.mad_hatter.decorators import hook
 from cheshirecat.memory.utils import PointStruct
-from cheshirecat.parsers import YoutubeParser, TableParser, JSONParser, PowerPointParser
+from cheshirecat.core_plugins.base_plugin.parsers import YoutubeParser, TableParser, JSONParser, PowerPointParser
 
 
-@hook(priority=0)
+@hook(priority=999)
 def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
     """Hook the available parsers for ingesting files in the declarative memory.
 
@@ -35,10 +35,10 @@ def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
         file_handlers: Dict
             Edited dictionary of supported mime types and related parsers.
     """
-    return {
+    return file_handlers | {
         "application/json": JSONParser(),
         "application/msword": MsWordParser(),
-        "application/vnd.ms-powerpoint": PowerPointParser(),  # Per .ppt
+        "application/vnd.ms-powerpoint": PowerPointParser(),
         "application/pdf": PyMuPDFParser(),
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": TableParser(),
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document": MsWordParser(),
@@ -55,7 +55,7 @@ def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
         "audio/ogg": FasterWhisperParser(),
         "audio/wav": FasterWhisperParser(),
         "audio/webm": FasterWhisperParser(),
-        }
+    }
 
 
 # Hook called just before of inserting a document in vector memory

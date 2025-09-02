@@ -1,6 +1,8 @@
-def test_list_plugins(secure_client, secure_client_headers):
+def test_list_plugins(lizard, secure_client, secure_client_headers):
     response = secure_client.get("/plugins", headers=secure_client_headers)
     json = response.json()
+
+    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
 
     assert response.status_code == 200
     for key in ["filters", "installed", "registry"]:
@@ -11,9 +13,13 @@ def test_list_plugins(secure_client, secure_client_headers):
         assert key in json["filters"].keys()
 
     # installed
-    assert json["installed"][0]["id"] == "core_plugin"
-    assert isinstance(json["installed"][0]["active"], bool)
-    assert json["installed"][0]["active"]
+    for idx in range(len(json["installed"])):
+        assert "id" in json["installed"][idx].keys()
+        assert json["installed"][idx]["id"] in core_plugins
+
+        assert "active" in json["installed"][idx].keys()
+        assert isinstance(json["installed"][idx]["active"], bool)
+        assert json["installed"][idx]["active"]
 
     # registry (see more registry tests in `./test_plugins_registry.py`)
     assert isinstance(json["registry"], list)

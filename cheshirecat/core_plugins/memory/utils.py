@@ -1,16 +1,10 @@
 from typing import List, Dict
 
 from cheshirecat import utils
+from cheshirecat.core_plugins.memory.models import RecallSettings
 from cheshirecat.log import log
 from cheshirecat.memory.working_memory import DocumentRecall
 from cheshirecat.memory.utils import VectorMemoryCollectionTypes
-
-
-class RecallSettings(utils.BaseModelDict):
-    embedding: List[float]
-    k: int | None = 3
-    threshold: float | None = 0.5
-    metadata: dict | None = None
 
 
 async def recall(

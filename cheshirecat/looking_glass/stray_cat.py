@@ -463,7 +463,7 @@ Just output the class, nothing else."""
         --------
         Obtain the path in which your plugin is located
         >> cat.mad_hatter.get_plugin().path
-        /app/cat/plugins/my_plugin
+        /app/plugins/my_plugin
         Obtain plugin settings
         >> cat.mad_hatter.get_plugin().load_settings()
         {"num_cats": 44, "rows": 6, "remainder": 0}

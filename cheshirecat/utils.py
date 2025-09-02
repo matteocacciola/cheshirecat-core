@@ -189,7 +189,7 @@ def get_project_path():
 
 def get_core_plugins_path():
     """Core plugins' path, for internal core usage"""
-    return os.path.join(get_base_path(), "core_plugin")
+    return os.path.join(get_base_path(), "core_plugins")
 
 
 def get_data_path():

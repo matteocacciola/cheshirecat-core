@@ -1,6 +1,6 @@
 import pytest
 
-from cheshirecat.factory.custom_auth_handler import CoreAuthHandler
+from cheshirecat.factory.auth_handler import CoreAuthHandler
 from cheshirecat.mad_hatter import Tweedledum
 from cheshirecat.rabbit_hole import RabbitHole
 from cheshirecat.services.websocket_manager import WebSocketManager

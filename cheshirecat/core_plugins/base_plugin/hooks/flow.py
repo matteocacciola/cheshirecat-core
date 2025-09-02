@@ -4,19 +4,8 @@ Here is a collection of methods to hook into the Cat execution pipeline.
 
 """
 from typing import Dict, List
-import tiktoken
 
-from cheshirecat.core_plugin.utils.memory import recall_relevant_memories_to_working_memory
-from cheshirecat.core_plugin.utils.model_interactions import (
-    ModelInteractionHandler,
-    EmbedderModelInteraction,
-)
-from cheshirecat.exceptions import VectorMemoryError
-from cheshirecat.log import log
 from cheshirecat.mad_hatter.decorators import hook
-from cheshirecat.memory.messages import MessageWhy
-from cheshirecat.memory.utils import VectorMemoryCollectionTypes
-from cheshirecat.utils import get_caller_info
 
 
 # Called before cat bootstrap
@@ -99,17 +88,6 @@ def before_cat_reads_message(user_message_json: Dict, cat) -> Dict:
 
     where "custom_key" is a newly added key to the dictionary to store any data.
     """
-    # update conversation history (user turn)
-    cat.working_memory.update_history(who="user", content=user_message_json)
-
-    # recall declarative and procedural memories from vector collections and store them in working_memory
-    try:
-        recall_relevant_memories_to_working_memory(cat=cat, query=user_message_json["text"])
-    except Exception as e:
-        log.error(f"Agent id: {cat.agent_id}. Error during recall {e}")
-
-        raise VectorMemoryError("An error occurred while recalling relevant memories.")
-
     return user_message_json
 
 
@@ -166,14 +144,7 @@ def before_cat_recalls_memories(cat) -> None:
             Stray Cat instance.
 
     """
-    message = cat.working_memory.recall_query
-    cat.working_memory.model_interactions.append(
-        EmbedderModelInteraction(
-            prompt=[message],
-            source=get_caller_info(skip=1),
-            input_tokens=len(tiktoken.get_encoding("cl100k_base").encode(message)),
-        )
-    )
+    pass
 
 
 @hook(priority=0)
@@ -246,7 +217,7 @@ def after_cat_recalls_memories(cat) -> None:
             Stray Cat instance.
 
     """
-    pass  # do nothing
+    pass
 
 
 # Hook called just before sending response to a client.
@@ -289,24 +260,6 @@ def before_cat_sends_message(message, agent_output, cat) -> Dict:
                 },
             }
     """
-    memory = {str(c): [dict(d.document) | {
-        "score": float(d.score) if d.score else None,
-        "id": d.id,
-    } for d in getattr(cat.working_memory, f"{c}_memories")] for c in VectorMemoryCollectionTypes}
-
-    # why this response?
-    message.why = MessageWhy(
-        input=cat.working_memory.user_message.text,
-        intermediate_steps=agent_output.intermediate_steps,
-        memory=memory,
-    )
-
-    if agent_output.with_llm_error:
-        cat.working_memory.pop_last_message_if_human()
-    else:
-        # update conversation history (AI turn)
-        cat.working_memory.update_history(who="assistant", content=message)
-
     return message
 
 
@@ -355,8 +308,4 @@ def llm_callbacks(callbacks: List, cat) -> List:
         callbacks: List
             Edited list of callbacks to be passed to the LLM/ChatModel
     """
-    # Add a token counter to the callbacks
-    caller = get_caller_info(skip=1)
-    callbacks.append(ModelInteractionHandler(cat, caller))
-
     return callbacks

@@ -231,7 +231,7 @@ async def upload_url(
             return UploadUrlResponse(url=upload_config.url, info="URL is being ingested asynchronously")
 
         raise CustomValidationException(f"Invalid URL: {upload_config.url}")
-    except httpx.RequestError as _e:
+    except httpx.RequestError:
         raise CustomValidationException(f"Unable to reach the URL: {upload_config.url}")
 
 

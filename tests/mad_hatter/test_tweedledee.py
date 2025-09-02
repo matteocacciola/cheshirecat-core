@@ -5,28 +5,35 @@ from cheshirecat.mad_hatter.decorators import CatHook, CatTool
 
 def test_instantiation_discovery(cheshire_cat):
     plugin_manager = cheshire_cat.plugin_manager
+    all_plugins = plugin_manager.get_core_plugins_ids()
+
+    assert len(plugin_manager.plugins.keys()) == len(all_plugins)
     
-    # Mad Hatter finds core_plugin
-    assert list(plugin_manager.plugins.keys()) == ["core_plugin"]
-    assert isinstance(plugin_manager.plugins["core_plugin"], Plugin)
-    assert "core_plugin" in plugin_manager.load_active_plugins_from_db()
+    for k in plugin_manager.plugins.keys():
+        assert k in all_plugins
+        assert isinstance(plugin_manager.plugins[k], Plugin)
+
+    loaded_plugins = plugin_manager.load_active_plugins_from_db()
+    for p in loaded_plugins:
+        assert p in all_plugins
+        assert plugin_manager.plugins[p].active
 
     # finds hooks
     assert len(plugin_manager.hooks.keys()) > 0
     for hook_name, hooks_list in plugin_manager.hooks.items():
-        assert len(hooks_list) == 1  # core plugin implements each hook
+        assert len(hooks_list) >= 1
         h = hooks_list[0]
         assert isinstance(h, CatHook)
-        assert h.plugin_id == "core_plugin"
+        assert h.plugin_id in all_plugins
         assert isinstance(h.name, str)
         assert isfunction(h.function)
-        assert h.priority == 0.0
+        assert h.priority >= 0.0
 
     # finds tool
     assert len(plugin_manager.tools) == 3
     for tool in plugin_manager.tools:
         assert isinstance(tool, CatTool)
-        assert tool.plugin_id == "core_plugin"
+        assert tool.plugin_id == "base_plugin"
         assert tool.name in ["get_the_time", "read_working_memory", "get_weather"]
         assert tool.description in [
             "Useful to get the current time when asked. Input is always None.",
@@ -45,8 +52,3 @@ def test_instantiation_discovery(cheshire_cat):
             assert "show me the contents of working memory" in tool.start_examples
         elif tool.name == "get_weather":
             assert len(tool.start_examples) == 0
-
-    # list of active plugins in DB is correct
-    active_plugins = plugin_manager.load_active_plugins_from_db()
-    assert len(active_plugins) == 1
-    assert active_plugins[0] == "core_plugin"

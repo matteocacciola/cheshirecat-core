@@ -15,14 +15,11 @@ from cheshirecat.db.cruds import (
 from cheshirecat.env import get_env_bool
 from cheshirecat.factory.auth_handler import AuthHandlerFactory
 from cheshirecat.factory.base_factory import ReplacedNLPConfig
-from cheshirecat.factory.chunker import ChunkerFactory
-from cheshirecat.factory.custom_auth_handler import BaseAuthHandler
-from cheshirecat.factory.custom_chunker import BaseChunker
-from cheshirecat.factory.custom_file_manager import BaseFileManager
-from cheshirecat.factory.custom_vector_db import BaseVectorDatabaseHandler
-from cheshirecat.factory.file_manager import FileManagerFactory
+from cheshirecat.factory.auth_handler import BaseAuthHandler
+from cheshirecat.factory.chunker import ChunkerFactory, BaseChunker
+from cheshirecat.factory.file_manager import BaseFileManager, FileManagerFactory
 from cheshirecat.factory.llm import LLMFactory
-from cheshirecat.factory.vector_db import VectorDatabaseFactory
+from cheshirecat.factory.vector_db import VectorDatabaseFactory, BaseVectorDatabaseHandler
 from cheshirecat.log import log
 from cheshirecat.mad_hatter import Tweedledee
 from cheshirecat.memory.utils import VectorMemoryCollectionTypes
@@ -377,7 +374,7 @@ class CheshireCat:
         --------
         Obtain the path in which your plugin is located
         >> cat.mad_hatter.get_plugin().path
-        /app/cat/plugins/my_plugin
+        /app/plugins/my_plugin
         Obtain plugin settings
         >> cat.mad_hatter.get_plugin().load_settings()
         {"num_cats": 44, "rows": 6, "remainder": 0}

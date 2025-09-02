@@ -2,6 +2,7 @@ from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTempla
 
 from cheshirecat import utils
 from cheshirecat.agents.base_agent import AgentInput, AgentOutput, BaseAgent, LLMAction
+from cheshirecat.agents.form_agent import FormAgent
 from cheshirecat.looking_glass import prompts
 from cheshirecat.env import get_env
 
@@ -11,11 +12,17 @@ class MainAgent(BaseAgent):
     def __init__(self, stray):
         super().__init__(stray)
 
+        self._form_agent = FormAgent(self._stray)
+
         self.verbose = False
         if get_env("CCAT_LOG_LEVEL").lower() in ["debug", "info"]:
             self.verbose = True
 
     def execute(self, *args, **kwargs) -> AgentOutput:
+        # form_output = self._form_agent.execute()
+        # if form_output.output:
+        #     return form_output
+
         # prepare input to be passed to the agent.
         #   Info will be extracted from working memory
         # Note: agent_input works both as a dict and as an object

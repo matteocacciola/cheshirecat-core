@@ -1,7 +1,7 @@
 import pytest
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
-from cheshirecat.core_plugin.utils.memory import recall
+from cheshirecat.core_plugins.memory.utils import recall
 from cheshirecat.looking_glass import StrayCat
 from cheshirecat.memory.messages import CatMessage, UserMessage, MessageWhy
 from cheshirecat.memory.working_memory import WorkingMemory

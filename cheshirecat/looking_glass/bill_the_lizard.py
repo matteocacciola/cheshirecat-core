@@ -15,7 +15,7 @@ from cheshirecat.db.database import DEFAULT_SYSTEM_KEY
 from cheshirecat.env import get_env
 from cheshirecat.exceptions import LoadMemoryException
 from cheshirecat.factory.base_factory import ReplacedNLPConfig
-from cheshirecat.factory.custom_auth_handler import CoreAuthHandler
+from cheshirecat.factory.auth_handler import CoreAuthHandler
 from cheshirecat.factory.embedder import EmbedderFactory
 from cheshirecat.log import log
 from cheshirecat.looking_glass.cheshire_cat import CheshireCat

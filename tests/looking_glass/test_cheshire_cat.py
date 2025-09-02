@@ -3,12 +3,12 @@ from langchain.base_language import BaseLanguageModel
 from langchain_core.embeddings import Embeddings
 
 from cheshirecat.db.database import DEFAULT_SYSTEM_KEY
-from cheshirecat.factory.custom_chunker import BaseChunker
-from cheshirecat.factory.custom_file_manager import BaseFileManager
-from cheshirecat.factory.custom_vector_db import BaseVectorDatabaseHandler
+from cheshirecat.factory.chunker import BaseChunker
+from cheshirecat.factory.file_manager import BaseFileManager
+from cheshirecat.factory.vector_db import BaseVectorDatabaseHandler
 from cheshirecat.mad_hatter import Tweedledee
-from cheshirecat.factory.custom_embedder import DumbEmbedder
-from cheshirecat.factory.custom_llm import LLMDefault
+from cheshirecat.factory.embedder import DumbEmbedder
+from cheshirecat.factory.llm import LLMDefault
 from cheshirecat.memory.utils import VectorMemoryCollectionTypes
 
 

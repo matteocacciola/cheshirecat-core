@@ -14,7 +14,6 @@ class ReplacedNLPConfig(BaseModel):
 
 
 class BaseFactoryConfigModel(ABC, BaseModel):
-    _pyclass: Type = None
     crypto: Final = StringCrypto()
 
     @classmethod
@@ -28,13 +27,18 @@ class BaseFactoryConfigModel(ABC, BaseModel):
 
     @classmethod
     def get_from_config(cls, config) -> Type:
-        if cls._pyclass and issubclass(cls.pyclass(), cls.base_class()):
-            return cls.pyclass()(**cls._parse_config(config))
-        raise Exception(f"Configuration class is invalid. It should be a valid {cls.base_class().__name__} class")
+        obj = cls.pyclass()
+        base_obj = cls.base_class()
+        if obj is None or base_obj is None:
+            raise Exception("Configuration class is invalid. It should define both pyclass and base_class methods")
+        if issubclass(obj, base_obj):
+            return obj(**cls._parse_config(config))
+        raise Exception(f"Configuration class is invalid. It should be a valid {base_obj.__name__} class")
 
     @classmethod
+    @abstractmethod
     def pyclass(cls) -> Type:
-        return cls._pyclass.default
+        pass
 
     @classmethod
     @abstractmethod

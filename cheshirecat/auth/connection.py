@@ -14,7 +14,7 @@ from cheshirecat.auth.permissions import (
 )
 from cheshirecat.db.cruds import users as crud_users
 from cheshirecat.exceptions import CustomNotFoundException, CustomForbiddenException
-from cheshirecat.factory.custom_auth_handler import BaseAuthHandler
+from cheshirecat.factory.auth_handler import BaseAuthHandler
 from cheshirecat.looking_glass import BillTheLizard, CheshireCat
 
 
