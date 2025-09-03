@@ -18,7 +18,6 @@ from cheshirecat.factory.vector_db import QdrantHandler
 from cheshirecat.looking_glass import BillTheLizard, StrayCat, WhiteRabbit
 from cheshirecat.mad_hatter import MarchHare, Plugin
 from cheshirecat.memory.messages import UserMessage
-from cheshirecat.startup import cheshire_cat_api
 import cheshirecat.utils as utils
 
 
@@ -144,6 +143,7 @@ async def encapsulate_each_test(request, monkeypatch):
 
 @pytest_asyncio.fixture(scope="function")
 async def lizard(encapsulate_each_test):
+    from cheshirecat.startup import cheshire_cat_api
     l = BillTheLizard()
     l.fastapi_app = cheshire_cat_api
     yield l
@@ -168,6 +168,7 @@ async def client(cheshire_cat):
     """
     Create a new FastAPI TestClient.
     """
+    from cheshirecat.startup import cheshire_cat_api
 
     with TestClient(cheshire_cat_api) as client:
         yield client
