@@ -1,4 +1,6 @@
 from contextlib import asynccontextmanager
+from langchain.globals import set_llm_cache
+from langchain_core.caches import InMemoryCache
 from scalar_fastapi import get_scalar_api_reference
 from fastapi import FastAPI
 from fastapi.routing import APIRoute
@@ -46,6 +48,8 @@ async def lifespan(app: FastAPI):
     # - Not using middleware because I can't make it work with both http and websocket;
     # - Not using "Depends" because it only supports callables (not instances)
     # - Starlette allows this: https://www.starlette.io/applications/#storing-state-on-the-app-instance
+
+    set_llm_cache(InMemoryCache())
 
     await startup_app(app)
 

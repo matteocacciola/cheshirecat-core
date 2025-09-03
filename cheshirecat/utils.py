@@ -8,11 +8,10 @@ from pydantic import BaseModel, ConfigDict
 from rapidfuzz.distance import Levenshtein
 from langchain_core.embeddings import Embeddings
 from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import PromptTemplate
 import mimetypes
 import os
 import tomli
-from typing import Dict, Tuple, List, Type, TypeVar, Any, Callable
+from typing import Dict, List, Type, TypeVar, Any, Callable
 import hashlib
 
 from cheshirecat.env import get_env
@@ -255,27 +254,6 @@ def parse_json(json_string: str, pydantic_model: BaseModel = None) -> Dict:
     if pydantic_model:
         return pydantic_model(**parsed)
     return parsed
-
-
-def match_prompt_variables(prompt_variables: Dict, prompt_template: str) -> Tuple[Dict, str]:
-    """Ensure prompt variables and prompt placeholders map, so there are no issues on mismatches"""
-    tmp_prompt = PromptTemplate.from_template(
-        template=prompt_template
-    )
-
-    # outer set difference
-    prompt_mismatches = set(prompt_variables.keys()) ^ set(tmp_prompt.input_variables)
-
-    # clean up
-    for m in prompt_mismatches:
-        if m in prompt_variables.keys():
-            log.debug(f"Prompt variable '{m}' not found in prompt template, removed")
-            del prompt_variables[m]
-        if m in tmp_prompt.input_variables:
-            prompt_template = prompt_template.replace("{" + m + "}", "")
-            log.debug(f"Placeholder '{m}' not found in prompt variables, removed")
-
-    return prompt_variables, prompt_template
 
 
 def get_caller_info(skip: int | None = 2, return_short: bool = True, return_string: bool = True):

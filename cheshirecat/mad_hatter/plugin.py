@@ -314,9 +314,8 @@ class Plugin:
             with open(req_file, "r") as read_file:
                 requirements = read_file.readlines()
 
+            log.info(f"Installing requirements for plugin {self.id}")
             for req in requirements:
-                log.info(f"Installing requirements for plugin {self.id}")
-
                 # get package name
                 package_name = Requirement(req).name
 
@@ -368,12 +367,17 @@ class Plugin:
                 plugin_module = importlib.import_module(py_filename)
                 importlib.reload(plugin_module)
 
-                hooks += getmembers(plugin_module, self.is_cat_hook)
-                tools += getmembers(plugin_module, self.is_cat_tool)
-                forms += getmembers(plugin_module, self.is_cat_form)
-                endpoints += getmembers(plugin_module, self._is_custom_endpoint)
+                hooks += getmembers(plugin_module, lambda obj: isinstance(obj, CatHook))
+                tools += getmembers(plugin_module, lambda obj: isinstance(obj, CatTool))
+                forms += getmembers(plugin_module, lambda obj: (
+                        isclass(obj) and
+                        obj is not CatForm and
+                        issubclass(obj, CatForm) and
+                        obj._autopilot
+                ))
+                endpoints += getmembers(plugin_module, lambda obj: isinstance(obj, CustomEndpoint))
                 plugin_overrides += getmembers(
-                    plugin_module, self._is_cat_plugin_override
+                    plugin_module, lambda obj: isinstance(obj, CatPluginDecorator)
                 )
             except Exception as e:
                 log.error(
@@ -426,40 +430,6 @@ class Plugin:
         _, e = endpoint
         e.plugin_id = self._id
         return e
-
-    # a plugin hook function has to be decorated with @hook
-    # (which returns an instance of CatHook)
-    @staticmethod
-    def is_cat_hook(obj):
-        return isinstance(obj, CatHook)
-
-    @staticmethod
-    def is_cat_form(obj):
-        if not isclass(obj) or obj is CatForm:
-            return False
-
-        if not issubclass(obj, CatForm) or not obj._autopilot:
-            return False
-
-        return True
-
-    # a plugin tool function has to be decorated with @tool
-    # (which returns an instance of CatTool)
-    @staticmethod
-    def is_cat_tool(obj):
-        return isinstance(obj, CatTool)
-
-    # a plugin override function has to be decorated with @plugin
-    # (which returns an instance of CatPluginDecorator)
-    @staticmethod
-    def _is_cat_plugin_override(obj):
-        return isinstance(obj, CatPluginDecorator)
-
-    # a plugin custom endpoint has to be decorated with @endpoint
-    # (which returns an instance of CustomEndpoint)
-    @staticmethod
-    def _is_custom_endpoint(obj):
-        return isinstance(obj, CustomEndpoint)
 
     @property
     def path(self):

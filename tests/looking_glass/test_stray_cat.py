@@ -15,8 +15,9 @@ def test_stray_initialization(stray_no_memory):
     assert isinstance(stray_no_memory.working_memory, WorkingMemory)
 
 
-def test_stray_nlp(stray_no_memory):
-    res = stray_no_memory.llm(
+@pytest.mark.asyncio
+async def test_stray_nlp(stray_no_memory):
+    res = await stray_no_memory.llm(
         ChatPromptTemplate.from_messages([
             HumanMessagePromptTemplate.from_template(template="hey")
         ])
@@ -40,11 +41,12 @@ async def test_stray_call(stray_no_memory):
     assert isinstance(reply.why, MessageWhy)
 
 
-def test_stray_classify(stray_no_memory):
-    label = stray_no_memory.classify("I feel good", labels=["positive", "negative"])
+@pytest.mark.asyncio
+async def test_stray_classify(stray_no_memory):
+    label = await stray_no_memory.classify("I feel good", labels=["positive", "negative"])
     assert label is None
 
-    label = stray_no_memory.classify("I feel bad", labels={"positive": ["I'm happy"], "negative": ["I'm sad"]})
+    label = await stray_no_memory.classify("I feel bad", labels={"positive": ["I'm happy"], "negative": ["I'm sad"]})
     assert label is None
 
 

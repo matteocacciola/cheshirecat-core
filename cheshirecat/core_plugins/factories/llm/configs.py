@@ -334,7 +334,8 @@ class LLMGroqChatConfig(LLMSettings):
             "humanReadableName": "Groq",
             "description": "Configuration for Groq",
             "link": "https://groq.com/",
-        }
+        },
+        extra="allow",
     )
 
     @classmethod
@@ -356,7 +357,8 @@ class LLMLiteLLMChatConfig(LLMSettings):
             "humanReadableName": "LiteLLM",
             "description": "Configuration for LiteLLM",
             "link": "https://www.litellm.ai/",
-        }
+        },
+        extra="allow",
     )
 
     @classmethod

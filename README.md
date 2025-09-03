@@ -126,7 +126,6 @@ Here, I have introduced some new features and improvements, such as:
     vector database and chunking strategy.
 
 ## Compatibility with plugins
-
 This new version is completely compatible with the original version, so you can easily migrate your existing plugins
 and settings to the new version. It is still in development, but you can already try it out by running the Docker image.
 New features will be added in the future. Please contact us if you want to contribute.
@@ -145,7 +144,6 @@ The current version introduces also the following additional hooks:
   - `factory_allowed_vector_databases`: to extend the list of allowed vector databases (so allowing to use your own vector database)
 
 # Quickstart
-
 To make Cheshire Cat run on your machine, you just need [`docker`](https://docs.docker.com/get-docker/) installed:
 
 ```bash
@@ -163,13 +161,25 @@ Enjoy the Cat!
 Follow instructions on how to run it with [docker compose and volumes](https://cheshire-cat-ai.github.io/docs/quickstart/installation-configuration/).
 
 # Admin panel and UI widget
-
 You can install an admin panel by using the [`cheshirecat-admin`](https://www.github.com/matteocacciola/cheshirecat-admin) repository.
 The admin panel is a separate project that allows you to manage the Cat and its settings, plugins, and chatbots.
 It is built with Streamlit and is designed to be easy to use and customizable.
 
-Moreover, a suitable widget for the current fork is available at [my Github account](https://github.com/matteocacciola/cheshirecat-widget-vue)
+Moreover, a suitable widget for the current fork is available in [my Github account](https://github.com/matteocacciola/cheshirecat-widget-vue)
 to chat the Cat.
+
+# API Usage
+
+## For Streaming Responses (Real-time chat)
+- **Use WebSocket connection** at `/ws`
+- Receive tokens in real-time as they're generated
+- Message type: `chat_token` for individual tokens
+- Message type: `chat` for complete responses
+
+## For Non-Streaming Responses (Simple API calls)
+- **Use HTTP POST** to `/message`
+- Receive complete response in single API call
+- Better for integrations, batch processing, or simple request/response patterns
 
 # Best practices
 

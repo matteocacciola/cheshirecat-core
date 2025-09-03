@@ -6,23 +6,24 @@ from cheshirecat.core_plugins.memory.utils import recall_relevant_memories_to_wo
 from cheshirecat.exceptions import VectorMemoryError
 from cheshirecat.log import log
 from cheshirecat.mad_hatter.decorators import hook
+from cheshirecat.memory.messages import UserMessage
 from cheshirecat.utils import get_caller_info
 
 
 @hook(priority=1)
-def before_cat_reads_message(user_message_json: Dict, cat) -> Dict:
+def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
     # update conversation history (user turn)
-    cat.working_memory.update_history(who="user", content=user_message_json)
+    cat.working_memory.update_history(who="user", content=user_message)
 
     # recall declarative and procedural memories from vector collections and store them in working_memory
     try:
-        recall_relevant_memories_to_working_memory(cat=cat, query=user_message_json["text"])
+        recall_relevant_memories_to_working_memory(cat=cat, query=user_message.text)
     except Exception as e:
         log.error(f"Agent id: {cat.agent_id}. Error during recall {e}")
 
         raise VectorMemoryError("An error occurred while recalling relevant memories.")
 
-    return user_message_json
+    return user_message
 
 
 @hook(priority=1)

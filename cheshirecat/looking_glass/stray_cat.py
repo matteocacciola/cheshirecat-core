@@ -6,8 +6,9 @@ from langchain_core.runnables import RunnableConfig, RunnableLambda
 from websockets.exceptions import ConnectionClosedOK
 
 from cheshirecat import utils
-from cheshirecat.agents import AgentOutput, LLMAction, MainAgent
+from cheshirecat.agents import LLMAction, MainAgent, AgentOutput
 from cheshirecat.auth.permissions import AuthUserInfo
+from cheshirecat.experimental.form import CatForm
 from cheshirecat.log import log
 from cheshirecat.looking_glass.bill_the_lizard import BillTheLizard
 from cheshirecat.looking_glass.callbacks import NewTokenHandler
@@ -158,11 +159,12 @@ class StrayCat:
 
         await self._send_ws_json(error_message)
 
-    def llm(
+    async def llm(
         self,
         prompt: BasePromptTemplate,
         prompt_variables: Dict[str, Any] = None,
         tools: List[CatTool] = None,
+        forms: List[CatForm] = None,
         stream: bool = False,
         **kwargs
     ) -> str | LLMAction:
@@ -177,6 +179,8 @@ class StrayCat:
                 The inputs to be passed to the prompt template.
             tools: List[CatTool], optional
                 List of tools to be used by the LLM.
+            forms: List[CatForm], optional
+                List of forms to be used by the LLM.
             stream: bool, optional
                 Whether to stream the tokens or not.
 
@@ -187,11 +191,43 @@ class StrayCat:
         callbacks = ([] if not stream else [NewTokenHandler(self)])
         self.mad_hatter.execute_hook("llm_callbacks", callbacks, cat=self)
 
-        llm_with_tools = self.large_language_model
-        if hasattr(self.large_language_model, "bind_tools"):
-            llm_with_tools = self.large_language_model.bind_tools([
-                t.langchainfy() for t in tools
-            ])
+        tools_forms = (tools or []) + (forms or [])
+        llm_to_use = self.large_language_model
+
+        # Intrinsic detection of tool binding support
+        should_bind_tools = False
+        if tools_forms and hasattr(self.large_language_model, "bind_tools"):
+            # Check if this is an Ollama model that might not support tools
+            if hasattr(self.large_language_model, "_client"):
+                supports_tools = (
+                    hasattr(self.large_language_model, "format_tool_to_ollama") or
+                    hasattr(self.large_language_model, "_convert_tools_to_ollama_tools") or
+                    getattr(self.large_language_model, "supports_tool_calling", False)
+                )
+
+                # Additionally, check if the model has tool-related methods that indicate support
+                tool_methods = [
+                    method
+                    for method in dir(self.large_language_model)
+                    if "tool" in method.lower() and "support" in method.lower()
+                ]
+
+                should_bind_tools = supports_tools or len(tool_methods) > 0
+            else:
+                # For non-Ollama models, assume they support tool binding if they have the method
+                should_bind_tools = True
+
+        # Attempt tool binding only if intrinsically supported
+        if should_bind_tools:
+            try:
+                llm_to_use = self.large_language_model.bind_tools(
+                    [tf.langchainfy() for tf in tools_forms]
+                )
+            except Exception as e:
+                model_id = getattr(self.large_language_model, "model", "unknown")
+                log.warning(f"Tool binding failed for model {model_id} → running without tools. Error: {e}")
+        elif tools_forms:
+            log.debug("Model does not intrinsically support tool binding → skipping tools.")
 
         return_short = kwargs.pop("caller_return_short", False)
         skip = kwargs.pop("caller_skip", 2)
@@ -200,12 +236,12 @@ class StrayCat:
         chain = (
             prompt
             | RunnableLambda(lambda x: log.langchain_log_prompt(x, f"{caller} prompt"))
-            | llm_with_tools
+            | llm_to_use
             | RunnableLambda(lambda x: log.langchain_log_output(x, f"{caller} prompt output"))
         )
 
         # in case we need to pass info to the template
-        langchain_msg = chain.invoke(prompt_variables or {}, config=RunnableConfig(callbacks=callbacks))
+        langchain_msg = await chain.ainvoke(prompt_variables or {}, config=RunnableConfig(callbacks=callbacks))
         langchain_msg_content = getattr(langchain_msg, "content", str(langchain_msg))
 
         if hasattr(langchain_msg, "tool_calls") and len(langchain_msg.tool_calls) > 0:
@@ -259,13 +295,16 @@ class StrayCat:
         )
 
         # reply with agent
+        agent = MainAgent(self)
         try:
-            agent_output: AgentOutput = MainAgent(self).execute()
+            agent_output = await agent.execute()
             if agent_output.output == utils.default_llm_answer_prompt():
                 agent_output.with_llm_error = True
         except Exception as e:
             log.error(f"Agent id: {self.agent_id}. Error: {e}")
-            raise e
+            agent_output = AgentOutput(
+                output=f"An error occurred: {e}. Please, contact your support service.", with_llm_error=True
+            )
 
         # prepare a final cat message
         final_output = CatMessage(text=str(agent_output.output))
@@ -305,7 +344,7 @@ class StrayCat:
             except ConnectionClosedOK as ex:
                 log.warning(f"Agent id: {self.agent_id}. Warning {ex}")
 
-    def classify(
+    async def classify(
         self, sentence: str, labels: List[str] | Dict[str, List[str]], score_threshold: float = 0.5
     ) -> str | None:
         """
@@ -325,7 +364,7 @@ class StrayCat:
 
         Examples
         -------
-        >> cat.classify("I feel good", labels=["positive", "negative"])
+        >> await cat.classify("I feel good", labels=["positive", "negative"])
         "positive"
 
         Or giving examples for each category:
@@ -334,7 +373,7 @@ class StrayCat:
         ...     "positive": ["I feel nice", "happy today"],
         ...     "negative": ["I feel bad", "not my best day"],
         ... }
-        ... cat.classify("it is a bad day", labels=example_labels)
+        ... await cat.classify("it is a bad day", labels=example_labels)
         "negative"
         """
         if isinstance(labels, Dict):
@@ -349,17 +388,17 @@ class StrayCat:
 
         labels_list = '"' + '", "'.join(labels_names) + '"'
 
-        prompt = f"""Classify this sentence:
-"{sentence}"
+        prompt = f"""Classify the provided sentence.
 
 Allowed classes are:
 {labels_list}{examples_list}
 
 Just output the class, nothing else."""
-        response = self.llm(
+        response = await self.llm(
             ChatPromptTemplate.from_messages([
                 HumanMessagePromptTemplate.from_template(template=prompt)
-            ])
+            ]),
+            prompt_variables={"input": sentence},
         )
 
         # find the closest match and its score with levenshtein distance

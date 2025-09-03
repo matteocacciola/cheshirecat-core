@@ -4,6 +4,8 @@ from langchain_core.messages import BaseMessage
 from langchain_core.documents import Document
 from pydantic import Field
 
+from cheshirecat.experimental.form import CatForm
+from cheshirecat.looking_glass import prompts
 from cheshirecat.utils import BaseModelDict
 from cheshirecat.mad_hatter.decorators import CatTool
 
@@ -91,10 +93,19 @@ class BaseAgent(ABC):
         self._stray = stray
         self._plugin_manager = stray.cheshire_cat.plugin_manager
 
-    def _get_tools(self) -> List[CatTool]:
-        """Get both plugins' tools and MCP tools in CatTool format.
-        """
+    def _get_system_prompt(self) -> str:
+        # obtain prompt parts from plugins
+        prompt_prefix = self._plugin_manager.execute_hook(
+            "agent_prompt_prefix", prompts.MAIN_PROMPT, cat=self._stray
+        )
+        prompt_suffix = self._plugin_manager.execute_hook(
+            "agent_prompt_suffix", "", cat=self._stray
+        )
 
+        return prompt_prefix + prompt_suffix
+
+    def _get_tools(self) -> List[CatTool]:
+        """Get both plugins' tools and MCP tools in CatTool format."""
         mcp_tools = [] #await self.cat.mcp.list_tools()
         internal_tools = self._plugin_manager.tools
 
@@ -102,8 +113,12 @@ class BaseAgent(ABC):
 
         return tools
 
+    def _get_forms(self) -> List[CatForm]:
+        """Get plugins' forms in CatForm format."""
+        return self._plugin_manager.forms
+
     @abstractmethod
-    def execute(self, stray, *args, **kwargs) -> AgentOutput:
+    async def execute(self, stray, *args, **kwargs) -> AgentOutput:
         """
         Execute the agents.
 

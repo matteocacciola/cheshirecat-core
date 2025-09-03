@@ -17,7 +17,6 @@ class CatTool:
         func: Callable,
         return_direct: bool = False,
         examples: List[str] = None,
-        plugin_id: str | None = None,
     ):
         examples = examples or []
         description = func.__doc__.strip() if func.__doc__ else ""
@@ -27,7 +26,6 @@ class CatTool:
         self.name = name
         self.description = description
         self.return_direct = return_direct
-        self.plugin_id = plugin_id
 
         self.triggers_map = {
             "description": [f"{name}: {description}"],
@@ -71,7 +69,7 @@ class CatTool:
         tool_output = self.func(**action.input, cat=stray)
 
         # Ensure the output is a string or None,
-        if (tool_output is not None) and (not isinstance(tool_output, str)):
+        if tool_output is not None and not isinstance(tool_output, str):
             tool_output = str(tool_output)
 
         # store tool output
@@ -84,7 +82,7 @@ class CatTool:
 
     def _remove_cat_from_args(self, function: Callable) -> Callable:
         """
-        Remove 'stray' and '_' parameters from function signature for LangChain compatibility.
+        Remove 'cat' and '_' parameters from function signature for LangChain compatibility.
 
         Parameters
         ----------
@@ -104,8 +102,8 @@ class CatTool:
 
         @functools.wraps(function)
         def wrapper(*args, **kwargs):
-            if "stray" in kwargs:
-                del kwargs["stray"]
+            if "cat" in kwargs:
+                del kwargs["cat"]
             return function(*args, **kwargs)
 
         wrapper.__signature__ = new_signature
@@ -114,20 +112,18 @@ class CatTool:
     def langchainfy(self):
         """Convert CatTool to a langchain compatible StructuredTool object"""
         if getattr(self, "arg_schema", None) is not None:
-            new_tool = StructuredTool(
+            return StructuredTool(
                 name=self.name.strip().replace(" ", "_"),
                 description=self.description,
                 func=self._remove_cat_from_args(self.func),
                 args_schema=getattr(self, "arg_schema"),
             )
-        else:
-            new_tool = StructuredTool.from_function(
-                name=self.name.strip().replace(" ", "_"),
-                description=self.description,
-                func=self._remove_cat_from_args(self.func),
-            )
 
-        return new_tool
+        return StructuredTool.from_function(
+            name=self.name.strip().replace(" ", "_"),
+            description=self.description,
+            func=self._remove_cat_from_args(self.func),
+        )
 
 
 # @tool decorator, a modified version of a langchain Tool that also takes a Cat instance as argument

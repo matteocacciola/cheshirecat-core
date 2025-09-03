@@ -3,7 +3,6 @@ from typing_extensions import deprecated
 from pydantic import Field
 
 from cheshirecat.db.cruds import history as crud_history
-from cheshirecat.experimental.form.cat_form import CatForm
 from cheshirecat.memory.messages import BaseMessage, CatMessage, UserMessage, ConversationHistoryItem, MessageWhy
 from cheshirecat.memory.utils import DocumentRecall
 from cheshirecat.utils import BaseModelDict
@@ -23,8 +22,6 @@ class WorkingMemory(BaseModelDict):
         A list that maintains the conversation history between the Human and the AI.
     user_message: Optional[UserMessage], default=None
         An optional UserMessage object representing the last user message.
-    active_form: Optional[CatForm], default=None
-        An optional reference to a CatForm currently in use.
     recall_query: str, default=""
         A string that stores the last recall query.
     declarative_memories: List
@@ -40,7 +37,6 @@ class WorkingMemory(BaseModelDict):
     # stores conversation history
     history: List[ConversationHistoryItem] | None = Field(default_factory=list)
     user_message: UserMessage | None = None
-    active_form: CatForm | None = None
 
     # recalled memories attributes
     recall_query: str = ""
@@ -108,9 +104,7 @@ class WorkingMemory(BaseModelDict):
             why: MessageWhy, optional
                 The reason why the message was said. Default is None.
         """
-        message = CatMessage(
-            text=message, image=image, why=why
-        ) if who == "assistant" else UserMessage(text=message, image=image)
+        message = CatMessage(text=message, why=why) if who == "assistant" else UserMessage(text=message, image=image)
 
         return self.update_history(who, message)
 

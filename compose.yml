@@ -3,7 +3,7 @@ services:
   cheshire-cat-core:
     build:
       context: .
-      target: build
+      target: build-dev
     container_name: cheshire_cat_core
     # Uncomment the two lines below to use your .env (see .env.example)
     # env_file:

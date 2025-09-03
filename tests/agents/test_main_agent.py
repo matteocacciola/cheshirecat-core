@@ -15,7 +15,7 @@ async def test_execute_main_agent(stray):
     main_agent = MainAgent(stray)
 
     # empty agent execution
-    out = main_agent.execute()
+    out = await main_agent.execute()
     assert isinstance(out, AgentOutput)
     assert out.intermediate_steps == []
     assert out.output == default_llm_answer_prompt()

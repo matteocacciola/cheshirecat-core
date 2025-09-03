@@ -351,6 +351,19 @@ class BaseVectorDatabaseHandler(ABC):
         """
         pass
 
+    @abstractmethod
+    async def get_embedder_size(self, embedder_name: str, collection_name: str | None = None) -> int:
+        """
+        Get the size of the embedder.
+
+        Args:
+            embedder_name: The name of the embedder.
+            collection_name: Optional name of the collection to check the embedder size in.
+
+        Returns:
+            int: The size of the embedder.
+        """
+
 
 class QdrantHandler(BaseVectorDatabaseHandler):
     def __init__(
@@ -460,10 +473,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     ) -> bool:
         # having the same size does not necessarily imply being the same embedder
         # having vectors with the same size but from different embedder in the same vector space is wrong
-        same_size = (
-            (await self._client.get_collection(collection_name=collection_name)).config.params.vectors.size
-            == embedder_size
-        )
+        same_size = (await self.get_embedder_size(embedder_name, collection_name)) == embedder_size
         local_alias = self._get_local_alias(embedder_name, collection_name)
 
         existing_aliases = (await self._client.get_collection_aliases(collection_name=collection_name)).aliases
@@ -912,6 +922,11 @@ class QdrantHandler(BaseVectorDatabaseHandler):
 
     def is_db_remote(self) -> bool:
         return True
+
+    async def get_embedder_size(self, embedder_name: str, collection_name: str | None = None) -> int:
+        collection_name = collection_name or str(VectorMemoryCollectionTypes.DECLARATIVE)
+        embedder_size = (await self._client.get_collection(collection_name=collection_name)).config.params.vectors.size
+        return embedder_size
 
 
 class VectorDatabaseSettings(BaseFactoryConfigModel, ABC):

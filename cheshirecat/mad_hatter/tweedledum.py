@@ -141,9 +141,9 @@ class Tweedledum(MadHatter):
         # plugins are found in the plugins folder,
         # plus the default core plugin (where default hooks and tools are defined)
         # plugin folder is "cat/plugins/" in production, "tests/mocks/mock_plugin_folder/" during tests
-        all_plugin_folders = (
+        all_plugin_folders = list(set(
             glob.glob(f"{utils.get_core_plugins_path()}/*/") + glob.glob(f"{utils.get_plugins_path()}/*/")
-        )
+        ))
 
         # discover plugins, folder by folder
         active_plugins = []

@@ -29,7 +29,5 @@ class PizzaForm(CatForm):
 
     ask_confirm: bool = True
 
-    def submit(self, form_data):
-        msg = f"Form submitted: {form_data}"
-        # self.cat.send_ws_message(msg, msg_type="chat")
-        return {"output": msg}
+    def _submit(self, form_data):
+        return f"Form submitted: {form_data}"

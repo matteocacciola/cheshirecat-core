@@ -22,7 +22,6 @@ def test_create_working_memory():
     wm = WorkingMemory(agent_id=agent_id, user_id=generate_uuid())
     assert wm.history == []
     assert wm.user_message_json is None
-    assert wm.active_form is None
     assert wm.recall_query == ""
     assert wm.declarative_memories == []
     assert wm.procedural_memories == []

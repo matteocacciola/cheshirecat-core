@@ -1,10 +1,10 @@
+import re
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
 from cheshirecat import utils
 from cheshirecat.agents.base_agent import AgentInput, AgentOutput, BaseAgent, LLMAction
-from cheshirecat.agents.form_agent import FormAgent
-from cheshirecat.looking_glass import prompts
 from cheshirecat.env import get_env
+from cheshirecat.utils import dispatch_event
 
 
 class MainAgent(BaseAgent):
@@ -12,21 +12,26 @@ class MainAgent(BaseAgent):
     def __init__(self, stray):
         super().__init__(stray)
 
-        self._form_agent = FormAgent(self._stray)
-
         self.verbose = False
         if get_env("CCAT_LOG_LEVEL").lower() in ["debug", "info"]:
             self.verbose = True
 
-    def execute(self, *args, **kwargs) -> AgentOutput:
-        # form_output = self._form_agent.execute()
-        # if form_output.output:
-        #     return form_output
+    async def execute(self, *args, **kwargs) -> AgentOutput:
+        def clean(response: str) -> str:
+            # parse the `response` string and get the text from <answer></answer> tag
+            if "<answer>" in response and "</answer>" in response:
+                start = response.index("<answer>") + len("<answer>")
+                end = response.index("</answer>")
+                return response[start:end].strip()
+            # otherwise, remove from `response` all the text between whichever tag and then return the remaining string
+            # This pattern matches any complete tag pair: <tagname>content</tagname>
+            cleaned = re.sub(r'<([^>]+)>.*?</\1>', '', response, flags=re.DOTALL)
+            return cleaned.strip()
 
         # prepare input to be passed to the agent.
         #   Info will be extracted from working memory
         # Note: agent_input works both as a dict and as an object
-        latest_n_history = kwargs.get("latest_n_history", 5)
+        latest_n_history = kwargs.get("latest_n_history", 5) * 2  # each interaction has user + cat message
 
         agent_input = AgentInput(
             context=[m.document for m in self._stray.working_memory.declarative_memories],
@@ -46,33 +51,20 @@ class MainAgent(BaseAgent):
             return agent_fast_reply
 
         # obtain prompt parts from plugins
-        prompt = self._plugin_manager.execute_hook("agent_system_prompt", prompts.MAIN_PROMPT, cat=self._stray)
-
-        # we run memory agent if:
-        # - no procedures were recalled or selected or
-        # - procedures have all return_direct=False
-        prompt_variables = {"context": agent_input.context}
-
-        # Ensure prompt inputs and prompt placeholders map
-        prompt_variables, prompt_template = utils.match_prompt_variables(
-            prompt_variables, prompt
-        )
-
         prompt = ChatPromptTemplate.from_messages(
             [
-                SystemMessagePromptTemplate.from_template(template=prompt_template),
+                SystemMessagePromptTemplate.from_template(template=self._get_system_prompt()),
                 *agent_input.history,
-                HumanMessagePromptTemplate.from_template("{input}"),
             ]
         )
-        prompt_variables["input"] = agent_input.input
 
         # Format the prompt template with the actual values to get a string
         # Convert to string - this will combine all messages into a single string
-        llm_output = self._stray.llm(
+        llm_output = await self._stray.llm(
             prompt,
-            prompt_variables=prompt_variables,
+            prompt_variables={"context": agent_input.context, "input": agent_input.input},
             tools=self._get_tools(),
+            forms=self._get_forms(),
             stream=True,
             caller_return_short=True,
             caller_skip=2,
@@ -80,14 +72,18 @@ class MainAgent(BaseAgent):
 
         if type(llm_output) is str:
             # simple string message
-            return AgentOutput(output=llm_output)
+            return AgentOutput(output=clean(llm_output))
 
         if type(llm_output) is LLMAction:
-            # LLM has chosen a tool, run it to get the output
-            for t in self._get_tools():
-                if t.name == llm_output.name:
-                    # update the action with an output, actually executing the tool
-                    llm_output = t.execute(self._stray, llm_output)
+            tools_forms = self._get_tools() + self._get_forms()
+
+            # LLM has chosen a tool or a form, run it to get the output
+            for t_or_f in tools_forms:
+                if t_or_f.name == llm_output.name:
+                    # update the action with an output, actually executing the tool / form
+                    llm_output = dispatch_event(
+                        t_or_f.execute(self._stray, llm_output)
+                    )
 
             return AgentOutput(output=llm_output.output, actions=[llm_output])
 
