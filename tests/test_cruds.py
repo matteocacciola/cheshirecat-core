@@ -116,7 +116,7 @@ def test_create_setting_with_empty_name(cheshire_cat):
         "updated_at": 1729169367
     }
 
-    with pytest.raises(Exception) as e:
+    with pytest.raises(Exception):
         crud_settings.create_setting(agent_id, models.Setting(**add))
 
 
@@ -166,7 +166,7 @@ def test_upsert_setting_by_name(cheshire_cat):
 
 def test_get_users(lizard):
     users = crud_users.get_users(lizard.config_key)
-    assert users is not {}
+    assert users != {}
 
     ids = list(users.keys())
     assert len(ids) == 1

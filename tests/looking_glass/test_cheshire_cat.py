@@ -67,5 +67,5 @@ async def test_procedures_embedded(lizard, cheshire_cat):
 
 @pytest.mark.asyncio
 async def test_cheshire_cat_created_with_system_key(lizard):
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError):
         await lizard.create_cheshire_cat(DEFAULT_SYSTEM_KEY)

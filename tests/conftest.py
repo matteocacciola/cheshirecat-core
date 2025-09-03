@@ -64,6 +64,7 @@ def mock_classes(monkeypatch):
 
     utils.get_plugins_path = lambda: "tests/mocks/mock_plugin_folder/"
     utils.get_file_manager_root_storage_path = lambda: "tests/data/storage"
+    utils.get_static_path = lambda: "tests/static"
 
     # do not check plugin dependencies at every restart
     def mock_install_requirements(self):
@@ -84,6 +85,7 @@ def clean_up():
         "tests/mocks/mock_plugin_folder/mock_plugin_fast_reply",
         "tests/mocks/empty_folder",
         "tests/data",
+        "tests/static",
     ]
     for tbr in to_be_removed:
         if os.path.exists(tbr):

@@ -69,7 +69,7 @@ class CatForm:  # base model of forms
         user_message = self._stray.cheshire_cat.working_memory.user_message.text
 
         # Confirm prompt
-        confirm_prompt = f"""Your task is to produce a JSON representing whether a user is confirming or not.
+        confirm_prompt = """Your task is to produce a JSON representing whether a user is confirming or not.
 JSON must be in this format:
 ```json
 {{

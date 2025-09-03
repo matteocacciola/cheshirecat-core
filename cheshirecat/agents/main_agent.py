@@ -1,5 +1,5 @@
 import re
-from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
 
 from cheshirecat import utils
 from cheshirecat.agents.base_agent import AgentInput, AgentOutput, BaseAgent, LLMAction

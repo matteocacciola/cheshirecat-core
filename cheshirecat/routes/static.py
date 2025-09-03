@@ -1,4 +1,3 @@
-import os
 from fastapi import Request, FastAPI
 from fastapi.staticfiles import StaticFiles
 

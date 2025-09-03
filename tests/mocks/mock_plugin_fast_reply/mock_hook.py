@@ -1,5 +1,3 @@
-from typing import Dict
-
 from cheshirecat.mad_hatter.decorators import hook
 
 
