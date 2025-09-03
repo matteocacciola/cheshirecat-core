@@ -23,17 +23,14 @@ def test_get_base_path():
 
 def test_get_plugin_path():
     # plugin folder is "cheshirecat/plugins/" in production, "tests/mocks/mock_plugin_folder/" during tests
-    # assert utils.get_plugins_path() == 'cheshirecat/plugins/'
     assert utils.get_plugins_path() == "tests/mocks/mock_plugin_folder/"
 
 
 def test_get_data_path(client):
-    # "data" in production, "mocks/data" during tests
     assert utils.get_data_path() == os.path.join(utils.get_project_path(), "data")
 
 
 def test_get_static_path(client):
-    # "statis" in production, "mocks/static" during tests
     assert utils.get_static_path() == os.path.join(utils.get_project_path(), "static")
 
 

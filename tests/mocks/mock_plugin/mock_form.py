@@ -29,5 +29,5 @@ class PizzaForm(CatForm):
 
     ask_confirm: bool = True
 
-    def _submit(self, form_data):
+    def _submit(self, form_data) -> str:
         return f"Form submitted: {form_data}"

@@ -1,18 +1,7 @@
-import os
-import shutil
 import uvicorn
 
 from cheshirecat.env import get_env, get_env_bool
-from cheshirecat.utils import get_base_path, get_plugins_path, get_project_path
-
-
-def scaffold():
-    scaffold_path = os.path.join(get_base_path(), "scaffold")
-    for folder in os.listdir(scaffold_path):
-        origin = os.path.join(scaffold_path, folder)
-        destination = os.path.join(get_project_path(), folder)
-        if not os.path.exists(destination):
-            shutil.copytree(origin, destination)
+from cheshirecat.utils import get_base_path, get_plugins_path, scaffold
 
 
 # RUN!

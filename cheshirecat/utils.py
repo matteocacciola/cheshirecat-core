@@ -1,4 +1,5 @@
 import asyncio
+import shutil
 import aiofiles
 from datetime import timedelta
 from enum import Enum as BaseEnum, EnumMeta
@@ -477,3 +478,12 @@ def get_file_hash(file_path: str, chunk_size: int = 8192) -> str:
         while chunk := f.read(chunk_size):
             sha256.update(chunk)
     return sha256.hexdigest()
+
+
+def scaffold():
+    scaffold_path = os.path.join(get_base_path(), "scaffold")
+    for folder in os.listdir(scaffold_path):
+        origin = os.path.join(scaffold_path, folder)
+        destination = os.path.join(get_project_path(), folder)
+        if not os.path.exists(destination):
+            shutil.copytree(origin, destination)

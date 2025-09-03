@@ -18,6 +18,7 @@ from cheshirecat.factory.vector_db import QdrantHandler
 from cheshirecat.looking_glass import BillTheLizard, StrayCat, WhiteRabbit
 from cheshirecat.mad_hatter import MarchHare, Plugin
 from cheshirecat.memory.messages import UserMessage
+from cheshirecat.startup import cheshire_cat_api
 import cheshirecat.utils as utils
 
 
@@ -63,7 +64,6 @@ def mock_classes(monkeypatch):
 
     utils.get_plugins_path = lambda: "tests/mocks/mock_plugin_folder/"
     utils.get_file_manager_root_storage_path = lambda: "tests/data/storage"
-    utils.get_static_path = lambda: "tests/static"
 
     # do not check plugin dependencies at every restart
     def mock_install_requirements(self):
@@ -84,7 +84,6 @@ def clean_up():
         "tests/mocks/mock_plugin_folder/mock_plugin_fast_reply",
         "tests/mocks/empty_folder",
         "tests/data",
-        "tests/static",
     ]
     for tbr in to_be_removed:
         if os.path.exists(tbr):
@@ -143,7 +142,6 @@ async def encapsulate_each_test(request, monkeypatch):
 
 @pytest_asyncio.fixture(scope="function")
 async def lizard(encapsulate_each_test):
-    from cheshirecat.startup import cheshire_cat_api
     l = BillTheLizard()
     l.fastapi_app = cheshire_cat_api
     yield l
@@ -168,8 +166,6 @@ async def client(cheshire_cat):
     """
     Create a new FastAPI TestClient.
     """
-    from cheshirecat.startup import cheshire_cat_api
-
     with TestClient(cheshire_cat_api) as client:
         yield client
 
