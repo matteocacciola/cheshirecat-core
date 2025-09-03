@@ -75,3 +75,6 @@ disable = [
 
 [tool.pylint.main]
 load-plugins = "pylint_actions, perflint"
+
+[tool.ruff]
+extend-ignore = ["E722", "F821", "E741"]
