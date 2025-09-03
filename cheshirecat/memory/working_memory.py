@@ -96,7 +96,7 @@ class WorkingMemory(BaseModelDict):
 
         Args
             who: str
-                Who said the message. Can either be Role.Human or Role.AI.
+                Who said the message. Can either be "user" or "assistant".
             message: str
                 The message said.
             image: (Optional[str], default=None): image file URL or base64 data URI that represent image associated with

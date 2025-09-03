@@ -96,7 +96,7 @@ class ConversationHistoryItem(BaseModelDict):
     assistant or user. The conversation history is then persisted in the database.
 
     Variables:
-        who (Role): who is the author of the message (`assistant` or `user`)
+        who (str): who is the author of the message (`assistant` or `user`)
         when (float): when the message was sent in seconds since epoch (default: time.time())
         content (BaseMessage): content of the message
     """
@@ -165,7 +165,7 @@ class ConversationHistoryItem(BaseModelDict):
         This attribute is deprecated. Use `who` instead. Get the name of the message author.
 
         Returns
-            Role: The author of the speaker.
+            str: The author of the speaker.
         """
         return self.who
 
@@ -175,7 +175,7 @@ class ConversationHistoryItem(BaseModelDict):
         This attribute is deprecated. Use `who` instead. Set the name of the message author.
 
         Args:
-            value: Role
+            value: str
         """
         self.who = value
 
