@@ -4,9 +4,9 @@ import fnmatch
 import subprocess
 from inspect import isfunction
 
-from cheshirecat.db.database import DEFAULT_SYSTEM_KEY
-from cheshirecat.mad_hatter import Plugin
-from cheshirecat.mad_hatter.decorators import CatHook, CatTool
+from cat.db.database import DEFAULT_SYSTEM_KEY
+from cat.mad_hatter import Plugin
+from cat.mad_hatter.decorators import CatHook, CatTool
 
 from tests.conftest import clean_up
 from tests.utils import mock_plugin_path

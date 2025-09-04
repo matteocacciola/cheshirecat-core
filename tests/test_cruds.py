@@ -1,12 +1,12 @@
 import uuid
 import pytest
 
-from cheshirecat.auth.auth_utils import hash_password
-from cheshirecat.auth.permissions import get_full_admin_permissions
-from cheshirecat.db import models
-from cheshirecat.db.cruds import settings as crud_settings, users as crud_users
-from cheshirecat.db.database import DEFAULT_SYSTEM_KEY
-from cheshirecat.factory.auth_handler import AuthHandlerFactory
+from cat.auth.auth_utils import hash_password
+from cat.auth.permissions import get_full_admin_permissions
+from cat.db import models
+from cat.db.cruds import settings as crud_settings, users as crud_users
+from cat.db.database import DEFAULT_SYSTEM_KEY
+from cat.factory.auth_handler import AuthHandlerFactory
 
 from tests.utils import agent_id
 

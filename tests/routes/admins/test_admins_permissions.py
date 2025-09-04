@@ -1,6 +1,6 @@
 import pytest
 
-from cheshirecat.env import get_env
+from cat.env import get_env
 
 # test endpoints with different user permissions
 # NOTE: we are using here the secure_client:

@@ -10,16 +10,16 @@ from qdrant_client import AsyncQdrantClient
 from fastapi.testclient import TestClient
 import time
 
-from cheshirecat.auth import auth_utils
-from cheshirecat.auth.permissions import AuthUserInfo, get_base_permissions
-from cheshirecat.db.database import Database
-from cheshirecat.env import get_env
-from cheshirecat.factory.vector_db import QdrantHandler
-from cheshirecat.looking_glass import BillTheLizard, StrayCat, WhiteRabbit
-from cheshirecat.mad_hatter import MarchHare, Plugin
-from cheshirecat.memory.messages import UserMessage
-from cheshirecat.startup import cheshire_cat_api
-import cheshirecat.utils as utils
+from cat.auth import auth_utils
+from cat.auth.permissions import AuthUserInfo, get_base_permissions
+from cat.db.database import Database
+from cat.env import get_env
+from cat.factory.vector_db import QdrantHandler
+from cat.looking_glass import BillTheLizard, StrayCat, WhiteRabbit
+from cat.mad_hatter import MarchHare, Plugin
+from cat.memory.messages import UserMessage
+from cat.startup import cheshire_cat_api
+import cat.utils as utils
 
 
 from tests.utils import (

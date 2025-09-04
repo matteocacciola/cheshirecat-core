@@ -1,7 +1,7 @@
 from json import dumps
 from fastapi.encoders import jsonable_encoder
 
-from cheshirecat.factory.vector_db import VectorDatabaseFactory
+from cat.factory.vector_db import VectorDatabaseFactory
 
 from tests.utils import create_new_user, new_user_password, agent_id
 

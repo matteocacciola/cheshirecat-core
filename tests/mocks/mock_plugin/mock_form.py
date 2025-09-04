@@ -1,8 +1,8 @@
 from enum import Enum
 from pydantic import BaseModel, Field
 
-from cheshirecat.experimental.form.cat_form import CatForm
-from cheshirecat.experimental.form.form_decorator import form
+from cat.experimental.form.cat_form import CatForm
+from cat.experimental.form.form_decorator import form
 
 
 class PizzaBorderEnum(Enum):

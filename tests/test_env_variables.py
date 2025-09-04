@@ -1,6 +1,6 @@
 import os
 
-from cheshirecat.env import get_supported_env_variables, get_env
+from cat.env import get_supported_env_variables, get_env
 
 
 def test_get_env():

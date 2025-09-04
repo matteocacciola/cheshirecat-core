@@ -2,7 +2,7 @@ import json
 import os
 import pytest
 
-from cheshirecat import utils
+from cat import utils
 
 from tests.utils import get_declarative_memory_contents, api_key, agent_id, send_file
 

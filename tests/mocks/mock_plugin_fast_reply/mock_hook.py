@@ -1,4 +1,4 @@
-from cheshirecat.mad_hatter.decorators import hook
+from cat.mad_hatter.decorators import hook
 
 
 @hook(priority=10)

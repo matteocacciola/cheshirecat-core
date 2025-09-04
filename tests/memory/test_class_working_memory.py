@@ -1,8 +1,8 @@
 from langchain_core.messages import AIMessage, HumanMessage
 
-from cheshirecat.db.models import generate_uuid
-from cheshirecat.memory.messages import UserMessage, CatMessage, ConversationHistoryItem
-from cheshirecat.memory.working_memory import WorkingMemory
+from cat.db.models import generate_uuid
+from cat.memory.messages import UserMessage, CatMessage, ConversationHistoryItem
+from cat.memory.working_memory import WorkingMemory
 
 from tests.utils import agent_id
 

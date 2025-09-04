@@ -1,5 +1,5 @@
-from cheshirecat.auth.permissions import AuthUserInfo
-from cheshirecat.looking_glass import StrayCat
+from cat.auth.permissions import AuthUserInfo
+from cat.looking_glass import StrayCat
 
 from tests.utils import send_websocket_message, api_key, agent_id, create_new_user, new_user_password
 

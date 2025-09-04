@@ -2,13 +2,13 @@ import pytest
 from langchain.base_language import BaseLanguageModel
 from langchain_core.embeddings import Embeddings
 
-from cheshirecat.db.database import DEFAULT_SYSTEM_KEY
-from cheshirecat.factory.chunker import BaseChunker
-from cheshirecat.factory.file_manager import BaseFileManager
-from cheshirecat.factory.vector_db import BaseVectorDatabaseHandler
-from cheshirecat.mad_hatter import Tweedledee
-from cheshirecat.factory.embedder import DumbEmbedder
-from cheshirecat.factory.llm import LLMDefault
+from cat.db.database import DEFAULT_SYSTEM_KEY
+from cat.factory.chunker import BaseChunker
+from cat.factory.file_manager import BaseFileManager
+from cat.factory.vector_db import BaseVectorDatabaseHandler
+from cat.mad_hatter import Tweedledee
+from cat.factory.embedder import DumbEmbedder
+from cat.factory.llm import LLMDefault
 
 
 def test_main_modules_loaded(cheshire_cat):

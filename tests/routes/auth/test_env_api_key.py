@@ -2,7 +2,7 @@ import os
 import pytest
 from fastapi import WebSocketDisconnect
 
-from cheshirecat.env import get_env
+from cat.env import get_env
 
 from tests.conftest import api_key
 from tests.utils import send_websocket_message

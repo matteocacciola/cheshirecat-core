@@ -1,10 +1,10 @@
 import time
 import jwt
 
-from cheshirecat.env import get_env
-from cheshirecat.auth.permissions import AdminAuthResource, AuthPermission
-from cheshirecat.auth.auth_utils import is_jwt
-from cheshirecat.db.database import DEFAULT_SYSTEM_KEY
+from cat.env import get_env
+from cat.auth.permissions import AdminAuthResource, AuthPermission
+from cat.auth.auth_utils import is_jwt
+from cat.db.database import DEFAULT_SYSTEM_KEY
 
 
 def test_is_jwt():

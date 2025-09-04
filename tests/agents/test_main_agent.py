@@ -1,8 +1,8 @@
 import pytest
 
-from cheshirecat.agents.main_agent import DefaultAgent
-from cheshirecat.agents.base_agent import AgentOutput
-from cheshirecat.utils import default_llm_answer_prompt
+from cat.agents.main_agent import DefaultAgent
+from cat.agents.base_agent import AgentOutput
+from cat.utils import default_llm_answer_prompt
 
 
 def test_main_agent_instantiation(stray):

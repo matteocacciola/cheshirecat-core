@@ -26,18 +26,18 @@ COPY ./data /app/data
 COPY ./static /app/static
 
 ### COPY CAT CODE INSIDE THE CONTAINER (so it can be run standalone) ###
-COPY ./cheshirecat /app/cheshirecat
+COPY ./cat /app/cat
 
 FROM scaffold AS build-dev
 
 ### INSTALL PYTHON DEPENDENCIES (Plugins) ###
-RUN find /app/cheshirecat/core_plugins -name requirements.txt -exec pip install -r {} \;
+RUN find /app/cat/core_plugins -name requirements.txt -exec pip install -r {} \;
 # RUN python3 -c "import nltk; nltk.download('punkt');nltk.download('averaged_perceptron_tagger');import tiktoken;tiktoken.get_encoding('cl100k_base')"
 
 ### FINISH ###
-CMD python3 -m cheshirecat.main
+CMD python3 -m cat.main
 
 FROM scaffold AS build-prod
 
 ### FINISH ###
-CMD python3 -m cheshirecat.main
+CMD python3 -m cat.main

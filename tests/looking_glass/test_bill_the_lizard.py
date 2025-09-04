@@ -1,9 +1,9 @@
 import pytest
 
-from cheshirecat.factory.auth_handler import CoreAuthHandler
-from cheshirecat.mad_hatter import Tweedledum
-from cheshirecat.rabbit_hole import RabbitHole
-from cheshirecat.services.websocket_manager import WebSocketManager
+from cat.factory.auth_handler import CoreAuthHandler
+from cat.mad_hatter import Tweedledum
+from cat.rabbit_hole import RabbitHole
+from cat.services.websocket_manager import WebSocketManager
 
 from tests.utils import get_class_from_decorated_singleton
 

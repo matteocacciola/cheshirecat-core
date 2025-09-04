@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from cheshirecat.auth.permissions import get_base_permissions
-from cheshirecat.routes.users import UserBase, UserUpdate
+from cat.auth.permissions import get_base_permissions
+from cat.routes.users import UserBase, UserUpdate
 
 from tests.utils import agent_id, api_key, create_new_user, check_user_fields, new_user_password
 

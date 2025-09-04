@@ -1,7 +1,7 @@
 import os
 import pytest
 
-from cheshirecat import utils
+from cat import utils
 
 from tests.utils import agent_id
 
@@ -18,11 +18,11 @@ def test_get_base_url():
 
 
 def test_get_base_path():
-    assert utils.get_base_path() == "/app/cheshirecat/"
+    assert utils.get_base_path() == "/app/cat/"
 
 
 def test_get_plugin_path():
-    # plugin folder is "cheshirecat/plugins/" in production, "tests/mocks/mock_plugin_folder/" during tests
+    # plugin folder is "cat/plugins/" in production, "tests/mocks/mock_plugin_folder/" during tests
     assert utils.get_plugins_path() == "tests/mocks/mock_plugin_folder/"
 
 

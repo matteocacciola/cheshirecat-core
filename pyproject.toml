@@ -45,7 +45,7 @@ dependencies = [
 ]
 
 [tool.coverage.run]
-source = ["cheshirecat"]
+source = ["cat"]
 branch = true
 omit = [
     "tests/*",

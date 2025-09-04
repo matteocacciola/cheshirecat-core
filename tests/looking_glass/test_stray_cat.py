@@ -1,10 +1,10 @@
 import pytest
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
-from cheshirecat.core_plugins.memory.utils import recall
-from cheshirecat.looking_glass import StrayCat
-from cheshirecat.memory.messages import CatMessage, UserMessage, MessageWhy
-from cheshirecat.memory.working_memory import WorkingMemory
+from cat.core_plugins.memory.utils import recall
+from cat.looking_glass import StrayCat
+from cat.memory.messages import CatMessage, UserMessage, MessageWhy
+from cat.memory.working_memory import WorkingMemory
 
 from tests.utils import api_key, create_mock_plugin_zip, send_file
 

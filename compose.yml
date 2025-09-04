@@ -27,7 +27,7 @@ services:
       - CCAT_RABBITMQ_USER=guest
       - CCAT_RABBITMQ_PASSWORD=guest
     volumes:
-      - ./cheshirecat:/app/cheshirecat
+      - ./cat:/app/cat
       - ./data:/app/data
       - ./static:/app/static
       - ./tests:/app/tests
@@ -36,7 +36,7 @@ services:
     command:
       - python
       - "-m"
-      - "cheshirecat.main"
+      - "cat.main"
     restart: unless-stopped
     depends_on:
       cheshire-cat-redis:

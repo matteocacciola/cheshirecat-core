@@ -2,7 +2,7 @@ from json import dumps
 import pytest
 from fastapi.encoders import jsonable_encoder
 
-from cheshirecat.factory.auth_handler import AuthHandlerFactory
+from cat.factory.auth_handler import AuthHandlerFactory
 
 from tests.utils import api_key
 

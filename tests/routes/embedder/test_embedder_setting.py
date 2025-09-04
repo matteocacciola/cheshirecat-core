@@ -1,7 +1,7 @@
 from json import dumps
 from fastapi.encoders import jsonable_encoder
 
-from cheshirecat.factory.embedder import EmbedderFactory
+from cat.factory.embedder import EmbedderFactory
 
 
 def test_get_all_embedder_settings(secure_client, secure_client_headers, lizard):

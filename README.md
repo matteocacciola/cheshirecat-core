@@ -203,7 +203,7 @@ When implementing custom endpoints, you can use the `@endpoint` decorator to cre
     </summary>
 
 ```python
-from cheshirecat.mad_hatter.decorators import hook
+from cat.mad_hatter.decorators import hook
 
 
 # hooks are an event system to get fine-grained control over your assistant
@@ -222,7 +222,7 @@ You are an expert in socks, and you reply with exactly one rhyme.
     </summary>
 
 ```python
-from cheshirecat.mad_hatter.decorators import tool
+from cat.mad_hatter.decorators import tool
 
 
 # langchain inspired tools (function calling)
@@ -247,7 +247,7 @@ def socks_prices(color, cat):
 
 ```python
 from pydantic import BaseModel
-from cheshirecat.experimental.form import form, CatForm
+from cat.experimental.form import form, CatForm
 
 # data structure to fill up
 class PizzaOrder(BaseModel):

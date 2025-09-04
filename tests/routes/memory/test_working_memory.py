@@ -1,6 +1,6 @@
 import time
 
-from cheshirecat.db.cruds import users as crud_users
+from cat.db.cruds import users as crud_users
 
 from tests.utils import send_websocket_message, agent_id, api_key, create_new_user, new_user_password
 

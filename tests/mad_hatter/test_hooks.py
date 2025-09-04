@@ -1,6 +1,6 @@
-from cheshirecat.agents import AgentOutput
-from cheshirecat.mad_hatter.decorators import CatHook
-from cheshirecat.memory.working_memory import CatMessage
+from cat.agents import AgentOutput
+from cat.mad_hatter.decorators import CatHook
+from cat.memory.working_memory import CatMessage
 
 
 def test_hook_discovery(plugin_manager):

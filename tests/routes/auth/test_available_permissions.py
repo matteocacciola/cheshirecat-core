@@ -1,4 +1,4 @@
-from cheshirecat.auth.permissions import get_full_permissions
+from cat.auth.permissions import get_full_permissions
 
 
 def test_get_available_permissions(client):
