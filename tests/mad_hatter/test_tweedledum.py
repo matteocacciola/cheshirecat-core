@@ -116,7 +116,7 @@ def test_plugin_install(lizard, plugin_is_flat):
 
     # list of active plugins in DB is correct
     active_plugins = plugin_manager.load_active_plugins_from_db()
-    assert len(active_plugins) == 6
+    assert len(active_plugins) == len(core_plugins) + 1
     assert "mock_plugin" in active_plugins
 
 

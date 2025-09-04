@@ -16,7 +16,6 @@ from cat.exceptions import CustomForbiddenException, CustomValidationException, 
 from cat.factory.base_factory import BaseFactory
 from cat.looking_glass import BillTheLizard, CheshireCat, WhiteRabbit
 from cat.mad_hatter import MadHatter, Plugin, registry_search_plugins
-from cat.memory.utils import VectorMemoryCollectionTypes
 
 
 class Plugins(BaseModel):
@@ -231,15 +230,7 @@ def get_plugin_settings(plugin_manager: MadHatter, plugin_id: str, agent_id: str
     return GetSettingResponse(name=plugin_id, value=settings, scheme=scheme)
 
 
-def memory_collection_is_accessible(collection_id: str) -> None:
-    # check if collection exists
-    if collection_id not in VectorMemoryCollectionTypes:
-        raise CustomNotFoundException("Collection does not exist.")
-
-
 async def verify_memory_point_existence(cheshire_cat: CheshireCat, collection_id: str, point_id: str) -> None:
-    memory_collection_is_accessible(collection_id)
-
     # check if point exists
     points = await cheshire_cat.vector_memory_handler.retrieve_points(collection_id, [point_id])
     if not points:

@@ -54,7 +54,7 @@ class MadHatter(ABC):
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
 
         # notify sync has finished
-        utils.dispatch_event(self.on_finish_plugins_sync_callback)
+        utils.run_callable(self.on_finish_plugins_sync_callback)
 
     def get_core_plugins_ids(self) -> List[str]:
         path = Path(utils.get_core_plugins_path())

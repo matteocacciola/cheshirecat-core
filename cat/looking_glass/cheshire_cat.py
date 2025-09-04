@@ -20,7 +20,6 @@ from cat.factory.llm import LLMFactory
 from cat.factory.vector_db import VectorDatabaseFactory, BaseVectorDatabaseHandler
 from cat.log import log
 from cat.mad_hatter import Tweedledee
-from cat.memory.utils import VectorMemoryCollectionTypes
 from cat.utils import get_factory_object, get_updated_factory_object, rollback_factory_config
 
 
@@ -108,8 +107,7 @@ class CheshireCat:
         log.info(f"Agent id: {self.id}. Destroying all data from the cat's memory")
 
         # destroy all memories
-        for c in VectorMemoryCollectionTypes:
-            await self.vector_memory_handler.destroy_all_points(str(c))
+        await self.vector_memory_handler.destroy_all_points("declarative")
 
     async def destroy(self):
         """Destroy all data from the cat."""

@@ -24,10 +24,11 @@ from cat.services.websocket_manager import WebSocketManager
 from cat.utils import (
     singleton,
     get_embedder_name,
-    dispatch_event,
+    run_callable,
     get_factory_object,
     get_updated_factory_object,
     rollback_factory_config,
+    pod_id,
 )
 
 
@@ -55,7 +56,8 @@ class BillTheLizard:
         Bootstrapping is the process of loading the plugins, the Embedder, the *Main Agent*, the *Rabbit Hole* and
         the *White Rabbit*.
         """
-        self.__key = DEFAULT_SYSTEM_KEY
+        self._key = DEFAULT_SYSTEM_KEY
+        self._pod_id = pod_id()
 
         self._fastapi_app = None
         self._pending_endpoints = []
@@ -86,14 +88,14 @@ class BillTheLizard:
         self.march_hare = MarchHare()
 
         # Initialize the default admin if not present
-        if not crud_users.get_users(self.__key):
+        if not crud_users.get_users(self._key):
             self.initialize_users()
 
         self._consumer_threads: List[threading.Thread] = []
         self._start_consumer_threads()
 
     def __del__(self):
-        dispatch_event(self.shutdown)
+        run_callable(self.shutdown)
 
     def _start_consumer_threads(self):
         if not MarchHareConfig.is_enabled:
@@ -107,9 +109,6 @@ class BillTheLizard:
             thread.start()
 
     def _end_consumer_threads(self):
-        """
-        Ends the consumer threads.
-        """
         for thread in self._consumer_threads:
             if thread.is_alive():
                 thread.join(timeout=1)
@@ -123,6 +122,11 @@ class BillTheLizard:
             """Handle the received message."""
             try:
                 event = json.loads(body)
+
+                if event.get("source_pod") == self._pod_id:
+                    log.debug(f"Ignoring event with payload {event['payload']} from the same pod {self._pod_id}")
+                    return
+
                 if event["event_type"] == MarchHareConfig.events["PLUGIN_INSTALLATION"]:
                     payload = event["payload"]
                     self.plugin_manager.install_extracted_plugin(payload["plugin_id"], payload["plugin_path"])
@@ -198,7 +202,7 @@ class BillTheLizard:
     def initialize_users(self):
         admin_id = str(uuid4())
 
-        crud_users.set_users(self.__key, {
+        crud_users.set_users(self._key, {
             admin_id: {
                 "id": admin_id,
                 "username": DEFAULT_ADMIN_USERNAME,
@@ -214,7 +218,7 @@ class BillTheLizard:
         """
         factory = EmbedderFactory(self.plugin_manager)
 
-        self.embedder = get_factory_object(self.__key, factory)
+        self.embedder = get_factory_object(self._key, factory)
         self.embedder_name = get_embedder_name(self.embedder)
 
         # Get embedder size (langchain classes do not store it)
@@ -232,7 +236,7 @@ class BillTheLizard:
             The dictionary resuming the new name and settings of the embedder
         """
         factory = EmbedderFactory(self.plugin_manager)
-        updater = get_updated_factory_object(self.__key, factory, language_embedder_name, settings)
+        updater = get_updated_factory_object(self._key, factory, language_embedder_name, settings)
 
         # reload the embedder of the lizard
         self.load_language_embedder()
@@ -243,7 +247,7 @@ class BillTheLizard:
             log.error(e)
 
             # something went wrong: rollback
-            rollback_factory_config(self.__key, factory)
+            rollback_factory_config(self._key, factory)
 
             if updater.old_setting is not None:
                 await self.replace_embedder(updater.old_setting["value"]["name"], updater.old_factory["value"])
@@ -360,7 +364,7 @@ class BillTheLizard:
 
     @property
     def config_key(self):
-        return self.__key
+        return self._key
 
     @property
     def mad_hatter(self) -> MadHatter:

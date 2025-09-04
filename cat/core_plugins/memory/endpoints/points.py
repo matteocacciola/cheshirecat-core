@@ -1,22 +1,20 @@
 from typing import Dict, List, Any
 from pydantic import BaseModel
-from fastapi import Query, APIRouter, Depends
+from fastapi import Query, Depends
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.env import get_env_bool
-from cat.factory.embedder import EmbedderFactory
+from cat.exceptions import CustomValidationException
+from cat.mad_hatter.decorators import endpoint
 from cat.routes.routes_utils import (
     MemoryPointBase,
     MemoryPoint,
     upsert_memory_point,
     verify_memory_point_existence,
-    memory_collection_is_accessible,
     create_dict_parser,
 )
-from cat.memory.utils import DocumentRecall, VectorMemoryCollectionTypes, UpdateResult, Record
-
-router = APIRouter()
+from cat.memory.utils import DocumentRecall, UpdateResult, Record
 
 
 class RecallResponseQuery(BaseModel):
@@ -47,7 +45,9 @@ class DeleteMemoryPointsByMetadataResponse(BaseModel):
     deleted: UpdateResult
 
 
-@router.get("/recall", response_model=RecallResponse)
+@endpoint.get(
+    "/recall", response_model=RecallResponse, tags=["Vector Memory - Points"], prefix="/memory"
+)
 async def recall_memory_points_from_text(
     text: str = Query(description="Find memories similar to this text."),
     k: int = Query(default=100, description="How many memories to return."),
@@ -96,47 +96,45 @@ async def recall_memory_points_from_text(
         memory_dict["vector"] = document_recall.vector
         return memory_dict
 
-    async def get_memories(c: VectorMemoryCollectionTypes) -> List:
-        metadata.pop("source", None)
-        return await ccat.vector_memory_handler.recall_memories_from_embedding(
-            str(c), query_embedding, k=k, metadata=metadata
-        )
-
     ccat = info.cheshire_cat
 
     # Embed the query to plot it in the Memory page
     query_embedding = ccat.embedder.embed_query(text)
 
-    # Loop over collections and retrieve nearby memories
-    recalled = {
-        str(c): [build_memory_dict(document_recall) for document_recall in (await get_memories(c))]
-        for c in VectorMemoryCollectionTypes
-    }
-
-    config_class = EmbedderFactory(ccat.plugin_manager).get_config_class_from_adapter(ccat.embedder.__class__)
+    dm = await ccat.vector_memory_handler.recall_memories_from_embedding(
+        "declarative", query_embedding, k=k, metadata={k: v for k, v in metadata.items() if k != "source"}
+    )
 
     return RecallResponse(
         query=RecallResponseQuery(text=text, vector=query_embedding),
         vectors=RecallResponseVectors(
-            embedder=config_class.__name__ if config_class else None,
-            collections=recalled
+            embedder=info.cheshire_cat.lizard.embedder_name,
+            collections={"declarative": [build_memory_dict(document_recall) for document_recall in dm]}
         )
     )
 
 
-@router.post("/collections/{collection_id}/points", response_model=MemoryPoint)
+@endpoint.post(
+    "/collections/{collection_id}/points", response_model=MemoryPoint, tags=["Vector Memory - Points"], prefix="/memory"
+)
 async def create_memory_point(
     collection_id: str,
     point: MemoryPointBase,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
 ) -> MemoryPoint:
     """Create a point in memory"""
-    memory_collection_is_accessible(collection_id)
+    try:
+        return await upsert_memory_point(collection_id, point, info)
+    except Exception as e:
+        raise CustomValidationException(f"Failed to create memory point: {e}")
 
-    return await upsert_memory_point(collection_id, point, info)
 
-
-@router.put("/collections/{collection_id}/points/{point_id}", response_model=MemoryPoint)
+@endpoint.put(
+    "/collections/{collection_id}/points/{point_id}",
+    response_model=MemoryPoint,
+    tags=["Vector Memory - Points"],
+    prefix="/memory",
+)
 async def edit_memory_point(
     collection_id: str,
     point_id: str,
@@ -178,57 +176,76 @@ async def edit_memory_point(
     print(json)
     ```
     """
-    memory_collection_is_accessible(collection_id)
-    await verify_memory_point_existence(info.cheshire_cat, collection_id, point_id)
+    try:
+        await verify_memory_point_existence(info.cheshire_cat, collection_id, point_id)
 
-    return await upsert_memory_point(collection_id, point, info, point_id)
+        return await upsert_memory_point(collection_id, point, info, point_id)
+    except Exception as e:
+        raise CustomValidationException(f"Failed to edit memory point: {e}")
 
 
-@router.delete("/collections/{collection_id}/points/{point_id}", response_model=DeleteMemoryPointResponse)
+@endpoint.delete(
+    "/collections/{collection_id}/points/{point_id}",
+    response_model=DeleteMemoryPointResponse,
+    tags=["Vector Memory - Points"],
+    prefix="/memory",
+)
 async def delete_memory_point(
     collection_id: str,
     point_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteMemoryPointResponse:
     """Delete a specific point in memory"""
-    memory_collection_is_accessible(collection_id)
+    try:
+        await verify_memory_point_existence(info.cheshire_cat, collection_id, point_id)
 
-    await verify_memory_point_existence(info.cheshire_cat, collection_id, point_id)
+        # delete point
+        await info.cheshire_cat.vector_memory_handler.delete_points(collection_id, [point_id])
 
-    # delete point
-    await info.cheshire_cat.vector_memory_handler.delete_points(collection_id, [point_id])
+        return DeleteMemoryPointResponse(deleted=point_id)
+    except Exception as e:
+        raise CustomValidationException(f"Failed to delete memory point: {e}")
 
-    return DeleteMemoryPointResponse(deleted=point_id)
 
-
-@router.delete("/collections/{collection_id}/points", response_model=DeleteMemoryPointsByMetadataResponse)
+@endpoint.delete(
+    "/collections/{collection_id}/points",
+    response_model=DeleteMemoryPointsByMetadataResponse,
+    tags=["Vector Memory - Points"],
+    prefix="/memory",
+)
 async def delete_memory_points_by_metadata(
     collection_id: str,
     metadata: Dict = None,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteMemoryPointsByMetadataResponse:
     """Delete points in memory by filter"""
-    ccat = info.cheshire_cat
-    memory_collection_is_accessible(collection_id)
+    try:
+        ccat = info.cheshire_cat
+        metadata = metadata or {}
 
-    metadata = metadata or {}
+        # delete points
+        ret = await ccat.vector_memory_handler.delete_points_by_metadata_filter(collection_id, metadata)
 
-    # delete points
-    ret = await ccat.vector_memory_handler.delete_points_by_metadata_filter(collection_id, metadata)
+        # delete the file with path `metadata["source"]` from the file storage
+        if (
+                get_env_bool("CCAT_RABBIT_HOLE_STORAGE_ENABLED")
+                and collection_id == "declarative"
+                and (source := metadata.get("source"))
+        ):
+            ccat.file_manager.remove_file_from_storage(f"{ccat.id}/{source}")
 
-    # delete the file with path `metadata["source"]` from the file storage
-    if (
-            get_env_bool("CCAT_RABBIT_HOLE_STORAGE_ENABLED")
-            and collection_id == VectorMemoryCollectionTypes.DECLARATIVE
-            and (source := metadata.get("source"))
-    ):
-        ccat.file_manager.remove_file_from_storage(f"{ccat.id}/{source}")
-
-    return DeleteMemoryPointsByMetadataResponse(deleted=ret)
+        return DeleteMemoryPointsByMetadataResponse(deleted=ret)
+    except Exception as e:
+        raise CustomValidationException(f"Failed to delete memory points: {e}")
 
 
 # GET all the points from a single collection
-@router.get("/collections/{collection_id}/points", response_model=GetPointsInCollectionResponse)
+@endpoint.get(
+    "/collections/{collection_id}/points",
+    response_model=GetPointsInCollectionResponse,
+    tags=["Vector Memory - Points"],
+    prefix="/memory",
+)
 async def get_points_in_collection(
     collection_id: str,
     limit: int = Query(
@@ -291,14 +308,15 @@ async def get_points_in_collection(
             break
     ```
     """
-    memory_collection_is_accessible(collection_id)
+    try:
+        # if offset is an empty string set to null
+        if offset == "":
+            offset = None
 
-    # if offset is an empty string set to null
-    if offset == "":
-        offset = None
+        points, next_offset = await info.cheshire_cat.vector_memory_handler.get_all_points(
+            collection_name=collection_id, limit=limit, offset=offset, metadata=metadata
+        )
 
-    points, next_offset = await info.cheshire_cat.vector_memory_handler.get_all_points(
-        collection_name=collection_id, limit=limit, offset=offset, metadata=metadata
-    )
-
-    return GetPointsInCollectionResponse(points=points, next_offset=next_offset)
+        return GetPointsInCollectionResponse(points=points, next_offset=next_offset)
+    except Exception as e:
+        raise CustomValidationException(f"Failed to get points from collection: {e}")

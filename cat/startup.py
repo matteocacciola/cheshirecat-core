@@ -26,7 +26,6 @@ from cat.routes import (
     file_manager,
     llm,
     chunker,
-    memory_router as memory,
     plugins,
     rabbit_hole,
     settings,
@@ -37,6 +36,7 @@ from cat.routes import (
 )
 from cat.routes.openapi import get_openapi_configuration_function
 from cat.routes.routes_utils import startup_app, shutdown_app
+from cat.utils import pod_id
 
 
 @asynccontextmanager
@@ -50,6 +50,7 @@ async def lifespan(app: FastAPI):
     # - Starlette allows this: https://www.starlette.io/applications/#storing-state-on-the-app-instance
 
     set_llm_cache(InMemoryCache())
+    pod_id()
 
     await startup_app(app)
 
@@ -98,7 +99,6 @@ cheshire_cat_api.include_router(embedder.router, tags=["Embedder"], prefix="/emb
 cheshire_cat_api.include_router(chunker.router, tags=["Chunking"], prefix="/chunking")
 cheshire_cat_api.include_router(file_manager.router, tags=["File Manager"], prefix="/file_manager")
 cheshire_cat_api.include_router(llm.router, tags=["Large Language Model"], prefix="/llm")
-cheshire_cat_api.include_router(memory.router, prefix="/memory")
 cheshire_cat_api.include_router(plugins.router, tags=["Plugins"], prefix="/plugins")
 cheshire_cat_api.include_router(rabbit_hole.router, tags=["Rabbit Hole"], prefix="/rabbithole")
 cheshire_cat_api.include_router(settings.router, tags=["Settings"], prefix="/settings")

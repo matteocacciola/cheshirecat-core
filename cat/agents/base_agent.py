@@ -171,7 +171,7 @@ class CatAgent(ABC):
             for procedure in procedures:
                 if procedure.name == llm_output.name:
                     # update the action with an output, actually executing the tool / form
-                    llm_output = utils.dispatch_event(procedure.execute, stray=self._stray, action=llm_output)
+                    llm_output = utils.run_callable(procedure.execute, stray=self._stray, action=llm_output)
 
             return AgentOutput(output=llm_output.output, actions=[llm_output])
 

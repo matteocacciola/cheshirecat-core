@@ -4,7 +4,6 @@ from cat import utils
 from cat.core_plugins.memory.models import RecallSettings
 from cat.log import log
 from cat.memory.working_memory import DocumentRecall
-from cat.memory.utils import VectorMemoryCollectionTypes
 
 
 async def recall(
@@ -46,9 +45,8 @@ async def recall(
     """
     cheshire_cat = cat.cheshire_cat
 
-    if collection_name not in VectorMemoryCollectionTypes:
-        memory_collections = ', '.join([str(c) for c in VectorMemoryCollectionTypes])
-        error_message = f"{collection_name} is not a valid collection. Available collections: {memory_collections}"
+    if collection_name != "declarative":
+        error_message = f"{collection_name} is not a valid collection. Available collections: 'declarative'."
 
         log.error(error_message)
         raise ValueError(error_message)
@@ -109,18 +107,17 @@ def recall_relevant_memories_to_working_memory(cat: "StrayCat", query: str):
 
     # Setting default recall configs for each memory + hooks to change recall configs for each memory
     metadata = cat.working_memory.user_message.get("metadata", {})
-    for memory_type in VectorMemoryCollectionTypes:
-        config = RecallSettings(embedding=recall_query_embedding, metadata=metadata)
+    config = RecallSettings(embedding=recall_query_embedding, metadata=metadata)
 
-        utils.dispatch_event(
-            recall,
-            cat=cat,
-            query=config.embedding,
-            collection_name=str(memory_type),
-            k=config.k,
-            threshold=config.threshold,
-            metadata=config.metadata,
-        )
+    utils.run_callable(
+        recall,
+        cat=cat,
+        query=config.embedding,
+        collection_name="declarative",
+        k=config.k,
+        threshold=config.threshold,
+        metadata=config.metadata,
+    )
 
     # hook to modify/enrich retrieved memories
     plugin_manager.execute_hook("after_cat_recalls_memories", cat=cat)

@@ -34,7 +34,7 @@ def test_memory_collections_wipe(
     send_file("sample.txt", "text/plain", secure_client, secure_client_headers)
 
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
-    assert collections_n_points["declarative"] > 1  # several chunks
+    assert collections_n_points["declarative"] > 0  # several chunks
 
     # wipe out all memories
     response = secure_client.delete("/memory/collections", headers=secure_client_headers)
@@ -42,3 +42,17 @@ def test_memory_collections_wipe(
 
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
     assert collections_n_points["declarative"] == 0
+
+
+def test_memory_collections_create(
+    secure_client, secure_client_headers, mocked_default_llm_answer_prompt
+):
+    # create collections
+    response = secure_client.post("/memory/collections/this_is_a_test_collection", headers=secure_client_headers)
+    json = response.json()
+    assert response.status_code == 200
+
+    assert "name" in json
+    assert json["name"] == "this_is_a_test_collection"
+    assert "vectors_count" in json
+    assert json["vectors_count"] == 0

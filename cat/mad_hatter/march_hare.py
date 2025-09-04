@@ -6,7 +6,7 @@ import json
 from pika.exceptions import AMQPConnectionError
 
 from cat.log import log
-from cat.utils import singleton
+from cat.utils import singleton, pod_id
 
 
 class MarchHareConfig:
@@ -28,6 +28,8 @@ class MarchHareConfig:
 class MarchHare:
     def __init__(self):
         self._connection_parameters = None
+        self.pod_id = pod_id()
+
         if MarchHareConfig.is_enabled:
             self._connection_parameters = pika.ConnectionParameters(
                 host=getenv("CCAT_RABBITMQ_HOST"),
@@ -56,9 +58,13 @@ class MarchHare:
             connection = pika.BlockingConnection(self._connection_parameters)
             channel = connection.channel()
 
-            channel.exchange_declare(exchange=event_type, exchange_type=exchange_type)
+            channel.exchange_declare(exchange=exchange, exchange_type=exchange_type)
 
-            event = {"event_type": event_type, "payload": payload}
+            event = {
+                "event_type": event_type,
+                "payload": payload,
+                "source_pod": self.pod_id,
+            }
             message = json.dumps(event)
 
             channel.basic_publish(
@@ -66,7 +72,7 @@ class MarchHare:
                 routing_key="",
                 body=message
             )
-            log.debug(f"Event {event_type} sent to exhange {exchange} with payload: {payload}")
+            log.debug(f"Event {event_type} sent to exchange {exchange} with payload: {payload}")
         except AMQPConnectionError as e:
             log.error(f"Connection error to RabbitMQ: {e}")
         finally:

@@ -34,7 +34,6 @@ from qdrant_client.http.models import (
 from cat.factory.base_factory import BaseFactoryConfigModel, BaseFactory
 from cat.log import log
 from cat.memory.utils import (
-    VectorMemoryCollectionTypes,
     DocumentRecall,
     Payload,
     PointStruct,
@@ -352,17 +351,38 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def get_embedder_size(self, embedder_name: str, collection_name: str | None = None) -> int:
+    async def get_embedder_size(self, embedder_name: str) -> int:
         """
         Get the size of the embedder.
 
         Args:
             embedder_name: The name of the embedder.
-            collection_name: Optional name of the collection to check the embedder size in.
 
         Returns:
             int: The size of the embedder.
         """
+
+    @abstractmethod
+    async def create_collection(self, embedder_name: str, embedder_size: int, collection_name: str):
+        """
+        Create a new collection in the vector database.
+
+        Args:
+            embedder_name: Name of the embedder to use for the collection
+            embedder_size: Size of the embedding vectors
+            collection_name: Name of the collection to create
+        """
+        pass
+
+    @abstractmethod
+    async def get_collection_names(self) -> List[str]:
+        """
+        Get the list of collection names in the vector database.
+
+        Returns:
+            List[str]: List of collection names
+        """
+        pass
 
 
 class QdrantHandler(BaseVectorDatabaseHandler):
@@ -437,28 +457,28 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         return conditions
 
     async def initialize(self, embedder_name: str, embedder_size: int):
-        for collection_name in VectorMemoryCollectionTypes:
-            is_collection_existing = await self._check_collection_existence(str(collection_name))
-            has_same_size = (
-                await self._check_embedding_size(embedder_name, embedder_size, str(collection_name))
-            ) if is_collection_existing else False
-            if is_collection_existing and has_same_size:
-                continue
+        collection_name = "declarative"
+        is_collection_existing = await self._check_collection_existence(collection_name)
+        has_same_size = (
+            await self._check_embedding_size(embedder_name, embedder_size, collection_name)
+        ) if is_collection_existing else False
+        if is_collection_existing and has_same_size:
+            return
 
-            # Memory snapshot saving can be turned off in the .env file with:
-            # SAVE_MEMORY_SNAPSHOTS=false
-            if self.save_memory_snapshots:
-                # dump collection on disk before deleting
-                await self.save_dump(str(collection_name))
+        # Memory snapshot saving can be turned off in the .env file with:
+        # SAVE_MEMORY_SNAPSHOTS=false
+        if self.save_memory_snapshots:
+            # dump collection on disk before deleting
+            await self.save_dump(collection_name)
 
-            if is_collection_existing:
-                await self._client.delete_collection(collection_name=str(collection_name))
-                log.warning(f"Collection `{collection_name}` for the agent `{self.agent_id}` deleted")
-            await self._create_collection(embedder_name, embedder_size, str(collection_name))
+        if is_collection_existing:
+            await self._client.delete_collection(collection_name=collection_name)
+            log.warning(f"Collection `{collection_name}` for the agent `{self.agent_id}` deleted")
+        await self.create_collection(embedder_name, embedder_size, collection_name)
 
     async def _check_collection_existence(self, collection_name: str) -> bool:
-        collections_response = await self._client.get_collections()
-        if any(c.name == collection_name for c in collections_response.collections):
+        collection_names = await self.get_collection_names()
+        if any(c == collection_name for c in collection_names):
             # collection exists. Do nothing
             log.info(f"Collection `{collection_name}` for the agent `{self.agent_id}` already present in vector store")
             return True
@@ -473,7 +493,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     ) -> bool:
         # having the same size does not necessarily imply being the same embedder
         # having vectors with the same size but from different embedder in the same vector space is wrong
-        same_size = (await self.get_embedder_size(embedder_name, collection_name)) == embedder_size
+        same_size = (await self.get_embedder_size(embedder_name)) == embedder_size
         local_alias = self._get_local_alias(embedder_name, collection_name)
 
         existing_aliases = (await self._client.get_collection_aliases(collection_name=collection_name)).aliases
@@ -485,16 +505,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         log.warning(f"Collection `{collection_name}` for the agent `{self.agent_id}` has different embedder")
         return False
 
-    # create collection
-    async def _create_collection(self, embedder_name: str, embedder_size: int, collection_name: str):
-        """
-        Create a new collection in the vector database.
-
-        Args:
-            embedder_name: Name of the embedder to use for the collection
-            embedder_size: Size of the embedding vectors
-            collection_name: Name of the collection to create
-        """
+    async def create_collection(self, embedder_name: str, embedder_size: int, collection_name: str):
         log.warning(f"Creating collection `{collection_name}` for the agent `{self.agent_id}`...")
 
         try:
@@ -533,7 +544,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             log.error(f"Error creating collection alias `{alias_name}` for collection `{collection_name}` and the agent `{self.agent_id}`: {e}")
             await self._client.delete_collection(collection_name)
             log.error(f"Collection `{collection_name}` for the agent `{self.agent_id}` deleted")
-            raise
+            raise e
 
         # if the client is remote, create an index on the tenant_id field
         if self.is_db_remote():
@@ -923,10 +934,13 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     def is_db_remote(self) -> bool:
         return True
 
-    async def get_embedder_size(self, embedder_name: str, collection_name: str | None = None) -> int:
-        collection_name = collection_name or str(VectorMemoryCollectionTypes.DECLARATIVE)
-        embedder_size = (await self._client.get_collection(collection_name=collection_name)).config.params.vectors.size
+    async def get_embedder_size(self, embedder_name: str) -> int:
+        embedder_size = (await self._client.get_collection(collection_name="declarative")).config.params.vectors.size
         return embedder_size
+
+    async def get_collection_names(self) -> List[str]:
+        collections_response = await self._client.get_collections()
+        return [c.name for c in collections_response.collections]
 
 
 class VectorDatabaseSettings(BaseFactoryConfigModel, ABC):

@@ -2,15 +2,18 @@ from typing import Dict
 
 from cat.mad_hatter.decorators import hook
 from cat.memory.messages import MessageWhy
-from cat.memory.utils import VectorMemoryCollectionTypes
 
 
 @hook(priority=1)
 def before_cat_sends_message(message, agent_output, cat) -> Dict:
-    memory = {str(c): [dict(d.document) | {
-        "score": float(d.score) if d.score else None,
-        "id": d.id,
-    } for d in getattr(cat.working_memory, f"{c}_memories")] for c in VectorMemoryCollectionTypes}
+    memory = {"declarative": [
+        dict(d.document)
+        | {
+            "score": float(d.score) if d.score else None,
+            "id": d.id,
+        }
+        for d in cat.working_memory.declarative_memories
+    ]}
 
     # why this response?
     message.why = MessageWhy(

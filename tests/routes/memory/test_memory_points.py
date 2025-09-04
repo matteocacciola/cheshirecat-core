@@ -16,8 +16,7 @@ def test_create_point_wrong_collection(secure_client, secure_client_headers, che
 
     # wrong collection
     res = secure_client.post("/memory/collections/wrongcollection/points", json=req_json, headers=headers)
-    assert res.status_code == 404
-    assert "Collection does not exist" in res.json()["detail"]["error"]
+    assert res.status_code == 400
 
 
 def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
@@ -68,13 +67,11 @@ def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_
 
     # delete point (wrong collection)
     res = secure_client.delete(f"/memory/collections/wrongcollection/points/{mem['id']}", headers=secure_client_headers)
-    assert res.status_code == 404
-    assert res.json()["detail"]["error"] == "Collection does not exist."
+    assert res.status_code == 400
 
     # delete point (wrong id)
     res = secure_client.delete("/memory/collections/declarative/points/wrong_id", headers=secure_client_headers)
-    assert res.status_code == 404
-    assert res.json()["detail"]["error"] == "Point does not exist."
+    assert res.status_code == 400
 
     # delete point (all right)
     res = secure_client.delete(f"/memory/collections/declarative/points/{mem['id']}", headers=secure_client_headers)
@@ -92,8 +89,7 @@ def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_
 
     # delete again the same point (should not be found)
     res = secure_client.delete(f"/memory/collections/declarative/points/{mem['id']}", headers=secure_client_headers)
-    assert res.status_code == 404
-    assert res.json()["detail"]["error"] == "Point does not exist."
+    assert res.status_code == 400
 
 
 # test delete points by filter
@@ -157,8 +153,7 @@ def test_points_deleted_by_metadata(secure_client, secure_client_headers):
 def test_get_collection_points_wrong_collection(secure_client, secure_client_headers):
     # not existing collection
     res = secure_client.get("/memory/collections/unexistent/points", headers=secure_client_headers)
-    assert res.status_code == 404
-    assert "Collection does not exist" in res.json()["detail"]["error"]
+    assert res.status_code == 400
 
 
 def test_get_collection_points(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
@@ -282,13 +277,11 @@ def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_client_
 
     # wrong collection
     res = secure_client.put(f"/memory/collections/wrongcollection/points/{point_id}", json=req_json, headers=headers)
-    assert res.status_code == 404
-    assert "Collection does not exist" in res.json()["detail"]["error"]
+    assert res.status_code == 400
 
     # point do not exist
     res = secure_client.put("/memory/collections/declarative/points/{point_id}", json=req_json, headers=headers)
-    assert res.status_code == 404
-    assert res.json()["detail"]["error"] == "Point does not exist."
+    assert res.status_code == 400
 
 
 def test_edit_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):

@@ -13,7 +13,7 @@ from langchain_community.document_loaders.parsers.generic import MimeTypeBasedPa
 
 from cat.env import get_env_bool
 from cat.log import log
-from cat.memory.utils import VectorMemoryCollectionTypes, PointStruct
+from cat.memory.utils import PointStruct
 from cat.utils import singleton
 
 
@@ -52,7 +52,7 @@ class RabbitHole:
             )
 
         # Get Declarative memories in file
-        declarative_memories = memories["collections"][str(VectorMemoryCollectionTypes.DECLARATIVE)]
+        declarative_memories = memories["collections"]["declarative"]
 
         # Store data to upload the memories in batch
         ids = [m["id"] for m in declarative_memories]
@@ -75,7 +75,7 @@ class RabbitHole:
 
         # Upsert memories in batch mode
         await ccat.vector_memory_handler.add_points(
-            collection_name=str(VectorMemoryCollectionTypes.DECLARATIVE), ids=ids, payloads=payloads, vectors=vectors
+            collection_name="declarative", ids=ids, payloads=payloads, vectors=vectors
         )
 
     async def ingest_file(self, stray: "StrayCat", file: str | UploadFile, metadata: Dict = None):
@@ -276,7 +276,7 @@ class RabbitHole:
             if doc.page_content != "":
                 doc_embedding = embedder.embed_documents([doc.page_content])
                 if (stored_point := await ccat.vector_memory_handler.add_point(
-                    str(VectorMemoryCollectionTypes.DECLARATIVE),
+                    "declarative",
                     doc.page_content,
                     doc_embedding[0],
                     doc.metadata,

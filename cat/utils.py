@@ -431,7 +431,7 @@ def get_embedder_name(embedder: Embeddings) -> str:
     return embedder_name.lower()
 
 
-def dispatch_event(func: Callable[..., Any], *args, **kwargs) -> Any:
+def run_callable(func: Callable[..., Any], *args, **kwargs) -> Any:
     if not asyncio.iscoroutinefunction(func) and not asyncio.iscoroutine(func):
         return func(*args, **kwargs)
 
@@ -477,3 +477,15 @@ def get_file_hash(file_path: str, chunk_size: int = 8192) -> str:
         while chunk := f.read(chunk_size):
             sha256.update(chunk)
     return sha256.hexdigest()
+
+
+def pod_id() -> str:
+    if not os.path.exists(".pod_id"):
+        pod_id = hashlib.sha256(os.urandom(16)).hexdigest()[:8]
+        with open(".pod_id", "w") as f:
+            f.write(pod_id)
+        return pod_id
+
+    with open(".pod_id", "r") as f:
+        pod_id = f.read().strip()
+    return pod_id

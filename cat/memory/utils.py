@@ -3,11 +3,7 @@ from typing import List, Any, Dict
 from langchain_core.documents import Document as LangChainDocument
 from pydantic import BaseModel, Field
 
-from cat.utils import Enum as BaseEnum, BaseModelDict
-
-
-class VectorMemoryCollectionTypes(BaseEnum):
-    DECLARATIVE = "declarative"
+from cat.utils import BaseModelDict
 
 
 class DocumentRecall(BaseModelDict):

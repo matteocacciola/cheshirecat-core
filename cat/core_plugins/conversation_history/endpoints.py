@@ -1,14 +1,11 @@
 from typing import List, Literal
-from fastapi import APIRouter
 from pydantic import BaseModel
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
+from cat.mad_hatter.decorators import endpoint
 from cat.memory.messages import ConversationHistoryItem, CatMessage, UserMessage, MessageWhy
 from cat.looking_glass import StrayCat
-
-
-router = APIRouter()
 
 
 class DeleteConversationHistoryResponse(BaseModel):
@@ -27,7 +24,12 @@ class PostConversationHistoryPayload(BaseModel):
 
 
 # DELETE conversation history from working memory
-@router.delete("/conversation_history", response_model=DeleteConversationHistoryResponse)
+@endpoint.delete(
+    "/conversation_history",
+    response_model=DeleteConversationHistoryResponse,
+    tags=["Working Memory - Current Conversation"],
+    prefix="/memory",
+)
 async def destroy_conversation_history(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteConversationHistoryResponse:
@@ -39,7 +41,12 @@ async def destroy_conversation_history(
 
 
 # GET conversation history from working memory
-@router.get("/conversation_history", response_model=GetConversationHistoryResponse)
+@endpoint.get(
+    "/conversation_history",
+    response_model=GetConversationHistoryResponse,
+    tags=["Working Memory - Current Conversation"],
+    prefix="/memory",
+)
 async def get_conversation_history(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> GetConversationHistoryResponse:
@@ -50,7 +57,12 @@ async def get_conversation_history(
 
 
 # PUT conversation history into working memory
-@router.post("/conversation_history", response_model=GetConversationHistoryResponse)
+@endpoint.post(
+    "/conversation_history",
+    response_model=GetConversationHistoryResponse,
+    tags=["Working Memory - Current Conversation"],
+    prefix="/memory",
+)
 async def add_conversation_history(
     payload: PostConversationHistoryPayload,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
