@@ -1,7 +1,7 @@
 import os
 import glob
 import shutil
-from typing import List, Tuple
+from typing import List
 
 from cat.db.cruds import settings as crud_settings, plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY

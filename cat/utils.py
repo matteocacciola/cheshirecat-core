@@ -1,5 +1,4 @@
 import asyncio
-import shutil
 import aiofiles
 from datetime import timedelta
 from enum import Enum as BaseEnum, EnumMeta
