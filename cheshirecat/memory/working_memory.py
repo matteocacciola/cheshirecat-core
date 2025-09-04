@@ -26,8 +26,6 @@ class WorkingMemory(BaseModelDict):
         A string that stores the last recall query.
     declarative_memories: List
         A list for storing declarative memories.
-    procedural_memories: List
-        A list for storing procedural memories.
     model_interactions: List
         A list of interactions with models.
     """
@@ -42,7 +40,6 @@ class WorkingMemory(BaseModelDict):
     recall_query: str = ""
 
     declarative_memories: List[DocumentRecall] = Field(default_factory=list)
-    procedural_memories: List[DocumentRecall] = Field(default_factory=list)
 
     # track models usage
     model_interactions: List = Field(default_factory=list)

@@ -75,12 +75,6 @@ class Tweedledum(MadHatter):
             str: The ID of the installed plugin.
         """
         # extract the plugin from the package
-        plugin_id, plugin_path = self.extract_plugin(package_plugin)
-
-        # install the extracted plugin
-        return self.install_extracted_plugin(plugin_id, plugin_path)
-
-    def extract_plugin(self, package_plugin: str) -> Tuple[str, str]:
         utils.dispatch_event(self.on_start_plugin_install_callback)
 
         # extract zip/tar file into plugin folder
@@ -88,7 +82,8 @@ class Tweedledum(MadHatter):
         plugin_path = extractor.extract(utils.get_plugins_path())
         plugin_id = extractor.id
 
-        return plugin_id, plugin_path
+        # install the extracted plugin
+        return self.install_extracted_plugin(plugin_id, plugin_path)
 
     def install_extracted_plugin(self, plugin_id: str, plugin_path: str) -> str:
         # create plugin obj, and eventually activate it
@@ -157,7 +152,7 @@ class Tweedledum(MadHatter):
                 continue
 
             try:
-                self.plugins[plugin_id].activate(self.agent_key)
+                self.on_plugin_activation(plugin_id)
                 active_plugins.append(plugin_id)
             except Exception as e:
                 # Couldn't activate the plugin -> Deactivate it

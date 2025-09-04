@@ -121,7 +121,6 @@ def before_rabbithole_stores_documents(docs: List[Document], cat) -> List[Docume
 
     For example, this hook is a good point to summarize the incoming documents and save both original and
     summarized contents.
-    An official plugin is available to test this procedure.
 
     Args:
         docs: List[Document]

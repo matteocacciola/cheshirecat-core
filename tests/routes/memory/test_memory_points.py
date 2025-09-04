@@ -19,11 +19,6 @@ def test_create_point_wrong_collection(secure_client, secure_client_headers, che
     assert res.status_code == 404
     assert "Collection does not exist" in res.json()["detail"]["error"]
 
-    # cannot write procedural point
-    res = secure_client.post("/memory/collections/procedural/points", json=req_json, headers=headers)
-    assert res.status_code == 400
-    assert "Procedural memory is read-only" in res.json()["detail"]["error"]
-
 
 def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
     user = crud_users.get_user_by_username(agent_id, "user")
@@ -75,11 +70,6 @@ def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_
     res = secure_client.delete(f"/memory/collections/wrongcollection/points/{mem['id']}", headers=secure_client_headers)
     assert res.status_code == 404
     assert res.json()["detail"]["error"] == "Collection does not exist."
-
-    # cannot write procedural point
-    res = secure_client.delete(f"/memory/collections/procedural/points/{mem['id']}", headers=secure_client_headers)
-    assert res.status_code == 400
-    assert "Procedural memory is read-only" in res.json()["detail"]["error"]
 
     # delete point (wrong id)
     res = secure_client.delete("/memory/collections/declarative/points/wrong_id", headers=secure_client_headers)
@@ -169,11 +159,6 @@ def test_get_collection_points_wrong_collection(secure_client, secure_client_hea
     res = secure_client.get("/memory/collections/unexistent/points", headers=secure_client_headers)
     assert res.status_code == 404
     assert "Collection does not exist" in res.json()["detail"]["error"]
-
-    # reserved procedural collection
-    res = secure_client.get("/memory/collections/procedural/points", headers=secure_client_headers)
-    assert res.status_code == 400
-    assert "Procedural memory is read-only." in res.json()["detail"]["error"]
 
 
 def test_get_collection_points(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
@@ -299,11 +284,6 @@ def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_client_
     res = secure_client.put(f"/memory/collections/wrongcollection/points/{point_id}", json=req_json, headers=headers)
     assert res.status_code == 404
     assert "Collection does not exist" in res.json()["detail"]["error"]
-
-    # cannot write procedural point
-    res = secure_client.put("/memory/collections/procedural/points/{point_id}", json=req_json, headers=headers)
-    assert res.status_code == 400
-    assert "Procedural memory is read-only" in res.json()["detail"]["error"]
 
     # point do not exist
     res = secure_client.put("/memory/collections/declarative/points/{point_id}", json=req_json, headers=headers)

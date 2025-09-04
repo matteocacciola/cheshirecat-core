@@ -51,9 +51,6 @@ async def destroy_all_collection_points(
         ) for c in VectorMemoryCollectionTypes
     }
 
-    ccat.plugin_manager.find_plugins()
-    await ccat.embed_procedures()
-
     return WipeCollectionsResponse(deleted=to_return)
 
 
@@ -70,8 +67,5 @@ async def destroy_all_single_collection_points(
 
     ccat = info.cheshire_cat
     ret = await ccat.vector_memory_handler.destroy_all_points(collection_id)
-
-    ccat.plugin_manager.find_plugins()
-    await ccat.embed_procedures()
 
     return WipeCollectionsResponse(deleted={collection_id: ret})

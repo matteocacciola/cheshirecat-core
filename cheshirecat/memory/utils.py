@@ -8,7 +8,6 @@ from cheshirecat.utils import Enum as BaseEnum, BaseModelDict
 
 class VectorMemoryCollectionTypes(BaseEnum):
     DECLARATIVE = "declarative"
-    PROCEDURAL = "procedural"
 
 
 class DocumentRecall(BaseModelDict):

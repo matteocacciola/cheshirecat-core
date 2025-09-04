@@ -83,15 +83,6 @@ def create_mock_plugin_zip(flat: bool, plugin_id="mock_plugin"):
     )
 
 
-# utility to retrieve embedded tools from endpoint
-def get_procedural_memory_contents(client, params=None, headers=None):
-    headers = headers or {} | {"agent_id": agent_id}
-    final_params = (params or {}) | {"text": "random"}
-    response = client.get("/memory/recall/", params=final_params, headers=headers)
-    json = response.json()
-    return json["vectors"]["collections"]["procedural"]
-
-
 # utility to retrieve declarative memory contents
 def get_declarative_memory_contents(client, headers=None):
     headers = headers or {} | {"agent_id": agent_id}

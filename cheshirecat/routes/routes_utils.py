@@ -13,7 +13,7 @@ from cheshirecat.auth.connection import AuthorizedInfo
 from cheshirecat.db.database import DEFAULT_AGENT_KEY
 from cheshirecat.db.cruds import settings as crud_settings
 from cheshirecat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
-from cheshirecat.factory.base_factory import ReplacedNLPConfig, BaseFactory
+from cheshirecat.factory.base_factory import BaseFactory
 from cheshirecat.looking_glass import BillTheLizard, CheshireCat, WhiteRabbit
 from cheshirecat.mad_hatter import MadHatter, Plugin, registry_search_plugins
 from cheshirecat.memory.utils import VectorMemoryCollectionTypes
@@ -34,7 +34,10 @@ class JWTResponse(BaseModel):
     token_type: str = "bearer"
 
 
-class UpsertSettingResponse(ReplacedNLPConfig):
+class UpsertSettingResponse(BaseModel):
+    name: str
+    value: Dict
+
     @model_serializer
     def serialize_model(self) -> Dict[str, Any]:
         """Custom serializer that will be used by FastAPI"""
@@ -232,10 +235,6 @@ def memory_collection_is_accessible(collection_id: str) -> None:
     # check if collection exists
     if collection_id not in VectorMemoryCollectionTypes:
         raise CustomNotFoundException("Collection does not exist.")
-
-    # do not touch procedural memory
-    if collection_id == VectorMemoryCollectionTypes.PROCEDURAL:
-        raise CustomValidationException("Procedural memory is read-only.")
 
 
 async def verify_memory_point_existence(cheshire_cat: CheshireCat, collection_id: str, point_id: str) -> None:

@@ -20,10 +20,15 @@ WORKDIR /app
 RUN pip install -U pip && \
     pip install --no-cache-dir -r requirements.txt
 
-FROM libraries AS build-dev
+FROM libraries AS scaffold
+
+COPY ./data /app/data
+COPY ./static /app/static
 
 ### COPY CAT CODE INSIDE THE CONTAINER (so it can be run standalone) ###
-COPY cheshirecat /app/cheshirecat
+COPY ./cheshirecat /app/cheshirecat
+
+FROM scaffold AS build-dev
 
 ### INSTALL PYTHON DEPENDENCIES (Plugins) ###
 RUN find /app/cheshirecat/core_plugins -name requirements.txt -exec pip install -r {} \;
@@ -32,10 +37,7 @@ RUN find /app/cheshirecat/core_plugins -name requirements.txt -exec pip install 
 ### FINISH ###
 CMD python3 -m cheshirecat.main
 
-FROM libraries AS build-prod
-
-### COPY CAT CODE INSIDE THE CONTAINER (so it can be run standalone) ###
-COPY cheshirecat /app/cheshirecat
+FROM scaffold AS build-prod
 
 ### FINISH ###
 CMD python3 -m cheshirecat.main

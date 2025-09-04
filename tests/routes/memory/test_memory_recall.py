@@ -16,18 +16,12 @@ def test_memory_recall_default_success(secure_client, secure_client_headers):
     assert isinstance(json["query"]["vector"][0], float)
 
     # results are grouped by collection
-    assert len(json["vectors"]["collections"]) == 2
-    assert {"declarative", "procedural"} == set(
-        json["vectors"]["collections"].keys()
-    )
+    assert len(json["vectors"]["collections"]) == 1
+    assert "declarative" == list(json["vectors"]["collections"].keys())[0]
 
     # initial collections contents
-    for collection in json["vectors"]["collections"].keys():
-        assert isinstance(json["vectors"]["collections"][collection], list)
-        if collection == "procedural":
-            assert len(json["vectors"]["collections"][collection]) > 0
-        else:
-            assert len(json["vectors"]["collections"][collection]) == 0
+    assert isinstance(json["vectors"]["collections"]["declarative"], list)
+    assert len(json["vectors"]["collections"]["declarative"]) == 0
 
 
 # search without query should throw error

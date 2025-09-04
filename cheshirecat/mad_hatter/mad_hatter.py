@@ -169,7 +169,7 @@ class MadHatter(ABC):
         return self.plugins[name]
 
     @property
-    def procedures(self):
+    def procedures(self) -> List[CatTool | CatForm]:
         return self.tools + self.forms
 
     @abstractmethod

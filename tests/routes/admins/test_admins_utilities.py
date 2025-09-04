@@ -46,7 +46,7 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
 
     # check that the vector database is not empty
     c = await cheshire_cat.vector_memory_handler._client.get_collections()
-    assert len(c.collections) == 2
+    assert len(c.collections) == 1
 
     histories = get_db().get(crud_history.format_key(cheshire_cat.id, "*"))
     assert histories is None
@@ -130,8 +130,8 @@ async def test_agent_reset_success(client, lizard, cheshire_cat):
     for c in VectorMemoryCollectionTypes:
         num_vectors = await ccat.vector_memory_handler.get_vectors_count(str(c))
         points, _ = await ccat.vector_memory_handler.get_all_points(str(c))
-        assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
-        assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
+        assert num_vectors == 0
+        assert len(points) == 0
 
 
 @pytest.mark.asyncio
@@ -161,8 +161,8 @@ async def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard
     for c in VectorMemoryCollectionTypes:
         num_vectors = await cheshire_cat.vector_memory_handler.get_vectors_count(str(c))
         points, _ = await cheshire_cat.vector_memory_handler.get_all_points(str(c))
-        assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
-        assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
+        assert num_vectors == 0
+        assert len(points) == 0
 
 
 @pytest.mark.asyncio
@@ -192,8 +192,8 @@ async def test_agent_destroy_error_because_of_not_existing_agent(client, lizard,
     for c in VectorMemoryCollectionTypes:
         num_vectors = await cheshire_cat.vector_memory_handler.get_vectors_count(str(c))
         points, _ = await cheshire_cat.vector_memory_handler.get_all_points(str(c))
-        assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
-        assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
+        assert num_vectors == 0
+        assert len(points) == 0
 
 
 @pytest.mark.asyncio
@@ -232,5 +232,5 @@ async def test_agent_create_success(client, lizard):
     for c in VectorMemoryCollectionTypes:
         num_vectors = await ccat.vector_memory_handler.get_vectors_count(str(c))
         points, _ = await ccat.vector_memory_handler.get_all_points(str(c))
-        assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
-        assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
+        assert num_vectors == 0
+        assert len(points) == 0

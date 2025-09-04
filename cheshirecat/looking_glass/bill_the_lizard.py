@@ -14,7 +14,6 @@ from cheshirecat.db.cruds import settings as crud_settings, users as crud_users
 from cheshirecat.db.database import DEFAULT_SYSTEM_KEY
 from cheshirecat.env import get_env
 from cheshirecat.exceptions import LoadMemoryException
-from cheshirecat.factory.base_factory import ReplacedNLPConfig
 from cheshirecat.factory.auth_handler import CoreAuthHandler
 from cheshirecat.factory.embedder import EmbedderFactory
 from cheshirecat.log import log
@@ -221,7 +220,7 @@ class BillTheLizard:
         # Get embedder size (langchain classes do not store it)
         self.embedder_size = len(self.embedder.embed_query("hello world"))
 
-    async def replace_embedder(self, language_embedder_name: str, settings: Dict) -> ReplacedNLPConfig:
+    async def replace_embedder(self, language_embedder_name: str, settings: Dict) -> Dict:
         """
         Replace the current embedder with a new one. This method is used to change the embedder of the lizard.
 
@@ -251,16 +250,7 @@ class BillTheLizard:
 
             raise LoadMemoryException(f"Load memory exception: {utils.explicit_error_message(e)}")
 
-        # recreate tools embeddings
-        self.plugin_manager.find_plugins()
-
-        for ccat_id in crud.get_agents_main_keys():
-            ccat = self.get_cheshire_cat(ccat_id)
-
-            # inform the Cheshire Cats about the new plugin available in the system
-            await ccat.embed_procedures()
-
-        return ReplacedNLPConfig(name=language_embedder_name, value=updater.new_setting["value"])
+        return {"name": language_embedder_name, "value": updater.new_setting["value"]}
 
     def get_cheshire_cat(self, agent_id: str) -> CheshireCat | None:
         """
@@ -317,7 +307,6 @@ class BillTheLizard:
 
         ccat = CheshireCat(agent_id)
         await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
-        await ccat.embed_procedures()
 
         return ccat
 

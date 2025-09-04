@@ -30,7 +30,7 @@ async def recall(
             Please first run cheshire_cat.embedder.embed_query(query) if you have a string query to pass here.
         collection_name: str
             The name of the collection to perform the search.
-            Available collections are: *declarative*, *procedural*.
+            Available collection is: *declarative*.
         k: int | None
             The number of memories to retrieve.
             If `None` retrieves all the available memories.
@@ -79,8 +79,6 @@ def recall_relevant_memories_to_working_memory(cat: "StrayCat", query: str):
     See Also:
         cat_recall_query
         before_cat_recalls_memories
-        before_cat_recalls_declarative_memories
-        before_cat_recalls_procedural_memories
         after_cat_recalls_memories
 
     Examples
@@ -112,14 +110,7 @@ def recall_relevant_memories_to_working_memory(cat: "StrayCat", query: str):
     # Setting default recall configs for each memory + hooks to change recall configs for each memory
     metadata = cat.working_memory.user_message.get("metadata", {})
     for memory_type in VectorMemoryCollectionTypes:
-        config = utils.restore_original_model(
-            plugin_manager.execute_hook(
-                f"before_cat_recalls_{str(memory_type)}_memories",
-                RecallSettings(embedding=recall_query_embedding, metadata=metadata),
-                cat=cat,
-            ),
-            RecallSettings,
-        )
+        config = RecallSettings(embedding=recall_query_embedding, metadata=metadata)
 
         utils.dispatch_event(
             recall,

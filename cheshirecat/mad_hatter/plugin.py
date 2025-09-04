@@ -70,10 +70,7 @@ class Plugin:
 
     def activate(self, agent_id: str):
         # install plugin requirements on activation
-        try:
-            self._install_requirements()
-        except Exception as e:
-            raise e
+        self._install_requirements()
 
         # load hooks and tools
         self._load_decorated_functions()
@@ -323,8 +320,6 @@ class Plugin:
                 if package_name not in installed_packages:
                     filtered_requirements.append(req)
                     continue
-
-                log.debug(f"{package_name} is already installed")
         except Exception as e:
             log.error(f"Error during requirements check: {e}, for {self.id}")
 
@@ -357,6 +352,7 @@ class Plugin:
         endpoints = []
         plugin_overrides = []
 
+        load_done = True
         for py_file in self._py_files:
             py_filename = self._get_py_filename_dotted_notation(py_file)
 
@@ -384,6 +380,12 @@ class Plugin:
                     f"Error in {py_filename}: {str(e)}. Unable to load plugin {self._id}"
                 )
                 log.warning(self.plugin_specific_error_message())
+                load_done = False
+                break
+
+        if not load_done:
+            self._unload_decorated_functions()
+            raise Exception(f"Error loading plugin {self._id}")
 
         # clean and enrich instances
         self._hooks = list(map(self._clean_hook, hooks))

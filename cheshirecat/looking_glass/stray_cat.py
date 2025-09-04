@@ -6,7 +6,7 @@ from langchain_core.runnables import RunnableConfig, RunnableLambda
 from websockets.exceptions import ConnectionClosedOK
 
 from cheshirecat import utils
-from cheshirecat.agents import LLMAction, MainAgent, AgentOutput
+from cheshirecat.agents import LLMAction, DefaultAgent, AgentOutput
 from cheshirecat.auth.permissions import AuthUserInfo
 from cheshirecat.experimental.form import CatForm
 from cheshirecat.log import log
@@ -26,7 +26,38 @@ MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
 
 # The Stray cat goes around tools and hook, making troubles
 class StrayCat:
-    """User/session based object containing working memory and a few utility pointers"""
+    """Session object containing user data, conversation state and many utility pointers.
+    The framework creates an instance for every http request and websocket connection, making it available for plugins.
+
+    You will be interacting with an instance of this class directly from within your plugins:
+
+     - in `@hook`, `@tool` and `@endpoint` decorated functions will be passed as argument `cat` or `stray`
+     - in `@form` decorated classes you can access it via `self.cat`
+
+    Attributes
+    ----------
+    user : AuthUserInfo
+        User data object containing user information.
+    agent_id : str
+        The ID of the agent associated with this cat.
+    working_memory : WorkingMemory
+        State machine containing the conversation state, persisted across conversation turns, acting as a simple
+        dictionary / object. It can be used in plugins to store and retrieve data to drive the conversation or do
+        anything else.
+
+        Examples
+        --------
+        Store a value in the working memory during conversation
+        >> cat.working_memory["location"] = "Rome"
+        or
+        >> cat.working_memory.location = "Rome"
+
+        Retrieve a value in later conversation turns
+        >> cat.working_memory["location"]
+        "Rome"
+        >> cat.working_memory.location
+        "Rome"
+    """
     def __init__(self, agent_id: str, user_data: AuthUserInfo):
         self.agent_id: Final[str] = agent_id
         self.user: Final[AuthUserInfo] = user_data
@@ -163,8 +194,7 @@ class StrayCat:
         self,
         prompt: BasePromptTemplate,
         prompt_variables: Dict[str, Any] = None,
-        tools: List[CatTool] = None,
-        forms: List[CatForm] = None,
+        procedures: List[CatTool | CatForm] = None,
         stream: bool = False,
         **kwargs
     ) -> str | LLMAction:
@@ -177,10 +207,8 @@ class StrayCat:
                 The prompt for generating the response.
             prompt_variables: Dict[str, Any]
                 The inputs to be passed to the prompt template.
-            tools: List[CatTool], optional
-                List of tools to be used by the LLM.
-            forms: List[CatForm], optional
-                List of forms to be used by the LLM.
+            procedures: List[CatTool | CatForm], optional
+                List of tools or forms to be used by the LLM.
             stream: bool, optional
                 Whether to stream the tokens or not.
 
@@ -191,12 +219,12 @@ class StrayCat:
         callbacks = ([] if not stream else [NewTokenHandler(self)])
         self.mad_hatter.execute_hook("llm_callbacks", callbacks, cat=self)
 
-        tools_forms = (tools or []) + (forms or [])
+        procedures = (procedures or [])
         llm_to_use = self.large_language_model
 
         # Intrinsic detection of tool binding support
         should_bind_tools = False
-        if tools_forms and hasattr(self.large_language_model, "bind_tools"):
+        if procedures and hasattr(self.large_language_model, "bind_tools"):
             # Check if this is an Ollama model that might not support tools
             if hasattr(self.large_language_model, "_client"):
                 supports_tools = (
@@ -221,13 +249,13 @@ class StrayCat:
         if should_bind_tools:
             try:
                 llm_to_use = self.large_language_model.bind_tools(
-                    [tf.langchainfy() for tf in tools_forms]
+                    [p.langchainfy() for p in procedures]
                 )
             except Exception as e:
                 model_id = getattr(self.large_language_model, "model", "unknown")
-                log.warning(f"Tool binding failed for model {model_id} → running without tools. Error: {e}")
-        elif tools_forms:
-            log.debug("Model does not intrinsically support tool binding → skipping tools.")
+                log.warning(f"Tool binding failed for model {model_id} → running without procedures. Error: {e}")
+        elif procedures:
+            log.debug("Model does not intrinsically support procedures binding → skipping tools.")
 
         return_short = kwargs.pop("caller_return_short", False)
         skip = kwargs.pop("caller_skip", 2)
@@ -295,7 +323,7 @@ class StrayCat:
         )
 
         # reply with agent
-        agent = MainAgent(self)
+        agent = DefaultAgent(self)
         try:
             agent_output = await agent.execute()
             if agent_output.output == utils.default_llm_answer_prompt():

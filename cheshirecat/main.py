@@ -1,14 +1,11 @@
 import uvicorn
 
 from cheshirecat.env import get_env, get_env_bool
-from cheshirecat.utils import get_base_path, get_plugins_path, scaffold
+from cheshirecat.utils import get_base_path, get_plugins_path
 
 
 # RUN!
 if __name__ == "__main__":
-    # scaffold dev project with minimal folders (cat is used as a package)
-    scaffold()
-
     # debugging utilities, to deactivate put `DEBUG=false` in .env
     debug_config = {}
     if get_env("CCAT_DEBUG") == "true":

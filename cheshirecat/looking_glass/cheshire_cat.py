@@ -14,7 +14,6 @@ from cheshirecat.db.cruds import (
 )
 from cheshirecat.env import get_env_bool
 from cheshirecat.factory.auth_handler import AuthHandlerFactory
-from cheshirecat.factory.base_factory import ReplacedNLPConfig
 from cheshirecat.factory.auth_handler import BaseAuthHandler
 from cheshirecat.factory.chunker import ChunkerFactory, BaseChunker
 from cheshirecat.factory.file_manager import BaseFileManager, FileManagerFactory
@@ -61,11 +60,6 @@ class CheshireCat:
             self.id, VectorDatabaseFactory(self.plugin_manager)
         )
         self.vector_memory_handler.agent_id = self.id
-
-        # After memory is loaded, we can get/create tools embeddings
-        # every time the plugin_manager finishes syncing hooks, tools and forms, it will notify the Cat (so it can
-        # embed tools in vector memory)
-        self.plugin_manager.on_finish_plugins_sync_callback = self.embed_procedures
 
         # Initialize the default user if not present
         if not crud_users.get_users(self.id):
@@ -135,48 +129,10 @@ class CheshireCat:
         if get_env_bool("CCAT_RABBIT_HOLE_STORAGE_ENABLED") and self.file_manager is not None:
             self.file_manager.remove_folder_from_storage(self.id)
 
-    async def embed_procedures(self):
-        log.info(f"Agent id: {self.id}. Embedding procedures in vector memory")
-        # Destroy all procedural embeddings
-        await self.vector_memory_handler.destroy_all_points(str(VectorMemoryCollectionTypes.PROCEDURAL))
-
-        # Easy access to active procedures in plugin_manager (source of truth!)
-        active_procedures_hashes = [
-            {
-                "obj": ap,
-                "source": ap.name,
-                "type": ap.procedure_type,
-                "trigger_type": trigger_type,
-                "content": trigger_content,
-            }
-            for ap in self.plugin_manager.procedures
-            for trigger_type, trigger_list in ap.triggers_map.items()
-            for trigger_content in trigger_list
-        ]
-
-        payloads = []
-        vectors = []
-        for t in active_procedures_hashes:
-            payloads.append({
-                "page_content": t["content"],
-                "metadata": {
-                    "source": t["source"],
-                    "type": t["type"],
-                    "trigger_type": t["trigger_type"],
-                    "when": time.time(),
-                }
-            })
-            vectors.append(self.lizard.embedder.embed_documents([t["content"]])[0])
-
-        await self.vector_memory_handler.add_points(
-            collection_name=str(VectorMemoryCollectionTypes.PROCEDURAL), payloads=payloads, vectors=vectors
-        )
-        log.info(f"Agent id: {self.id}. Embedded {len(active_procedures_hashes)} triggers in procedural vector memory")
-
     def send_ws_message(self, content: str, msg_type="notification"):
         log.error(f"Agent id: {self.id}. No websocket connection open")
 
-    def replace_llm(self, language_model_name: str, settings: Dict) -> ReplacedNLPConfig:
+    def replace_llm(self, language_model_name: str, settings: Dict) -> Dict:
         """
         Replace the current LLM with a new one. This method is used to change the LLM of the cat.
         Args:
@@ -203,12 +159,9 @@ class CheshireCat:
 
             raise e
 
-        # recreate tools embeddings
-        self.plugin_manager.find_plugins()
+        return {"name": language_model_name, "value": updater.new_setting["value"]}
 
-        return ReplacedNLPConfig(name=language_model_name, value=updater.new_setting["value"])
-
-    def replace_auth_handler(self, auth_handler_name: str, settings: Dict) -> ReplacedNLPConfig:
+    def replace_auth_handler(self, auth_handler_name: str, settings: Dict) -> Dict:
         """
         Replace the current Auth Handler with a new one.
         Args:
@@ -223,9 +176,9 @@ class CheshireCat:
 
         self.custom_auth_handler = get_factory_object(self.id, factory)
 
-        return ReplacedNLPConfig(name=auth_handler_name, value=updater.new_setting["value"])
+        return {"name": auth_handler_name, "value": updater.new_setting["value"]}
 
-    def replace_file_manager(self, file_manager_name: str, settings: Dict) -> ReplacedNLPConfig:
+    def replace_file_manager(self, file_manager_name: str, settings: Dict) -> Dict:
         """
         Replace the current file manager with a new one. This method is used to change the file manager of the lizard.
 
@@ -257,9 +210,9 @@ class CheshireCat:
 
             raise e
 
-        return ReplacedNLPConfig(name=file_manager_name, value=updater.new_setting["value"])
+        return {"name": file_manager_name, "value": updater.new_setting["value"]}
 
-    def replace_chunker(self, chunker_name: str, settings: Dict) -> ReplacedNLPConfig:
+    def replace_chunker(self, chunker_name: str, settings: Dict) -> Dict:
         """
         Replace the current Auth Handler with a new one.
         Args:
@@ -274,11 +227,11 @@ class CheshireCat:
 
         self.chunker = get_factory_object(self.id, ChunkerFactory(self.plugin_manager))
 
-        return ReplacedNLPConfig(name=chunker_name, value=updater.new_setting["value"])
+        return {"name": chunker_name, "value": updater.new_setting["value"]}
 
     async def replace_vector_memory_handler(
         self, vector_memory_name: str, settings: Dict
-    ) -> ReplacedNLPConfig:
+    ) -> Dict:
         """
         Replace the current Vector Memory Handler with a new one.
         Args:
@@ -296,7 +249,7 @@ class CheshireCat:
         lizard = self.lizard
         await self.vector_memory_handler.initialize(lizard.embedder_name, lizard.embedder_size)
 
-        return ReplacedNLPConfig(name=vector_memory_name, value=updater.new_setting["value"])
+        return {"name":vector_memory_name, "value": updater.new_setting["value"]}
 
     @property
     def lizard(self) -> "BillTheLizard":

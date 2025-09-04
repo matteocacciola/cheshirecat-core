@@ -1,16 +1,17 @@
+import re
 from typing import List, Dict, Tuple
 from abc import ABC, abstractmethod
 from langchain_core.messages import BaseMessage
 from langchain_core.documents import Document
 from pydantic import Field
 
+from cheshirecat import utils
 from cheshirecat.experimental.form import CatForm
 from cheshirecat.looking_glass import prompts
-from cheshirecat.utils import BaseModelDict
 from cheshirecat.mad_hatter.decorators import CatTool
 
 
-class LLMAction(BaseModelDict):
+class LLMAction(utils.BaseModelDict):
     """
     Represents an action (tool call) requested by the LLM.
 
@@ -45,7 +46,7 @@ class LLMAction(BaseModelDict):
     return_direct: bool = False
 
 
-class AgentInput(BaseModelDict):
+class AgentInput(utils.BaseModelDict):
     """
     Represents the input to an agent including context documents, user input, and chat history.
 
@@ -63,7 +64,7 @@ class AgentInput(BaseModelDict):
     history: List[BaseMessage] = Field(default_factory=list)
 
 
-class AgentOutput(BaseModelDict):
+class AgentOutput(utils.BaseModelDict):
     """
     Represents the output from an agent execution including text and actions.
 
@@ -86,7 +87,7 @@ class AgentOutput(BaseModelDict):
         return [((action.name, action.input), action.output) for action in self.actions]
 
 
-class BaseAgent(ABC):
+class CatAgent(ABC):
     def __init__(self, stray):
         # important so all agents have the session and utilities at disposal
         # if you subclass and override the constructor, remember to set it or call super()
@@ -104,21 +105,16 @@ class BaseAgent(ABC):
 
         return prompt_prefix + prompt_suffix
 
-    def _get_tools(self) -> List[CatTool]:
-        """Get both plugins' tools and MCP tools in CatTool format."""
+    def _get_procedures(self) -> List[CatTool | CatForm]:
+        """Get both plugins' tools and MCP tools in CatTool format, plus internal forms."""
         mcp_tools = [] #await self.cat.mcp.list_tools()
-        internal_tools = self._plugin_manager.tools
+        internal_procedures = self._plugin_manager.procedures
 
-        tools = mcp_tools + internal_tools
+        tools = mcp_tools + internal_procedures
 
         return tools
 
-    def _get_forms(self) -> List[CatForm]:
-        """Get plugins' forms in CatForm format."""
-        return self._plugin_manager.forms
-
-    @abstractmethod
-    async def execute(self, stray, *args, **kwargs) -> AgentOutput:
+    async def execute(self, *args, **kwargs) -> AgentOutput:
         """
         Execute the agents.
 
@@ -129,6 +125,73 @@ class BaseAgent(ABC):
         Returns:
             agent_output: AgentOutput
                 Reply of the agent, instance of AgentOutput.
+        """
+        def clean_response(response: str) -> str:
+            # parse the `response` string and get the text from <answer></answer> tag
+            if "<answer>" in response and "</answer>" in response:
+                start = response.index("<answer>") + len("<answer>")
+                end = response.index("</answer>")
+                return response[start:end].strip()
+            # otherwise, remove from `response` all the text between whichever tag and then return the remaining string
+            # This pattern matches any complete tag pair: <tagname>content</tagname>
+            cleaned = re.sub(r'<([^>]+)>.*?</\1>', '', response, flags=re.DOTALL)
+            return cleaned.strip()
+
+        # prepare input to be passed to the agent.
+        #   Info will be extracted from working memory
+        # Note: agent_input works both as a dict and as an object
+        latest_n_history = kwargs.get("latest_n_history", 5) * 2  # each interaction has user + cat message
+
+        agent_input = AgentInput(
+            context=[m.document for m in self._stray.working_memory.declarative_memories],
+            input=self._stray.working_memory.user_message.text,
+            history=[h.langchainfy() for h in self._stray.working_memory.history[-latest_n_history:]]
+        )
+        agent_input = utils.restore_original_model(
+            self._plugin_manager.execute_hook("before_agent_starts", agent_input, cat=self._stray), AgentInput
+        )
+
+        # should we run the default agents?
+        agent_fast_reply = utils.restore_original_model(
+            self._plugin_manager.execute_hook("agent_fast_reply", {}, cat=self._stray),
+            AgentOutput
+        )
+        if agent_fast_reply and agent_fast_reply.output:
+            return agent_fast_reply
+
+        llm_output = await self.execute_llm(agent_input)
+        if type(llm_output) is str:
+            # simple string message
+            return AgentOutput(output=clean_response(llm_output))
+
+        if type(llm_output) is LLMAction:
+            procedures = self._get_procedures()
+
+            # LLM has chosen a tool or a form, run it to get the output
+            for procedure in procedures:
+                if procedure.name == llm_output.name:
+                    # update the action with an output, actually executing the tool / form
+                    llm_output = utils.dispatch_event(procedure.execute, stray=self._stray, action=llm_output)
+
+            return AgentOutput(output=llm_output.output, actions=[llm_output])
+
+        return AgentOutput()
+
+    @abstractmethod
+    async def execute_llm(self, agent_input: AgentInput) -> str | LLMAction:
+        """
+        Abstract method to execute the LLM with the given agent input.
+
+        This method should be implemented by subclasses to define how the
+        LLM is called and how it processes the agent input.
+
+        Args:
+            agent_input: AgentInput
+                The input to the agent including context documents, user input, and chat history.
+
+        Returns:
+            str | LLMAction
+                The output from the LLM, which can be a simple string message or an LLMAction.
         """
         pass
 

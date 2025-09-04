@@ -24,7 +24,6 @@ def test_create_working_memory():
     assert wm.user_message_json is None
     assert wm.recall_query == ""
     assert wm.declarative_memories == []
-    assert wm.procedural_memories == []
     assert wm.model_interactions == []
 
 

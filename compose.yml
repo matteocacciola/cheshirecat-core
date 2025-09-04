@@ -28,6 +28,8 @@ services:
       - CCAT_RABBITMQ_PASSWORD=guest
     volumes:
       - ./cheshirecat:/app/cheshirecat
+      - ./data:/app/data
+      - ./static:/app/static
       - ./tests:/app/tests
       - ./pyproject.toml:/app/pyproject.toml
       - ./requirements.txt:/app/requirements.txt

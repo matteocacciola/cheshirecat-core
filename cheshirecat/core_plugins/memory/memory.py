@@ -15,7 +15,7 @@ def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
     # update conversation history (user turn)
     cat.working_memory.update_history(who="user", content=user_message)
 
-    # recall declarative and procedural memories from vector collections and store them in working_memory
+    # recall declarative memory from vector collections and store it in working_memory
     try:
         recall_relevant_memories_to_working_memory(cat=cat, query=user_message.text)
     except Exception as e:

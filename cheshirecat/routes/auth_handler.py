@@ -45,4 +45,4 @@ async def upsert_authenticator_setting(
     ccat = info.cheshire_cat
     on_upsert_factory_setting(auth_handler_name, AuthHandlerFactory(ccat.plugin_manager))
 
-    return UpsertSettingResponse(**ccat.replace_auth_handler(auth_handler_name, payload).model_dump())
+    return UpsertSettingResponse(**ccat.replace_auth_handler(auth_handler_name, payload))

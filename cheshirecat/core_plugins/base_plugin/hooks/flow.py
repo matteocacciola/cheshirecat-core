@@ -147,62 +147,6 @@ def before_cat_recalls_memories(cat) -> None:
     pass
 
 
-@hook(priority=0)
-def before_cat_recalls_declarative_memories(declarative_recall_config: Dict, cat) -> Dict:
-    """
-    Hook into semantic search in memories.
-
-    Allows to intercept when the Cat queries the memories using the embedded user's input.
-
-    The hook is executed just before the Cat searches for the meaningful context in both memories
-    and stores it in the *Working Memory*.
-
-    The hook return the values for maximum number (k) of items to retrieve from memory and the score threshold applied
-    to the query in the vector memory (items with score under threshold are not retrieved)
-    It also returns the embedded query (embedding) and the conditions on recall (metadata).
-
-    Args:
-        declarative_recall_config: Dict | RecallSettings
-            Data needed to recall declarative memories
-        cat: StrayCat
-            Stray Cat instance.
-
-    Returns:
-        declarative_recall_config: Dict
-            Edited dictionary that will be fed to the embedder.
-
-    """
-    return declarative_recall_config
-
-
-@hook(priority=0)
-def before_cat_recalls_procedural_memories(procedural_recall_config: Dict, cat) -> Dict:
-    """
-    Hook into semantic search in memories.
-
-    Allows to intercept when the Cat queries the memories using the embedded user's input.
-
-    The hook is executed just before the Cat searches for the meaningful context in both memories
-    and stores it in the *Working Memory*.
-
-    The hook return the values for maximum number (k) of items to retrieve from memory and the score threshold applied
-    to the query in the vector memory (items with score under threshold are not retrieved)
-    It also returns the embedded query (embedding) and the conditions on recall (metadata).
-
-    Args:
-        procedural_recall_config: Dict | RecallSettings
-            Data needed to recall tools from procedural memory
-        cat: StrayCat
-            Stray Cat instance.
-
-    Returns:
-        procedural_recall_config: Dict
-            Edited dictionary that will be fed to the embedder.
-
-    """
-    return procedural_recall_config
-
-
 # Called just before the cat recalls memories.
 @hook(priority=0)
 def after_cat_recalls_memories(cat) -> None:
@@ -255,7 +199,6 @@ def before_cat_sends_message(message, agent_output, cat) -> Dict:
                     "intermediate_steps": [...],
                     "memory": {
                         "declarative": declarative_report
-                        "procedural": procedural_report
                     },
                 },
             }

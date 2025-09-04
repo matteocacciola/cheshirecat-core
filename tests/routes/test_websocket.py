@@ -20,7 +20,8 @@ def check_correct_websocket_reply(reply):
     assert isinstance(why["input"], str)
     assert isinstance(why["intermediate_steps"], list)
     assert isinstance(why["memory"], dict)
-    assert {"procedural", "declarative"} == set(why["memory"].keys())
+    assert len(why["memory"].keys()) == 1
+    assert "declarative" == list(why["memory"].keys())[0]
 
 
 def test_websocket(secure_client):

@@ -1,10 +1,9 @@
-import os.path
 from fastapi import Request, FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from cheshirecat.auth.connection import HTTPAuth
 from cheshirecat.auth.permissions import AuthPermission, AuthResource
-from cheshirecat.utils import get_static_path, scaffold
+from cheshirecat.utils import get_static_path
 
 
 class AuthStatic(StaticFiles):
@@ -16,9 +15,6 @@ class AuthStatic(StaticFiles):
 
 
 def mount(cheshire_cat_api: FastAPI):
-    if not os.path.exists(get_static_path()):
-        scaffold()
-
     # static files folder available to plugins
     cheshire_cat_api.mount(
         "/static/", AuthStatic(directory=get_static_path()), name="static"

@@ -8,11 +8,6 @@ from cheshirecat.mad_hatter import MadHatter
 from cheshirecat.services.string_crypto import StringCrypto
 
 
-class ReplacedNLPConfig(BaseModel):
-    name: str
-    value: Dict
-
-
 class BaseFactoryConfigModel(ABC, BaseModel):
     crypto: Final = StringCrypto()
 
