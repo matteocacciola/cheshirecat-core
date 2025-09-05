@@ -6,7 +6,7 @@ from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTempla
 from pydantic import Field
 
 from cat import utils
-from cat.looking_glass import prompts
+from cat.templates import prompts
 from cat.mad_hatter import CatProcedure
 
 
@@ -73,7 +73,24 @@ class AgentOutput(utils.BaseModelDict):
         ] if self.action else []
 
 
-class CatAgent:
+class Dormouse:
+    """
+    The Dormouse agent. It uses the LLM to process user input, access tools and forms,
+    and generate responses based on context and history. It integrates with plugins
+    to extend its capabilities. It is designed to be flexible and extensible.
+
+    Attributes
+    ----------
+    stray : Stray
+        The main Stray instance providing access to session and utilities.
+    _plugin_manager : PluginManager
+        The plugin manager for handling plugins and their hooks.
+
+    Methods
+    -------
+    execute(*args, **kwargs) -> AgentOutput
+        Executes the agent with the given arguments and returns the output.
+    """
     def __init__(self, stray):
         # important so all agents have the session and utilities at disposal
         # if you subclass and override the constructor, remember to set it or call super()

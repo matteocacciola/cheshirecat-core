@@ -1,4 +1,5 @@
 import json
+from abc import ABC, abstractmethod
 from typing import List, Dict
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 from pydantic import BaseModel, ValidationError
@@ -16,7 +17,7 @@ class CatFormState(Enum):
     CLOSED = "closed"
 
 
-class CatForm(CatProcedure):  # base model of forms
+class CatForm(CatProcedure, ABC):  # base model of forms
     model_class: BaseModel
     start_examples: List[str]
     stop_examples: List[str] = []
@@ -68,8 +69,9 @@ class CatForm(CatProcedure):  # base model of forms
     def autopilot(self) -> bool:
         return self._autopilot
 
-    def _submit(self, form_data) -> str:
-        raise NotImplementedError
+    @abstractmethod
+    def submit(self, form_data) -> str:
+        pass
 
     # Check user confirm the form data
     async def _confirm(self) -> bool:
@@ -137,7 +139,7 @@ JSON:
         if self._state == CatFormState.WAIT_CONFIRM:
             should_confirm = await self._confirm()
             if should_confirm:
-                result = self._submit(self._model)
+                result = self.submit(self._model)
                 self._state = CatFormState.CLOSED
                 return result
 
@@ -156,7 +158,7 @@ JSON:
         # If state is COMPLETE, ask confirm (or execute action directly)
         if self._state == CatFormState.COMPLETE:
             if not self.ask_confirm:
-                result = self._submit(self._model)
+                result = self.submit(self._model)
                 self._state = CatFormState.CLOSED
                 return result
 

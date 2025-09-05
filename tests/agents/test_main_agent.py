@@ -3,7 +3,7 @@ import json
 import pytest
 
 from cat.experimental.form import CatFormState
-from cat.factory.agent import AgentOutput, CatAgent, LLMAction
+from cat.looking_glass.dormouse import AgentOutput, Dormouse, LLMAction
 from cat.utils import default_llm_answer_prompt
 
 from tests.utils import just_installed_plugin
@@ -11,7 +11,7 @@ from tests.utils import just_installed_plugin
 
 @pytest.mark.asyncio
 async def test_execute_main_agent(stray):
-    main_agent = CatAgent(stray)
+    main_agent = Dormouse(stray)
 
     # empty agent execution
     out = await main_agent.execute()
@@ -39,12 +39,12 @@ async def test_execute_main_agent_with_form_submit(secure_client, secure_client_
     async def mock_next(self, *args, **kwargs):
         self._state = CatFormState.COMPLETE
         self._model = json.loads(mocked_model)
-        result = self._submit(self._model)
+        result = self.submit(self._model)
         self._state = CatFormState.CLOSED
         return result
     monkeypatch.setattr("cat.experimental.form.cat_form.CatForm.next", mock_next)
 
-    main_agent = CatAgent(stray)
+    main_agent = Dormouse(stray)
 
     # empty agent execution with form
     out = await main_agent.execute()
@@ -70,7 +70,7 @@ async def test_execute_main_agent_with_tool(stray, monkeypatch):
         )
     monkeypatch.setattr(stray, "llm", mock_llm)
 
-    main_agent = CatAgent(stray)
+    main_agent = Dormouse(stray)
 
     # empty agent execution with tool
     out = await main_agent.execute()

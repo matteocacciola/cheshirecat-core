@@ -7,7 +7,7 @@ from websockets.exceptions import ConnectionClosedOK
 
 from cat import utils
 from cat.auth.permissions import AuthUserInfo
-from cat.factory.agent import LLMAction, CatAgent, AgentOutput
+from cat.looking_glass.dormouse import LLMAction, Dormouse, AgentOutput
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.callbacks import NewTokenHandler
@@ -318,7 +318,7 @@ class StrayCat:
         )
 
         # reply with agent
-        agent = CatAgent(self)
+        agent = Dormouse(self)
         try:
             agent_output = await agent.execute()
             if agent_output.output == utils.default_llm_answer_prompt():
