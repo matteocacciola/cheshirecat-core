@@ -6,14 +6,18 @@ from cat.exceptions import VectorMemoryError
 from cat.log import log
 from cat.mad_hatter.decorators import hook
 from cat.memory.messages import UserMessage
-from cat.utils import get_caller_info
+from cat.utils import get_caller_info, run_callable
 
 
 @hook(priority=1)
 def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
     # recall declarative memory from vector collections and store it in working_memory
     try:
-        recall_relevant_memories_to_working_memory(cat=cat, query=user_message.text)
+        run_callable(
+            recall_relevant_memories_to_working_memory,
+            cat=cat,
+            query=user_message.text,
+        )
     except Exception as e:
         log.error(f"Agent id: {cat.agent_id}. Error during recall {e}")
 

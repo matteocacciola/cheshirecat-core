@@ -51,13 +51,6 @@ async def test_stray_classify(stray_no_memory):
 
 
 @pytest.mark.asyncio
-async def test_stray_recall_invalid_collection_name(stray, lizard):
-    with pytest.raises(ValueError) as exc_info:
-        await recall(stray, lizard.embedder.embed_query("Hello, I'm Alice"), "invalid_collection")
-    assert "invalid_collection is not a valid collection" in str(exc_info.value)
-
-
-@pytest.mark.asyncio
 async def test_stray_recall_all_memories(secure_client, secure_client_headers, stray, lizard):
     expected_chunks = 4
     send_file("sample.pdf", "application/pdf", secure_client, secure_client_headers)

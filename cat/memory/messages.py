@@ -1,16 +1,11 @@
-import base64
 import time
 from abc import ABC
-from io import BytesIO
 from typing import Literal, List, Dict
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage as BaseLangChainMessage
 from pydantic import computed_field
 from typing_extensions import deprecated
-import requests
-from PIL import Image
 
-from cat.log import log
-from cat.utils import BaseModelDict
+from cat.utils import BaseModelDict, retrieve_image
 
 
 class MessageWhy(BaseModelDict):
@@ -188,31 +183,10 @@ class ConversationHistoryItem(BaseModelDict):
         BaseLangChainMessage
             The LangChain BaseMessage converted from the internal ConversationHistoryItem.
         """
-        def langchainfy_image():
-            if not self.content.image:
-                return None
-            # If the image is a URL, download it and encode it as a data URI
-            if not self.content.image.startswith("http"):
-                return {"type": "image_url", "image_url": {"url": self.content.image}}
-            try:
-                response = requests.get(self.content.image)
-                response.raise_for_status()
-                # Open the image using Pillow to determine its MIME type
-                img = Image.open(BytesIO(response.content))
-                mime_type = img.format.lower()  # Get MIME type
-                # Encode the image to base64
-                encoded_image = base64.b64encode(response.content).decode('utf-8')
-                image_uri = f"data:image/{mime_type};base64,{encoded_image}"
-                # Add the image as a data URI with the correct MIME type
-                return {"type": "image_url", "image_url": {"url": image_uri}}
-            except requests.RequestException as e:
-                log.error(f"Failed to download image: {e} from {self.content.image}")
-                return None
-
         if self.who == "assistant":
             return AIMessage(name=self.who, content=self.content.text)
 
         content = [{"type": "text", "text": self.content.text}]
-        if (image_formatted := langchainfy_image()) is not None:
-            content.append(image_formatted)
+        if (image_formatted := retrieve_image(self.content.image)) is not None:
+            content.append({"type": "image_url", "image_url": {"url": image_formatted}})
         return HumanMessage(name=self.who, content=content)

@@ -1,6 +1,5 @@
 from typing import List, Dict
 
-from cat import utils
 from cat.core_plugins.memory.models import RecallSettings
 from cat.log import log
 from cat.memory.working_memory import DocumentRecall
@@ -9,7 +8,6 @@ from cat.memory.working_memory import DocumentRecall
 async def recall(
     cat: "StrayCat",
     query: List[float],
-    collection_name: str,
     k: int | None = 5,
     threshold: int | None = None,
     metadata: Dict | None = None,
@@ -27,9 +25,6 @@ async def recall(
         query: List[float]
             The search query, passed as embedding vector.
             Please first run cheshire_cat.embedder.embed_query(query) if you have a string query to pass here.
-        collection_name: str
-            The name of the collection to perform the search.
-            Available collection is: *declarative*.
         k: int | None
             The number of memories to retrieve.
             If `None` retrieves all the available memories.
@@ -45,24 +40,17 @@ async def recall(
     """
     cheshire_cat = cat.cheshire_cat
 
-    if collection_name != "declarative":
-        error_message = f"{collection_name} is not a valid collection. Available collections: 'declarative'."
-
-        log.error(error_message)
-        raise ValueError(error_message)
-
     if k:
         memories = await cheshire_cat.vector_memory_handler.recall_memories_from_embedding(
-            collection_name, query, metadata, k, threshold
+            "declarative", query, metadata, k, threshold
         )
-    else:
-        memories = await cheshire_cat.vector_memory_handler.recall_all_memories(collection_name)
+        return memories
 
-    setattr(cat.working_memory, f"{collection_name}_memories", memories)
+    memories = await cheshire_cat.vector_memory_handler.recall_all_memories("declarative")
     return memories
 
 
-def recall_relevant_memories_to_working_memory(cat: "StrayCat", query: str):
+async def recall_relevant_memories_to_working_memory(cat: "StrayCat", query: str):
     """
     Retrieve context from memory.
     The method retrieves the relevant memories from the vector collections that are given as context to the LLM.
@@ -109,15 +97,14 @@ def recall_relevant_memories_to_working_memory(cat: "StrayCat", query: str):
     metadata = cat.working_memory.user_message.get("metadata", {})
     config = RecallSettings(embedding=recall_query_embedding, metadata=metadata)
 
-    utils.run_callable(
-        recall,
+    memories = await recall(
         cat=cat,
         query=config.embedding,
-        collection_name="declarative",
         k=config.k,
         threshold=config.threshold,
         metadata=config.metadata,
     )
+    cat.working_memory.declarative_memories = memories
 
     # hook to modify/enrich retrieved memories
     plugin_manager.execute_hook("after_cat_recalls_memories", cat=cat)

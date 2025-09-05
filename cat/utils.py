@@ -1,7 +1,11 @@
 import asyncio
+import base64
+from io import BytesIO
 import aiofiles
 from datetime import timedelta
 from enum import Enum as BaseEnum, EnumMeta
+import requests
+from PIL import Image
 from fastapi import UploadFile
 import inspect
 from pydantic import BaseModel, ConfigDict
@@ -481,11 +485,33 @@ def get_file_hash(file_path: str, chunk_size: int = 8192) -> str:
 
 def pod_id() -> str:
     if not os.path.exists(".pod_id"):
-        pod_id = hashlib.sha256(os.urandom(16)).hexdigest()[:8]
+        p_id = hashlib.sha256(os.urandom(16)).hexdigest()[:8]
         with open(".pod_id", "w") as f:
-            f.write(pod_id)
-        return pod_id
+            f.write(p_id)
+        return p_id
 
     with open(".pod_id", "r") as f:
-        pod_id = f.read().strip()
-    return pod_id
+        p_id = f.read().strip()
+    return p_id
+
+
+def retrieve_image(content_image: str | None) -> str | None:
+    if not content_image:
+        return None
+    # If the image is a URL, download it and encode it as a data URI
+    if not content_image.startswith("http"):
+        return content_image
+    try:
+        response = requests.get(content_image)
+        response.raise_for_status()
+        # Open the image using Pillow to determine its MIME type
+        img = Image.open(BytesIO(response.content))
+        mime_type = img.format.lower()  # Get MIME type
+        # Encode the image to base64
+        encoded_image = base64.b64encode(response.content).decode('utf-8')
+        image_uri = f"data:image/{mime_type};base64,{encoded_image}"
+        # Add the image as a data URI with the correct MIME type
+        return image_uri
+    except requests.RequestException as e:
+        log.error(f"Failed to download image: {e} from {content_image}")
+        return None
