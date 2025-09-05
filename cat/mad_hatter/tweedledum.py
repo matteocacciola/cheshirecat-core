@@ -75,7 +75,7 @@ class Tweedledum(MadHatter):
             str: The ID of the installed plugin.
         """
         # extract the plugin from the package
-        utils.run_callable(self.on_start_plugin_install_callback)
+        utils.dispatch(self.on_start_plugin_install_callback)
 
         # extract zip/tar file into plugin folder
         extractor = PluginExtractor(package_plugin)
@@ -95,7 +95,7 @@ class Tweedledum(MadHatter):
             self.activate_plugin(plugin_id)
 
             # notify uninstallation has finished
-            utils.run_callable(self.on_end_plugin_install_callback, plugin_id=plugin_id, plugin_path=plugin_path)
+            utils.dispatch(self.on_end_plugin_install_callback, plugin_id=plugin_id, plugin_path=plugin_path)
 
         return plugin_id
 
@@ -103,7 +103,7 @@ class Tweedledum(MadHatter):
         if not self.plugin_exists(plugin_id) or plugin_id in self.get_core_plugins_ids():
             return
 
-        utils.run_callable(self.on_start_plugin_uninstall_callback, plugin_id=plugin_id)
+        utils.dispatch(self.on_start_plugin_uninstall_callback, plugin_id=plugin_id)
 
         endpoints = self.plugins[plugin_id].endpoints
 
@@ -121,7 +121,7 @@ class Tweedledum(MadHatter):
         crud_plugins.destroy_plugin(plugin_id)
 
         # notify uninstall has finished
-        utils.run_callable(self.on_end_plugin_uninstall_callback, plugin_id=plugin_id, endpoints=endpoints)
+        utils.dispatch(self.on_end_plugin_uninstall_callback, plugin_id=plugin_id, endpoints=endpoints)
 
     # check if plugin exists
     def plugin_exists(self, plugin_id: str):

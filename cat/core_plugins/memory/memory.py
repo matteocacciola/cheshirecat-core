@@ -6,14 +6,14 @@ from cat.exceptions import VectorMemoryError
 from cat.log import log
 from cat.mad_hatter.decorators import hook
 from cat.memory.messages import UserMessage
-from cat.utils import get_caller_info, run_callable
+from cat.utils import get_caller_info, dispatch
 
 
 @hook(priority=1)
 def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
     # recall declarative memory from vector collections and store it in working_memory
     try:
-        run_callable(
+        dispatch(
             recall_relevant_memories_to_working_memory,
             cat=cat,
             query=user_message.text,

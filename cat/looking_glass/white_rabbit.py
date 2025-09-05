@@ -8,7 +8,7 @@ from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
 
 from cat.log import log
-from cat.utils import singleton, run_callable
+from cat.utils import singleton, dispatch
 
 
 class Job(BaseModel):
@@ -67,7 +67,7 @@ class WhiteRabbit:
             self._is_running = False
 
     def __del__(self):
-        run_callable(self.shutdown)
+        dispatch(self.shutdown)
 
     def _job_ended_listener(self, event):
         """

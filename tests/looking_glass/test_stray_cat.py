@@ -22,7 +22,7 @@ async def test_stray_nlp(stray_no_memory):
             HumanMessagePromptTemplate.from_template(template="hey")
         ])
     )
-    assert "You did not configure" in res
+    assert "You did not configure" in res.output
 
     embedding = stray_no_memory.embedder.embed_documents(["hey"])
     assert isinstance(embedding[0], list)

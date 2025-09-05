@@ -24,7 +24,7 @@ from cat.services.websocket_manager import WebSocketManager
 from cat.utils import (
     singleton,
     get_embedder_name,
-    run_callable,
+    dispatch,
     get_factory_object,
     get_updated_factory_object,
     rollback_factory_config,
@@ -95,7 +95,7 @@ class BillTheLizard:
         self._start_consumer_threads()
 
     def __del__(self):
-        run_callable(self.shutdown)
+        dispatch(self.shutdown)
 
     def _start_consumer_threads(self):
         if not MarchHareConfig.is_enabled:
@@ -188,17 +188,6 @@ class BillTheLizard:
             endpoint.activate(self.fastapi_app)
         self._pending_endpoints.clear()
 
-    async def on_replacing_embedder(self):
-        """
-        Callback executed when the embedder is replaced. It informs the Cheshire Cats about the new embedder available
-        in the system.
-        """
-        for ccat_id in crud.get_agents_main_keys():
-            ccat = self.get_cheshire_cat(ccat_id)
-
-            # inform the Cheshire Cats about the new embedder available in the system
-            await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
-
     def initialize_users(self):
         admin_id = str(uuid4())
 
@@ -242,7 +231,11 @@ class BillTheLizard:
         self.load_language_embedder()
 
         try:
-            await self.on_replacing_embedder()
+            for ccat_id in crud.get_agents_main_keys():
+                ccat = self.get_cheshire_cat(ccat_id)
+
+                # inform the Cheshire Cats about the new embedder available in the system
+                await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
         except Exception as e:  # restore the original Embedder
             log.error(e)
 

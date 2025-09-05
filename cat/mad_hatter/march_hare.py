@@ -1,6 +1,6 @@
 import time
 from os import getenv
-from typing import Dict
+from typing import Dict, Callable
 import pika
 import json
 from pika.exceptions import AMQPConnectionError
@@ -79,7 +79,7 @@ class MarchHare:
             if connection:
                 connection.close()
 
-    def consume_event(self, callback: callable, exchange: str, exchange_type: str = "fanout"):
+    def consume_event(self, callback: Callable, exchange: str, exchange_type: str = "fanout"):
         if self._connection_parameters is None:
             return
 

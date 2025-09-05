@@ -435,7 +435,7 @@ def get_embedder_name(embedder: Embeddings) -> str:
     return embedder_name.lower()
 
 
-def run_callable(func: Callable[..., Any], *args, **kwargs) -> Any:
+def dispatch(func: Callable[..., Any], *args, **kwargs) -> Any:
     if not asyncio.iscoroutinefunction(func) and not asyncio.iscoroutine(func):
         return func(*args, **kwargs)
 
@@ -515,3 +515,16 @@ def retrieve_image(content_image: str | None) -> str | None:
     except requests.RequestException as e:
         log.error(f"Failed to download image: {e} from {content_image}")
         return None
+
+
+async def run_sync_or_async(f, *args, **kwargs) -> Any:
+    if inspect.iscoroutinefunction(f):
+        return await f(*args, **kwargs)
+
+    caller = get_caller_info(3, return_short=False)
+
+    # Format and log the warning message
+    log.warning(
+        f"{caller} Deprecation Warning: Function {f} should be async. Please update it."
+    )
+    return f(*args, **kwargs)

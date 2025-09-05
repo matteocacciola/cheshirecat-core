@@ -1,4 +1,4 @@
-from cat.agents import AgentOutput
+from cat.factory.agent import AgentOutput
 from cat.mad_hatter.decorators import CatHook
 from cat.memory.working_memory import CatMessage
 

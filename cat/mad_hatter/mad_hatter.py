@@ -5,10 +5,11 @@ from typing import List, Dict
 
 from cat.db.cruds import settings as crud_settings
 from cat.db.models import Setting
-from cat.log import log
-from cat.mad_hatter.plugin import Plugin
-from cat.mad_hatter.decorators import CustomEndpoint, CatHook, CatTool
 from cat.experimental.form.cat_form import CatForm
+from cat.log import log
+from cat.mad_hatter.decorators import CustomEndpoint, CatHook, CatTool
+from cat.mad_hatter.plugin import Plugin
+from cat.mad_hatter.procedures import CatProcedure
 import cat.utils as utils
 
 
@@ -54,7 +55,7 @@ class MadHatter(ABC):
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
 
         # notify sync has finished
-        utils.run_callable(self.on_finish_plugins_sync_callback)
+        utils.dispatch(self.on_finish_plugins_sync_callback)
 
     def get_core_plugins_ids(self) -> List[str]:
         path = Path(utils.get_core_plugins_path())
@@ -169,7 +170,7 @@ class MadHatter(ABC):
         return self.plugins[name]
 
     @property
-    def procedures(self) -> List[CatTool | CatForm]:
+    def procedures(self) -> List[CatProcedure]:
         return self.tools + self.forms
 
     @abstractmethod

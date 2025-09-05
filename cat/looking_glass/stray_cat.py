@@ -6,15 +6,13 @@ from langchain_core.runnables import RunnableConfig, RunnableLambda
 from websockets.exceptions import ConnectionClosedOK
 
 from cat import utils
-from cat.agents import LLMAction, DefaultAgent, AgentOutput
 from cat.auth.permissions import AuthUserInfo
-from cat.experimental.form import CatForm
+from cat.factory.agent import LLMAction, CatAgent, AgentOutput
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.callbacks import NewTokenHandler
 from cat.looking_glass.white_rabbit import WhiteRabbit
-from cat.mad_hatter import Tweedledee
-from cat.mad_hatter.decorators import CatTool
+from cat.mad_hatter import Tweedledee, CatProcedure
 from cat.memory.messages import CatMessage, UserMessage
 from cat.memory.working_memory import WorkingMemory
 from cat.rabbit_hole import RabbitHole
@@ -194,10 +192,10 @@ class StrayCat:
         self,
         prompt: BasePromptTemplate,
         prompt_variables: Dict[str, Any] = None,
-        procedures: List[CatTool | CatForm] = None,
+        procedures: List[CatProcedure] = None,
         stream: bool = False,
         **kwargs
-    ) -> str | LLMAction:
+    ) -> LLMAction:
         """
         Generate a response using the LLM model.
         This method is useful for generating a response with both a chat and a completion model using the same syntax.
@@ -207,13 +205,13 @@ class StrayCat:
                 The prompt for generating the response.
             prompt_variables: Dict[str, Any]
                 The inputs to be passed to the prompt template.
-            procedures: List[CatTool | CatForm], optional
+            procedures: List[CatProcedure], optional
                 List of tools or forms to be used by the LLM.
             stream: bool, optional
                 Whether to stream the tokens or not.
 
-        Returns: The generated LLM response as a string or an LLMAction if a tool is called.
-            str | LLMAction
+        Returns: The generated LLM response as an LLMAction, incorporating the textual result as well as the eventual
+            tools called by the LLM.
         """
         # Add callbacks from plugins
         callbacks = ([] if not stream else [NewTokenHandler(self)])
@@ -273,16 +271,13 @@ class StrayCat:
         langchain_msg_content = getattr(langchain_msg, "content", str(langchain_msg))
 
         if hasattr(langchain_msg, "tool_calls") and len(langchain_msg.tool_calls) > 0:
-            langchain_tool_call = langchain_msg.tool_calls[0]  # can they be more than one?
             return LLMAction(
-                id=langchain_tool_call["id"],
-                name=langchain_tool_call["name"],
-                input=langchain_tool_call["args"],
-                output=langchain_msg_content
+                output=langchain_msg_content,
+                tools=langchain_msg.tool_calls
             )
 
         # if no tools involved, just return the string
-        return langchain_msg_content
+        return LLMAction(output=langchain_msg_content)
 
     async def __call__(self, user_message: UserMessage) -> CatMessage:
         """
@@ -323,7 +318,7 @@ class StrayCat:
         )
 
         # reply with agent
-        agent = DefaultAgent(self)
+        agent = CatAgent(self)
         try:
             agent_output = await agent.execute()
             if agent_output.output == utils.default_llm_answer_prompt():
@@ -335,7 +330,7 @@ class StrayCat:
             )
 
         # prepare a final cat message
-        final_output = CatMessage(text=str(agent_output.output))
+        final_output = CatMessage(text=agent_output.output)
 
         # run a message through plugins
         final_output = utils.restore_original_model(
@@ -431,7 +426,7 @@ Just output the class, nothing else."""
 
         # find the closest match and its score with levenshtein distance
         best_label, score = min(
-            ((label, utils.levenshtein_distance(response, label)) for label in labels_names),
+            ((label, utils.levenshtein_distance(response.output, label)) for label in labels_names),
             key=lambda x: x[1],
         )
 

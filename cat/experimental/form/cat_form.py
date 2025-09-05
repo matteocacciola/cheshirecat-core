@@ -1,10 +1,10 @@
 import json
 from typing import List, Dict
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
-from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, ValidationError
 
 from cat.log import log
+from cat.mad_hatter.procedures import CatProcedure
 from cat.utils import Enum, parse_json
 
 
@@ -16,16 +16,12 @@ class CatFormState(Enum):
     CLOSED = "closed"
 
 
-class CatForm:  # base model of forms
+class CatForm(CatProcedure):  # base model of forms
     model_class: BaseModel
-    procedure_type: str = "form"
-    name: str = None
-    description: str
     start_examples: List[str]
     stop_examples: List[str] = []
     ask_confirm: bool = False
     triggers_map = None
-    plugin_id = None
     _autopilot = False
 
     def __init__(self, cat) -> None:
@@ -33,6 +29,10 @@ class CatForm:  # base model of forms
         Args:
             cat: StrayCat instance
         """
+        self.func = self.next  # for langchain compatibility
+        if not hasattr(self, "name") or not self.name:
+            self.name = type(self).__name__
+
         self._state = CatFormState.INCOMPLETE
         self._model: Dict = {}
 
@@ -40,6 +40,14 @@ class CatForm:  # base model of forms
 
         self._errors: List[str] = []
         self._missing_fields: List[str] = []
+
+    @property
+    def procedure_type(self) -> str:
+        return "form"
+
+    @property
+    def return_direct(self) -> bool:
+        return True
 
     @property
     def cat(self):
@@ -84,7 +92,7 @@ JSON must be in this format:
             ]),
             prompt_variables={"input": user_message}
         )
-        return "true" in response.lower()
+        return "true" in response.output.lower()
 
     # Check if the user wants to exit the form
     # it is run at the beginning of every form.next()
@@ -121,7 +129,7 @@ JSON:
             ]),
             prompt_variables={"input": user_message}
         )
-        return "true" in response.lower()
+        return "true" in response.output.lower()
 
     # Execute the dialogue step
     async def next(self):
@@ -129,8 +137,9 @@ JSON:
         if self._state == CatFormState.WAIT_CONFIRM:
             should_confirm = await self._confirm()
             if should_confirm:
+                result = self._submit(self._model)
                 self._state = CatFormState.CLOSED
-                return self._submit(self._model)
+                return result
 
             should_exit = await self._check_exit_intent()
             self._state = CatFormState.CLOSED if should_exit else CatFormState.INCOMPLETE
@@ -147,8 +156,9 @@ JSON:
         # If state is COMPLETE, ask confirm (or execute action directly)
         if self._state == CatFormState.COMPLETE:
             if not self.ask_confirm:
+                result = self._submit(self._model)
                 self._state = CatFormState.CLOSED
-                return self._submit(self._model)
+                return result
 
             self._state = CatFormState.WAIT_CONFIRM
 
@@ -213,7 +223,7 @@ JSON:
 
         # json parser
         try:
-            output_model = parse_json(json_str)
+            output_model = parse_json(json_str.output)
         except Exception as e:
             output_model = {}
             log.warning("LLM did not produce a valid JSON")
@@ -289,32 +299,16 @@ Updated JSON:
             # Set state to INCOMPLETE
             self._state = CatFormState.INCOMPLETE
 
-    def langchainfy(self):
-        """Convert CatForm to a langchain compatible StructuredTool object"""
-        if getattr(self, "arg_schema", None) is not None:
-            return StructuredTool(
-                name=self.name.strip().replace(" ", "_"),
-                description=self.description,
-                coroutine=self.next,
-                args_schema=getattr(self, "arg_schema"),
-            )
-
-        return StructuredTool.from_function(
-            name=self.name.strip().replace(" ", "_"),
-            description=self.description,
-            coroutine=self.next,
-        )
-
-    async def execute(self, stray: "StrayCat", action: "LLMAction") -> "LLMAction":
+    async def execute(self, stray: "StrayCat", tool_call: Dict) -> str:
         if self.state == CatFormState.CLOSED:
             # form is closed
-            return action
+            return ""
 
         # continue form
         try:
             # form should be async and should be awaited
-            action.output = await self.next()
-            return action
+            form_output = await self.func()
+            return form_output
         except Exception as e:
             log.error(f"Error while executing form: {e}")
-            return action
+            return ""

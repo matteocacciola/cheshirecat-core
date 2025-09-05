@@ -6,6 +6,7 @@ import traceback
 import time
 from abc import abstractmethod, ABC
 from pprint import pformat
+from typing import Callable
 from loguru import logger
 
 from cat.env import get_env
@@ -144,7 +145,7 @@ class CatLogEngine:
                 # Log any errors in plugin handlers so they don't break the main logging
                 logger.error(f"Error in plugin log handler: {e}", exc_info=True)
 
-    def register_plugin_log_handler(self, handler_func: callable):
+    def register_plugin_log_handler(self, handler_func: Callable):
         """Registers a function from a plugin to receive log messages.
 
         The `handler_func` should accept two arguments: `msg` (str) and `level` (str).
@@ -160,7 +161,7 @@ class CatLogEngine:
 
         self.warning(f"Attempted to register non-callable as log handler: {handler_func}")
 
-    def unregister_plugin_log_handler(self, handler_func: callable):
+    def unregister_plugin_log_handler(self, handler_func: Callable):
         """Unregisters a previously registered plugin log handler."""
         if handler_func in self._plugin_log_handlers:
             self._plugin_log_handlers.remove(handler_func)

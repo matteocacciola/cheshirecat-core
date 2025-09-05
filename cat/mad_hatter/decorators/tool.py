@@ -1,14 +1,15 @@
-import functools
 import inspect
-from typing import Callable, List
-from langchain_core.tools import StructuredTool
+from typing import Callable, List, Dict
 from pydantic import ConfigDict
+
+from cat.mad_hatter.procedures import CatProcedure
+from cat.utils import run_sync_or_async
 
 
 # All @tool decorated functions in plugins become a CatTool.
 # The difference between base langchain Tool and CatTool is that CatTool has an instance of the cat as attribute
 # (set by the plugin manager)
-class CatTool:
+class CatTool(CatProcedure):
     model_config = ConfigDict(extra="allow")
 
     def __init__(
@@ -22,10 +23,9 @@ class CatTool:
         description = func.__doc__.strip() if func.__doc__ else ""
 
         self.func = func
-        self.procedure_type = "tool"
         self.name = name
         self.description = description
-        self.return_direct = return_direct
+        self._return_direct = return_direct
 
         self.triggers_map = {
             "description": [f"{name}: {description}"],
@@ -38,6 +38,14 @@ class CatTool:
     def start_examples(self):
         return self.triggers_map["start_example"]
 
+    @property
+    def procedure_type(self) -> str:
+        return "tool"
+
+    @property
+    def return_direct(self) -> bool:
+        return self._return_direct
+
     def __repr__(self) -> str:
         return f"CatTool(name={self.name}, return_direct={self.return_direct}, description={self.description})"
 
@@ -47,83 +55,33 @@ class CatTool:
     async def arun(self, input_by_llm: dict, stray: "StrayCat") -> str:
         return self.func(input_by_llm, cat=stray)
 
-    def execute(self, stray: "StrayCat", action: "LLMAction") -> "LLMAction":
+    async def execute(self, stray: "StrayCat", tool_call: Dict) -> str:
         """
         Execute a CatTool with the provided LLMAction.
         Will store tool output in action.output.
 
         Parameters
         ----------
-        action: LLMAction
-            Object representing the choice of tool made by the LLM
+        tool_call: Dict
+            LLMAction object containing the tool call information.
         stray: StrayCat
             Session object.
 
         Returns
         -------
-        LLMAction
-            Updated LLM action, with valued output.
+        str
+            The output of the tool execution.
         """
-        if action.input is None:
-            action.input = {}
-        tool_output = self.func(**action.input, cat=stray)
+        tool_output = await run_sync_or_async(self.func, **tool_call["args"], cat=stray)
 
         # Ensure the output is a string or None,
         if tool_output is not None and not isinstance(tool_output, str):
             tool_output = str(tool_output)
 
-        # store tool output
-        action.output = tool_output
-
         # TODO: should return something analogous to:
         #   https://modelcontextprotocol.info/specification/2024-11-05/server/tools/#tool-result
         #   Only supporting text for now
-        return action
-
-    def _remove_cat_from_args(self, function: Callable) -> Callable:
-        """
-        Remove 'cat' and '_' parameters from function signature for LangChain compatibility.
-
-        Parameters
-        ----------
-        function : Callable
-            The function to modify.
-
-        Returns
-        -------
-        Callable
-            The modified function without 'cat' and '_' parameters.
-        """
-        signature = inspect.signature(function)
-        parameters = list(signature.parameters.values())
-
-        filtered_parameters = [p for p in parameters if p.name != 'cat' and p.name != '_']
-        new_signature = signature.replace(parameters=filtered_parameters)
-
-        @functools.wraps(function)
-        def wrapper(*args, **kwargs):
-            if "cat" in kwargs:
-                del kwargs["cat"]
-            return function(*args, **kwargs)
-
-        wrapper.__signature__ = new_signature
-        return wrapper
-
-    def langchainfy(self):
-        """Convert CatTool to a langchain compatible StructuredTool object"""
-        if getattr(self, "arg_schema", None) is not None:
-            return StructuredTool(
-                name=self.name.strip().replace(" ", "_"),
-                description=self.description,
-                func=self._remove_cat_from_args(self.func),
-                args_schema=getattr(self, "arg_schema"),
-            )
-
-        return StructuredTool.from_function(
-            name=self.name.strip().replace(" ", "_"),
-            description=self.description,
-            func=self._remove_cat_from_args(self.func),
-        )
+        return tool_output
 
 
 # @tool decorator, a modified version of a langchain Tool that also takes a Cat instance as argument

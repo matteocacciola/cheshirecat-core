@@ -19,6 +19,7 @@ class PizzaOrder(BaseModel):
 
 @form
 class PizzaForm(CatForm):
+    name = "pizza_order"
     description = "Pizza Order"
     model_class = PizzaOrder
     start_examples = ["order a pizza", "I want pizza"]
