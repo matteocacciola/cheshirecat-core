@@ -92,16 +92,8 @@ class ChunkerFactory(BaseFactory):
         return list_chunkers_default
 
     @property
-    def setting_name(self) -> str:
-        return "chunker_selected"
-
-    @property
     def setting_category(self) -> str:
         return "chunker"
-
-    @property
-    def setting_factory_category(self) -> str:
-        return "chunker_factory"
 
     @property
     def default_config_class(self) -> Type[BaseFactoryConfigModel]:

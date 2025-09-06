@@ -313,21 +313,15 @@ async def shutdown_app(app):
 
 
 def get_factory_settings(agent_id: str, factory: BaseFactory) -> GetSettingsResponse:
-    # get selected AuthHandler
-    selected = crud_settings.get_setting_by_name(agent_id, factory.setting_name)
-    if selected is not None:
-        selected = selected["value"]["name"]
-
-    saved_settings = crud_settings.get_settings_by_category(agent_id, factory.setting_factory_category)
-    saved_settings = {s["name"]: s for s in saved_settings}
+    saved_settings = crud_settings.get_settings_by_category(agent_id, factory.setting_category)
 
     settings = [GetSettingResponse(
         name=class_name,
-        value=saved_settings[class_name]["value"] if class_name in saved_settings else {},
+        value=saved_settings["value"] if class_name == saved_settings["name"] else {},
         scheme=scheme
     ) for class_name, scheme in factory.get_schemas().items()]
 
-    return GetSettingsResponse(settings=settings, selected_configuration=selected)
+    return GetSettingsResponse(settings=settings, selected_configuration=saved_settings["name"])
 
 
 def get_factory_setting(agent_id: str, configuration_name: str, factory: BaseFactory) -> GetSettingResponse:

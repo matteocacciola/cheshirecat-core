@@ -4,8 +4,10 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 from cat.env import get_env
+from cat.utils import singleton
 
 
+@singleton
 class StringCrypto:
     def __init__(self):
         """Initialize with a password-derived key"""

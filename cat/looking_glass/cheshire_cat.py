@@ -139,6 +139,7 @@ class CheshireCat:
         Returns:
             The dictionary resuming the new name and settings of the LLM
         """
+        settings["name"] = language_model_name
         factory = LLMFactory(self.plugin_manager)
         updater = get_updated_factory_object(self.id, factory, language_model_name, settings)
 
@@ -152,7 +153,7 @@ class CheshireCat:
             rollback_factory_config(self.id, factory)
 
             if updater.old_setting is not None:
-                self.replace_llm(updater.old_setting["value"]["name"], updater.new_setting["value"])
+                self.replace_llm(updater.old_setting["name"], updater.new_setting["value"])
 
             raise e
 
@@ -168,6 +169,7 @@ class CheshireCat:
         Returns:
             The dictionary resuming the new name and settings of the Auth Handler
         """
+        settings["name"] = auth_handler_name
         factory = AuthHandlerFactory(self.plugin_manager)
         updater = get_updated_factory_object(self.id, factory, auth_handler_name, settings)
 
@@ -186,6 +188,7 @@ class CheshireCat:
         Returns:
             The dictionary resuming the new name and settings of the file manager
         """
+        settings["name"] = file_manager_name
         factory = FileManagerFactory(self.plugin_manager)
         updater = get_updated_factory_object(self.id, factory, file_manager_name, settings)
 
@@ -203,7 +206,7 @@ class CheshireCat:
             rollback_factory_config(self.id, factory)
 
             if updater.old_setting is not None:
-                self.replace_file_manager(updater.old_setting["value"]["name"], updater.new_setting["value"])
+                self.replace_file_manager(updater.old_setting["name"], updater.new_setting["value"])
 
             raise e
 
@@ -219,6 +222,7 @@ class CheshireCat:
         Returns:
             The dictionary resuming the new name and settings of the Auth Handler
         """
+        settings["name"] = chunker_name
         factory = ChunkerFactory(self.plugin_manager)
         updater = get_updated_factory_object(self.id, factory, chunker_name, settings)
 

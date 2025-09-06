@@ -18,10 +18,10 @@ import tomli
 from typing import Dict, List, Type, TypeVar, Any, Callable
 import hashlib
 
+from cat.db import models
 from cat.env import get_env
 from cat.exceptions import CustomValidationException
 from cat.log import log
-
 
 _T = TypeVar("_T")
 
@@ -133,6 +133,11 @@ def to_camel_case(text: str) -> str:
     if len(text) == 0:
         return text
     return s[0] + "".join(i.capitalize() for i in s[1:])
+
+
+class UpdaterFactory(BaseModel):
+    old_setting: Dict | None = None
+    new_setting: Dict | None = None
 
 
 def verbal_timedelta(td: timedelta) -> str:
@@ -452,27 +457,54 @@ def dispatch(func: Callable[..., Any], *args, **kwargs) -> Any:
 
 
 def get_factory_object(agent_id: str, factory: "BaseFactory") -> Any:
-    from cat.services.factory_adapter import FactoryAdapter
+    from cat.db.cruds import settings as crud_settings
 
-    selected_config = FactoryAdapter(factory).get_factory_config_by_settings(agent_id)
+    if not (selected_config := crud_settings.get_settings_by_category(agent_id, factory.setting_category)):
+        # if no config is saved, use default one and save to db
+        # create the settings for the factory
+        crud_settings.upsert_setting_by_name(
+            agent_id,
+            models.Setting(
+                name=factory.default_config_class.__name__,
+                category=factory.setting_category,
+                value=factory.default_config,
+            ),
+        )
+    
+        # reload from db and return
+        selected_config = crud_settings.get_settings_by_category(agent_id, factory.setting_category)
 
-    return factory.get_from_config_name(agent_id, selected_config["value"]["name"])
+    return factory.get_from_config_name(agent_id, selected_config["name"])
 
 
 def get_updated_factory_object(
     agent_id: str, factory: "BaseFactory", settings_name: str, settings: Dict
-) -> "UpdaterFactory":
-    from cat.services.factory_adapter import FactoryAdapter
+) -> UpdaterFactory:
+    from cat.db.cruds import settings as crud_settings
+    from cat.services.string_crypto import StringCrypto
 
-    adapter = FactoryAdapter(factory)
-    return adapter.upsert_factory_config_by_settings(agent_id, settings_name, settings)
+    current_setting = crud_settings.get_settings_by_category(agent_id, factory.setting_category)
+
+    # upsert the settings for the factory
+    crypto = StringCrypto()
+    final_setting = crud_settings.upsert_setting_by_category(agent_id, models.Setting(
+        name=settings_name,
+        category=factory.setting_category,
+        value={
+            k: crypto.encrypt(v)
+            if isinstance(v, str) and any(suffix in k for suffix in ["_key", "_secret"])
+            else v
+            for k, v in settings.items()
+        },
+    ))
+
+    return UpdaterFactory(old_setting=current_setting, new_setting=final_setting)
 
 
 def rollback_factory_config(agent_id: str, factory: "BaseFactory"):
-    from cat.services.factory_adapter import FactoryAdapter
+    from cat.db.cruds import settings as crud_settings
 
-    adapter = FactoryAdapter(factory)
-    adapter.rollback_factory_config(agent_id)
+    crud_settings.delete_settings_by_category(agent_id, factory.setting_category)
 
 
 def get_file_hash(file_path: str, chunk_size: int = 8192) -> str:

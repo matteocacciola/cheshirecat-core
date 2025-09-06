@@ -339,16 +339,8 @@ class AuthHandlerFactory(BaseFactory):
         return list_auth_handler
 
     @property
-    def setting_name(self) -> str:
-        return "auth_handler_selected"
-
-    @property
     def setting_category(self) -> str:
         return "auth_handler"
-
-    @property
-    def setting_factory_category(self) -> str:
-        return "auth_handler_factory"
 
     @property
     def default_config_class(self) -> Type[BaseFactoryConfigModel]:

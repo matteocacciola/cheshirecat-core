@@ -86,16 +86,8 @@ class EmbedderFactory(BaseFactory):
         return list_embedder
 
     @property
-    def setting_name(self) -> str:
-        return "embedder_selected"
-
-    @property
     def setting_category(self) -> str:
         return "embedder"
-
-    @property
-    def setting_factory_category(self) -> str:
-        return "embedder_factory"
 
     @property
     def default_config_class(self) -> Type[BaseFactoryConfigModel]:

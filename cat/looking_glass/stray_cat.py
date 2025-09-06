@@ -558,5 +558,5 @@ Just output the class, nothing else."""
 
     # each time we access the text splitter, plugins can intervene
     @property
-    def text_splitter(self):
+    def chunker(self):
         return self.cheshire_cat.chunker

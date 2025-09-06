@@ -984,16 +984,8 @@ class VectorDatabaseFactory(BaseFactory):
         return list_vector_dbs
 
     @property
-    def setting_name(self) -> str:
-        return "vector_database_selected"
-
-    @property
     def setting_category(self) -> str:
         return "vector_database"
-
-    @property
-    def setting_factory_category(self) -> str:
-        return "vector_database_factory"
 
     @property
     def default_config_class(self) -> Type[BaseFactoryConfigModel]:

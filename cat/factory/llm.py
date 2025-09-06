@@ -63,16 +63,8 @@ class LLMFactory(BaseFactory):
         return list_llms
 
     @property
-    def setting_name(self) -> str:
-        return "llm_selected"
-
-    @property
     def setting_category(self) -> str:
         return "llm"
-
-    @property
-    def setting_factory_category(self) -> str:
-        return "llm_factory"
 
     @property
     def default_config_class(self) -> Type[BaseFactoryConfigModel]:

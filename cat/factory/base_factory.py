@@ -69,7 +69,9 @@ class BaseFactory(ABC):
         # get plugin file manager factory class
         factory_class = next((cls for cls in self.get_allowed_classes() if cls.__name__ == config_name), None)
         if not factory_class:
-            log.warning(f"Class {config_name} not found in the list of allowed classes for setting {self.setting_name}")
+            log.warning(
+                f"Class {config_name} not found in the list of allowed classes for setting '{self.setting_category}'"
+            )
             return self.default_config_class.get_from_config(self.default_config)
 
         # obtain configuration and instantiate the finalized object by the factory
@@ -89,17 +91,7 @@ class BaseFactory(ABC):
 
     @property
     @abstractmethod
-    def setting_name(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
     def setting_category(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def setting_factory_category(self) -> str:
         pass
 
     @property

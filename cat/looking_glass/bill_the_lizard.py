@@ -218,19 +218,20 @@ class BillTheLizard:
         Replace the current embedder with a new one. This method is used to change the embedder of the lizard.
 
         Args:
-            language_embedder_name: name of the new embedder
             settings: settings of the new embedder
 
         Returns:
             The dictionary resuming the new name and settings of the embedder
         """
+        settings["name"] = language_embedder_name
+
         factory = EmbedderFactory(self.plugin_manager)
         updater = get_updated_factory_object(self._key, factory, language_embedder_name, settings)
 
-        # reload the embedder of the lizard
-        self.load_language_embedder()
-
         try:
+            # reload the embedder of the lizard
+            self.load_language_embedder()
+
             for ccat_id in crud.get_agents_main_keys():
                 ccat = self.get_cheshire_cat(ccat_id)
 
@@ -243,7 +244,7 @@ class BillTheLizard:
             rollback_factory_config(self._key, factory)
 
             if updater.old_setting is not None:
-                await self.replace_embedder(updater.old_setting["value"]["name"], updater.old_factory["value"])
+                await self.replace_embedder(updater.old_setting["name"], updater.old_setting)
 
             raise LoadMemoryException(f"Load memory exception: {utils.explicit_error_message(e)}")
 

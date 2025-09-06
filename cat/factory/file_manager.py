@@ -324,16 +324,8 @@ class FileManagerFactory(BaseFactory):
         return list_file_managers_default
 
     @property
-    def setting_name(self) -> str:
-        return "file_manager_selected"
-
-    @property
     def setting_category(self) -> str:
         return "file_manager"
-
-    @property
-    def setting_factory_category(self) -> str:
-        return "file_manager_factory"
 
     @property
     def default_config_class(self) -> Type[BaseFactoryConfigModel]:
