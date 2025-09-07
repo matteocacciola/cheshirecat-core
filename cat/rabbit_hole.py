@@ -242,7 +242,7 @@ class RabbitHole:
         log.info(f"Agent id: {ccat.id}. Preparing to memorize {len(docs)} vectors")
 
         embedder = ccat.embedder
-        plugin_manager = stray.mad_hatter
+        plugin_manager = stray.plugin_manager
 
         # hook the docs before they are stored in the vector memory
         docs = plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, cat=stray)
@@ -331,7 +331,7 @@ class RabbitHole:
         The default behavior splits the text and executes the hooks, before the splitting.
         `before_rabbithole_splits_text` hook returns the original input without any modification.
         """
-        plugin_manager = stray.mad_hatter
+        plugin_manager = stray.plugin_manager
 
         # do something on the text before it is split
         text = plugin_manager.execute_hook("before_rabbithole_splits_text", text, cat=stray)

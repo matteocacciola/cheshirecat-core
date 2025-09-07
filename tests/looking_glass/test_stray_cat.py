@@ -16,15 +16,15 @@ def test_stray_initialization(stray_no_memory):
 
 
 @pytest.mark.asyncio
-async def test_stray_nlp(stray_no_memory):
-    res = await stray_no_memory.llm(
-        ChatPromptTemplate.from_messages([
+async def test_stray_nlp(lizard, stray_no_memory):
+    res = await stray_no_memory.agent.run(
+        prompt=ChatPromptTemplate.from_messages([
             HumanMessagePromptTemplate.from_template(template="hey")
-        ])
+        ]),
     )
     assert "You did not configure" in res.output
 
-    embedding = stray_no_memory.embedder.embed_documents(["hey"])
+    embedding = lizard.embedder.embed_documents(["hey"])
     assert isinstance(embedding[0], list)
     assert isinstance(embedding[0][0], float)
 

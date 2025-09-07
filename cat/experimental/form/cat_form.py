@@ -88,11 +88,11 @@ JSON must be in this format:
 ```"""
 
         # Queries the LLM and check if user is agree or not
-        response = await self._stray.llm(
-            ChatPromptTemplate.from_messages([
+        response = await self._stray.agent.run(
+            prompt=ChatPromptTemplate.from_messages([
                 HumanMessagePromptTemplate.from_template(template=confirm_prompt)
             ]),
-            prompt_variables={"input": user_message}
+            prompt_variables={"input": user_message},
         )
         return "true" in response.output.lower()
 
@@ -125,11 +125,11 @@ JSON:
 """
 
         # Queries the LLM and check if user is agree or not
-        response = await self._stray.llm(
-            ChatPromptTemplate.from_messages([
+        response = await self._stray.agent.run(
+            prompt=ChatPromptTemplate.from_messages([
                 HumanMessagePromptTemplate.from_template(template=check_exit_prompt)
             ]),
-            prompt_variables={"input": user_message}
+            prompt_variables={"input": user_message},
         )
         return "true" in response.output.lower()
 
@@ -217,10 +217,10 @@ JSON:
 
     # Extract model information from user message
     async def _extract(self):
-        json_str = await self._stray.llm(
-            ChatPromptTemplate.from_messages([
+        json_str = await self._stray.agent.run(
+            prompt=ChatPromptTemplate.from_messages([
                 HumanMessagePromptTemplate.from_template(template=self._extraction_prompt())
-            ])
+            ]),
         )
 
         # json parser

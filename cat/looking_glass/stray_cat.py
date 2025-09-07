@@ -1,25 +1,44 @@
 from typing import Literal, List, Dict, Any, get_args, Final
+from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
-from langchain_core.prompts import ChatPromptTemplate, BasePromptTemplate, HumanMessagePromptTemplate
-from langchain_core.runnables import RunnableConfig, RunnableLambda
+from langchain_core.messages import BaseMessage
+from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
+from pydantic import Field
 from websockets.exceptions import ConnectionClosedOK
 
 from cat import utils
 from cat.auth.permissions import AuthUserInfo
-from cat.looking_glass.dormouse import LLMAction, Dormouse, AgentOutput
+from cat.looking_glass import NewTokenHandler
+from cat.looking_glass.dormouse import Dormouse, AgentOutput
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
-from cat.looking_glass.callbacks import NewTokenHandler
-from cat.looking_glass.white_rabbit import WhiteRabbit
 from cat.mad_hatter import Tweedledee, CatProcedure
 from cat.memory.messages import CatMessage, UserMessage
 from cat.memory.working_memory import WorkingMemory
-from cat.rabbit_hole import RabbitHole
 from cat.services.websocket_manager import WebSocketManager
+from cat.templates import prompts
 
 
 MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
+
+
+class AgentInput(utils.BaseModelDict):
+    """
+    Represents the input to an agent including context documents, user input, and chat history.
+
+    Attributes
+    ----------
+    context : List[Document]
+        List of context documents relevant to the agent's task.
+    input : str
+        The user's input message to the agent.
+    history : List[BaseMessage], optional
+        The chat history as a list of messages, by default [].
+    """
+    context: List[Document]
+    input: str
+    history: List[BaseMessage] = Field(default_factory=list)
 
 
 # The Stray cat goes around tools and hook, making troubles
@@ -61,6 +80,7 @@ class StrayCat:
         self.user: Final[AuthUserInfo] = user_data
 
         self.working_memory = WorkingMemory(agent_id=self.agent_id, user_id=self.user.id)
+        self.agent = Dormouse(self)
 
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""
@@ -188,98 +208,35 @@ class StrayCat:
 
         await self._send_ws_json(error_message)
 
-    async def llm(
-        self,
-        prompt: BasePromptTemplate,
-        prompt_variables: Dict[str, Any] = None,
-        procedures: List[CatProcedure] = None,
-        stream: bool = False,
-        **kwargs
-    ) -> LLMAction:
-        """
-        Generate a response using the LLM model.
-        This method is useful for generating a response with both a chat and a completion model using the same syntax.
-
-        Args:
-            prompt: str
-                The prompt for generating the response.
-            prompt_variables: Dict[str, Any]
-                The inputs to be passed to the prompt template.
-            procedures: List[CatProcedure], optional
-                List of tools or forms to be used by the LLM.
-            stream: bool, optional
-                Whether to stream the tokens or not.
-
-        Returns: The generated LLM response as an LLMAction, incorporating the textual result as well as the eventual
-            tools called by the LLM.
-        """
-        # Add callbacks from plugins
-        callbacks = ([] if not stream else [NewTokenHandler(self)])
-        self.mad_hatter.execute_hook("llm_callbacks", callbacks, cat=self)
-
-        procedures = (procedures or [])
-        llm_to_use = self.large_language_model
-
-        # Intrinsic detection of tool binding support
-        should_bind_tools = False
-        if procedures and hasattr(self.large_language_model, "bind_tools"):
-            # Check if this is an Ollama model that might not support tools
-            if hasattr(self.large_language_model, "_client"):
-                supports_tools = (
-                    hasattr(self.large_language_model, "format_tool_to_ollama") or
-                    hasattr(self.large_language_model, "_convert_tools_to_ollama_tools") or
-                    getattr(self.large_language_model, "supports_tool_calling", False)
-                )
-
-                # Additionally, check if the model has tool-related methods that indicate support
-                tool_methods = [
-                    method
-                    for method in dir(self.large_language_model)
-                    if "tool" in method.lower() and "support" in method.lower()
-                ]
-
-                should_bind_tools = supports_tools or len(tool_methods) > 0
-            else:
-                # For non-Ollama models, assume they support tool binding if they have the method
-                should_bind_tools = True
-
-        # Attempt tool binding only if intrinsically supported
-        if should_bind_tools:
-            try:
-                llm_to_use = self.large_language_model.bind_tools(
-                    [p.langchainfy() for p in procedures]
-                )
-            except Exception as e:
-                model_id = getattr(self.large_language_model, "model", "unknown")
-                log.warning(f"Tool binding failed for model {model_id} → running without procedures. Error: {e}")
-        elif procedures:
-            log.debug("Model does not intrinsically support procedures binding → skipping tools.")
-
-        return_short = kwargs.pop("caller_return_short", False)
-        skip = kwargs.pop("caller_skip", 2)
-        caller = utils.get_caller_info(skip=skip, return_short=return_short)
-
-        chain = (
-            prompt
-            | RunnableLambda(lambda x: log.langchain_log_prompt(x, f"{caller} prompt"))
-            | llm_to_use
-            | RunnableLambda(lambda x: log.langchain_log_output(x, f"{caller} prompt output"))
+    def _get_system_prompt(self) -> str:
+        # obtain prompt parts from plugins
+        prompt_prefix = self.plugin_manager.execute_hook(
+            "agent_prompt_prefix", prompts.MAIN_PROMPT, cat=self
+        )
+        prompt_suffix = self.plugin_manager.execute_hook(
+            "agent_prompt_suffix", "", cat=self
         )
 
-        # in case we need to pass info to the template
-        langchain_msg = await chain.ainvoke(prompt_variables or {}, config=RunnableConfig(callbacks=callbacks))
-        langchain_msg_content = getattr(langchain_msg, "content", str(langchain_msg))
+        return prompt_prefix + prompt_suffix
 
-        if hasattr(langchain_msg, "tool_calls") and len(langchain_msg.tool_calls) > 0:
-            return LLMAction(
-                output=langchain_msg_content,
-                tools=langchain_msg.tool_calls
-            )
+    def _get_procedures(self) -> List[CatProcedure]:
+        """Get both plugins' tools and MCP tools in CatTool format, plus internal forms."""
+        mcp_tools = []  # await self.cat.mcp.list_tools()
 
-        # if no tools involved, just return the string
-        return LLMAction(output=langchain_msg_content)
+        # Tools are already instances, keep them as is
+        tools = mcp_tools + self.plugin_manager.tools
 
-    async def __call__(self, user_message: UserMessage) -> CatMessage:
+        # Forms need to be instantiated
+        form_instances = []
+        for form_class in self.plugin_manager.forms:
+            # Create form instance with stray reference
+            form_instance = form_class(self)
+            form_instances.append(form_instance)
+
+        procedures = tools + form_instances
+        return procedures
+
+    async def __call__(self, user_message: UserMessage, **kwargs) -> CatMessage:
         """
         Run the conversation turn.
 
@@ -317,10 +274,44 @@ class StrayCat:
             UserMessage
         )
 
-        # reply with agent
-        agent = Dormouse(self)
         try:
-            agent_output = await agent.execute()
+            latest_n_history = kwargs.get("latest_n_history", 5) * 2  # each interaction has user + cat message
+
+            agent_input = utils.restore_original_model(
+                self.plugin_manager.execute_hook(
+                    "before_agent_starts",
+                    AgentInput(
+                        context=[m.document for m in self.working_memory.declarative_memories],
+                        input=self.working_memory.user_message.text,
+                        history=[h.langchainfy() for h in self.working_memory.history[-latest_n_history:]]
+                    ),
+                    cat=self
+                ),
+                AgentInput
+            )
+
+            # should we run the default agents?
+            agent_fast_reply = utils.restore_original_model(
+                self.plugin_manager.execute_hook("agent_fast_reply", {}, cat=self),
+                AgentOutput
+            )
+            if agent_fast_reply and agent_fast_reply.output:
+                return CatMessage(text=agent_fast_reply.output)
+
+            # obtain prompt parts from plugins
+            prompt = ChatPromptTemplate.from_messages(
+                [
+                    SystemMessagePromptTemplate.from_template(template=self._get_system_prompt()),
+                    *agent_input.history,
+                ]
+            )
+
+            agent_output = await self.agent.run(
+                prompt=prompt,
+                procedures=self._get_procedures(),
+                prompt_variables={"context": agent_input.context, "input": agent_input.input},
+                callbacks=[NewTokenHandler(self)],
+            )
             if agent_output.output == utils.default_llm_answer_prompt():
                 agent_output.with_llm_error = True
         except Exception as e:
@@ -417,8 +408,8 @@ Allowed classes are:
 {labels_list}{examples_list}
 
 Just output the class, nothing else."""
-        response = await self.llm(
-            ChatPromptTemplate.from_messages([
+        response = await self.agent.run(
+            prompt=ChatPromptTemplate.from_messages([
                 HumanMessagePromptTemplate.from_template(template=prompt)
             ]),
             prompt_variables={"input": sentence},
@@ -469,7 +460,7 @@ Just output the class, nothing else."""
     def large_language_model(self) -> BaseLanguageModel:
         """
         Instance of langchain `LLM`.
-        Only use it if you directly want to deal with langchain, prefer method `stray.llm(prompt)` otherwise.
+        Only use it if you directly want to deal with langchain, prefer method `stray.agent.run(prompt)` otherwise.
         """
         return self.cheshire_cat.large_language_model
 
@@ -489,20 +480,6 @@ Just output the class, nothing else."""
         return self.lizard.embedder
 
     @property
-    def rabbit_hole(self) -> RabbitHole:
-        """
-        Gives access to the `RabbitHole`, to upload documents and URLs into the vector DB.
-
-        Returns:
-            rabbit_hole: RabbitHole
-            Module to ingest documents and URLs for RAG.
-        Examples
-        --------
-        >> cat.rabbit_hole.ingest_file(...)
-        """
-        return self.lizard.rabbit_hole
-
-    @property
     def plugin_manager(self) -> Tweedledee:
         """
         Gives access to the `Tweedledee` plugin manager. Use it to manage plugins and hooks.
@@ -511,45 +488,6 @@ Just output the class, nothing else."""
                 Plugin manager of the Cat.
         """
         return self.cheshire_cat.plugin_manager
-
-    @property
-    def mad_hatter(self) -> Tweedledee:
-        """
-        Gives access to the `Tweedledee` plugin manager.
-
-        Returns:
-            mad_hatter: Tweedledee
-                Module to manage plugins.
-
-        Examples
-        --------
-        Obtain the path in which your plugin is located
-        >> cat.mad_hatter.get_plugin().path
-        /app/plugins/my_plugin
-        Obtain plugin settings
-        >> cat.mad_hatter.get_plugin().load_settings()
-        {"num_cats": 44, "rows": 6, "remainder": 0}
-        """
-        return self.plugin_manager
-
-    @property
-    def white_rabbit(self) -> WhiteRabbit:
-        """
-        Gives access to `WhiteRabbit`, to schedule repeatable tasks.
-
-        Returns:
-            white_rabbit: WhiteRabbit
-                Module to manage cron tasks via `APScheduler`.
-
-        Examples
-        --------
-        Send a websocket message after 30 seconds
-        >> def ring_alarm_api():
-        ...     cat.send_chat_message("It's late!")
-        ...
-        ... cat.white_rabbit.schedule_job(ring_alarm_api, seconds=30)
-        """
-        return WhiteRabbit()
 
     # each time we access the file handlers, plugins can intervene
     @property

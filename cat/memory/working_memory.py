@@ -1,4 +1,4 @@
-from typing import List, Any, Literal
+from typing import List, Any, Literal, Dict
 from typing_extensions import deprecated
 from pydantic import Field
 
@@ -133,5 +133,5 @@ class WorkingMemory(BaseModelDict):
         crud_history.set_history(self.agent_id, self.user_id, self.history)
 
     @property
-    def user_message_json(self) -> UserMessage | None:
-        return self.user_message
+    def user_message_json(self) -> Dict | None:
+        return self.user_message.model_dump() if self.user_message else None

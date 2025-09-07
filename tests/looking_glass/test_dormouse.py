@@ -1,29 +1,30 @@
 import json
-
 import pytest
+from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
 from cat.experimental.form import CatFormState
-from cat.looking_glass.dormouse import AgentOutput, Dormouse, LLMAction
+from cat.looking_glass.dormouse import AgentOutput, LLMAction
 from cat.utils import default_llm_answer_prompt
 
 from tests.utils import just_installed_plugin
 
 
 @pytest.mark.asyncio
-async def test_execute_main_agent(stray):
-    main_agent = Dormouse(stray)
-
+async def test_execute_agent(stray):
     # empty agent execution
-    out = await main_agent.execute()
+    out = await stray.agent.run(
+        prompt=ChatPromptTemplate.from_messages([
+            HumanMessagePromptTemplate.from_template(template="hey")
+        ]),
+    )
     assert isinstance(out, AgentOutput)
     assert out.intermediate_steps == []
     assert out.output == default_llm_answer_prompt()
 
 
 @pytest.mark.asyncio
-async def test_execute_main_agent_with_form_submit(secure_client, secure_client_headers, stray, monkeypatch):
+async def test_execute_agent_with_form_submit(secure_client, secure_client_headers, stray, monkeypatch):
     just_installed_plugin(secure_client, secure_client_headers)
-    stray.working_memory.user_message.text = "I want to order a pizza"
 
     mocked_model = "{\"pizza_type\": \"Margherita\", \"pizza_border\": \"high\", \"phone\": \"1234567890\"}"
     mocked_output = f"Form submitted: {mocked_model}".replace('"', "'")
@@ -34,7 +35,7 @@ async def test_execute_main_agent_with_form_submit(secure_client, secure_client_
             output="",
             tools=[{"name": "pizza_order", "args": {}}]
         )
-    monkeypatch.setattr(stray, "llm", mock_llm)
+    monkeypatch.setattr(stray.agent, "_langchain_run", mock_llm)
 
     async def mock_next(self, *args, **kwargs):
         self._state = CatFormState.COMPLETE
@@ -44,10 +45,14 @@ async def test_execute_main_agent_with_form_submit(secure_client, secure_client_
         return result
     monkeypatch.setattr("cat.experimental.form.cat_form.CatForm.next", mock_next)
 
-    main_agent = Dormouse(stray)
-
     # empty agent execution with form
-    out = await main_agent.execute()
+    out = await stray.agent.run(
+        prompt=ChatPromptTemplate.from_messages([
+            HumanMessagePromptTemplate.from_template(template="{input}")
+        ]),
+        prompt_variables={"input": "I want to order a pizza"},
+        procedures=stray._get_procedures()
+    )
     assert isinstance(out, AgentOutput)
     assert out.intermediate_steps == [
         (
@@ -60,20 +65,22 @@ async def test_execute_main_agent_with_form_submit(secure_client, secure_client_
 
 @pytest.mark.asyncio
 async def test_execute_main_agent_with_tool(stray, monkeypatch):
-    stray.working_memory.user_message.text = "What is the current time?"
-
     # mock the method stray.llm
     async def mock_llm(*args, **kwargs) -> LLMAction:
         return LLMAction(
             output="",
             tools=[{"name": "get_the_time", "args": {}}]
         )
-    monkeypatch.setattr(stray, "llm", mock_llm)
-
-    main_agent = Dormouse(stray)
+    monkeypatch.setattr(stray.agent, "_langchain_run", mock_llm)
 
     # empty agent execution with tool
-    out = await main_agent.execute()
+    out = await stray.agent.run(
+        prompt=ChatPromptTemplate.from_messages([
+            HumanMessagePromptTemplate.from_template(template="{input}")
+        ]),
+        prompt_variables={"input": "What is the current time?"},
+        procedures=stray._get_procedures()
+    )
     assert isinstance(out, AgentOutput)
     assert out.intermediate_steps[0][0] == ('get_the_time', {})
     assert out.intermediate_steps[0][1].startswith("The current time is")

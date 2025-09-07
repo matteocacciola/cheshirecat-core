@@ -1,12 +1,11 @@
 import re
-from typing import List, Dict, Tuple
-from langchain_core.messages import BaseMessage
-from langchain_core.documents import Document
-from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
-from pydantic import Field
+from typing import List, Dict, Tuple, Any
+from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.prompts import BasePromptTemplate
+from langchain_core.runnables import RunnableLambda, RunnableConfig
 
 from cat import utils
-from cat.templates import prompts
+from cat.log import log
 from cat.mad_hatter import CatProcedure
 
 
@@ -28,24 +27,6 @@ class LLMAction(utils.BaseModelDict):
     """
     output: str | None = None
     tools: List[Dict] | None = []
-
-
-class AgentInput(utils.BaseModelDict):
-    """
-    Represents the input to an agent including context documents, user input, and chat history.
-
-    Attributes
-    ----------
-    context : List[Document]
-        List of context documents relevant to the agent's task.
-    input : str
-        The user's input message to the agent.
-    history : List[BaseMessage], optional
-        The chat history as a list of messages, by default [].
-    """
-    context: List[Document]
-    input: str
-    history: List[BaseMessage] = Field(default_factory=list)
 
 
 class AgentOutput(utils.BaseModelDict):
@@ -97,34 +78,6 @@ class Dormouse:
         self._stray = stray
         self._plugin_manager = stray.cheshire_cat.plugin_manager
 
-    def _get_system_prompt(self) -> str:
-        # obtain prompt parts from plugins
-        prompt_prefix = self._plugin_manager.execute_hook(
-            "agent_prompt_prefix", prompts.MAIN_PROMPT, cat=self._stray
-        )
-        prompt_suffix = self._plugin_manager.execute_hook(
-            "agent_prompt_suffix", "", cat=self._stray
-        )
-
-        return prompt_prefix + prompt_suffix
-
-    def _get_procedures(self) -> List[CatProcedure]:
-        """Get both plugins' tools and MCP tools in CatTool format, plus internal forms."""
-        mcp_tools = []  # await self.cat.mcp.list_tools()
-
-        # Tools are already instances, keep them as is
-        tools = mcp_tools + self._plugin_manager.tools
-
-        # Forms need to be instantiated
-        form_instances = []
-        for form_class in self._plugin_manager.forms:
-            # Create form instance with stray reference
-            form_instance = form_class(self._stray)
-            form_instances.append(form_instance)
-
-        procedures = tools + form_instances
-        return procedures
-
     def _clean_response(self, response: str) -> str:
         # parse the `response` string and get the text from <answer></answer> tag
         if "<answer>" in response and "</answer>" in response:
@@ -138,67 +91,111 @@ class Dormouse:
 
         return cleaned.strip()
 
-    async def execute(self, *args, **kwargs) -> AgentOutput:
+    async def _langchain_run(
+        self,
+        prompt: BasePromptTemplate,
+        prompt_variables: Dict[str, Any] = None,
+        procedures: List[CatProcedure] = None,
+        callbacks: List[BaseCallbackHandler] = None,
+    ) -> LLMAction:
         """
-        Execute the agents.
+        Internal method to run the LLM with LangChain, handling tool binding if supported.
+
+        Args:
+            prompt : BasePromptTemplate
+                The prompt template to use for the LLM.
+            prompt_variables : Dict[str, Any], optional
+                Variables to fill in the prompt template, by default None.
+            procedures : List[CatProcedure], optional
+                List of procedures (tools/forms) to bind to the LLM, by default None.
+            callbacks : List[BaseCallbackHandler], optional
+                List of callback handlers for logging and monitoring, by default None.
 
         Returns:
-            agent_output: AgentOutput
-                Reply of the agent, instance of AgentOutput.
+            LLMAction
+                The action taken by the LLM, including output and any tool calls.
         """
-        # prepare input to be passed to the agent.
-        #   Info will be extracted from working memory
-        # Note: agent_input works both as a dict and as an object
-        latest_n_history = kwargs.get("latest_n_history", 5) * 2  # each interaction has user + cat message
+        llm_to_use = self._stray.large_language_model
 
-        agent_input = utils.restore_original_model(
-            self._plugin_manager.execute_hook(
-                "before_agent_starts",
-                AgentInput(
-                    context=[m.document for m in self._stray.working_memory.declarative_memories],
-                    input=self._stray.working_memory.user_message.text,
-                    history=[h.langchainfy() for h in self._stray.working_memory.history[-latest_n_history:]]
-                ),
-                cat=self._stray
-            ),
-            AgentInput
+        # Add callbacks from plugins
+        self._plugin_manager.execute_hook("llm_callbacks", callbacks, cat=self)
+
+        # Intrinsic detection of tool binding support
+        should_bind_tools = False
+        if procedures and hasattr(llm_to_use, "bind_tools"):
+            # For non-Ollama models, assume they support tool binding if they have the method
+            should_bind_tools = True
+
+            # Check if this is an Ollama model that might not support tools
+            if hasattr(llm_to_use, "_client"):
+                supports_tools = (
+                        hasattr(llm_to_use, "format_tool_to_ollama") or
+                        hasattr(llm_to_use, "_convert_tools_to_ollama_tools") or
+                        getattr(llm_to_use, "supports_tool_calling", False)
+                )
+
+                # Additionally, check if the model has tool-related methods that indicate support
+                tool_methods = [
+                    method
+                    for method in dir(llm_to_use)
+                    if "tool" in method.lower() and "support" in method.lower()
+                ]
+                should_bind_tools = supports_tools or len(tool_methods) > 0
+
+        # Attempt tool binding only if intrinsically supported
+        if should_bind_tools:
+            try:
+                llm_to_use = llm_to_use.bind_tools(
+                    [p.langchainfy() for p in procedures]
+                )
+            except Exception as e:
+                model_id = getattr(llm_to_use, "model", "unknown")
+                log.warning(f"Tool binding failed for model {model_id} → running without procedures. Error: {e}")
+        elif procedures:
+            log.debug("Model does not intrinsically support procedures binding → skipping tools.")
+
+        chain = (
+                prompt
+                | RunnableLambda(lambda x: log.langchain_log_prompt(x, f"{self.__class__.__name__} prompt"))
+                | llm_to_use
+                | RunnableLambda(lambda x: log.langchain_log_output(x, f"{self.__class__.__name__} prompt output"))
         )
 
-        # should we run the default agents?
-        agent_fast_reply = utils.restore_original_model(
-            self._plugin_manager.execute_hook("agent_fast_reply", {}, cat=self._stray),
-            AgentOutput
-        )
-        if agent_fast_reply and agent_fast_reply.output:
-            return agent_fast_reply
+        # in case we need to pass info to the template
+        langchain_msg = await chain.ainvoke(prompt_variables or {}, config=RunnableConfig(callbacks=callbacks))
+        langchain_msg_content = getattr(langchain_msg, "content", str(langchain_msg))
 
-        # obtain prompt parts from plugins
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                SystemMessagePromptTemplate.from_template(template=self._get_system_prompt()),
-                *agent_input.history,
-            ]
+        # if no tools involved, just return the string
+        llm_output = LLMAction(output=langchain_msg_content)
+        if hasattr(langchain_msg, "tool_calls") and len(langchain_msg.tool_calls) > 0:
+            llm_output.tools = langchain_msg.tool_calls
+
+        return llm_output
+
+    async def run(
+        self,
+        prompt: BasePromptTemplate,
+        prompt_variables: Dict[str, Any] = None,
+        procedures: List[CatProcedure] = None,
+        callbacks: List[BaseCallbackHandler] = None,
+    ) -> AgentOutput:
+        procedures = procedures or []
+
+        llm_output = await self._langchain_run(
+            prompt=prompt,
+            prompt_variables=prompt_variables or {},
+            procedures=procedures,
+            callbacks=callbacks or [],
         )
 
-        # Format the prompt template with the actual values to get a string
-        # Convert to string - this will combine all messages into a single string
-        llm_output = await self._stray.llm(
-            prompt,
-            prompt_variables={"context": agent_input.context, "input": agent_input.input},
-            procedures=self._get_procedures(),
-            stream=True,
-            caller_return_short=True,
-            caller_skip=2,
-        )
-
-        agent_output = self._clean_response(llm_output.output)
+        agent_output = self._clean_response(llm_output.output.strip())
         if len(llm_output.tools) == 0:
             # No tool calls, update chat response and exit
             return AgentOutput(output=agent_output)
 
         for tool_call in llm_output.tools:
             # LLM has chosen a tool or a form, run it to get the output
-            for procedure in self._get_procedures():
+            for procedure in procedures:
                 if procedure.name != tool_call["name"]:
                     continue
 
@@ -211,7 +208,7 @@ class Dormouse:
                 # append tool request and tool output messages
                 agent_output += f"\n{tool_call['output']}"
 
-        return AgentOutput(output=agent_output.strip(), action=llm_output)
+        return AgentOutput(output=self._clean_response(agent_output.strip()), action=llm_output)
 
     def __str__(self):
         return self.__class__.__name__
