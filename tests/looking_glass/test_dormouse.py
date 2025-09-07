@@ -32,7 +32,7 @@ async def test_execute_agent_with_form_submit(secure_client, secure_client_heade
     # mock the method stray.llm
     async def mock_llm(*args, **kwargs) -> LLMAction:
         return LLMAction(
-            output="",
+            output=mocked_output,
             tools=[{"name": "pizza_order", "args": {}}]
         )
     monkeypatch.setattr(stray.agent, "_langchain_run", mock_llm)
@@ -65,10 +65,12 @@ async def test_execute_agent_with_form_submit(secure_client, secure_client_heade
 
 @pytest.mark.asyncio
 async def test_execute_main_agent_with_tool(stray, monkeypatch):
+    mocked_output = "The current time is 12:00 PM."
+
     # mock the method stray.llm
     async def mock_llm(*args, **kwargs) -> LLMAction:
         return LLMAction(
-            output="",
+            output=mocked_output,
             tools=[{"name": "get_the_time", "args": {}}]
         )
     monkeypatch.setattr(stray.agent, "_langchain_run", mock_llm)

@@ -303,14 +303,19 @@ class StrayCat:
                 [
                     SystemMessagePromptTemplate.from_template(template=self._get_system_prompt()),
                     *agent_input.history,
+                    HumanMessagePromptTemplate.from_template("{input}"),
                 ]
             )
+
+            callbacks = [NewTokenHandler(self)]
+            # Add callbacks from plugins
+            callbacks = self.plugin_manager.execute_hook("llm_callbacks", callbacks, cat=self)
 
             agent_output = await self.agent.run(
                 prompt=prompt,
                 procedures=self._get_procedures(),
                 prompt_variables={"context": agent_input.context, "input": agent_input.input},
-                callbacks=[NewTokenHandler(self)],
+                callbacks=callbacks,
             )
             if agent_output.output == utils.default_llm_answer_prompt():
                 agent_output.with_llm_error = True

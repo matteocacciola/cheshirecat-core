@@ -1,7 +1,7 @@
-from abc import abstractmethod, ABC
+from abc import ABC
 import functools
 import inspect
-from typing import Dict, Callable
+from typing import Callable
 
 from langchain_core.tools import StructuredTool
 
@@ -40,16 +40,6 @@ class CatProcedure(ABC):
         wrapper.__signature__ = new_signature
         return wrapper
 
-    @property
-    @abstractmethod
-    def procedure_type(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def return_direct(self) -> bool:
-        pass
-
     def langchainfy(self) -> StructuredTool:
         """
         Convert CatProcedure to a langchain compatible StructuredTool object.
@@ -72,23 +62,3 @@ class CatProcedure(ABC):
             description=self.description,
             func=self._remove_cat_from_args(self.func),
         )
-
-    @abstractmethod
-    async def execute(self, stray: "StrayCat", tool_call: Dict) -> str:
-        """
-        Execute a CatProcedure with the provided LLMAction.
-        Will store tool output in action.output.
-
-        Parameters
-        ----------
-        tool_call: Dict
-            LLMAction object containing the tool call information.
-        stray: StrayCat
-            Session object.
-
-        Returns
-        -------
-        str
-            The output from executing the procedure.
-        """
-        pass

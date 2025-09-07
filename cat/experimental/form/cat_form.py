@@ -30,7 +30,6 @@ class CatForm(CatProcedure, ABC):  # base model of forms
         Args:
             cat: StrayCat instance
         """
-        self.func = self.next  # for langchain compatibility
         if not hasattr(self, "name") or not self.name:
             self.name = type(self).__name__
 
@@ -41,14 +40,6 @@ class CatForm(CatProcedure, ABC):  # base model of forms
 
         self._errors: List[str] = []
         self._missing_fields: List[str] = []
-
-    @property
-    def procedure_type(self) -> str:
-        return "form"
-
-    @property
-    def return_direct(self) -> bool:
-        return True
 
     @property
     def cat(self):
@@ -87,7 +78,7 @@ JSON must be in this format:
 }}
 ```"""
 
-        # Queries the LLM and check if user is agree or not
+        # Queries the LLM and check if user agrees or not
         response = await self._stray.agent.run(
             prompt=ChatPromptTemplate.from_messages([
                 HumanMessagePromptTemplate.from_template(template=confirm_prompt)
@@ -124,7 +115,7 @@ JSON must be in this format:
 JSON:
 """
 
-        # Queries the LLM and check if user is agree or not
+        # Queries the LLM and check if user agrees or not
         response = await self._stray.agent.run(
             prompt=ChatPromptTemplate.from_messages([
                 HumanMessagePromptTemplate.from_template(template=check_exit_prompt)
@@ -132,40 +123,6 @@ JSON:
             prompt_variables={"input": user_message},
         )
         return "true" in response.output.lower()
-
-    # Execute the dialogue step
-    async def next(self):
-        # If state is WAIT_CONFIRM, check user confirm response.
-        if self._state == CatFormState.WAIT_CONFIRM:
-            should_confirm = await self._confirm()
-            if should_confirm:
-                result = self.submit(self._model)
-                self._state = CatFormState.CLOSED
-                return result
-
-            should_exit = await self._check_exit_intent()
-            self._state = CatFormState.CLOSED if should_exit else CatFormState.INCOMPLETE
-
-        should_exit = await self._check_exit_intent()
-        if should_exit:
-            self._state = CatFormState.CLOSED
-
-        # If the state is INCOMPLETE, execute model update
-        # (and change state based on validation result)
-        if self._state == CatFormState.INCOMPLETE:
-            await self._update()
-
-        # If state is COMPLETE, ask confirm (or execute action directly)
-        if self._state == CatFormState.COMPLETE:
-            if not self.ask_confirm:
-                result = self.submit(self._model)
-                self._state = CatFormState.CLOSED
-                return result
-
-            self._state = CatFormState.WAIT_CONFIRM
-
-        # if state is still INCOMPLETE, recap and ask for new info
-        return self._message()
 
     # Updates the form with the information extracted from the user's response
     # (Return True if the model is updated)
@@ -301,16 +258,43 @@ Updated JSON:
             # Set state to INCOMPLETE
             self._state = CatFormState.INCOMPLETE
 
-    async def execute(self, stray: "StrayCat", tool_call: Dict) -> str:
+    async def func(self) -> str:
         if self.state == CatFormState.CLOSED:
             # form is closed
             return ""
 
         # continue form
         try:
-            # form should be async and should be awaited
-            form_output = await self.func()
-            return form_output
+            should_exit = await self._check_exit_intent()
+
+            # If state is WAIT_CONFIRM, check user confirm response.
+            if self._state == CatFormState.WAIT_CONFIRM:
+                should_confirm = await self._confirm()
+                if should_confirm:
+                    result = self.submit(self._model)
+                    self._state = CatFormState.CLOSED
+                    return result
+
+                self._state = CatFormState.CLOSED if should_exit else CatFormState.INCOMPLETE
+            elif should_exit:
+                self._state = CatFormState.CLOSED
+
+            # If the state is INCOMPLETE, execute model update
+            # (and change state based on validation result)
+            if self._state == CatFormState.INCOMPLETE:
+                await self._update()
+
+            # If state is COMPLETE, ask confirm (or execute action directly)
+            if self._state == CatFormState.COMPLETE:
+                if not self.ask_confirm:
+                    result = self.submit(self._model)
+                    self._state = CatFormState.CLOSED
+                    return result
+
+                self._state = CatFormState.WAIT_CONFIRM
+
+            # if state is still INCOMPLETE, recap and ask for new info
+            return self._message()
         except Exception as e:
             log.error(f"Error while executing form: {e}")
             return ""

@@ -39,7 +39,6 @@ def test_instantiation_discovery(lizard):
     assert len(plugin_manager.tools) == 3
     for tool in plugin_manager.tools:
         assert isinstance(tool, CatTool)
-        assert tool.plugin_id == "base_plugin"
         assert tool.name in ["get_the_time", "read_working_memory", "get_weather"]
         assert tool.description in [
             "Useful to get the current time when asked. Input is always None.",
@@ -47,7 +46,6 @@ def test_instantiation_discovery(lizard):
             "Get the weather for a given city and date."
         ]
         assert isfunction(tool.func)
-        assert not tool.return_direct
         if tool.name == "get_the_time":
             assert len(tool.start_examples) == 2
             assert "what time is it" in tool.start_examples

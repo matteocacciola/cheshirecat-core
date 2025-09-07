@@ -1,7 +1,7 @@
 import re
 from typing import List, Dict, Tuple, Any
 from langchain_core.callbacks import BaseCallbackHandler
-from langchain_core.prompts import BasePromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnableConfig
 
 from cat import utils
@@ -50,7 +50,7 @@ class AgentOutput(utils.BaseModelDict):
     def intermediate_steps(self) -> List[Tuple[Tuple[str, Dict], str]]:
         """Return the list of actions as intermediate steps for compatibility."""
         return [
-            ((tool["name"], tool["args"]), tool["output"]) for tool in self.action.tools
+            ((tool["name"], tool["args"]), self.output) for tool in self.action.tools
         ] if self.action else []
 
 
@@ -78,22 +78,9 @@ class Dormouse:
         self._stray = stray
         self._plugin_manager = stray.cheshire_cat.plugin_manager
 
-    def _clean_response(self, response: str) -> str:
-        # parse the `response` string and get the text from <answer></answer> tag
-        if "<answer>" in response and "</answer>" in response:
-            start = response.index("<answer>") + len("<answer>")
-            end = response.index("</answer>")
-            return response[start:end].strip()
-
-        # otherwise, remove from `response` all the text between whichever tag and then return the remaining string
-        # This pattern matches any complete tag pair: <tagname>content</tagname>
-        cleaned = re.sub(r'<([^>]+)>.*?</\1>', '', response, flags=re.DOTALL)
-
-        return cleaned.strip()
-
     async def _langchain_run(
         self,
-        prompt: BasePromptTemplate,
+        prompt: ChatPromptTemplate,
         prompt_variables: Dict[str, Any] = None,
         procedures: List[CatProcedure] = None,
         callbacks: List[BaseCallbackHandler] = None,
@@ -102,7 +89,7 @@ class Dormouse:
         Internal method to run the LLM with LangChain, handling tool binding if supported.
 
         Args:
-            prompt : BasePromptTemplate
+            prompt : ChatPromptTemplate
                 The prompt template to use for the LLM.
             prompt_variables : Dict[str, Any], optional
                 Variables to fill in the prompt template, by default None.
@@ -116,9 +103,6 @@ class Dormouse:
                 The action taken by the LLM, including output and any tool calls.
         """
         llm_to_use = self._stray.large_language_model
-
-        # Add callbacks from plugins
-        self._plugin_manager.execute_hook("llm_callbacks", callbacks, cat=self)
 
         # Intrinsic detection of tool binding support
         should_bind_tools = False
@@ -155,10 +139,10 @@ class Dormouse:
             log.debug("Model does not intrinsically support procedures binding → skipping tools.")
 
         chain = (
-                prompt
-                | RunnableLambda(lambda x: log.langchain_log_prompt(x, f"{self.__class__.__name__} prompt"))
-                | llm_to_use
-                | RunnableLambda(lambda x: log.langchain_log_output(x, f"{self.__class__.__name__} prompt output"))
+            prompt
+            | RunnableLambda(lambda x: log.langchain_log_prompt(x, f"{self.__class__.__name__} prompt"))
+            | llm_to_use
+            | RunnableLambda(lambda x: log.langchain_log_output(x, f"{self.__class__.__name__} prompt output"))
         )
 
         # in case we need to pass info to the template
@@ -174,11 +158,40 @@ class Dormouse:
 
     async def run(
         self,
-        prompt: BasePromptTemplate,
+        prompt: ChatPromptTemplate,
         prompt_variables: Dict[str, Any] = None,
         procedures: List[CatProcedure] = None,
         callbacks: List[BaseCallbackHandler] = None,
     ) -> AgentOutput:
+        """
+        Executes the Dormouse agent with the given prompt and procedures. It processes the LLM output, handles tool
+        calls, and generates the final response. It also cleans the response from any tags.
+
+        Args:
+            prompt : ChatPromptTemplate
+                The prompt template to use for the LLM.
+            prompt_variables : Dict[str, Any], optional
+                Variables to fill in the prompt template, by default None.
+            procedures : List[CatProcedure], optional
+                List of procedures (tools/forms) to bind to the LLM, by default None.
+            callbacks : List[BaseCallbackHandler], optional
+                List of callback handlers for logging and monitoring, by default None.
+
+        Returns:
+            AgentOutput
+                The final output from the agent, including text and any actions taken.
+        """
+        def clean_response(response: str) -> str:
+            # parse the `response` string and get the text from <answer></answer> tag
+            if "<answer>" in response and "</answer>" in response:
+                start = response.index("<answer>") + len("<answer>")
+                end = response.index("</answer>")
+                return response[start:end].strip()
+            # otherwise, remove from `response` all the text between whichever tag and then return the remaining string
+            # This pattern matches any complete tag pair: <tagname>content</tagname>
+            cleaned = re.sub(r'<([^>]+)>.*?</\1>', '', response, flags=re.DOTALL)
+            return cleaned.strip()
+
         procedures = procedures or []
 
         llm_output = await self._langchain_run(
@@ -188,27 +201,7 @@ class Dormouse:
             callbacks=callbacks or [],
         )
 
-        agent_output = self._clean_response(llm_output.output.strip())
-        if len(llm_output.tools) == 0:
-            # No tool calls, update chat response and exit
-            return AgentOutput(output=agent_output)
-
-        for tool_call in llm_output.tools:
-            # LLM has chosen a tool or a form, run it to get the output
-            for procedure in procedures:
-                if procedure.name != tool_call["name"]:
-                    continue
-
-                # update the action with an output, actually executing the tool / form
-                tool_call["output"] = await procedure.execute(stray=self._stray, tool_call=tool_call)
-                if procedure.return_direct:
-                    # tool wants a return_direct, update chat response and get out
-                    return AgentOutput(output=tool_call["output"], action=llm_output)
-
-                # append tool request and tool output messages
-                agent_output += f"\n{tool_call['output']}"
-
-        return AgentOutput(output=self._clean_response(agent_output.strip()), action=llm_output)
+        return AgentOutput(output=clean_response(llm_output.output).strip(), action=llm_output)
 
     def __str__(self):
         return self.__class__.__name__
