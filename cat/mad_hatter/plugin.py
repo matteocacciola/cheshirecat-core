@@ -186,7 +186,7 @@ class Plugin:
                 log.warning(self.plugin_specific_error_message())
                 agent_id = DEFAULT_SYSTEM_KEY
 
-        # is "settings_load" hook defined in the plugin?
+        # is "load_settings" hook defined in the plugin?
         if "load_settings" in self.overrides:
             return self.overrides["load_settings"].function()
 
