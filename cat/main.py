@@ -1,7 +1,7 @@
-import os
 import uvicorn
 
 from cat.env import get_env, get_env_bool
+from cat.utils import get_base_path, get_plugins_path
 
 
 # RUN!
@@ -11,7 +11,8 @@ if __name__ == "__main__":
     if get_env("CCAT_DEBUG") == "true":
         debug_config = {
             "reload": True,
-            "reload_excludes": ["*test_*.*", "*mock_*.*", os.path.join("plugins", "*", "*.*")],
+            "reload_dirs": [get_base_path()],
+            "reload_excludes": [get_plugins_path()],
         }
     # uvicorn running behind an https proxy
     proxy_pass_config = {}

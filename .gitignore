@@ -15,7 +15,7 @@ venv
 *dormouse/*
 long_term_memory
 local_vector_memory
-/src/dormouse/*
+dormouse/*
 *metadata.db
 *metadata-v*.db
 *metadata.json
@@ -27,15 +27,15 @@ test_db.db
 admin
 
 # data folder (settings and models)
-src/cat/data/*
-!src/cat/data/.gitkeep
+data/*
+!data/.gitkeep
 
 # plugins are not tracked by git
-src/cat/plugins/*
+cat/plugins/*
 # plugins readme can stay
-!src/cat/plugins/how-to-write-a-plugin.md
+!cat/plugins/how-to-write-a-plugin.md
 
 # cache embedder
-src/local_cache/*
+local_cache/*
 
 compose*.yml*

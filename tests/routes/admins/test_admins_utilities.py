@@ -10,7 +10,6 @@ from cat.db.cruds import (
 )
 from cat.db.database import get_db
 from cat.env import get_env
-from cat.memory.utils import VectorMemoryCollectionTypes
 
 from tests.utils import create_new_user, get_client_admin_headers, new_user_password
 
@@ -46,7 +45,7 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
 
     # check that the vector database is not empty
     c = await cheshire_cat.vector_memory_handler._client.get_collections()
-    assert len(c.collections) == 3
+    assert len(c.collections) == 1
 
     histories = get_db().get(crud_history.format_key(cheshire_cat.id, "*"))
     assert histories is None
@@ -89,11 +88,10 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
     assert users is None
 
     qdrant_filter = Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=cheshire_cat.id))])
-    for c in VectorMemoryCollectionTypes:
-        count_response = await cheshire_cat.vector_memory_handler._client.count(
-            collection_name=str(c), count_filter=qdrant_filter
-        )
-        assert count_response.count == 0
+    count_response = await cheshire_cat.vector_memory_handler._client.count(
+        collection_name="declarative", count_filter=qdrant_filter
+    )
+    assert count_response.count == 0
 
 
 @pytest.mark.asyncio
@@ -127,11 +125,10 @@ async def test_agent_reset_success(client, lizard, cheshire_cat):
     assert len(users) == 1
 
     ccat = lizard.get_cheshire_cat(cheshire_cat.id)
-    for c in VectorMemoryCollectionTypes:
-        num_vectors = await ccat.vector_memory_handler.get_vectors_count(str(c))
-        points, _ = await ccat.vector_memory_handler.get_all_points(str(c))
-        assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
-        assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
+    num_vectors = await ccat.vector_memory_handler.get_vectors_count("declarative")
+    points, _ = await ccat.vector_memory_handler.get_all_points("declarative")
+    assert num_vectors == 0
+    assert len(points) == 0
 
 
 @pytest.mark.asyncio
@@ -158,11 +155,10 @@ async def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard
     collections = await cheshire_cat.vector_memory_handler._client.get_collections()
     assert len(collections.collections) > 0
 
-    for c in VectorMemoryCollectionTypes:
-        num_vectors = await cheshire_cat.vector_memory_handler.get_vectors_count(str(c))
-        points, _ = await cheshire_cat.vector_memory_handler.get_all_points(str(c))
-        assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
-        assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
+    num_vectors = await cheshire_cat.vector_memory_handler.get_vectors_count("declarative")
+    points, _ = await cheshire_cat.vector_memory_handler.get_all_points("declarative")
+    assert num_vectors == 0
+    assert len(points) == 0
 
 
 @pytest.mark.asyncio
@@ -189,11 +185,10 @@ async def test_agent_destroy_error_because_of_not_existing_agent(client, lizard,
     collections = await cheshire_cat.vector_memory_handler._client.get_collections()
     assert len(collections.collections) > 0
 
-    for c in VectorMemoryCollectionTypes:
-        num_vectors = await cheshire_cat.vector_memory_handler.get_vectors_count(str(c))
-        points, _ = await cheshire_cat.vector_memory_handler.get_all_points(str(c))
-        assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
-        assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
+    num_vectors = await cheshire_cat.vector_memory_handler.get_vectors_count("declarative")
+    points, _ = await cheshire_cat.vector_memory_handler.get_all_points("declarative")
+    assert num_vectors == 0
+    assert len(points) == 0
 
 
 @pytest.mark.asyncio
@@ -229,8 +224,7 @@ async def test_agent_create_success(client, lizard):
     assert len(users) == 1
 
     ccat = lizard.get_cheshire_cat(new_agent_id)
-    for c in VectorMemoryCollectionTypes:
-        num_vectors = await ccat.vector_memory_handler.get_vectors_count(str(c))
-        points, _ = await ccat.vector_memory_handler.get_all_points(str(c))
-        assert num_vectors == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
-        assert len(points) == 0 if c != VectorMemoryCollectionTypes.PROCEDURAL else 1
+    num_vectors = await ccat.vector_memory_handler.get_vectors_count("declarative")
+    points, _ = await ccat.vector_memory_handler.get_all_points("declarative")
+    assert num_vectors == 0
+    assert len(points) == 0

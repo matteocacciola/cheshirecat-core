@@ -51,4 +51,4 @@ async def upsert_vector_database_setting(
     on_upsert_factory_setting(vector_database_name, VectorDatabaseFactory(ccat.plugin_manager))
 
     res = await ccat.replace_vector_memory_handler(vector_database_name, payload)
-    return UpsertSettingResponse(**res.model_dump())
+    return UpsertSettingResponse(**res)

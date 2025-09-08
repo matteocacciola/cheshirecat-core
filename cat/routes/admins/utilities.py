@@ -9,7 +9,7 @@ from cat.auth.permissions import AdminAuthResource, AuthPermission, check_admin_
 from cat.db import crud
 from cat.db.database import get_db
 from cat.log import log
-from cat.looking_glass.bill_the_lizard import BillTheLizard
+from cat.looking_glass import BillTheLizard
 from cat.routes.routes_utils import startup_app, shutdown_app
 from cat.utils import get_plugins_path
 

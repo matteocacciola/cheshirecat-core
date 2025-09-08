@@ -1,7 +1,7 @@
 import os
 import glob
 import shutil
-from typing import List, Tuple
+from typing import List
 
 from cat.db.cruds import settings as crud_settings, plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
@@ -36,7 +36,6 @@ class Tweedledum(MadHatter):
     """
     def __init__(self):
         self.__skip_folders = ["__pycache__", "lost+found"]
-        self.__plugins_folder = utils.get_plugins_path()
 
         # this callback is set from outside to be notified when plugin install is started
         self.on_start_plugin_install_callback = lambda: None
@@ -76,57 +75,53 @@ class Tweedledum(MadHatter):
             str: The ID of the installed plugin.
         """
         # extract the plugin from the package
-        plugin_id, plugin_path = self.extract_plugin(package_plugin)
+        utils.dispatch(self.on_start_plugin_install_callback)
+
+        # extract zip/tar file into plugin folder
+        extractor = PluginExtractor(package_plugin)
+        plugin_path = extractor.extract(utils.get_plugins_path())
+        plugin_id = extractor.id
 
         # install the extracted plugin
         return self.install_extracted_plugin(plugin_id, plugin_path)
 
-    def extract_plugin(self, package_plugin: str) -> Tuple[str, str]:
-        utils.dispatch_event(self.on_start_plugin_install_callback)
-
-        # extract zip/tar file into plugin folder
-        extractor = PluginExtractor(package_plugin)
-        plugin_path = extractor.extract(self.__plugins_folder)
-        plugin_id = extractor.id
-
-        return plugin_id, plugin_path
-
     def install_extracted_plugin(self, plugin_id: str, plugin_path: str) -> str:
         # create plugin obj, and eventually activate it
-        if plugin_id != "core_plugin" and self._load_plugin(plugin_path):
+        if plugin_id not in self.get_core_plugins_ids() and self._load_plugin(plugin_path):
             # deactivate a plugin on reinstallation
             if plugin_id in self.active_plugins:
                 self.deactivate_plugin(plugin_id)
 
             self.activate_plugin(plugin_id)
 
-        # notify uninstallation has finished
-        utils.dispatch_event(self.on_end_plugin_install_callback, plugin_id=plugin_id, plugin_path=plugin_path)
+            # notify uninstallation has finished
+            utils.dispatch(self.on_end_plugin_install_callback, plugin_id=plugin_id, plugin_path=plugin_path)
 
         return plugin_id
 
     def uninstall_plugin(self, plugin_id: str):
-        utils.dispatch_event(self.on_start_plugin_uninstall_callback, plugin_id=plugin_id)
+        if not self.plugin_exists(plugin_id) or plugin_id in self.get_core_plugins_ids():
+            return
 
-        endpoints = []
-        if self.plugin_exists(plugin_id) and plugin_id != "core_plugin":
-            endpoints = self.plugins[plugin_id].endpoints
+        utils.dispatch(self.on_start_plugin_uninstall_callback, plugin_id=plugin_id)
 
-            # deactivate plugin if it is active (will sync cache)
-            if plugin_id in self.active_plugins:
-                self.deactivate_plugin(plugin_id)
+        endpoints = self.plugins[plugin_id].endpoints
 
-            # remove plugin from cache
-            plugin_path = self.plugins[plugin_id].path
-            del self.plugins[plugin_id]
+        # deactivate plugin if it is active (will sync cache)
+        if plugin_id in self.active_plugins:
+            self.deactivate_plugin(plugin_id)
 
-            # remove plugin folder
-            shutil.rmtree(plugin_path)
+        # remove plugin from cache
+        plugin_path = self.plugins[plugin_id].path
+        del self.plugins[plugin_id]
+
+        # remove plugin folder
+        shutil.rmtree(plugin_path)
 
         crud_plugins.destroy_plugin(plugin_id)
 
         # notify uninstall has finished
-        utils.dispatch_event(self.on_end_plugin_uninstall_callback, plugin_id=plugin_id, endpoints=endpoints)
+        utils.dispatch(self.on_end_plugin_uninstall_callback, plugin_id=plugin_id, endpoints=endpoints)
 
     # check if plugin exists
     def plugin_exists(self, plugin_id: str):
@@ -140,12 +135,10 @@ class Tweedledum(MadHatter):
 
         # plugins are found in the plugins folder,
         # plus the default core plugin (where default hooks and tools are defined)
-        core_plugin_folder = utils.get_base_path() + "mad_hatter/core_plugin/"
-
         # plugin folder is "cat/plugins/" in production, "tests/mocks/mock_plugin_folder/" during tests
-        all_plugin_folders = [core_plugin_folder] + glob.glob(
-            f"{self.__plugins_folder}*/"
-        )
+        all_plugin_folders = list(set(
+            glob.glob(f"{utils.get_core_plugins_path()}/*/") + glob.glob(f"{utils.get_plugins_path()}/*/")
+        ))
 
         # discover plugins, folder by folder
         active_plugins = []
@@ -159,7 +152,7 @@ class Tweedledum(MadHatter):
                 continue
 
             try:
-                self.plugins[plugin_id].activate(self.agent_key)
+                self.on_plugin_activation(plugin_id)
                 active_plugins.append(plugin_id)
             except Exception as e:
                 # Couldn't activate the plugin -> Deactivate it

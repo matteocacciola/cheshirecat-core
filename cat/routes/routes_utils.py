@@ -13,14 +13,9 @@ from cat.auth.connection import AuthorizedInfo
 from cat.db.database import DEFAULT_AGENT_KEY
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
-from cat.factory.base_factory import ReplacedNLPConfig, BaseFactory
-from cat.looking_glass.bill_the_lizard import BillTheLizard
-from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.looking_glass.white_rabbit import WhiteRabbit
-from cat.mad_hatter.mad_hatter import MadHatter
-from cat.mad_hatter.plugin import Plugin
-from cat.mad_hatter.registry import registry_search_plugins
-from cat.memory.utils import VectorMemoryCollectionTypes
+from cat.factory.base_factory import BaseFactory
+from cat.looking_glass import BillTheLizard, CheshireCat, WhiteRabbit
+from cat.mad_hatter import MadHatter, Plugin, registry_search_plugins
 
 
 class Plugins(BaseModel):
@@ -38,7 +33,10 @@ class JWTResponse(BaseModel):
     token_type: str = "bearer"
 
 
-class UpsertSettingResponse(ReplacedNLPConfig):
+class UpsertSettingResponse(BaseModel):
+    name: str
+    value: Dict
+
     @model_serializer
     def serialize_model(self) -> Dict[str, Any]:
         """Custom serializer that will be used by FastAPI"""
@@ -232,19 +230,7 @@ def get_plugin_settings(plugin_manager: MadHatter, plugin_id: str, agent_id: str
     return GetSettingResponse(name=plugin_id, value=settings, scheme=scheme)
 
 
-def memory_collection_is_accessible(collection_id: str) -> None:
-    # check if collection exists
-    if collection_id not in VectorMemoryCollectionTypes:
-        raise CustomNotFoundException("Collection does not exist.")
-
-    # do not touch procedural memory
-    if collection_id == VectorMemoryCollectionTypes.PROCEDURAL:
-        raise CustomValidationException("Procedural memory is read-only.")
-
-
 async def verify_memory_point_existence(cheshire_cat: CheshireCat, collection_id: str, point_id: str) -> None:
-    memory_collection_is_accessible(collection_id)
-
     # check if point exists
     points = await cheshire_cat.vector_memory_handler.retrieve_points(collection_id, [point_id])
     if not points:
@@ -327,21 +313,15 @@ async def shutdown_app(app):
 
 
 def get_factory_settings(agent_id: str, factory: BaseFactory) -> GetSettingsResponse:
-    # get selected AuthHandler
-    selected = crud_settings.get_setting_by_name(agent_id, factory.setting_name)
-    if selected is not None:
-        selected = selected["value"]["name"]
-
-    saved_settings = crud_settings.get_settings_by_category(agent_id, factory.setting_factory_category)
-    saved_settings = {s["name"]: s for s in saved_settings}
+    saved_settings = crud_settings.get_settings_by_category(agent_id, factory.setting_category)
 
     settings = [GetSettingResponse(
         name=class_name,
-        value=saved_settings[class_name]["value"] if class_name in saved_settings else {},
+        value=saved_settings["value"] if class_name == saved_settings["name"] else {},
         scheme=scheme
     ) for class_name, scheme in factory.get_schemas().items()]
 
-    return GetSettingsResponse(settings=settings, selected_configuration=selected)
+    return GetSettingsResponse(settings=settings, selected_configuration=saved_settings["name"])
 
 
 def get_factory_setting(agent_id: str, configuration_name: str, factory: BaseFactory) -> GetSettingResponse:

@@ -45,4 +45,4 @@ async def upsert_chunker_setting(
     ccat = info.cheshire_cat
     on_upsert_factory_setting(chunker_name, ChunkerFactory(ccat.plugin_manager))
 
-    return UpsertSettingResponse(**ccat.replace_chunker(chunker_name, payload).model_dump())
+    return UpsertSettingResponse(**ccat.replace_chunker(chunker_name, payload))

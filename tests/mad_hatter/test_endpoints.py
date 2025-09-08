@@ -14,7 +14,10 @@ def get_endpoint(plugin_manager, uri, method=None):
 
 def test_endpoints_discovery(plugin_manager):
     mock_plugin_endpoints = plugin_manager.plugins["mock_plugin"].endpoints
-    assert mock_plugin_endpoints == plugin_manager.endpoints
+    for e in mock_plugin_endpoints:
+        assert isinstance(e, CustomEndpoint)
+        assert e.plugin_id == "mock_plugin"
+        assert e in plugin_manager.endpoints
 
     # discovered endpoints
     assert len(mock_plugin_endpoints) == 7
@@ -91,9 +94,12 @@ def test_endpoints_deactivation_or_uninstall(plugin_manager):
     # custom endpoints are registered in mad_hatter
     for e in plugin_manager.endpoints:
         assert isinstance(e, CustomEndpoint)
-        assert e.plugin_id == "mock_plugin"
+        assert e.plugin_id in plugin_manager.get_core_plugins_ids() + ["mock_plugin"]
 
     plugin_manager.uninstall_plugin("mock_plugin")
 
     # no more custom endpoints
-    assert plugin_manager.endpoints == []
+    for e in plugin_manager.endpoints:
+        assert isinstance(e, CustomEndpoint)
+        assert e.plugin_id != "mock_plugin"
+        assert e.plugin_id in plugin_manager.get_core_plugins_ids()

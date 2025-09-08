@@ -1,0 +1,10 @@
+{
+    "name": "Memories",
+    "description": "Store and retrieve memories to provide context and reasoning for LLMs",
+    "author_name": "Cheshire Cat",
+    "author_url": "Matteo Cacciola",
+    "plugin_url": "https://github.com/matteocacciola/cheshirecat-core",
+    "tags": "core, default, memory, context, reasoning, llm",
+    "thumb": "",
+    "version": "0.0.1"
+}

@@ -1,0 +1,10 @@
+{
+    "name": "Model Interactions",
+    "description": "Add interactions handler to the language model",
+    "author_name": "Cheshire Cat",
+    "author_url": "Matteo Cacciola",
+    "plugin_url": "https://github.com/matteocacciola/cheshirecat-core",
+    "tags": "core, default, language model, interaction, handler",
+    "thumb": "",
+    "version": "0.0.1"
+}

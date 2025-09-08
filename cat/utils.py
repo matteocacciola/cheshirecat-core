@@ -1,25 +1,28 @@
 import asyncio
+import base64
+import concurrent.futures
+from io import BytesIO
 import aiofiles
 from datetime import timedelta
 from enum import Enum as BaseEnum, EnumMeta
+import requests
+from PIL import Image
 from fastapi import UploadFile
 import inspect
 from pydantic import BaseModel, ConfigDict
 from rapidfuzz.distance import Levenshtein
 from langchain_core.embeddings import Embeddings
 from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.prompts import PromptTemplate
-from langchain_core.utils import get_colored_text
 import mimetypes
 import os
 import tomli
-from typing import Dict, Tuple, List, Type, TypeVar, Any, Callable
+from typing import Dict, List, Type, TypeVar, Any, Callable
 import hashlib
 
+from cat.db import models
 from cat.env import get_env
 from cat.exceptions import CustomValidationException
 from cat.log import log
-
 
 _T = TypeVar("_T")
 
@@ -133,6 +136,11 @@ def to_camel_case(text: str) -> str:
     return s[0] + "".join(i.capitalize() for i in s[1:])
 
 
+class UpdaterFactory(BaseModel):
+    old_setting: Dict | None = None
+    new_setting: Dict | None = None
+
+
 def verbal_timedelta(td: timedelta) -> str:
     """Convert a timedelta in human form.
 
@@ -153,7 +161,7 @@ def verbal_timedelta(td: timedelta) -> str:
 
     Examples
     --------
-    >>> print(verbal_timedelta(timedelta(days=2, weeks=1))
+    >> print(verbal_timedelta(timedelta(days=2, weeks=1))
     'One week and two days ago'
     """
     if td.days != 0:
@@ -183,24 +191,34 @@ def get_base_path() -> str:
     return current_file_path + "/"
 
 
-def get_plugins_path() -> str:
+def get_project_path():
+    """Path to the folder from which the cat was run (contains data, plugins and static folders)"""
+    return os.getcwd()
+
+
+def get_core_plugins_path():
+    """Core plugins' path, for internal core usage"""
+    return os.path.join(get_base_path(), "core_plugins")
+
+
+def get_data_path():
+    """Allows exposing the data folder path."""
+    return os.path.join(get_project_path(), "data")
+
+
+def get_plugins_path():
     """Allows exposing the plugins' path."""
-    return os.path.join(get_base_path(), "plugins/")
+    return os.path.join(get_base_path(), "plugins")
+
+
+def get_static_path():
+    """Allows exposing the static files' path."""
+    return os.path.join(get_project_path(), "static")
 
 
 def get_file_manager_root_storage_path() -> str:
     """Allows exposing the local storage path."""
-    return os.path.join(get_base_path(), "data/storage/")
-
-
-def get_static_url() -> str:
-    """Allows exposing the static server url."""
-    return get_base_url() + "static/"
-
-
-def get_static_path() -> str:
-    """Allows exposing the static files' path."""
-    return os.path.join(get_base_path(), "static/")
+    return os.path.join(get_data_path(), "storage")
 
 
 def explicit_error_message(e) -> str:
@@ -246,27 +264,6 @@ def parse_json(json_string: str, pydantic_model: BaseModel = None) -> Dict:
     if pydantic_model:
         return pydantic_model(**parsed)
     return parsed
-
-
-def match_prompt_variables(prompt_variables: Dict, prompt_template: str) -> Tuple[Dict, str]:
-    """Ensure prompt variables and prompt placeholders map, so there are no issues on mismatches"""
-    tmp_prompt = PromptTemplate.from_template(
-        template=prompt_template
-    )
-
-    # outer set difference
-    prompt_mismatches = set(prompt_variables.keys()) ^ set(tmp_prompt.input_variables)
-
-    # clean up
-    for m in prompt_mismatches:
-        if m in prompt_variables.keys():
-            log.debug(f"Prompt variable '{m}' not found in prompt template, removed")
-            del prompt_variables[m]
-        if m in tmp_prompt.input_variables:
-            prompt_template = prompt_template.replace("{" + m + "}", "")
-            log.debug(f"Placeholder '{m}' not found in prompt variables, removed")
-
-    return prompt_variables, prompt_template
 
 
 def get_caller_info(skip: int | None = 2, return_short: bool = True, return_string: bool = True):
@@ -339,38 +336,6 @@ def get_caller_info(skip: int | None = 2, return_short: bool = True, return_stri
     if return_string:
         return f"{klass}.{caller}" if return_short else f"{package}.{module}.{klass}.{caller}::{line}"
     return package, module, klass, caller, line
-
-
-def langchain_log_prompt(langchain_prompt, title):
-    if get_env("CCAT_DEBUG") == "true":
-        print("\n")
-        print(get_colored_text(f"===== {title} =====", "green"))
-        for m in langchain_prompt.messages:
-            print(get_colored_text(type(m).__name__, "green"))
-            if isinstance(m.content, list):
-                for sub_m in m.content:
-                    if sub_m.get("type") == "text":
-                        print(sub_m["text"])
-                    elif sub_m.get("type") == "image_url":
-                        print("(image)")
-                    else:
-                        print(" -- Could not log content:", sub_m.keys())
-            else:
-                print(m.content)
-        print(get_colored_text("========================================", "green"))
-    return langchain_prompt
-
-
-def langchain_log_output(langchain_output, title):
-    if get_env("CCAT_DEBUG") == "true":
-        print("\n")
-        print(get_colored_text(f"===== {title} =====", "blue"))
-        if hasattr(langchain_output, 'content'):
-            print(langchain_output.content)
-        else:
-            print(langchain_output)
-        print(get_colored_text("========================================", "blue"))
-    return langchain_output
 
 
 async def load_uploaded_file(file: UploadFile, allowed_mime_types: List[str]) -> str:
@@ -476,44 +441,75 @@ def get_embedder_name(embedder: Embeddings) -> str:
     return embedder_name.lower()
 
 
-def dispatch_event(func: Callable[..., Any], *args, **kwargs) -> Any:
+def dispatch(func: Callable[..., Any], *args, **kwargs) -> Any:
+    """
+    Execute a function whether it's sync or async.
+    If async and we're in a running event loop, execute in a separate thread.
+    """
     if not asyncio.iscoroutinefunction(func) and not asyncio.iscoroutine(func):
         return func(*args, **kwargs)
 
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    coro = func(*args, **kwargs)
 
-    coro = func(*args, **kwargs) if asyncio.iscoroutinefunction(func) else func
-    if loop.is_running():
-        return loop.create_task(coro)
-    return loop.run_until_complete(coro)
+    try:
+        # Check if we're in a running event loop
+        asyncio.get_running_loop()
+
+        # We're in a running loop, so we need to use a thread
+        def run_async_in_thread():
+            return asyncio.run(coro)
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(run_async_in_thread)
+            return future.result()  # This blocks until completion
+    except RuntimeError:
+        # No running loop, safe to use asyncio.run()
+        return asyncio.run(coro)
 
 
 def get_factory_object(agent_id: str, factory: "BaseFactory") -> Any:
-    from cat.services.factory_adapter import FactoryAdapter
+    from cat.db.cruds import settings as crud_settings
 
-    selected_config = FactoryAdapter(factory).get_factory_config_by_settings(agent_id)
+    if not (selected_config := crud_settings.get_settings_by_category(agent_id, factory.setting_category)):
+        # if no config is saved, use default one and save to db
+        # create the settings for the factory
+        crud_settings.upsert_setting_by_name(
+            agent_id,
+            models.Setting(
+                name=factory.default_config_class.__name__,
+                category=factory.setting_category,
+                value=factory.default_config,
+            ),
+        )
+    
+        # reload from db and return
+        selected_config = crud_settings.get_settings_by_category(agent_id, factory.setting_category)
 
-    return factory.get_from_config_name(agent_id, selected_config["value"]["name"])
+    return factory.get_from_config_name(agent_id, selected_config["name"])
 
 
 def get_updated_factory_object(
     agent_id: str, factory: "BaseFactory", settings_name: str, settings: Dict
-) -> "UpdaterFactory":
-    from cat.services.factory_adapter import FactoryAdapter
+) -> UpdaterFactory:
+    from cat.db.cruds import settings as crud_settings
+    from cat.services.string_crypto import StringCrypto
 
-    adapter = FactoryAdapter(factory)
-    return adapter.upsert_factory_config_by_settings(agent_id, settings_name, settings)
+    current_setting = crud_settings.get_settings_by_category(agent_id, factory.setting_category)
 
+    # upsert the settings for the factory
+    crypto = StringCrypto()
+    final_setting = crud_settings.upsert_setting_by_category(agent_id, models.Setting(
+        name=settings_name,
+        category=factory.setting_category,
+        value={
+            k: crypto.encrypt(v)
+            if isinstance(v, str) and any(suffix in k for suffix in ["_key", "_secret"])
+            else v
+            for k, v in settings.items()
+        },
+    ))
 
-def rollback_factory_config(agent_id: str, factory: "BaseFactory"):
-    from cat.services.factory_adapter import FactoryAdapter
-
-    adapter = FactoryAdapter(factory)
-    adapter.rollback_factory_config(agent_id)
+    return UpdaterFactory(old_setting=current_setting, new_setting=final_setting)
 
 
 def get_file_hash(file_path: str, chunk_size: int = 8192) -> str:
@@ -522,3 +518,50 @@ def get_file_hash(file_path: str, chunk_size: int = 8192) -> str:
         while chunk := f.read(chunk_size):
             sha256.update(chunk)
     return sha256.hexdigest()
+
+
+def pod_id() -> str:
+    if not os.path.exists(".pod_id"):
+        p_id = hashlib.sha256(os.urandom(16)).hexdigest()[:8]
+        with open(".pod_id", "w") as f:
+            f.write(p_id)
+        return p_id
+
+    with open(".pod_id", "r") as f:
+        p_id = f.read().strip()
+    return p_id
+
+
+def retrieve_image(content_image: str | None) -> str | None:
+    if not content_image:
+        return None
+    # If the image is a URL, download it and encode it as a data URI
+    if not content_image.startswith("http"):
+        return content_image
+    try:
+        response = requests.get(content_image)
+        response.raise_for_status()
+        # Open the image using Pillow to determine its MIME type
+        img = Image.open(BytesIO(response.content))
+        mime_type = img.format.lower()  # Get MIME type
+        # Encode the image to base64
+        encoded_image = base64.b64encode(response.content).decode('utf-8')
+        image_uri = f"data:image/{mime_type};base64,{encoded_image}"
+        # Add the image as a data URI with the correct MIME type
+        return image_uri
+    except requests.RequestException as e:
+        log.error(f"Failed to download image: {e} from {content_image}")
+        return None
+
+
+async def run_sync_or_async(f, *args, **kwargs) -> Any:
+    if inspect.iscoroutinefunction(f):
+        return await f(*args, **kwargs)
+
+    caller = get_caller_info(3, return_short=False)
+
+    # Format and log the warning message
+    log.warning(
+        f"{caller} Deprecation Warning: Function {f} should be async. Please update it."
+    )
+    return f(*args, **kwargs)

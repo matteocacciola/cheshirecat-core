@@ -4,17 +4,11 @@ from pydantic import BaseModel
 
 from cat.db.cruds import settings as crud_settings
 from cat.log import log
-from cat.mad_hatter.mad_hatter import MadHatter
+from cat.mad_hatter import MadHatter
 from cat.services.string_crypto import StringCrypto
 
 
-class ReplacedNLPConfig(BaseModel):
-    name: str
-    value: Dict
-
-
 class BaseFactoryConfigModel(ABC, BaseModel):
-    _pyclass: Type = None
     crypto: Final = StringCrypto()
 
     @classmethod
@@ -28,13 +22,18 @@ class BaseFactoryConfigModel(ABC, BaseModel):
 
     @classmethod
     def get_from_config(cls, config) -> Type:
-        if cls._pyclass and issubclass(cls.pyclass(), cls.base_class()):
-            return cls.pyclass()(**cls._parse_config(config))
-        raise Exception(f"Configuration class is invalid. It should be a valid {cls.base_class().__name__} class")
+        obj = cls.pyclass()
+        base_obj = cls.base_class()
+        if obj is None or base_obj is None:
+            raise Exception("Configuration class is invalid. It should define both pyclass and base_class methods")
+        if issubclass(obj, base_obj):
+            return obj(**cls._parse_config(config))
+        raise Exception(f"Configuration class is invalid. It should be a valid {base_obj.__name__} class")
 
     @classmethod
+    @abstractmethod
     def pyclass(cls) -> Type:
-        return cls._pyclass.default
+        pass
 
     @classmethod
     @abstractmethod
@@ -70,7 +69,9 @@ class BaseFactory(ABC):
         # get plugin file manager factory class
         factory_class = next((cls for cls in self.get_allowed_classes() if cls.__name__ == config_name), None)
         if not factory_class:
-            log.warning(f"Class {config_name} not found in the list of allowed classes for setting {self.setting_name}")
+            log.warning(
+                f"Class {config_name} not found in the list of allowed classes for setting '{self.setting_category}'"
+            )
             return self.default_config_class.get_from_config(self.default_config)
 
         # obtain configuration and instantiate the finalized object by the factory
@@ -90,17 +91,7 @@ class BaseFactory(ABC):
 
     @property
     @abstractmethod
-    def setting_name(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
     def setting_category(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def setting_factory_category(self) -> str:
         pass
 
     @property

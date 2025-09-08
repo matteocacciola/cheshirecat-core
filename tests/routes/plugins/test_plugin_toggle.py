@@ -1,4 +1,4 @@
-from tests.utils import get_procedural_memory_contents, just_installed_plugin
+from tests.utils import just_installed_plugin
 
 
 def _check_activation(secure_client, secure_client_headers):
@@ -14,22 +14,6 @@ def _check_activation(secure_client, secure_client_headers):
     assert len(mock_plugin["tools"]) == 1
     assert len(mock_plugin["forms"]) == 1
     assert len(mock_plugin["endpoints"]) == 7
-
-    # check whether procedures have been embedded
-    procedures = get_procedural_memory_contents(secure_client, headers=secure_client_headers)
-    assert len(procedures) == 9  # two tools, 4 tools examples, 3  form triggers
-    procedures_names = list(map(lambda t: t["metadata"]["source"], procedures))
-    assert procedures_names.count("mock_tool") == 3
-    assert procedures_names.count("get_the_time") == 3
-    assert procedures_names.count("PizzaForm") == 3
-
-    procedures_sources = list(map(lambda t: t["metadata"]["type"], procedures))
-    assert procedures_sources.count("tool") == 6
-    assert procedures_sources.count("form") == 3
-
-    procedures_triggers = list(map(lambda t: t["metadata"]["trigger_type"], procedures))
-    assert procedures_triggers.count("start_example") == 6
-    assert procedures_triggers.count("description") == 3
 
 
 def test_toggle_non_existent_plugin(secure_client, secure_client_headers):
@@ -49,14 +33,15 @@ def test_activate_plugin(secure_client, secure_client_headers):
     _check_activation(secure_client, secure_client_headers)
 
 
-def test_deactivate_plugin(secure_client, secure_client_headers):
+def test_deactivate_plugin(lizard, secure_client, secure_client_headers):
     # install and activate
     just_installed_plugin(secure_client, secure_client_headers, activate=True)
+    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
 
     # verify that the plugin is active
     response = secure_client.get("/plugins", headers=secure_client_headers)
     available_plugins = response.json()["installed"]
-    assert len(available_plugins) == 2  # core_plugin and mock_plugin
+    assert len(available_plugins) == len(core_plugins) + 1  # core plugins and mock_plugin
 
     # deactivate
     secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
@@ -64,26 +49,10 @@ def test_deactivate_plugin(secure_client, secure_client_headers):
     # the mock_plugin is no longer available
     response = secure_client.get("/plugins", headers=secure_client_headers)
     available_plugins = response.json()["installed"]
-    assert len(available_plugins) == 1  # core_plugin
+    assert len(available_plugins) == len(core_plugins)  # core plugins only
 
     mock_plugin = [p for p in available_plugins if p["id"] == "mock_plugin"]
     assert len(mock_plugin) == 0  # plugin not available
-
-    # tool has been taken away
-    procedures = get_procedural_memory_contents(secure_client, headers=secure_client_headers)
-    assert len(procedures) == 3
-    procedures_sources = list(map(lambda t: t["metadata"]["source"], procedures))
-    assert "mock_tool" not in procedures_sources
-    assert "PizzaForm" not in procedures_sources
-    assert "get_the_time" in procedures_sources  # from core_plugin
-
-    # only examples for core tool
-    procedures_types = list(map(lambda t: t["metadata"]["type"], procedures))
-    assert procedures_types.count("tool") == 3
-    assert procedures_types.count("form") == 0
-    procedures_triggers = list(map(lambda t: t["metadata"]["trigger_type"], procedures))
-    assert procedures_triggers.count("start_example") == 2
-    assert procedures_triggers.count("description") == 1
 
 
 def test_reactivate_plugin(secure_client, secure_client_headers):

@@ -1,0 +1,5 @@
+pandas==2.3.2
+pdfminer-six==20250506
+pytube==15.0.0
+unstructured==0.18.14
+youtube-transcript-api==1.2.2

@@ -76,7 +76,7 @@ def test_plugin_install_from_registry(secure_client, secure_client_headers, monk
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
     assert "mock_plugin" in installed_plugins_names
-    # both core_plugin and new_plugin are active
+    # core plugins and new_plugin are active
     for p in installed_plugins:
         assert isinstance(p["active"], bool)
         assert p["active"]

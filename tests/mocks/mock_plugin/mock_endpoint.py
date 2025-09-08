@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 
-from cat.looking_glass.bill_the_lizard import BillTheLizard
-from cat.mad_hatter.decorators import endpoint
+
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import (
     AdminAuthResource,
@@ -10,6 +9,8 @@ from cat.auth.permissions import (
     check_permissions,
     check_admin_permissions,
 )
+from cat.looking_glass import BillTheLizard
+from cat.mad_hatter.decorators import endpoint
 
 
 class Item(BaseModel):

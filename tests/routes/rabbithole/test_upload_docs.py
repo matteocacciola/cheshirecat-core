@@ -4,16 +4,13 @@ import pytest
 
 from cat import utils
 
-from tests.utils import get_declarative_memory_contents, api_key, agent_id
+from tests.utils import get_declarative_memory_contents, api_key, agent_id, send_file
 
 
 def test_rabbithole_upload_txt(secure_client, secure_client_headers):
     content_type = "text/plain"
     file_name = "sample.txt"
-    file_path = f"tests/mocks/{file_name}"
-    with open(file_path, "rb") as f:
-        files = {"file": (file_name, f, content_type)}
-        response = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
+    response, _ = send_file(file_name, content_type, secure_client, secure_client_headers)
 
     # check response
     assert response.status_code == 200
@@ -36,10 +33,7 @@ async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_header
 
     content_type = "application/pdf"
     file_name = "sample.pdf"
-    file_path = f"tests/mocks/{file_name}"
-    with open(file_path, "rb") as f:
-        files = {"file": (file_name, f, content_type)}
-        response = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
+    response, _ = send_file(file_name, content_type, secure_client, secure_client_headers)
 
     # check response
     assert response.status_code == 200
@@ -114,18 +108,17 @@ def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_hea
 def test_rabbithole_upload_doc_with_metadata(secure_client, secure_client_headers):
     content_type = "application/pdf"
     file_name = "sample.pdf"
-    file_path = f"tests/mocks/{file_name}"
-    with open(file_path, "rb") as f:
-        files = {"file": (file_name, f, content_type)}
-        metadata = {
-            "source": "sample.pdf",
-            "title": "Test title",
-            "author": "Test author",
-            "year": 2020,
-        }
-        # upload file endpoint only accepts form-encoded data
-        payload = {"metadata": json.dumps(metadata)}
-        response = secure_client.post("/rabbithole/", files=files, data=payload, headers=secure_client_headers)
+
+    metadata = {
+        "source": file_name,
+        "title": "Test title",
+        "author": "Test author",
+        "year": 2020,
+    }
+    # upload file endpoint only accepts form-encoded data
+    payload = {"metadata": json.dumps(metadata)}
+
+    response, _ = send_file(file_name, content_type, secure_client, secure_client_headers, payload)
 
     # check response
     assert response.status_code == 200

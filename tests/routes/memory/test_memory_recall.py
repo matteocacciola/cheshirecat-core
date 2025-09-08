@@ -16,18 +16,12 @@ def test_memory_recall_default_success(secure_client, secure_client_headers):
     assert isinstance(json["query"]["vector"][0], float)
 
     # results are grouped by collection
-    assert len(json["vectors"]["collections"]) == 3
-    assert {"episodic", "declarative", "procedural"} == set(
-        json["vectors"]["collections"].keys()
-    )
+    assert len(json["vectors"]["collections"]) == 1
+    assert "declarative" == list(json["vectors"]["collections"].keys())[0]
 
     # initial collections contents
-    for collection in json["vectors"]["collections"].keys():
-        assert isinstance(json["vectors"]["collections"][collection], list)
-        if collection == "procedural":
-            assert len(json["vectors"]["collections"][collection]) > 0
-        else:
-            assert len(json["vectors"]["collections"][collection]) == 0
+    assert isinstance(json["vectors"]["collections"]["declarative"], list)
+    assert len(json["vectors"]["collections"]["declarative"]) == 0
 
 
 # search without query should throw error
@@ -49,10 +43,7 @@ def test_memory_recall_success(secure_client, secure_client_headers, mocked_defa
     response = secure_client.get(
         "/memory/recall/", params=params, headers={**secure_client_headers, **{"user_id": user["id"]}}
     )
-    json = response.json()
     assert response.status_code == 200
-    episodic_memories = json["vectors"]["collections"]["episodic"]
-    assert len(episodic_memories) == num_messages  # all 3 retrieved
 
 
 # search with query and k
@@ -69,10 +60,7 @@ def test_memory_recall_with_k_success(secure_client, secure_client_headers, mock
     response = secure_client.get(
         "/memory/recall/", params=params, headers={**secure_client_headers, **{"user_id": user["id"]}}
     )
-    json = response.json()
     assert response.status_code == 200
-    episodic_memories = json["vectors"]["collections"]["episodic"]
-    assert len(episodic_memories) == max_k  # only 2 of 6 memories recalled
 
 
 def test_memory_recall_with_metadata(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
@@ -93,21 +81,21 @@ def test_memory_recall_with_metadata(secure_client, secure_client_headers, mocke
 
     # insert a new points with metadata
     for req_json in messages:
-        secure_client.post("/memory/collections/episodic/points", json=req_json, headers=secure_client_headers)
+        secure_client.post("/memory/collections/declarative/points", json=req_json, headers=secure_client_headers)
 
     # recall with metadata
     params = {"text": "MEOW", "metadata": {"key_first": "value_one"}}
     response = secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
-    episodic_memories = json["vectors"]["collections"]["episodic"]
-    assert len(episodic_memories) == 2
+    declarative_memories = json["vectors"]["collections"]["declarative"]
+    assert len(declarative_memories) == 2
 
     # recall with metadata multiple keys in metadata
     params = {"text": "MEOW", "metadata": {"key_first": "value_one", "key_second": "value_two"}}
     response = secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
-    episodic_memories = json["vectors"]["collections"]["episodic"]
-    assert len(episodic_memories) == 1
-    assert episodic_memories[0]["page_content"] == "MEOW_ONE"
+    declarative_memories = json["vectors"]["collections"]["declarative"]
+    assert len(declarative_memories) == 1
+    assert declarative_memories[0]["page_content"] == "MEOW_ONE"

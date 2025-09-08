@@ -138,7 +138,7 @@ def destroy(key_pattern: str):
         for k in get_db().scan_iter(key_pattern):
             get_db().delete(k)
         log.debug(f"Destroyed all keys matching {key_pattern}")
-    except RedisError as e:
+    except RedisError:
         raise
 
 

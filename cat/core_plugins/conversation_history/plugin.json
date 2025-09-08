@@ -1,0 +1,10 @@
+{
+    "name": "Conversation History",
+    "description": "Store and retrieve conversation history to provide context and reasoning for LLMs",
+    "author_name": "Cheshire Cat",
+    "author_url": "Matteo Cacciola",
+    "plugin_url": "https://github.com/matteocacciola/cheshirecat-core",
+    "tags": "core, default, conversation, history, context, reasoning, llm",
+    "thumb": "",
+    "version": "0.0.1"
+}

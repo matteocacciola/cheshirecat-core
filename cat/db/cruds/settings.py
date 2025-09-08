@@ -50,7 +50,7 @@ def get_settings(key_id: str, search: str = "") -> List[Dict]:
         raise
 
 
-def get_settings_by_category(key_id: str, category: str) -> List[Dict]:
+def get_settings_by_category(key_id: str, category: str) -> Dict | None:
     """
     Retrieve settings from Redis filtered by category.
 
@@ -59,23 +59,23 @@ def get_settings_by_category(key_id: str, category: str) -> List[Dict]:
         category: Category to filter settings.
 
     Returns:
-        List of settings dictionaries, or empty list if none found.
+        List of settings dictionaries, or None if none found.
 
     Raises:
         RedisError: If Redis connection fails.
     """
     if not category:
         log.warning(f"Empty category for {key_id}, returning empty list")
-        return []
+        return None
 
     try:
         settings: List[Dict] = crud.read(format_key(key_id), path=f'$[?(@.category=="{category}")]')
         if not settings:
             log.debug(f"No settings found for {key_id}, category: {category}")
-            return []
+            return None
 
-        log.debug(f"Retrieved {len(settings)} settings for {key_id}, category: {category}")
-        return settings
+        log.debug(f"Retrieved settings for {key_id}, category: {category}")
+        return settings[0]
     except RedisError as e:
         log.error(f"Redis error getting settings by category for {key_id}: {e}")
         raise

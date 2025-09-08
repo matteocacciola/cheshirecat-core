@@ -9,20 +9,20 @@ from tests.utils import create_new_user, check_user_fields, get_client_admin_hea
 
 
 def test_validation_errors():
-    with pytest.raises(ValidationError) as e:
+    with pytest.raises(ValidationError):
         AdminBase(username="Alice", permissions={})
 
     admin = AdminUpdate(username="Alice")
     assert isinstance(admin, AdminUpdate)
     assert admin.username == "Alice"
 
-    with pytest.raises(ValidationError) as e:
+    with pytest.raises(ValidationError):
         AdminUpdate(username="Alice", permissions={})
-    with pytest.raises(ValidationError) as e:
+    with pytest.raises(ValidationError):
         AdminUpdate(username="Alice", permissions={"READ": []})
-    with pytest.raises(ValidationError) as e:
+    with pytest.raises(ValidationError):
         AdminUpdate(username="Alice", permissions={"CHESHIRE_CATS": []})
-    with pytest.raises(ValidationError) as e:
+    with pytest.raises(ValidationError):
         AdminUpdate(username="Alice", permissions={"CHESHIRE_CATS": ["WRITE", "WRONG"]})
 
 

@@ -70,10 +70,7 @@ class Plugin:
 
     def activate(self, agent_id: str):
         # install plugin requirements on activation
-        try:
-            self._install_requirements()
-        except Exception as e:
-            raise e
+        self._install_requirements()
 
         # load hooks and tools
         self._load_decorated_functions()
@@ -314,9 +311,8 @@ class Plugin:
             with open(req_file, "r") as read_file:
                 requirements = read_file.readlines()
 
+            log.info(f"Installing requirements for plugin {self.id}")
             for req in requirements:
-                log.info(f"Installing requirements for plugin {self.id}")
-
                 # get package name
                 package_name = Requirement(req).name
 
@@ -324,8 +320,6 @@ class Plugin:
                 if package_name not in installed_packages:
                     filtered_requirements.append(req)
                     continue
-
-                log.debug(f"{package_name} is already installed")
         except Exception as e:
             log.error(f"Error during requirements check: {e}, for {self.id}")
 
@@ -358,6 +352,7 @@ class Plugin:
         endpoints = []
         plugin_overrides = []
 
+        load_done = True
         for py_file in self._py_files:
             py_filename = self._get_py_filename_dotted_notation(py_file)
 
@@ -368,18 +363,29 @@ class Plugin:
                 plugin_module = importlib.import_module(py_filename)
                 importlib.reload(plugin_module)
 
-                hooks += getmembers(plugin_module, self.is_cat_hook)
-                tools += getmembers(plugin_module, self.is_cat_tool)
-                forms += getmembers(plugin_module, self.is_cat_form)
-                endpoints += getmembers(plugin_module, self._is_custom_endpoint)
+                hooks += getmembers(plugin_module, lambda obj: isinstance(obj, CatHook))
+                tools += getmembers(plugin_module, lambda obj: isinstance(obj, CatTool))
+                forms += getmembers(plugin_module, lambda obj: (
+                        isclass(obj) and
+                        obj is not CatForm and
+                        issubclass(obj, CatForm) and
+                        obj._autopilot
+                ))
+                endpoints += getmembers(plugin_module, lambda obj: isinstance(obj, CustomEndpoint))
                 plugin_overrides += getmembers(
-                    plugin_module, self._is_cat_plugin_override
+                    plugin_module, lambda obj: isinstance(obj, CatPluginDecorator)
                 )
             except Exception as e:
                 log.error(
                     f"Error in {py_filename}: {str(e)}. Unable to load plugin {self._id}"
                 )
                 log.warning(self.plugin_specific_error_message())
+                load_done = False
+                break
+
+        if not load_done:
+            self._unload_decorated_functions()
+            raise Exception(f"Error loading plugin {self._id}")
 
         # clean and enrich instances
         self._hooks = list(map(self._clean_hook, hooks))
@@ -426,40 +432,6 @@ class Plugin:
         _, e = endpoint
         e.plugin_id = self._id
         return e
-
-    # a plugin hook function has to be decorated with @hook
-    # (which returns an instance of CatHook)
-    @staticmethod
-    def is_cat_hook(obj):
-        return isinstance(obj, CatHook)
-
-    @staticmethod
-    def is_cat_form(obj):
-        if not isclass(obj) or obj is CatForm:
-            return False
-
-        if not issubclass(obj, CatForm) or not obj._autopilot:
-            return False
-
-        return True
-
-    # a plugin tool function has to be decorated with @tool
-    # (which returns an instance of CatTool)
-    @staticmethod
-    def is_cat_tool(obj):
-        return isinstance(obj, CatTool)
-
-    # a plugin override function has to be decorated with @plugin
-    # (which returns an instance of CatPluginDecorator)
-    @staticmethod
-    def _is_cat_plugin_override(obj):
-        return isinstance(obj, CatPluginDecorator)
-
-    # a plugin custom endpoint has to be decorated with @endpoint
-    # (which returns an instance of CustomEndpoint)
-    @staticmethod
-    def _is_custom_endpoint(obj):
-        return isinstance(obj, CustomEndpoint)
 
     @property
     def path(self):

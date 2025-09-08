@@ -1,6 +1,5 @@
 import time
 
-from cat.convo.messages import Role
 from cat.db.cruds import users as crud_users
 
 from tests.utils import send_websocket_message, agent_id, api_key, create_new_user, new_user_password
@@ -47,7 +46,7 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
 
     picked_history = json["history"][0]
 
-    assert picked_history["who"] == str(Role.HUMAN)
+    assert picked_history["who"] == "user"
     assert picked_history["message"] == message
     assert picked_history["content"]["text"] == message
     assert picked_history["why"] is None
@@ -119,11 +118,11 @@ def test_convo_history_by_user(secure_client, secure_client_headers, client, moc
             assert "text" in m["content"]
             if m_idx % 2 == 0:  # even message
                 m_number_from_user = int(m_idx / 2)
-                assert m["who"] == str(Role.HUMAN)
+                assert m["who"] == "user"
                 assert m["message"] == f"Mex n.{m_number_from_user} from {username}"
                 assert m["content"]["text"] == f"Mex n.{m_number_from_user} from {username}"
             else:
-                assert m["who"] == str(Role.AI)
+                assert m["who"] == "assistant"
 
     # delete White Rabbit convo
     response = client.delete(
@@ -161,7 +160,7 @@ def test_add_items_to_convo_history(secure_client, secure_client_headers, cheshi
     response = secure_client.post(
         "/memory/conversation_history",
         headers={**secure_client_headers, **{"user_id": user["id"]}},
-        json={"who": "Human", "text": "Hello, Alice!"}
+        json={"who": "user", "text": "Hello, Alice!"}
     )
     assert response.status_code == 200
 
@@ -170,7 +169,7 @@ def test_add_items_to_convo_history(secure_client, secure_client_headers, cheshi
         "/memory/conversation_history",
         headers={**secure_client_headers, **{"user_id": user["id"]}},
         json={
-            "who": "AI",
+            "who": "assistant",
             "text": "Hello, how are you?",
             "why": {"input": "This is an input", "intermediate_steps": [], "model_interactions": [], "memory": {}}
         }
@@ -187,11 +186,11 @@ def test_add_items_to_convo_history(secure_client, secure_client_headers, cheshi
     assert len(json["history"]) == 2
 
     # check items
-    assert json["history"][0]["who"] == "Human"
+    assert json["history"][0]["who"] == "user"
     assert json["history"][0]["message"] == "Hello, Alice!"
     assert json["history"][0]["content"]["text"] == "Hello, Alice!"
     assert json["history"][0]["why"] is None
-    assert json["history"][1]["who"] == "AI"
+    assert json["history"][1]["who"] == "assistant"
     assert json["history"][1]["message"] == "Hello, how are you?"
     assert json["history"][1]["content"]["text"] == "Hello, how are you?"
     assert json["history"][1]["why"]["input"] == "This is an input"

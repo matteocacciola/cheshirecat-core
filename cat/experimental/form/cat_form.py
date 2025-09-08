@@ -1,8 +1,12 @@
 import json
+from abc import ABC, abstractmethod
 from typing import List, Dict
+from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 from pydantic import BaseModel, ValidationError
 
 from cat.log import log
+from cat.agent import run_agent
+from cat.mad_hatter.procedures import CatProcedure
 from cat.utils import Enum, parse_json
 
 
@@ -14,16 +18,12 @@ class CatFormState(Enum):
     CLOSED = "closed"
 
 
-class CatForm:  # base model of forms
+class CatForm(CatProcedure, ABC):  # base model of forms
     model_class: BaseModel
-    procedure_type: str = "form"
-    name: str = None
-    description: str
     start_examples: List[str]
     stop_examples: List[str] = []
     ask_confirm: bool = False
     triggers_map = None
-    plugin_id = None
     _autopilot = False
 
     def __init__(self, cat) -> None:
@@ -31,10 +31,13 @@ class CatForm:  # base model of forms
         Args:
             cat: StrayCat instance
         """
+        if not hasattr(self, "name") or not self.name:
+            self.name = type(self).__name__
+
         self._state = CatFormState.INCOMPLETE
         self._model: Dict = {}
 
-        self._cat = cat
+        self._stray = cat
 
         self._errors: List[str] = []
         self._missing_fields: List[str] = []
@@ -45,9 +48,9 @@ class CatForm:  # base model of forms
         Returns:
             StrayCat: StrayCat instance
         """
-        return self._cat
+        return self._stray
 
-    def model_getter(self) -> BaseModel:
+    def _model_getter(self) -> BaseModel:
         return self.model_class
 
     @property
@@ -58,38 +61,39 @@ class CatForm:  # base model of forms
     def autopilot(self) -> bool:
         return self._autopilot
 
+    @abstractmethod
     def submit(self, form_data) -> str:
-        raise NotImplementedError
+        pass
 
     # Check user confirm the form data
-    def confirm(self) -> bool:
+    async def _confirm(self) -> bool:
         # Get user message
-        user_message = self.cat.working_memory.user_message.text
+        user_message = self._stray.cheshire_cat.working_memory.user_message.text
 
         # Confirm prompt
-        confirm_prompt = f"""Your task is to produce a JSON representing whether a user is confirming or not.
+        confirm_prompt = """Your task is to produce a JSON representing whether a user is confirming or not.
 JSON must be in this format:
 ```json
 {{
     "confirm": // type boolean, must be `true` or `false` 
 }}
-```
+```"""
 
-User said "{user_message}"
-
-JSON:
-{{
-    "confirm": """
-
-        # Queries the LLM and check if user is agree or not
-        response = self.cat.llm(confirm_prompt)
-        return "true" in response.lower()
+        # Queries the LLM and check if user agrees or not
+        response = await run_agent(
+            llm=self._stray.large_language_model,
+            prompt=ChatPromptTemplate.from_messages([
+                HumanMessagePromptTemplate.from_template(template=confirm_prompt)
+            ]),
+            prompt_variables={"input": user_message},
+        )
+        return "true" in response.output.lower()
 
     # Check if the user wants to exit the form
-    # it is run at the beginning of every form.next()
-    def check_exit_intent(self) -> bool:
+    # it is run at the beginning of every form.func()
+    async def _check_exit_intent(self) -> bool:
         # Get user message
-        user_message = self.cat.working_memory.user_message.text
+        user_message = self._stray.cheshire_cat.working_memory.user_message.text
 
         # Stop examples
         stop_examples = """
@@ -110,81 +114,45 @@ JSON must be in this format:
 
 {stop_examples}
 
-User said "{user_message}"
-
 JSON:
 """
 
-        # Queries the LLM and check if user is agree or not
-        response = self.cat.llm(check_exit_prompt)
-        return "true" in response.lower()
-
-    # Execute the dialogue step
-    def next(self):
-        # could we enrich prompt completion with episodic/declarative memories?
-        # self.cat.working_memory.episodic_memories = []
-
-        # If state is WAIT_CONFIRM, check user confirm response.
-        if self._state == CatFormState.WAIT_CONFIRM:
-            if self.confirm():
-                self._state = CatFormState.CLOSED
-                return self.submit(self._model)
-
-            self._state = CatFormState.CLOSED if self.check_exit_intent() else CatFormState.INCOMPLETE
-
-        if self.check_exit_intent():
-            self._state = CatFormState.CLOSED
-
-        # If the state is INCOMPLETE, execute model update
-        # (and change state based on validation result)
-        if self._state == CatFormState.INCOMPLETE:
-            self.update()
-
-        # If state is COMPLETE, ask confirm (or execute action directly)
-        if self._state == CatFormState.COMPLETE:
-            if not self.ask_confirm:
-                self._state = CatFormState.CLOSED
-                return self.submit(self._model)
-
-            self._state = CatFormState.WAIT_CONFIRM
-
-        # if state is still INCOMPLETE, recap and ask for new info
-        return self.message()
+        # Queries the LLM and check if user agrees or not
+        response = await run_agent(
+            llm=self._stray.large_language_model,
+            prompt=ChatPromptTemplate.from_messages([
+                HumanMessagePromptTemplate.from_template(template=check_exit_prompt)
+            ]),
+            prompt_variables={"input": user_message},
+        )
+        return "true" in response.output.lower()
 
     # Updates the form with the information extracted from the user's response
     # (Return True if the model is updated)
-    def update(self):
+    async def _update(self):
         # Conversation to JSON
-        json_details = self.extract()
-        json_details = self.sanitize(json_details)
+        json_details = await self._extract()
+        json_details = self._sanitize(json_details)
 
         # model merge old and new
         self._model = self._model | json_details
 
         # Validate new_details
-        self.validate()
+        self._validate()
 
-    def message(self):
-        state_methods = {
-            CatFormState.CLOSED: self.message_closed,
-            CatFormState.WAIT_CONFIRM: self.message_wait_confirm,
-            CatFormState.INCOMPLETE: self.message_incomplete,
-        }
-        state_method = state_methods.get(
-            self._state, lambda: {"output": "Invalid state"}
-        )
-        return state_method()
+    def _message(self) -> str:
+        if self._state == CatFormState.CLOSED:
+            return f"Form {type(self).__name__} closed"
 
-    def message_closed(self):
-        return {"output": f"Form {type(self).__name__} closed"}
+        if self._state == CatFormState.WAIT_CONFIRM:
+            output = self._generate_base_message()
+            output += "\n --> Confirm? Yes or no?"
+            return output
 
-    def message_wait_confirm(self):
-        output = self._generate_base_message()
-        output += "\n --> Confirm? Yes or no?"
-        return {"output": output}
+        if self._state == CatFormState.INCOMPLETE:
+            return self._generate_base_message()
 
-    def message_incomplete(self):
-        return {"output": self._generate_base_message()}
+        return "Invalid state"
 
     def _generate_base_message(self):
         separator = "\n - "
@@ -208,14 +176,17 @@ JSON:
         return out
 
     # Extract model information from user message
-    def extract(self):
-        prompt = self.extraction_prompt()
-
-        json_str = self.cat.llm(prompt)
+    async def _extract(self):
+        json_str = await run_agent(
+            llm=self._stray.large_language_model,
+            prompt=ChatPromptTemplate.from_messages([
+                HumanMessagePromptTemplate.from_template(template=self._extraction_prompt())
+            ]),
+        )
 
         # json parser
         try:
-            output_model = parse_json(json_str)
+            output_model = parse_json(json_str.output)
         except Exception as e:
             output_model = {}
             log.warning("LLM did not produce a valid JSON")
@@ -223,15 +194,15 @@ JSON:
 
         return output_model
 
-    def extraction_prompt(self):
-        history = self.cat.working_memory.stringify_chat_history()
+    def _extraction_prompt(self, latest_n: int = 10):
+        history = "".join([str(h) for h in self._stray.cheshire_cat.working_memory.history[-latest_n:]])
 
         # JSON structure
         # BaseModel.__fields__['my_field'].type_
         json_structure = "{"
         json_structure += "".join([
             f'\n\t"{field_name}": // {field.description if field.description else ""} Must be of type `{field.annotation.__name__}` or `null`'
-            for field_name, field in self.model_getter().model_fields.items()
+            for field_name, field in self._model_getter().model_fields.items()
         ])  # field.required?
         json_structure += "\n}"
 
@@ -260,7 +231,7 @@ Updated JSON:
 
     # Sanitize model (take away unwanted keys and null values)
     # NOTE: unwanted keys are automatically taken away by pydantic
-    def sanitize(self, model):
+    def _sanitize(self, model):
         # preserve only non-null fields
         null_fields = [None, "", "None", "null", "lower-case", "unknown", "missing"]
         model = {key: value for key, value in model.items() if value not in null_fields}
@@ -268,13 +239,13 @@ Updated JSON:
         return model
 
     # Validate model
-    def validate(self):
+    def _validate(self):
         self._missing_fields = []
         self._errors = []
 
         try:
             # Attempts to create the model object to update the default values and validate it
-            self.model_getter()(**self._model).model_dump(mode="json")
+            self._model_getter()(**self._model).model_dump(mode="json")
 
             # If model is valid change state to COMPLETE
             self._state = CatFormState.COMPLETE
@@ -290,3 +261,44 @@ Updated JSON:
 
             # Set state to INCOMPLETE
             self._state = CatFormState.INCOMPLETE
+
+    async def func(self) -> str:
+        if self.state == CatFormState.CLOSED:
+            # form is closed
+            return ""
+
+        # continue form
+        try:
+            should_exit = await self._check_exit_intent()
+
+            # If state is WAIT_CONFIRM, check user confirm response.
+            if self._state == CatFormState.WAIT_CONFIRM:
+                should_confirm = await self._confirm()
+                if should_confirm:
+                    result = self.submit(self._model)
+                    self._state = CatFormState.CLOSED
+                    return result
+
+                self._state = CatFormState.CLOSED if should_exit else CatFormState.INCOMPLETE
+            elif should_exit:
+                self._state = CatFormState.CLOSED
+
+            # If the state is INCOMPLETE, execute model update
+            # (and change state based on validation result)
+            if self._state == CatFormState.INCOMPLETE:
+                await self._update()
+
+            # If state is COMPLETE, ask confirm (or execute action directly)
+            if self._state == CatFormState.COMPLETE:
+                if not self.ask_confirm:
+                    result = self.submit(self._model)
+                    self._state = CatFormState.CLOSED
+                    return result
+
+                self._state = CatFormState.WAIT_CONFIRM
+
+            # if state is still INCOMPLETE, recap and ask for new info
+            return self._message()
+        except Exception as e:
+            log.error(f"Error while executing form: {e}")
+            return ""

@@ -1,7 +1,7 @@
 [project]
 name = "Cheshire-Cat"
 description = "Production ready AI assistant framework"
-version = "2.5.2"
+version = "2.6.0"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [
@@ -13,62 +13,43 @@ dependencies = [
     "aiofiles",
     "APScheduler",
     "autopep8",
-    "azure-storage-blob",
     "bcrypt",
-    "beautifulsoup4",
-    "boto3",
-    "cohere==5.14.2",
+    "cryptography",
     "fastapi",
-    "fastembed",
-    "google-cloud-storage",
     "gunicorn",
     "httpx",
-    "huggingface-hub",
     "langchain",
-    "langchain-anthropic",
-    "langchain-cohere",
-    "langchain-google-genai",
-    "langchain-groq",
-    "langchain-litellm",
-    "langchain-mistralai",
-    "langchain-ollama",
-    "langchain-openai",
-    "langchain-voyageai",
+    "langchain-community",
     "loguru",
-    "pandas",
-    "pdfminer.six",
     "perflint",
     "pika",
+    "pillow",
     "pydantic",
     "PyJWT",
     "pylint",
     "pylint-actions",
-    "pymupdf",
     "pytest",
     "pytest-asyncio",
     "python-multipart",
     "python-slugify",
-    "pytube",
+    "pandas",
     "qdrant_client",
     "rapidfuzz",
     "redis",
     "ruff",
     "scalar-fastapi",
     "scikit-learn",
-    "sentence-transformers",
-    "spacy",
-    "text_generation",
-    "tiktoken",
     "tomli",
-    "torch==2.4.1",
-    "unstructured",
     "uvicorn[standard]",
     "websockets",
-    "youtube-transcript-api",
 ]
 
 [tool.coverage.run]
-source = ["src/cat"]
+source = ["cat"]
+branch = true
+omit = [
+    "tests/*",
+]
 
 [tool.pylint]
 max-line-length = 180
@@ -87,7 +68,13 @@ disable = [
     "W1514",
     "W0201",
     "W0511",
+    "E722",
+    "F821",
+    "E741",
 ]
 
 [tool.pylint.main]
 load-plugins = "pylint_actions, perflint"
+
+[tool.ruff]
+extend-ignore = ["E722", "F821", "E741"]

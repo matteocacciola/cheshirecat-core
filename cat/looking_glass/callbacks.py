@@ -1,12 +1,6 @@
-from typing import Any, Dict, List
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain_core.messages import BaseMessage
-from langchain_core.outputs.llm_result import LLMResult
-import tiktoken
-import time
 
-from cat.convo.model_interactions import LLMModelInteraction
-from cat.log import log
+from cat.env import get_env_bool
 
 
 class NewTokenHandler(BaseCallbackHandler):
@@ -21,68 +15,39 @@ class NewTokenHandler(BaseCallbackHandler):
         await self.stray.send_ws_message(token, msg_type="chat_token")
 
 
-class ModelInteractionHandler(BaseCallbackHandler):
-    """
-    Langchain callback handler for tracking model interactions.
-    """
-    def __init__(self, stray, source: str):
-        """
+class LoggingCallbackHandler(BaseCallbackHandler):
+    def colored_text(self, text: str, color: str):
+        """Get colored text.
+
         Args:
-            stray: StrayCat instance
-            source: Source of the model interaction
+            text: The text to color.
+            color: The color to use.
+
+        Returns:
+            The colored text. Supports blue, yellow, pink, green and red
         """
-        self.stray = stray
-        self.stray.working_memory.model_interactions.append(
-            LLMModelInteraction(
-                source=source,
-                prompt=[],
-                reply="",
-                input_tokens=0,
-                output_tokens=0,
-                ended_at=0,
-            )
-        )
+        colors = {
+            "blue": "36;1",
+            "yellow": "33;1",
+            "pink": "38;5;200",
+            "green": "32;1",
+            "red": "31;1",
+        }
 
-    def _count_tokens(self, text: str) -> int:
-        # cl100k_base is the most common encoding for OpenAI models such as GPT-3.5, GPT-4 - what about other providers?
-        encoding = tiktoken.get_encoding("cl100k_base")
-        return len(encoding.encode(text))
+        color_str = colors[color]
+        return f"\u001b[{color_str}m\033[1;3m{text}\u001b[0m"
 
-    def on_chat_model_start(self, serialized: Dict[str, Any], messages: List[List[BaseMessage]], **kwargs) -> None:
-        input_tokens = 0
-        input_prompt = []
-        # TODO V2: how the hell do we count image tokens? is it a separate count because they have a different pricing?
-        # guide here: https://platform.openai.com/docs/guides/vision/calculating-costs#calculating-costs
-        for m in messages[0]:
-            if isinstance(m.content, str):
-                input_tokens += self._count_tokens(m.content)
-                input_prompt.append(m.content)
-                continue
+    def on_chat_model_start(self, serialized, messages, **kwargs):
+        if get_env_bool("CCAT_DEBUG"):
+            lc_prompt = messages[0] if isinstance(messages, list) else messages
+            print(self.colored_text("\n============== LLM INPUT ===============", "green"))
+            for m in lc_prompt:
+                print(m.model_dump())
+            print(self.colored_text("========================================", "green"))
 
-            if isinstance(m.content, list):
-                for c in m.content:
-                    if c["type"] == "text":
-                        input_tokens += self._count_tokens(c["text"])
-                        input_prompt.append(c["text"])
-                        continue
-
-                    if c["type"] == "image_url":
-                        # TODO V2: how do we count image tokens?
-                        log.warning("Could not count tokens for image message")
-                        # do not send back to the client the whole base64 image
-                        input_prompt.append("(image, tokens not counted)")
-                        continue
-
-                    log.warning(f"Could not count tokens for message type {c['type']}")
-
-        self.last_interaction.input_tokens = int(input_tokens * 1.2) # You never know
-        self.last_interaction.prompt = input_prompt
-
-    def on_llm_end(self, response: LLMResult, **kwargs) -> None:
-        self.last_interaction.output_tokens = self._count_tokens(response.generations[0][0].text)
-        self.last_interaction.reply = response.generations[0][0].text
-        self.last_interaction.ended_at = time.time()
-
-    @property
-    def last_interaction(self) -> LLMModelInteraction:
-        return self.stray.working_memory.model_interactions[-1]
+    def on_llm_end(self, response, **kwargs):
+        """Log LLM final response."""
+        if get_env_bool("CCAT_DEBUG"):
+            print(self.colored_text("\n============== LLM OUTPUT ===============", "blue"))
+            print(response)
+            print(self.colored_text("========================================", "blue"))

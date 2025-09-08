@@ -6,7 +6,7 @@ from cat.auth.permissions import AdminAuthResource, AuthPermission, get_full_adm
 from cat.auth.auth_utils import hash_password
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException
-from cat.looking_glass.bill_the_lizard import BillTheLizard
+from cat.looking_glass import BillTheLizard
 
 router = APIRouter()
 

@@ -10,8 +10,9 @@ from tests.utils import api_key, create_mock_plugin_zip, agent_id, just_installe
 
 # NOTE: here we test zip upload and install
 # installation from registry is in `./test_plugins_registry.py`
-def test_plugin_install_from_zip(secure_client, secure_client_headers, cheshire_cat):
+def test_plugin_install_from_zip(lizard, secure_client, secure_client_headers, cheshire_cat):
     just_installed_plugin(secure_client, secure_client_headers)
+    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
 
     # during tests, the cat uses a different folder for plugins
     mock_plugin_final_folder = "tests/mocks/mock_plugin_folder/mock_plugin"
@@ -29,7 +30,7 @@ def test_plugin_install_from_zip(secure_client, secure_client_headers, cheshire_
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
     assert "mock_plugin" in installed_plugins_names
-    # both core_plugin and mock_plugin are active
+    # core plugins and mock_plugin are active
     for p in installed_plugins:
         assert isinstance(p["active"], bool)
         assert p["active"]
@@ -41,10 +42,11 @@ def test_plugin_install_from_zip(secure_client, secure_client_headers, cheshire_
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
     assert "mock_plugin" not in installed_plugins_names
-    assert len(installed_plugins_names) == 1  # only core_plugin is active
-    # core_plugin is active, mock_plugin is not at an agent level
-    assert isinstance(installed_plugins[0]["active"], bool)
-    assert installed_plugins[0]["active"]
+    assert len(installed_plugins_names) == len(core_plugins)  # only core plugins are active
+    # core plugins are active, mock_plugin is not at an agent level
+    for idx in range(len(installed_plugins)):
+        assert isinstance(installed_plugins[idx]["active"], bool)
+        assert installed_plugins[idx]["active"]
 
     # plugin has been actually extracted in (mock) plugins folder
     assert os.path.exists(mock_plugin_final_folder)
@@ -59,6 +61,7 @@ def test_plugin_install_from_zip(secure_client, secure_client_headers, cheshire_
 async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client, secure_client_headers):
     # create a new agent
     ccat = await lizard.create_cheshire_cat("agent_test_test")
+    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
 
     # list the plugins as an agent (new plugins are deactivated, initially): mock_plugin is not installed
     response = secure_client.get(
@@ -91,10 +94,11 @@ async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client,
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
     assert "mock_plugin" not in installed_plugins_names
-    assert len(installed_plugins_names) == 1  # only core_plugin is active
-    # core_plugin is active, mock_plugin is not at an agent level
-    assert isinstance(installed_plugins[0]["active"], bool)
-    assert installed_plugins[0]["active"]
+    assert len(installed_plugins_names) == len(core_plugins)  # only core plugins are active
+    # core plugins are active, mock_plugin is not at an agent level
+    for p in installed_plugins:
+        assert isinstance(p["active"], bool)
+        assert p["active"]
 
 
 def test_plugin_uninstall(secure_client, secure_client_headers):

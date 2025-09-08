@@ -3,7 +3,7 @@ services:
   cheshire-cat-core:
     build:
       context: .
-      target: build
+      target: build-dev
     container_name: cheshire_cat_core
     # Uncomment the two lines below to use your .env (see .env.example)
     # env_file:
@@ -28,6 +28,8 @@ services:
       - CCAT_RABBITMQ_PASSWORD=guest
     volumes:
       - ./cat:/app/cat
+      - ./data:/app/data
+      - ./static:/app/static
       - ./tests:/app/tests
       - ./pyproject.toml:/app/pyproject.toml
       - ./requirements.txt:/app/requirements.txt
@@ -66,7 +68,7 @@ services:
     ports:
       - "6333:6333"
     volumes:
-      - ./cat/data/long_term_memory/vector:/qdrant/storage
+      - ./data/long_term_memory/vector:/qdrant/storage
     restart: unless-stopped
 
   cheshire-cat-healthcheck:

@@ -8,20 +8,20 @@ from tests.utils import agent_id, api_key, create_new_user, check_user_fields, n
 
 
 def test_validation_errors():
-    with pytest.raises(ValidationError) as e:
+    with pytest.raises(ValidationError):
         UserBase(username="A", permissions={})
 
     user = UserUpdate(username="Alice")
     assert isinstance(user, UserUpdate)
     assert user.username == "Alice"
 
-    with pytest.raises(ValidationError) as e:
+    with pytest.raises(ValidationError):
         UserUpdate(username="Alice", permissions={})
-    with pytest.raises(ValidationError) as e:
+    with pytest.raises(ValidationError):
         UserUpdate(username="Alice", permissions={"READ": []})
-    with pytest.raises(ValidationError) as e:
+    with pytest.raises(ValidationError):
         UserUpdate(username="Alice", permissions={"STATUS": []})
-    with pytest.raises(ValidationError) as e:
+    with pytest.raises(ValidationError):
         UserUpdate(username="Alice", permissions={"STATUS": ["WRITE", "WRONG"]})
 
 

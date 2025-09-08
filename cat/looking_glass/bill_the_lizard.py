@@ -3,17 +3,10 @@ import threading
 from copy import deepcopy
 from typing import Dict, Literal, List
 from uuid import uuid4
-from langchain_community.document_loaders.parsers.audio import FasterWhisperParser
-from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
-from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
-from langchain_community.document_loaders.parsers.txt import TextParser
-from langchain_community.document_loaders.parsers.language.language_parser import LanguageParser
-from langchain_community.document_loaders.parsers.msword import MsWordParser
 from langchain_core.embeddings import Embeddings
 from fastapi import FastAPI
 
 from cat import utils
-from cat.agents.main_agent import MainAgent
 from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
 from cat.auth.permissions import get_full_admin_permissions
 from cat.db import crud
@@ -21,25 +14,20 @@ from cat.db.cruds import settings as crud_settings, users as crud_users
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.env import get_env
 from cat.exceptions import LoadMemoryException
-from cat.factory.base_factory import ReplacedNLPConfig
-from cat.factory.custom_auth_handler import CoreAuthHandler
+from cat.factory.auth_handler import CoreAuthHandler
 from cat.factory.embedder import EmbedderFactory
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.mad_hatter.mad_hatter import MadHatter
-from cat.mad_hatter.march_hare import MarchHare, MarchHareConfig
-from cat.mad_hatter.tweedledum import Tweedledum
-from cat.memory.utils import VectorEmbedderSize
-from cat.parsers import YoutubeParser, TableParser, JSONParser, PowerPointParser
+from cat.mad_hatter import MadHatter, MarchHare, MarchHareConfig, Tweedledum
 from cat.rabbit_hole import RabbitHole
-from cat.services.websocket_manager import WebsocketManager
+from cat.services.websocket_manager import WebSocketManager
 from cat.utils import (
     singleton,
     get_embedder_name,
-    dispatch_event,
+    dispatch,
     get_factory_object,
     get_updated_factory_object,
-    rollback_factory_config,
+    pod_id,
 )
 
 
@@ -67,14 +55,15 @@ class BillTheLizard:
         Bootstrapping is the process of loading the plugins, the Embedder, the *Main Agent*, the *Rabbit Hole* and
         the *White Rabbit*.
         """
-        self.__key = DEFAULT_SYSTEM_KEY
+        self._key = DEFAULT_SYSTEM_KEY
+        self._pod_id = pod_id()
 
         self._fastapi_app = None
         self._pending_endpoints = []
 
         self.embedder: Embeddings | None = None
         self.embedder_name: str | None = None
-        self.embedder_size: VectorEmbedderSize | None = None
+        self.embedder_size: int | None = None
 
         self.plugin_manager = Tweedledum()
         self.plugin_manager.on_end_plugin_install_callback = self.on_end_plugin_install
@@ -84,7 +73,7 @@ class BillTheLizard:
         # load active plugins
         self.plugin_manager.find_plugins()
 
-        self.websocket_manager = WebsocketManager()
+        self.websocket_manager = WebSocketManager()
 
         # load embedder
         self.load_language_embedder()
@@ -94,21 +83,18 @@ class BillTheLizard:
 
         self.core_auth_handler = CoreAuthHandler()
 
-        # Main agent instance (for reasoning)
-        self.main_agent = MainAgent()
-
         # March Hare instance (for RabbitMQ management)
         self.march_hare = MarchHare()
 
         # Initialize the default admin if not present
-        if not crud_users.get_users(self.__key):
+        if not crud_users.get_users(self._key):
             self.initialize_users()
 
         self._consumer_threads: List[threading.Thread] = []
         self._start_consumer_threads()
 
     def __del__(self):
-        dispatch_event(self.shutdown)
+        dispatch(self.shutdown)
 
     def _start_consumer_threads(self):
         if not MarchHareConfig.is_enabled:
@@ -122,9 +108,6 @@ class BillTheLizard:
             thread.start()
 
     def _end_consumer_threads(self):
-        """
-        Ends the consumer threads.
-        """
         for thread in self._consumer_threads:
             if thread.is_alive():
                 thread.join(timeout=1)
@@ -138,6 +121,11 @@ class BillTheLizard:
             """Handle the received message."""
             try:
                 event = json.loads(body)
+
+                if event.get("source_pod") == self._pod_id:
+                    log.debug(f"Ignoring event with payload {event['payload']} from the same pod {self._pod_id}")
+                    return
+
                 if event["event_type"] == MarchHareConfig.events["PLUGIN_INSTALLATION"]:
                     payload = event["payload"]
                     self.plugin_manager.install_extracted_plugin(payload["plugin_id"], payload["plugin_path"])
@@ -199,21 +187,10 @@ class BillTheLizard:
             endpoint.activate(self.fastapi_app)
         self._pending_endpoints.clear()
 
-    async def on_replacing_embedder(self):
-        """
-        Callback executed when the embedder is replaced. It informs the Cheshire Cats about the new embedder available
-        in the system.
-        """
-        for ccat_id in crud.get_agents_main_keys():
-            ccat = self.get_cheshire_cat(ccat_id)
-
-            # inform the Cheshire Cats about the new embedder available in the system
-            await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
-
     def initialize_users(self):
         admin_id = str(uuid4())
 
-        crud_users.set_users(self.__key, {
+        crud_users.set_users(self._key, {
             admin_id: {
                 "id": admin_id,
                 "username": DEFAULT_ADMIN_USERNAME,
@@ -229,53 +206,44 @@ class BillTheLizard:
         """
         factory = EmbedderFactory(self.plugin_manager)
 
-        self.embedder = get_factory_object(self.__key, factory)
+        self.embedder = get_factory_object(self._key, factory)
         self.embedder_name = get_embedder_name(self.embedder)
 
         # Get embedder size (langchain classes do not store it)
-        embedder_size = len(self.embedder.embed_query("hello world"))
-        self.embedder_size = VectorEmbedderSize(text=embedder_size)
+        self.embedder_size = len(self.embedder.embed_query("hello world"))
 
-    async def replace_embedder(self, language_embedder_name: str, settings: Dict) -> ReplacedNLPConfig:
+    async def replace_embedder(self, language_embedder_name: str, settings: Dict) -> Dict:
         """
         Replace the current embedder with a new one. This method is used to change the embedder of the lizard.
 
         Args:
-            language_embedder_name: name of the new embedder
             settings: settings of the new embedder
 
         Returns:
             The dictionary resuming the new name and settings of the embedder
         """
         factory = EmbedderFactory(self.plugin_manager)
-        updater = get_updated_factory_object(self.__key, factory, language_embedder_name, settings)
-
-        # reload the embedder of the lizard
-        self.load_language_embedder()
+        updater = get_updated_factory_object(self._key, factory, language_embedder_name, settings)
 
         try:
-            await self.on_replacing_embedder()
+            # reload the embedder of the lizard
+            self.load_language_embedder()
+
+            for ccat_id in crud.get_agents_main_keys():
+                ccat = self.get_cheshire_cat(ccat_id)
+
+                # inform the Cheshire Cats about the new embedder available in the system
+                await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
         except Exception as e:  # restore the original Embedder
             log.error(e)
 
             # something went wrong: rollback
-            rollback_factory_config(self.__key, factory)
-
             if updater.old_setting is not None:
-                await self.replace_embedder(updater.old_setting["value"]["name"], updater.old_factory["value"])
+                await self.replace_embedder(updater.old_setting["name"], updater.old_setting["value"])
 
             raise LoadMemoryException(f"Load memory exception: {utils.explicit_error_message(e)}")
 
-        # recreate tools embeddings
-        self.plugin_manager.find_plugins()
-
-        for ccat_id in crud.get_agents_main_keys():
-            ccat = self.get_cheshire_cat(ccat_id)
-
-            # inform the Cheshire Cats about the new plugin available in the system
-            await ccat.embed_procedures()
-
-        return ReplacedNLPConfig(name=language_embedder_name, value=updater.new_setting["value"])
+        return {"name": language_embedder_name, "value": updater.new_setting["value"]}
 
     def get_cheshire_cat(self, agent_id: str) -> CheshireCat | None:
         """
@@ -332,7 +300,6 @@ class BillTheLizard:
 
         ccat = CheshireCat(agent_id)
         await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
-        await ccat.embed_procedures()
 
         return ccat
 
@@ -367,7 +334,6 @@ class BillTheLizard:
         self.core_auth_handler = None
         self.plugin_manager = None
         self.rabbit_hole = None
-        self.main_agent = None
         self.embedder = None
         self.embedder_name = None
         self.embedder_size = None
@@ -387,33 +353,8 @@ class BillTheLizard:
 
     @property
     def config_key(self):
-        return self.__key
+        return self._key
 
     @property
     def mad_hatter(self) -> MadHatter:
         return self.plugin_manager
-
-    @property
-    def parsers(self):
-        # default file handlers
-        return {
-            "application/json": JSONParser(),
-            "application/msword": MsWordParser(),
-            "application/vnd.ms-powerpoint": PowerPointParser(),  # Per .ppt
-            "application/pdf": PyMuPDFParser(),
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": TableParser(),
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document": MsWordParser(),
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation": PowerPointParser(),
-            "text/csv": TableParser(),
-            "text/html": BS4HTMLParser(),
-            "text/javascript": LanguageParser(language="js"),
-            "text/markdown": TextParser(),
-            "text/plain": TextParser(),
-            "text/x-python": LanguageParser(language="python"),
-            "video/mp4": YoutubeParser(),
-            "audio/mpeg": FasterWhisperParser(),
-            "audio/mp3": FasterWhisperParser(),
-            "audio/ogg": FasterWhisperParser(),
-            "audio/wav": FasterWhisperParser(),
-            "audio/webm": FasterWhisperParser(),
-        }

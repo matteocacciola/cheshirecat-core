@@ -1,12 +1,7 @@
-import time
 from typing import Dict
 from uuid import uuid4
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
-from langchain_core.messages import HumanMessage
-from langchain_core.runnables import RunnableLambda
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.output_parsers.string import StrOutputParser
 
 from cat.auth.auth_utils import hash_password, DEFAULT_USER_USERNAME
 from cat.auth.permissions import get_base_permissions
@@ -18,26 +13,14 @@ from cat.db.cruds import (
 )
 from cat.env import get_env_bool
 from cat.factory.auth_handler import AuthHandlerFactory
-from cat.factory.base_factory import ReplacedNLPConfig
-from cat.factory.chunker import ChunkerFactory
-from cat.factory.custom_auth_handler import BaseAuthHandler
-from cat.factory.custom_chunker import BaseChunker
-from cat.factory.custom_file_manager import BaseFileManager
-from cat.factory.custom_vector_db import BaseVectorDatabaseHandler
-from cat.factory.file_manager import FileManagerFactory
+from cat.factory.auth_handler import BaseAuthHandler
+from cat.factory.chunker import ChunkerFactory, BaseChunker
+from cat.factory.file_manager import BaseFileManager, FileManagerFactory
 from cat.factory.llm import LLMFactory
-from cat.factory.vector_db import VectorDatabaseFactory
+from cat.factory.vector_db import VectorDatabaseFactory, BaseVectorDatabaseHandler
 from cat.log import log
-from cat.mad_hatter.tweedledee import Tweedledee
-from cat.memory.utils import VectorMemoryCollectionTypes
-from cat.utils import (
-    langchain_log_prompt,
-    langchain_log_output,
-    get_caller_info,
-    get_factory_object,
-    get_updated_factory_object,
-    rollback_factory_config,
-)
+from cat.mad_hatter import Tweedledee
+from cat.utils import get_factory_object, get_updated_factory_object
 
 
 # main class
@@ -75,11 +58,6 @@ class CheshireCat:
             self.id, VectorDatabaseFactory(self.plugin_manager)
         )
         self.vector_memory_handler.agent_id = self.id
-
-        # After memory is loaded, we can get/create tools embeddings
-        # every time the plugin_manager finishes syncing hooks, tools and forms, it will notify the Cat (so it can
-        # embed tools in vector memory)
-        self.plugin_manager.on_finish_plugins_sync_callback = self.embed_procedures
 
         # Initialize the default user if not present
         if not crud_users.get_users(self.id):
@@ -129,8 +107,7 @@ class CheshireCat:
         log.info(f"Agent id: {self.id}. Destroying all data from the cat's memory")
 
         # destroy all memories
-        for c in VectorMemoryCollectionTypes:
-            await self.vector_memory_handler.destroy_all_points(str(c))
+        await self.vector_memory_handler.destroy_all_points("declarative")
 
     async def destroy(self):
         """Destroy all data from the cat."""
@@ -149,78 +126,10 @@ class CheshireCat:
         if get_env_bool("CCAT_RABBIT_HOLE_STORAGE_ENABLED") and self.file_manager is not None:
             self.file_manager.remove_folder_from_storage(self.id)
 
-    async def embed_procedures(self):
-        log.info(f"Agent id: {self.id}. Embedding procedures in vector memory")
-        # Destroy all procedural embeddings
-        await self.vector_memory_handler.destroy_all_points(str(VectorMemoryCollectionTypes.PROCEDURAL))
-
-        # Easy access to active procedures in plugin_manager (source of truth!)
-        active_procedures_hashes = [
-            {
-                "obj": ap,
-                "source": ap.name,
-                "type": ap.procedure_type,
-                "trigger_type": trigger_type,
-                "content": trigger_content,
-            }
-            for ap in self.plugin_manager.procedures
-            for trigger_type, trigger_list in ap.triggers_map.items()
-            for trigger_content in trigger_list
-        ]
-
-        payloads = []
-        vectors = []
-        for t in active_procedures_hashes:
-            payloads.append({
-                "page_content": t["content"],
-                "metadata": {
-                    "source": t["source"],
-                    "type": t["type"],
-                    "trigger_type": t["trigger_type"],
-                    "when": time.time(),
-                }
-            })
-            vectors.append(self.lizard.embedder.embed_documents([t["content"]])[0])
-
-        await self.vector_memory_handler.add_points(
-            collection_name=str(VectorMemoryCollectionTypes.PROCEDURAL), payloads=payloads, vectors=vectors
-        )
-        log.info(f"Agent id: {self.id}. Embedded {len(active_procedures_hashes)} triggers in procedural vector memory")
-
     def send_ws_message(self, content: str, msg_type="notification"):
         log.error(f"Agent id: {self.id}. No websocket connection open")
 
-    # REFACTOR: cat.llm should be available here, without streaming clearly
-    # (one could be interested in calling the LLM anytime, not only when there is a session)
-    def llm(self, prompt, *args, **kwargs) -> str:
-        """Generate a response using the LLM model.
-
-        This method is useful for generating a response with both a chat and a completion model using the same syntax
-
-        Args:
-            prompt (str): The prompt for generating the response.
-
-        Returns:
-            str: The generated response.
-        """
-        # Add a token counter to the callbacks
-        caller = get_caller_info()
-
-        # here we deal with Langchain
-        prompt = ChatPromptTemplate(messages=[HumanMessage(content=prompt)])
-
-        chain = (
-            prompt
-            | RunnableLambda(lambda x: langchain_log_prompt(x, f"{caller} prompt"))
-            | self.large_language_model
-            | RunnableLambda(lambda x: langchain_log_output(x, f"{caller} prompt output"))
-            | StrOutputParser()
-        )
-
-        # in case we need to pass info to the template
-        return chain.invoke({}, config=kwargs.get("config", None))
-
-    def replace_llm(self, language_model_name: str, settings: Dict) -> ReplacedNLPConfig:
+    def replace_llm(self, language_model_name: str, settings: Dict) -> Dict:
         """
         Replace the current LLM with a new one. This method is used to change the LLM of the cat.
         Args:
@@ -236,23 +145,18 @@ class CheshireCat:
         try:
             # try to reload the llm of the cat
             self.large_language_model = get_factory_object(self.id, factory)
-        except ValueError as e:
+        except Exception as e:
             log.error(f"Agent id: {self.id}. Error while loading the new LLM: {e}")
 
             # something went wrong: rollback
-            rollback_factory_config(self.id, factory)
-
             if updater.old_setting is not None:
-                self.replace_llm(updater.old_setting["value"]["name"], updater.new_setting["value"])
+                self.replace_llm(updater.old_setting["name"], updater.old_setting["value"])
 
             raise e
 
-        # recreate tools embeddings
-        self.plugin_manager.find_plugins()
+        return {"name": language_model_name, "value": updater.new_setting["value"]}
 
-        return ReplacedNLPConfig(name=language_model_name, value=updater.new_setting["value"])
-
-    def replace_auth_handler(self, auth_handler_name: str, settings: Dict) -> ReplacedNLPConfig:
+    def replace_auth_handler(self, auth_handler_name: str, settings: Dict) -> Dict:
         """
         Replace the current Auth Handler with a new one.
         Args:
@@ -267,9 +171,9 @@ class CheshireCat:
 
         self.custom_auth_handler = get_factory_object(self.id, factory)
 
-        return ReplacedNLPConfig(name=auth_handler_name, value=updater.new_setting["value"])
+        return {"name": auth_handler_name, "value": updater.new_setting["value"]}
 
-    def replace_file_manager(self, file_manager_name: str, settings: Dict) -> ReplacedNLPConfig:
+    def replace_file_manager(self, file_manager_name: str, settings: Dict) -> Dict:
         """
         Replace the current file manager with a new one. This method is used to change the file manager of the lizard.
 
@@ -290,20 +194,18 @@ class CheshireCat:
             self.file_manager = get_factory_object(self.id, factory)
 
             self.file_manager.transfer(old_filemanager, self.id)
-        except ValueError as e:
+        except Exception as e:
             log.error(f"Error while loading the new File Manager: {e}")
 
             # something went wrong: rollback
-            rollback_factory_config(self.id, factory)
-
             if updater.old_setting is not None:
-                self.replace_file_manager(updater.old_setting["value"]["name"], updater.new_setting["value"])
+                self.replace_file_manager(updater.old_setting["name"], updater.old_setting["value"])
 
             raise e
 
-        return ReplacedNLPConfig(name=file_manager_name, value=updater.new_setting["value"])
+        return {"name": file_manager_name, "value": updater.new_setting["value"]}
 
-    def replace_chunker(self, chunker_name: str, settings: Dict) -> ReplacedNLPConfig:
+    def replace_chunker(self, chunker_name: str, settings: Dict) -> Dict:
         """
         Replace the current Auth Handler with a new one.
         Args:
@@ -318,11 +220,11 @@ class CheshireCat:
 
         self.chunker = get_factory_object(self.id, ChunkerFactory(self.plugin_manager))
 
-        return ReplacedNLPConfig(name=chunker_name, value=updater.new_setting["value"])
+        return {"name": chunker_name, "value": updater.new_setting["value"]}
 
     async def replace_vector_memory_handler(
         self, vector_memory_name: str, settings: Dict
-    ) -> ReplacedNLPConfig:
+    ) -> Dict:
         """
         Replace the current Vector Memory Handler with a new one.
         Args:
@@ -340,7 +242,7 @@ class CheshireCat:
         lizard = self.lizard
         await self.vector_memory_handler.initialize(lizard.embedder_name, lizard.embedder_size)
 
-        return ReplacedNLPConfig(name=vector_memory_name, value=updater.new_setting["value"])
+        return {"name":vector_memory_name, "value": updater.new_setting["value"]}
 
     @property
     def lizard(self) -> "BillTheLizard":
@@ -351,7 +253,7 @@ class CheshireCat:
             lizard: BillTheLizard
                 Instance of langchain `BillTheLizard`.
         """
-        from cat.looking_glass.bill_the_lizard import BillTheLizard
+        from cat.looking_glass import BillTheLizard
         return BillTheLizard()
 
     @property
@@ -375,7 +277,7 @@ class CheshireCat:
 
         Examples
         --------
-        >>> cat.embedder.embed_query("Oh dear!")
+        >> cat.embedder.embed_query("Oh dear!")
         [0.2, 0.02, 0.4, ...]
         """
         return self.lizard.embedder
@@ -390,7 +292,7 @@ class CheshireCat:
             Module to ingest documents and URLs for RAG.
         Examples
         --------
-        >>> cat.rabbit_hole.ingest_file(...)
+        >> cat.rabbit_hole.ingest_file(...)
         """
         return self.lizard.rabbit_hole
 
@@ -406,17 +308,6 @@ class CheshireCat:
         return self.lizard.core_auth_handler
 
     @property
-    def main_agent(self) -> "MainAgent":
-        """
-        Gives access to the `MainAgent` object. Use it to interact with the Cat's main agent.
-
-        Returns:
-            main_agent: MainAgent
-                Main agent of the Cat
-        """
-        return self.lizard.main_agent
-
-    @property
     def mad_hatter(self) -> Tweedledee:
         """
         Gives access to the `Tweedledee` plugin manager.
@@ -428,42 +319,15 @@ class CheshireCat:
         Examples
         --------
         Obtain the path in which your plugin is located
-        >>> cat.mad_hatter.get_plugin().path
-        /app/cat/plugins/my_plugin
+        >> cat.mad_hatter.get_plugin().path
+        /app/plugins/my_plugin
         Obtain plugin settings
-        >>> cat.mad_hatter.get_plugin().load_settings()
+        >> cat.mad_hatter.get_plugin().load_settings()
         {"num_cats": 44, "rows": 6, "remainder": 0}
         """
         return self.plugin_manager
 
-    @property
-    def _llm(self) -> BaseLanguageModel:
-        """
-        Instance of langchain `LLM`.
-        Only use it if you directly want to deal with langchain, prefer method `cat.llm(prompt)` otherwise.
-        """
-        return self.large_language_model
-
     # each time we access the file handlers, plugins can intervene
     @property
     def file_handlers(self) -> Dict:
-        file_handlers = self.lizard.parsers.copy()
-
-        # no access to stray
-        file_handlers = self.plugin_manager.execute_hook(
-            "rabbithole_instantiates_parsers", file_handlers, cat=self
-        )
-
-        return file_handlers
-
-    # each time we access the text splitter, plugins can intervene
-    @property
-    def text_splitter(self):
-        # default text splitter
-        text_splitter = self.chunker
-
-        # no access to stray
-        text_splitter = self.plugin_manager.execute_hook(
-            "rabbithole_instantiates_splitter", text_splitter, cat=self
-        )
-        return text_splitter
+        return self.plugin_manager.execute_hook("rabbithole_instantiates_parsers",  {}, cat=self)

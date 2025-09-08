@@ -1,28 +1,17 @@
 import json
 from typing import List, Any, Dict
-from langchain_core.documents import Document as LangchainDocument
+from langchain_core.documents import Document as LangChainDocument
 from pydantic import BaseModel, Field
 
-from cat.utils import Enum as BaseEnum, BaseModelDict
-
-
-class VectorMemoryCollectionTypes(BaseEnum):
-    EPISODIC = "episodic"
-    DECLARATIVE = "declarative"
-    PROCEDURAL = "procedural"
-
-
-class VectorEmbedderSize(BaseModel):
-    text: int
-    image: int | None = None
+from cat.utils import BaseModelDict
 
 
 class DocumentRecall(BaseModelDict):
     """
-    Langchain `Document` retrieved from the episodic memory, with the similarity score, the list of embeddings and the
+    Langchain `Document` retrieved from a memory, with the similarity score, the list of embeddings and the
     id of the memory.
     """
-    document: LangchainDocument
+    document: LangChainDocument
     score: float | None = None
     vector: List[float] = Field(default_factory=list)
     id: str | None = None
@@ -142,7 +131,7 @@ def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
             metadata = {}
 
     document = DocumentRecall(
-        document=LangchainDocument(
+        document=LangChainDocument(
             page_content=page_content,
             metadata=metadata,
         ),

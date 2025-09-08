@@ -21,6 +21,14 @@ def get_class_from_decorated_singleton(singleton):
     return singleton().__class__
 
 
+def send_file(file_name, content_type, client, headers, payload=None):
+    file_path = f"tests/mocks/{file_name}"
+    with open(file_path, "rb") as f:
+        files = {"file": (file_name, f, content_type)}
+        response = client.post("/rabbithole/", files=files, data=payload, headers=headers)
+    return response, file_path
+
+
 # utility function to communicate with the cat via websocket
 def send_websocket_message(msg, client, query_params):
     url = f"/ws/{agent_id}?" + urlencode(query_params)
@@ -73,15 +81,6 @@ def create_mock_plugin_zip(flat: bool, plugin_id="mock_plugin"):
         root_dir=root_dir,
         base_dir=base_dir,
     )
-
-
-# utility to retrieve embedded tools from endpoint
-def get_procedural_memory_contents(client, params=None, headers=None):
-    headers = headers or {} | {"agent_id": agent_id}
-    final_params = (params or {}) | {"text": "random"}
-    response = client.get("/memory/recall/", params=final_params, headers=headers)
-    json = response.json()
-    return json["vectors"]["collections"]["procedural"]
 
 
 # utility to retrieve declarative memory contents

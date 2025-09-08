@@ -8,21 +8,20 @@ from typing import List, Dict, Tuple
 from urllib.parse import urlparse
 from urllib.error import HTTPError
 from starlette.datastructures import UploadFile
-from langchain_core.documents import Document
+from langchain_core.documents.base import Document, Blob
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
-from langchain.document_loaders.blob_loaders.schema import Blob
 
 from cat.env import get_env_bool
+from cat.factory.chunker import BaseChunker
 from cat.log import log
-from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.memory.utils import VectorMemoryCollectionTypes, PointStruct
+from cat.memory.utils import PointStruct
 from cat.utils import singleton
 
 
 @singleton
 class RabbitHole:
     """Manages content ingestion. I'm late... I'm late!"""
-    async def ingest_memory(self, ccat: CheshireCat, file: UploadFile):
+    async def ingest_memory(self, ccat: "CheshireCat", file: UploadFile):
         """Upload memories to the declarative memory from a JSON file.
 
         Args:
@@ -54,7 +53,7 @@ class RabbitHole:
             )
 
         # Get Declarative memories in file
-        declarative_memories = memories["collections"][str(VectorMemoryCollectionTypes.DECLARATIVE)]
+        declarative_memories = memories["collections"]["declarative"]
 
         # Store data to upload the memories in batch
         ids = [m["id"] for m in declarative_memories]
@@ -67,7 +66,7 @@ class RabbitHole:
         log.info(f"Agent id: {ccat.id}. Preparing to load {len(vectors)} vector memories")
 
         # Check embedding size is correct
-        embedder_size = ccat.lizard.embedder_size.text
+        embedder_size = ccat.lizard.embedder_size
         len_mismatch = [len(v) == embedder_size for v in vectors]
 
         if not any(len_mismatch):
@@ -77,7 +76,7 @@ class RabbitHole:
 
         # Upsert memories in batch mode
         await ccat.vector_memory_handler.add_points(
-            collection_name=str(VectorMemoryCollectionTypes.DECLARATIVE), ids=ids, payloads=payloads, vectors=vectors
+            collection_name="declarative", ids=ids, payloads=payloads, vectors=vectors
         )
 
     async def ingest_file(self, stray: "StrayCat", file: str | UploadFile, metadata: Dict = None):
@@ -243,7 +242,7 @@ class RabbitHole:
         log.info(f"Agent id: {ccat.id}. Preparing to memorize {len(docs)} vectors")
 
         embedder = ccat.embedder
-        plugin_manager = stray.mad_hatter
+        plugin_manager = stray.plugin_manager
 
         # hook the docs before they are stored in the vector memory
         docs = plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, cat=stray)
@@ -263,11 +262,13 @@ class RabbitHole:
                 await stray.send_ws_message(read_message)
                 log.info(read_message)
 
-            # add default metadata
-            doc.metadata["source"] = source
-            doc.metadata["when"] = time.time()
-            # add custom metadata (sent via endpoint)
-            doc.metadata = {**doc.metadata, **{k: v for k, v in metadata.items()}}
+            # add custom metadata (sent via endpoint) and default metadata (source and when)
+            doc.metadata = {
+                **doc.metadata,
+                **{k: v for k, v in metadata.items()},
+                "source": source,
+                "when": time.time(),
+            }
 
             doc = plugin_manager.execute_hook(
                 "before_rabbithole_insert_memory", doc, cat=stray
@@ -276,7 +277,7 @@ class RabbitHole:
             if doc.page_content != "":
                 doc_embedding = embedder.embed_documents([doc.page_content])
                 if (stored_point := await ccat.vector_memory_handler.add_point(
-                    str(VectorMemoryCollectionTypes.DECLARATIVE),
+                    "declarative",
                     doc.page_content,
                     doc_embedding[0],
                     doc.metadata,
@@ -324,32 +325,113 @@ class RabbitHole:
 
         See Also:
             before_rabbithole_splits_text
-            after_rabbithole_splitted_text
 
         Notes
         -----
-        The default behavior splits the text and executes the hooks, before and after the splitting, respectively.
-        `before_rabbithole_splits_text` and `after_rabbithole_splitted_text` hooks return the original input without
-        any modification.
+        The default behavior splits the text and executes the hooks, before the splitting.
+        `before_rabbithole_splits_text` hook returns the original input without any modification.
         """
-        plugin_manager = stray.mad_hatter
-        text_splitter = stray.text_splitter
+        plugin_manager = stray.plugin_manager
 
         # do something on the text before it is split
         text = plugin_manager.execute_hook("before_rabbithole_splits_text", text, cat=stray)
 
         # split text
-        docs = text_splitter.split_documents(text)
-        # remove short texts (page numbers, isolated words, etc.)
-        # TODO: join each short chunk with previous one, instead of deleting them
-        docs = list(filter(lambda d: len(d.page_content) > 10, docs))
+        docs = stray.chunker.split_documents(text)
 
-        # do something on the text after it is split
-        docs = plugin_manager.execute_hook(
-            "after_rabbithole_splitted_text", docs, cat=stray
-        )
+        # join each short chunk with previous one, instead of deleting them
+        try:
+            return self._merge_short_chunks(docs, stray.chunker)
+        except Exception as e:
+            # Log error but don't fail the entire process
+            stray.log.warning(f"Error merging short chunks: {e}. Proceeding with original chunks.")
+            return docs
 
-        return docs
+    def _merge_short_chunks(self, docs: List[Document], chunker: BaseChunker) -> List[Document]:
+        """Safely merge short chunks with adjacent ones.
+
+        Args:
+            docs: List of documents to process
+            chunker: The chunker instance for configuration
+
+        Returns:
+            List of documents with short chunks merged
+        """
+        def should_merge_chunk() -> bool:
+            """Determine if a chunk should be merged."""
+            return (
+                    min_chunk_size > len(current_content) > 0 and  # Don't merge empty content
+                    len(merged_docs) > 0  # Need previous chunk to merge with
+            )
+
+        def can_safely_merge(prev_doc: Document) -> bool:
+            """Check if two documents can be safely merged."""
+            potential_size = len(prev_doc.page_content) + len(current_doc.page_content) + 2
+            return potential_size <= max_merge_size
+
+        if not docs:
+            return docs
+
+        # Get configuration with safe defaults
+        chunk_size = getattr(chunker, "chunk_size", 1000)
+        chunk_overlap = getattr(chunker, "chunk_overlap", 100)
+
+        # Conservative thresholds
+        min_chunk_size = max(50, chunk_size // 20)  # At least 50 chars
+        max_merge_size = chunk_size + chunk_overlap  # Respect splitter's intended size
+
+        merged_docs = []
+        i = 0
+
+        while i < len(docs):
+            current_doc = docs[i]
+            current_content = current_doc.page_content.strip()
+
+            # Check if this chunk should be merged
+            if should_merge_chunk() and can_safely_merge(merged_docs[-1]):
+                try:
+                    merged_docs[-1] = self._create_merged_document(merged_docs[-1], current_doc)
+                except Exception:
+                    # If merge fails, keep both documents separate
+                    merged_docs.append(current_doc)
+            else:
+                merged_docs.append(current_doc)
+
+            i += 1
+
+        return merged_docs
+
+    def _create_merged_document(self, prev_doc: Document, current_doc: Document) -> Document:
+        """Create a new merged document safely."""
+        # Merge content with clear separator
+        merged_content = prev_doc.page_content.rstrip() + "\n\n" + current_doc.page_content.lstrip()
+
+        # Merge metadata - since source is the same, we can safely combine
+        merged_metadata = prev_doc.metadata.copy()
+
+        # Add all metadata from current doc, handling conflicts intelligently
+        for key, value in current_doc.metadata.items():
+            if key in merged_metadata and merged_metadata[key] != value:
+                # For numeric values (like page numbers), take the range or sum
+                if isinstance(merged_metadata[key], (int, float)) and isinstance(value, (int, float)):
+                    if key in ["page", "page_number", "chunk_index"]:
+                        # For page/chunk numbers, keep the starting one
+                        pass  # Keep the previous value
+                    else:
+                        # For other numeric values, might want to sum or take max
+                        merged_metadata[key] = max(merged_metadata[key], value)
+                else:
+                    # For other conflicts, keep the first value
+                    pass
+            else:
+                merged_metadata[key] = value
+
+        # Add merge tracking
+        merge_count = merged_metadata.get("_merge_count", 1) + 1
+        merged_metadata["_merge_count"] = merge_count
+        merged_metadata["_is_merged"] = True
+
+        return Document(page_content=merged_content, metadata=merged_metadata)
 
     async def _save_file(
         self, stray: "StrayCat", file_bytes: bytes, content_type: str, source: str

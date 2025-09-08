@@ -1,5 +1,6 @@
 from enum import Enum
 from pydantic import BaseModel, Field
+
 from cat.experimental.form.cat_form import CatForm
 from cat.experimental.form.form_decorator import form
 
@@ -18,6 +19,7 @@ class PizzaOrder(BaseModel):
 
 @form
 class PizzaForm(CatForm):
+    name = "pizza_order"
     description = "Pizza Order"
     model_class = PizzaOrder
     start_examples = ["order a pizza", "I want pizza"]
@@ -28,7 +30,5 @@ class PizzaForm(CatForm):
 
     ask_confirm: bool = True
 
-    def submit(self, form_data):
-        msg = f"Form submitted: {form_data}"
-        # self.cat.send_ws_message(msg, msg_type="chat")
-        return {"output": msg}
+    def submit(self, form_data) -> str:
+        return f"Form submitted: {form_data}"

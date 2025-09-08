@@ -1,0 +1,10 @@
+{
+    "name": "The Why",
+    "description": "Add the context and the reasoning behind the answers of the LLM",
+    "author_name": "Cheshire Cat",
+    "author_url": "Matteo Cacciola",
+    "plugin_url": "https://github.com/matteocacciola/cheshirecat-core",
+    "tags": "core, default, reasoning, context, why",
+    "thumb": "",
+    "version": "0.0.1"
+}
