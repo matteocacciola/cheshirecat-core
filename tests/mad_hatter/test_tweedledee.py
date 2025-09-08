@@ -30,10 +30,10 @@ def test_instantiation_discovery(cheshire_cat):
         assert h.priority >= 0.0
 
     # finds tool
-    assert len(plugin_manager.tools) == 3
+    assert len(plugin_manager.tools) == 2
     for tool in plugin_manager.tools:
         assert isinstance(tool, CatTool)
-        assert tool.name in ["get_the_time", "read_working_memory", "get_weather"]
+        assert tool.name in ["get_the_time", "get_weather"]
         assert tool.description in [
             "Useful to get the current time when asked. Input is always None.",
             "Get the content of the Working Memory.",
@@ -44,9 +44,5 @@ def test_instantiation_discovery(cheshire_cat):
             assert len(tool.start_examples) == 2
             assert "what time is it" in tool.start_examples
             assert "get the time" in tool.start_examples
-        elif tool.name == "read_working_memory":
-            assert len(tool.start_examples) == 2
-            assert "log working memory" in tool.start_examples
-            assert "show me the contents of working memory" in tool.start_examples
         elif tool.name == "get_weather":
             assert len(tool.start_examples) == 0

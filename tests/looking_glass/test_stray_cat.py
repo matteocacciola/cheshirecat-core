@@ -1,6 +1,7 @@
 import pytest
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
+from cat.agent import run_agent
 from cat.core_plugins.memory.utils import recall
 from cat.looking_glass import StrayCat
 from cat.memory.messages import CatMessage, UserMessage, MessageWhy
@@ -17,7 +18,8 @@ def test_stray_initialization(stray_no_memory):
 
 @pytest.mark.asyncio
 async def test_stray_nlp(lizard, stray_no_memory):
-    res = await stray_no_memory.agent.run(
+    res = await run_agent(
+        llm=stray_no_memory.large_language_model,
         prompt=ChatPromptTemplate.from_messages([
             HumanMessagePromptTemplate.from_template(template="hey")
         ]),

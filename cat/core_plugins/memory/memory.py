@@ -13,11 +13,15 @@ from cat.utils import get_caller_info, dispatch
 def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
     # recall declarative memory from vector collections and store it in working_memory
     try:
-        dispatch(
+        r = dispatch(
             recall_relevant_memories_to_working_memory,
             cat=cat,
             query=user_message.text,
         )
+        if hasattr(r, "__await__"):
+            import asyncio
+
+            asyncio.get_event_loop().run_until_complete(r)
     except Exception as e:
         log.error(f"Agent id: {cat.agent_id}. Error during recall {e}")
 

@@ -5,6 +5,7 @@ from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplat
 from pydantic import BaseModel, ValidationError
 
 from cat.log import log
+from cat.agent import run_agent
 from cat.mad_hatter.procedures import CatProcedure
 from cat.utils import Enum, parse_json
 
@@ -79,7 +80,8 @@ JSON must be in this format:
 ```"""
 
         # Queries the LLM and check if user agrees or not
-        response = await self._stray.agent.run(
+        response = await run_agent(
+            llm=self._stray.large_language_model,
             prompt=ChatPromptTemplate.from_messages([
                 HumanMessagePromptTemplate.from_template(template=confirm_prompt)
             ]),
@@ -88,7 +90,7 @@ JSON must be in this format:
         return "true" in response.output.lower()
 
     # Check if the user wants to exit the form
-    # it is run at the beginning of every form.next()
+    # it is run at the beginning of every form.func()
     async def _check_exit_intent(self) -> bool:
         # Get user message
         user_message = self._stray.cheshire_cat.working_memory.user_message.text
@@ -116,7 +118,8 @@ JSON:
 """
 
         # Queries the LLM and check if user agrees or not
-        response = await self._stray.agent.run(
+        response = await run_agent(
+            llm=self._stray.large_language_model,
             prompt=ChatPromptTemplate.from_messages([
                 HumanMessagePromptTemplate.from_template(template=check_exit_prompt)
             ]),
@@ -174,7 +177,8 @@ JSON:
 
     # Extract model information from user message
     async def _extract(self):
-        json_str = await self._stray.agent.run(
+        json_str = await run_agent(
+            llm=self._stray.large_language_model,
             prompt=ChatPromptTemplate.from_messages([
                 HumanMessagePromptTemplate.from_template(template=self._extraction_prompt())
             ]),

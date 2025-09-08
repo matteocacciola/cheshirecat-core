@@ -20,7 +20,7 @@ from cat.factory.llm import LLMFactory
 from cat.factory.vector_db import VectorDatabaseFactory, BaseVectorDatabaseHandler
 from cat.log import log
 from cat.mad_hatter import Tweedledee
-from cat.utils import get_factory_object, get_updated_factory_object, rollback_factory_config
+from cat.utils import get_factory_object, get_updated_factory_object
 
 
 # main class
@@ -139,21 +139,18 @@ class CheshireCat:
         Returns:
             The dictionary resuming the new name and settings of the LLM
         """
-        settings["name"] = language_model_name
         factory = LLMFactory(self.plugin_manager)
         updater = get_updated_factory_object(self.id, factory, language_model_name, settings)
 
         try:
             # try to reload the llm of the cat
             self.large_language_model = get_factory_object(self.id, factory)
-        except ValueError as e:
+        except Exception as e:
             log.error(f"Agent id: {self.id}. Error while loading the new LLM: {e}")
 
             # something went wrong: rollback
-            rollback_factory_config(self.id, factory)
-
             if updater.old_setting is not None:
-                self.replace_llm(updater.old_setting["name"], updater.new_setting["value"])
+                self.replace_llm(updater.old_setting["name"], updater.old_setting["value"])
 
             raise e
 
@@ -169,7 +166,6 @@ class CheshireCat:
         Returns:
             The dictionary resuming the new name and settings of the Auth Handler
         """
-        settings["name"] = auth_handler_name
         factory = AuthHandlerFactory(self.plugin_manager)
         updater = get_updated_factory_object(self.id, factory, auth_handler_name, settings)
 
@@ -188,7 +184,6 @@ class CheshireCat:
         Returns:
             The dictionary resuming the new name and settings of the file manager
         """
-        settings["name"] = file_manager_name
         factory = FileManagerFactory(self.plugin_manager)
         updater = get_updated_factory_object(self.id, factory, file_manager_name, settings)
 
@@ -199,14 +194,12 @@ class CheshireCat:
             self.file_manager = get_factory_object(self.id, factory)
 
             self.file_manager.transfer(old_filemanager, self.id)
-        except ValueError as e:
+        except Exception as e:
             log.error(f"Error while loading the new File Manager: {e}")
 
             # something went wrong: rollback
-            rollback_factory_config(self.id, factory)
-
             if updater.old_setting is not None:
-                self.replace_file_manager(updater.old_setting["name"], updater.new_setting["value"])
+                self.replace_file_manager(updater.old_setting["name"], updater.old_setting["value"])
 
             raise e
 
@@ -222,7 +215,6 @@ class CheshireCat:
         Returns:
             The dictionary resuming the new name and settings of the Auth Handler
         """
-        settings["name"] = chunker_name
         factory = ChunkerFactory(self.plugin_manager)
         updater = get_updated_factory_object(self.id, factory, chunker_name, settings)
 

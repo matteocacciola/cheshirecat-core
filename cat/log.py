@@ -193,28 +193,6 @@ class CatLogEngine:
 
         # self.log_examples() # You can uncomment this for testing purposes
 
-    def colored_text(self, text: str, color: str):
-        """Get colored text.
-
-        Args:
-            text: The text to color.
-            color: The color to use.
-
-        Returns:
-            The colored text. Supports blue, yellow, pink, green and red
-        """
-
-        colors = {
-            "blue": "36;1",
-            "yellow": "33;1",
-            "pink": "38;5;200",
-            "green": "32;1",
-            "red": "31;1",
-        }
-
-        color_str = colors[color]
-        return f"\u001b[{color_str}m\033[1;3m{text}\u001b[0m"
-
     def log_examples(self):
         """Log examples for the log engine."""
         for c in [self, "Hello there!", {"ready", "set", "go"}, [1, 4, "sdfsf"], {"a": 1, "b": {"c": 2}}]:
@@ -230,37 +208,6 @@ class CatLogEngine:
             intentional_error()
         except ZeroDivisionError: # Catch specific error for clarity
             self.error("This error is just for demonstration purposes.")
-
-    def langchain_log_prompt(self, langchain_prompt, title):
-        if get_env("CCAT_DEBUG") == "true":
-            print("\n")
-            print(self.colored_text(f"===== {title} INPUT =====", "green"))
-            for m in langchain_prompt.messages:
-                print(self.colored_text(type(m).__name__, "green"))
-                if isinstance(m.content, list):
-                    for sub_m in m.content:
-                        if sub_m.get("type") == "text":
-                            print(sub_m["text"])
-                        elif sub_m.get("type") == "image_url":
-                            print("(image)")
-                        else:
-                            print(" -- Could not log content:", sub_m.keys())
-                else:
-                    print(m.content)
-            print(self.colored_text("========================================", "green"))
-        return langchain_prompt
-
-    def langchain_log_output(self, langchain_output, title):
-        if get_env("CCAT_DEBUG") == "true":
-            print("\n")
-            print(self.colored_text(f"===== {title} OUTPUT =====", "blue"))
-            if hasattr(langchain_output, 'tool_calls'):
-                for t in langchain_output.tool_calls:
-                    print(f"Calling tool {t['name']} with input {t['args']}")
-            else:
-                print(langchain_output.content)
-            print(self.colored_text("========================================", "blue"))
-        return langchain_output
 
 
 class CatLogProcessor(ABC):

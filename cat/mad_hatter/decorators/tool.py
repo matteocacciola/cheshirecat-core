@@ -7,7 +7,6 @@ from cat.mad_hatter.procedures import CatProcedure
 
 # All @tool decorated functions in plugins become a CatTool.
 # The difference between base langchain Tool and CatTool is that CatTool has an instance of the cat as attribute
-# (set by the plugin manager)
 class CatTool(CatProcedure):
     model_config = ConfigDict(extra="allow")
 
@@ -47,16 +46,15 @@ def tool(
     """
     Make tools out of functions, can be used with or without arguments.
     Requires:
-        - Function must contain the cat argument -> str
         - Function must have a docstring
     Examples:
         .. code-block:: python
             @tool
-            def search_api(query: str, cat) -> str:
+            def search_api(query: str) -> str:
                 # Searches the API for the query.
                 return "https://api.com/search?q=" + query
             @tool("search")
-            def search_api(query: str, cat) -> str:
+            def search_api(query: str) -> str:
                 # Searches the API for the query.
                 return "https://api.com/search?q=" + query
     """

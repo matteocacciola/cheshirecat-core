@@ -27,7 +27,6 @@ from cat.utils import (
     dispatch,
     get_factory_object,
     get_updated_factory_object,
-    rollback_factory_config,
     pod_id,
 )
 
@@ -223,8 +222,6 @@ class BillTheLizard:
         Returns:
             The dictionary resuming the new name and settings of the embedder
         """
-        settings["name"] = language_embedder_name
-
         factory = EmbedderFactory(self.plugin_manager)
         updater = get_updated_factory_object(self._key, factory, language_embedder_name, settings)
 
@@ -241,10 +238,8 @@ class BillTheLizard:
             log.error(e)
 
             # something went wrong: rollback
-            rollback_factory_config(self._key, factory)
-
             if updater.old_setting is not None:
-                await self.replace_embedder(updater.old_setting["name"], updater.old_setting)
+                await self.replace_embedder(updater.old_setting["name"], updater.old_setting["value"])
 
             raise LoadMemoryException(f"Load memory exception: {utils.explicit_error_message(e)}")
 

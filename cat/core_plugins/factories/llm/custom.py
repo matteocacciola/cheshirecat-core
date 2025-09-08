@@ -2,36 +2,9 @@ from typing import List, Any, Mapping, Dict
 import requests
 import httpx
 from pydantic import Field
-from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
 from langchain_core.language_models.llms import LLM
 from langchain_openai.chat_models import ChatOpenAI
 from langchain_ollama import ChatOllama
-
-from cat.utils import default_llm_answer_prompt
-
-
-class LLMDefault(LLM):
-    @property
-    def _llm_type(self):
-        return ""
-
-    def _call(
-        self,
-        prompt: str,
-        stop: List[str] | None = None,
-        run_manager: CallbackManagerForLLMRun | None = None,
-        **kwargs: Any,
-    ) -> str:
-        return default_llm_answer_prompt()
-
-    async def _acall(
-        self,
-        prompt: str,
-        stop: List[str] | None = None,
-        run_manager: AsyncCallbackManagerForLLMRun | None = None,
-        **kwargs: Any,
-    ) -> str:
-        return default_llm_answer_prompt()
 
 
 # elaborated from
@@ -110,6 +83,6 @@ class CustomOpenAI(ChatOpenAI):
 
 class CustomOllama(ChatOllama):
     def __init__(self, **kwargs: Any) -> None:
-        if kwargs["base_url"].endswith("/"):
+        if kwargs.get("base_url", "").endswith("/"):
             kwargs["base_url"] = kwargs["base_url"][:-1]
         super().__init__(**kwargs)

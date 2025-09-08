@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import concurrent.futures
 from io import BytesIO
 import aiofiles
 from datetime import timedelta
@@ -441,19 +442,29 @@ def get_embedder_name(embedder: Embeddings) -> str:
 
 
 def dispatch(func: Callable[..., Any], *args, **kwargs) -> Any:
+    """
+    Execute a function whether it's sync or async.
+    If async and we're in a running event loop, execute in a separate thread.
+    """
     if not asyncio.iscoroutinefunction(func) and not asyncio.iscoroutine(func):
         return func(*args, **kwargs)
 
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
+    coro = func(*args, **kwargs)
 
-    coro = func(*args, **kwargs) if asyncio.iscoroutinefunction(func) else func
-    if loop.is_running():
-        return loop.create_task(coro)
-    return loop.run_until_complete(coro)
+    try:
+        # Check if we're in a running event loop
+        asyncio.get_running_loop()
+
+        # We're in a running loop, so we need to use a thread
+        def run_async_in_thread():
+            return asyncio.run(coro)
+
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(run_async_in_thread)
+            return future.result()  # This blocks until completion
+    except RuntimeError:
+        # No running loop, safe to use asyncio.run()
+        return asyncio.run(coro)
 
 
 def get_factory_object(agent_id: str, factory: "BaseFactory") -> Any:
@@ -499,12 +510,6 @@ def get_updated_factory_object(
     ))
 
     return UpdaterFactory(old_setting=current_setting, new_setting=final_setting)
-
-
-def rollback_factory_config(agent_id: str, factory: "BaseFactory"):
-    from cat.db.cruds import settings as crud_settings
-
-    crud_settings.delete_settings_by_category(agent_id, factory.setting_category)
 
 
 def get_file_hash(file_path: str, chunk_size: int = 8192) -> str:

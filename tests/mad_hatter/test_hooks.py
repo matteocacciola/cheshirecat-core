@@ -1,4 +1,4 @@
-from cat.looking_glass.dormouse import AgentOutput
+from cat.looking_glass import AgentOutput
 from cat.mad_hatter.decorators import CatHook
 from cat.memory.working_memory import CatMessage
 
