@@ -384,6 +384,17 @@ class BaseVectorDatabaseHandler(ABC):
         """
         pass
 
+    @property
+    @abstractmethod
+    def client(self):
+        """
+        Get the client instance for the vector database.
+
+        Returns:
+            The client instance
+        """
+        pass
+
 
 class QdrantHandler(BaseVectorDatabaseHandler):
     def __init__(
@@ -428,6 +439,10 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             force_disable_check_same_thread=True,
             timeout=qdrant_client_timeout,
         )
+
+    @property
+    def client(self):
+        return self._client
 
     def tenant_field_condition(self) -> FieldCondition:
         return FieldCondition(key="tenant_id", match=MatchValue(value=self.agent_id))
