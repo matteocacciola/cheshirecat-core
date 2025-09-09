@@ -4,7 +4,7 @@ from typing import Type, List
 from pydantic import ConfigDict
 import httpx
 
-from cat.factory.embedder import MultimodalEmbeddings, EmbedderSettings
+from cat.factory.embedder import MultimodalEmbeddings, EmbedderMultimodalSettings
 from cat.utils import retrieve_image
 
 
@@ -62,7 +62,7 @@ class CustomJinaMultimodalEmbedder(MultimodalEmbeddings):
         return self._embed(images=images)
 
 
-class EmbedderJinaMultimodalConfig(EmbedderSettings):
+class EmbedderJinaMultimodalConfig(EmbedderMultimodalSettings):
     base_url: str
     model: str
     api_key: str
