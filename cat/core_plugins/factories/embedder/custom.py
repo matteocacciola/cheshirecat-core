@@ -42,3 +42,29 @@ class CustomOllamaEmbeddings(Embeddings):
         ret = httpx.post(self.url, json={"model": self.model, "prompt": text}, timeout=300.0)
         ret.raise_for_status()
         return ret.json()["embedding"]
+
+
+class CustomJinaEmbedder(Embeddings):
+    """Use Jina AI to serve embedding models."""
+    def __init__(self, base_url: str, model: str, api_key: str, task: str = "text-matching"):
+        self.url = os.path.join(base_url, "v1/embeddings")
+        self.model = model
+        self.api_key = api_key
+        self.headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        self.task = task
+
+    def _embed(self, texts: List[str]) -> List[List[float]]:
+        ret = httpx.post(
+            self.url,
+            data={"model": self.model, "input": texts, "task": self.task},
+            timeout=300.0,
+            headers=self.headers,
+        )
+        ret.raise_for_status()
+        return [e["embedding"] for e in ret.json()["data"]]
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        return self._embed(texts)
+
+    def embed_query(self, text: str) -> List[float]:
+        return self._embed([text])[0]
