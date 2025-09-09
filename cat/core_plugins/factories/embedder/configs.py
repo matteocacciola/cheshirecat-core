@@ -8,7 +8,11 @@ from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_voyageai import VoyageAIEmbeddings
 from pydantic import ConfigDict, Field
 
-from cat.core_plugins.factories.embedder.custom import CustomOpenAIEmbeddings, CustomOllamaEmbeddings
+from cat.core_plugins.factories.embedder.custom import (
+    CustomOpenAIEmbeddings,
+    CustomOllamaEmbeddings,
+    CustomJinaEmbedder,
+)
 from cat.factory.embedder import EmbedderSettings
 from cat.utils import Enum
 
@@ -218,3 +222,22 @@ class EmbedderOllamaConfig(EmbedderSettings):
     @classmethod
     def pyclass(cls) -> Type:
         return CustomOllamaEmbeddings
+
+
+class EmbedderJinaConfig(EmbedderSettings):
+    base_url: str
+    model: str
+    api_key: str
+    task: str | None = "text-matching"
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "Jina Embedder",
+            "description": "Configuration for Jina embeddings",
+            "link": "https://docs.jina.ai/api/jina/hub/index.html?highlight=embeddings#jina.hub.encoders.text.TextEncoder",
+        }
+    )
+
+    @classmethod
+    def pyclass(cls) -> Type:
+        return CustomJinaEmbedder
