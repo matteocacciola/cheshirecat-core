@@ -12,7 +12,6 @@ RUN apt-get -y update && apt-get install -y curl build-essential fastjar libmagi
 FROM system AS libraries
 
 ### PREPARE BUILD WITH NECESSARY FILES AND FOLDERS ###
-COPY ./pyproject.toml /app/pyproject.toml
 COPY ./requirements.txt /app/requirements.txt
 
 ### INSTALL PYTHON DEPENDENCIES (Core) ###

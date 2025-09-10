@@ -308,21 +308,3 @@ If you like this fork, give it a star ⭐! It is very important to have your sup
 Code is licensed under [GPL3](LICENSE).  
 The Cheshire Cat AI logo and name are property of Piero Savastano (founder and maintainer). The current fork is created,
 refactored and maintained by [Matteo Cacciola](mailto:matteo.cacciola@gmail.com).
-
-# Which way to go?
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-<p align="center">
-    <img align="center" src=./readme/cheshire-cat.jpeg width=400px alt="Wikipedia picture of the Cheshire Cat">
-</p>
-
-```
-"Would you tell me, please, which way I ought to go from here?"
-"That depends a good deal on where you want to get to," said the Cat.
-"I don't much care where--" said Alice.
-"Then it doesn't matter which way you go," said the Cat.
-
-(Alice's Adventures in Wonderland - Lewis Carroll)
-
-```

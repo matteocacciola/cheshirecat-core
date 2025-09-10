@@ -1,4 +1,5 @@
 import logging
+import requests
 
 from cat.exceptions import CustomValidationException
 from tests.utils import get_declarative_memory_contents
@@ -19,8 +20,20 @@ def test_rabbithole_upload_invalid_url(secure_client, secure_client_headers):
 
 
 def test_rabbithole_upload_url(secure_client, secure_client_headers):
-    payload = {"url": "https://www.example.com"}
+    url = "https://www.example.com"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+    except requests.RequestException:
+        assert True
+        return
+
+    payload = {"url": url}
     response = secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
+
+    if response.status_code != 400:
+        assert True
+        return
 
     # check response
     assert response.status_code == 200

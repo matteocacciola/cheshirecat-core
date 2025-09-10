@@ -368,17 +368,20 @@ def inspect_calling_folder() -> str:
     # who's calling?
     calling_frame = inspect.currentframe().f_back.f_back
     # Get the module associated with the frame
-    module = inspect.getmodule(calling_frame)
     # Get the absolute and then relative path of the calling module's file
-    abs_path = inspect.getabsfile(module)
-    rel_path = os.path.relpath(abs_path)
+    abs_path = os.path.abspath(
+        inspect.getabsfile(inspect.getmodule(calling_frame))
+    )
 
     # throw exception if this method is called from outside the plugins folder
-    if not rel_path.startswith(get_plugins_path()):
+    if not abs_path.startswith(get_plugins_path()):
         raise Exception("get_plugin() can only be called from within a plugin")
 
     # Replace the root and get only the current plugin folder
-    plugin_suffix = rel_path.replace(get_plugins_path(), "")
+    plugin_suffix = abs_path.replace(get_plugins_path(), "")
+    if plugin_suffix.startswith("/"):
+        plugin_suffix = plugin_suffix[1:]
+
     # Plugin's folder
     return plugin_suffix.split("/")[0]
 
@@ -533,22 +536,31 @@ def pod_id() -> str:
 
 
 def retrieve_image(content_image: str | None) -> str | None:
-    if not content_image:
-        return None
-    # If the image is a URL, download it and encode it as a data URI
-    if not content_image.startswith("http"):
-        return content_image
-    try:
+    def get_image_data() -> bytes:
+        # If the image is a file, read it and encode it as a data URI
+        if content_image.startswith("file://"):
+            with open(content_image[7:], "rb") as f:
+                image_data = f.read()
+            return image_data
+        # If the image is a URL, download it and encode it as a data URI.
         response = requests.get(content_image)
         response.raise_for_status()
+        return response.content
+
+    if not content_image:
+        return None
+    if not content_image.startswith("http") and not content_image.startswith("file://"):
+        return content_image
+
+    try:
+        content = get_image_data()
         # Open the image using Pillow to determine its MIME type
-        img = Image.open(BytesIO(response.content))
-        mime_type = img.format.lower()  # Get MIME type
+        img = Image.open(BytesIO(content))
+        mime_type = Image.MIME[img.format]  # e.g., "image/png"
         # Encode the image to base64
-        encoded_image = base64.b64encode(response.content).decode('utf-8')
-        image_uri = f"data:image/{mime_type};base64,{encoded_image}"
+        encoded_image = base64.b64encode(content).decode("utf-8")
         # Add the image as a data URI with the correct MIME type
-        return image_uri
+        return f"data:{mime_type};base64,{encoded_image}"
     except requests.RequestException as e:
         log.error(f"Failed to download image: {e} from {content_image}")
         return None
