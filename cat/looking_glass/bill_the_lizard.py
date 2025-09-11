@@ -19,6 +19,7 @@ from cat.factory.embedder import EmbedderFactory
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.mad_hatter import MadHatter, MarchHare, MarchHareConfig, Tweedledum
+from cat.mad_hatter.decorators import CustomEndpoint
 from cat.rabbit_hole import RabbitHole
 from cat.services.websocket_manager import WebSocketManager
 from cat.utils import (
@@ -66,10 +67,11 @@ class BillTheLizard:
         self.embedder_size: int | None = None
 
         self.plugin_manager = Tweedledum()
-        self.plugin_manager.on_end_plugin_install_callback = self.on_end_plugin_install
-        self.plugin_manager.on_start_plugin_uninstall_callback = self.on_start_plugin_uninstall
-        self.plugin_manager.on_end_plugin_uninstall_callback = self.on_end_plugin_uninstall
-        self.plugin_manager.on_finish_plugins_sync_callback = self.on_finish_plugins_sync
+        self.plugin_manager.on_end_plugin_install_callback = self._on_end_plugin_install
+        self.plugin_manager.on_start_plugin_uninstall_callback = self._on_start_plugin_uninstall
+        self.plugin_manager.on_end_plugin_uninstall_callback = self._on_end_plugin_uninstall
+        self.plugin_manager.on_finish_plugins_sync_callback = self._on_finish_plugins_sync
+        self.plugin_manager.on_end_plugin_toggle_callback = self._on_end_plugin_toggle
         # load active plugins
         self.plugin_manager.find_plugins()
 
@@ -141,12 +143,12 @@ class BillTheLizard:
 
         self.march_hare.consume_event(callback, MarchHareConfig.channels["PLUGIN_EVENTS"])
 
-    def on_end_plugin_install(self, plugin_id: str, plugin_path: str):
+    def _on_end_plugin_install(self, plugin_id: str, plugin_path: str):
         # activate the eventual custom endpoints
         for endpoint in self.plugin_manager.plugins[plugin_id].endpoints:
             endpoint.activate(self.fastapi_app)
 
-        self.inform_cheshirecats_plugin(plugin_id, "install")
+        self._inform_cheshirecats_plugin(plugin_id, "install")
 
         # notify the RabbitMQ about the new plugin installed
         self.march_hare.notify_event(
@@ -158,10 +160,10 @@ class BillTheLizard:
             exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
         )
 
-    def on_start_plugin_uninstall(self, plugin_id: str):
-        self.inform_cheshirecats_plugin(plugin_id, "uninstall")
+    def _on_start_plugin_uninstall(self, plugin_id: str):
+        self._inform_cheshirecats_plugin(plugin_id, "uninstall")
 
-    def on_end_plugin_uninstall(self, plugin_id: str, endpoints: list):
+    def _on_end_plugin_uninstall(self, plugin_id: str, endpoints: List[CustomEndpoint]):
         # deactivate the eventual custom endpoints
         for endpoint in endpoints:
             if endpoint.plugin_id == plugin_id:
@@ -174,13 +176,26 @@ class BillTheLizard:
             exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
         )
 
-    def on_finish_plugins_sync(self):
+    def _on_finish_plugins_sync(self):
         # Store endpoints for later activation
         self._pending_endpoints = deepcopy(self.plugin_manager.endpoints)
 
         # If app is already available, activate immediately
         if self.fastapi_app is not None:
             self._activate_pending_endpoints()
+
+    def _on_end_plugin_toggle(
+        self, plugin_id: str, endpoints: List[CustomEndpoint], what: Literal["activated", "deactivated"]
+    ):
+        if what == "activated":
+            return
+
+        # deactivate the eventual custom endpoints
+        for endpoint in endpoints:
+            if endpoint.plugin_id == plugin_id:
+                endpoint.deactivate(self.fastapi_app)
+
+        self._inform_cheshirecats_plugin(plugin_id, "deactivated")
 
     def _activate_pending_endpoints(self):
         for endpoint in self._pending_endpoints:
@@ -263,7 +278,9 @@ class BillTheLizard:
 
         return CheshireCat(agent_id)
 
-    def inform_cheshirecats_plugin(self, plugin_id: str, what: Literal["install", "uninstall"]):
+    def _inform_cheshirecats_plugin(
+        self, plugin_id: str, what: Literal["install", "uninstall", "activated", "deactivated"]
+    ):
         """
         Find the plugins for the given Cheshire Cat and update its plugin manager.
 
@@ -278,7 +295,7 @@ class BillTheLizard:
             # on installation, it's enough to get the Cheshire Cat, it will load the plugin manager,
             # which will load the plugins
             ccat = self.get_cheshire_cat(ccat_id)
-            if what == "uninstall":
+            if what in ["uninstall", "deactivated"]:
                 # deactivate plugins in the Cheshire Cats
                 ccat.plugin_manager.deactivate_plugin(plugin_id)
 

@@ -1,6 +1,5 @@
 from typing import Dict, List
 
-from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.tweedledum import Tweedledum
@@ -45,8 +44,6 @@ class Tweedledee(MadHatter):
         self.plugins = {}
 
         self.active_plugins = self.load_active_plugins_from_db()
-        log.info(f"Agent '{self.agent_key}' - ACTIVE PLUGINS:")
-        log.info(self.active_plugins)
 
         # plugins are already loaded when BillTheLizard is created; since its plugin manager scans the plugins folder
         # then, we just need to grab the plugins from there
@@ -62,7 +59,7 @@ class Tweedledee(MadHatter):
                 self.toggle_plugin(plugin_id)
                 raise e
 
-        self._sync_hooks_tools_and_forms()
+        self._on_finish_finding_plugins()
 
     def plugin_exists(self, plugin_id: str):
         return plugin_id in self.system_plugins.keys()
@@ -84,7 +81,7 @@ class Tweedledee(MadHatter):
         self.plugins[plugin_id].activate_settings(self.agent_key)
 
     def on_plugin_deactivation(self, plugin_id: str):
-        if plugin_id == "base_plugin" or not self.__local_plugin_exists(plugin_id):
+        if plugin_id == self.get_base_core_plugin_id or not self.__local_plugin_exists(plugin_id):
             return
 
         # Deactivate the plugin
@@ -93,13 +90,14 @@ class Tweedledee(MadHatter):
 
     # activate / deactivate plugin
     def toggle_plugin(self, plugin_id: str):
+        if plugin_id == self.get_base_core_plugin_id:
+            raise Exception("base_plugin cannot be deactivated")
+
         if not self.plugin_exists(plugin_id):
             raise Exception(f"Plugin {plugin_id} not present in plugins folder")
 
-        plugin_is_active = plugin_id in self.active_plugins
-
         # update list of active plugins
-        if plugin_is_active:
+        if plugin_id in self.active_plugins:
             self.deactivate_plugin(plugin_id)
         else:
             self.activate_plugin(plugin_id)

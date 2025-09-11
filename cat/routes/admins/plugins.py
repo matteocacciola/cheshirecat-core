@@ -15,6 +15,7 @@ from cat.routes.routes_utils import (
     InstallPluginFromRegistryResponse,
     InstallPluginResponse,
     PluginsSettingsResponse,
+    TogglePluginResponse,
     get_available_plugins,
     get_plugins_settings,
     get_plugin_settings,
@@ -136,3 +137,20 @@ async def uninstall_plugin(
     lizard.plugin_manager.uninstall_plugin(plugin_id)
 
     return DeletePluginResponse(deleted=plugin_id)
+
+
+@router.put("/toggle/{plugin_id}", status_code=200, response_model=TogglePluginResponse)
+async def toggle_plugin(
+    plugin_id: str,
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.DELETE),
+) -> TogglePluginResponse:
+    """Enable or disable a single plugin"""
+    plugin_id = slugify(plugin_id, separator="_")
+
+    # check if plugin exists
+    if not lizard.plugin_manager.plugin_exists(plugin_id):
+        raise CustomNotFoundException("Plugin not found")
+
+    # toggle plugin
+    lizard.plugin_manager.toggle_plugin(plugin_id)
+    return TogglePluginResponse(info=f"Plugin {plugin_id} toggled")

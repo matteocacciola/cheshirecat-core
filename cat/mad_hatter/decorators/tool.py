@@ -19,7 +19,7 @@ class CatTool(CatProcedure):
         examples = examples or []
         description = func.__doc__.strip() if func.__doc__ else ""
 
-        self.func = func
+        self.run = func
         self.name = name
         self.description = description
 
@@ -28,7 +28,7 @@ class CatTool(CatProcedure):
             "start_example": examples,
         }
         # remove cat argument from signature so it does not end up in prompts
-        self.signature = f"{inspect.signature(self.func)}".replace(", cat)", ")")
+        self.signature = f"{inspect.signature(self.run)}".replace(", cat)", ")")
 
     @property
     def start_examples(self):
