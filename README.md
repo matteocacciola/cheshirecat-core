@@ -1,29 +1,14 @@
-<a name="readme-top"></a>
+# Cheshire Cat: AI agent as a microservice
 
-<!-- PROJECT LOGO -->
-<br />
-<div align="center">
-  <h2>Cheshire Cat AI</h2>
-  <h3>🇮🇹 Stregatto - 🇨🇳 柴郡貓 - 🇮🇳 चेशायर बिल्ली - 🇷🇺 Чеширский кот</h3>
-<br/>
-  <a href="https://www.github.com/matteocacciola/cheshirecat-core">
-  <img alt="GitHub Repo stars" src="https://img.shields.io/github/stars/matteocacciola/cheshirecat-core?style=social">
-</a>
-  <a href="https://discord.gg/bHX5sNFCYU">
-        <img src="https://img.shields.io/discord/1092359754917089350?logo=discord"
-            alt="chat on Discord"></a>
-  <a href="https://www.github.com/matteocacciola/cheshirecat-core/issues">
-  <img alt="GitHub issues" src="https://img.shields.io/github/issues/matteocacciola/cheshirecat-core">
-  </a>
-  <a href="https://www.github.com/matteocacciola/cheshirecat-core/tags">
-  <img alt="GitHub tag (with filter)" src="https://img.shields.io/github/v/tag/matteocacciola/cheshirecat-core">
-  </a>
-  <img alt="GitHub top language" src="https://img.shields.io/github/languages/top/matteocacciola/cheshirecat-core">
-</div>
+![GitHub Repo stars](https://img.shields.io/github/stars/matteocacciola/cheshirecat-core?style=social)
+![GitHub Release](https://img.shields.io/github/v/release/matteocacciola/cheshirecat-core)
+![GitHub issues](https://img.shields.io/github/issues/matteocacciola/cheshirecat-core)
+![GitHub Release Date](https://img.shields.io/github/release-date/matteocacciola/cheshirecat-core.svg)
+![GitHub tag (with filter)](https://img.shields.io/github/v/tag/matteocacciola/cheshirecat-core)
+![GitHub top language](https://img.shields.io/github/languages/top/matteocacciola/cheshirecat-core)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/matteocacciola/cheshirecat-core)
 
-# AI agent as a microservice
-
-## Why use the Cat
+## Why use the Cheshire Cat?
 The Cheshire Cat is a framework to build custom AI agents:
 
 - ⚡️ API first, to easily add a conversational layer to your app
@@ -40,7 +25,7 @@ The Cheshire Cat is a framework to build custom AI agents:
 - ✂️ Customizable chunking and embedding
 - ☁️ Cloud Ready, working even with horizontal autoscaling
 - 🐋 100% dockerized
-- 🦄 Active [Discord community](https://discord.gg/bHX5sNFCYU) and easy to understand [docs](https://cheshire-cat-ai.github.io/docs/)
+- 🦄 Easy to understand [docs](https://deepwiki.com/matteocacciola/cheshirecat-core)
 
 We are committed to openness, privacy and creativity, we want to bring AI to the long tail. If you want to know more
 about our vision and values, read the [Code of Ethics](CODE-OF-ETHICS.md).
@@ -95,18 +80,18 @@ forth.
 You can **configure the Redis database by environment variables**. The [`compose.yml`](./compose.yml) file is provided as an example. 
 Hence, the current version is multi-tenant, meaning that you can manage multiple RAGs and other language models at the same time.
 
-The Cat is still stateless, so it can be easily scaled.  In case of a cluster environment, we suggest to use a shared storage,
+The Cheshire Cat is still stateless, so it can be easily scaled.  In case of a cluster environment, we suggest to use a shared storage,
 mounted in the `cat/plugins` folder, to share the plugins.
 
 A **RabbitMQ message broker** is recommended in a cluster environment, so that the installation
-of plugins can be synchronized along all the PODs and the management of the Cat can be done in a distributed way. Its
+of plugins can be synchronized along all the PODs and the management of the Cheshire Cat can be done in a distributed way. Its
 configuration is done via environment variables, too. The [`compose.yml`](./compose.yml) file is provided as an example.
 
 ## Security
 The original project is developed as a framework that could be used for a personal use as well as for single-tenant production.
 In the latter case, the original [documentation](https://cheshire-cat-ai.github.io/docs/) clearly states to set up a secure environment
 by using an API Key. **If not configured properly (e.g. by setting up an API Key), the current version will not work, indeed**.
-In this way, I tried to make the Cat more secure and production-ready.
+In this way, I tried to make the Cheshire Cat more secure and production-ready.
 
 ## Additional implementations
 Here, the structure used for configuring `Embedder`, `LLMs`, `Authorization Handler`, `File Manager`, `Chunking Strategy`
@@ -133,7 +118,7 @@ New features will be added in the future. Please contact us if you want to contr
 The list of available hooks are available in the [documentation](https://cheshire-cat-ai.github.io/docs/plugins/plugins/).
 
 ## List of available hooks
-The Cat provides a set of hooks that can be used to customize the behavior of the AI agent. Hooks are events that can be
+The Cheshire Cat provides a set of hooks that can be used to customize the behavior of the AI agent. Hooks are events that can be
 triggered at specific points in the conversation, allowing you to modify the behavior of the AI agent or to add custom functionality.
 The list of available hooks is available in the [documentation](https://cheshire-cat-ai.github.io/docs/plugins/plugins/).
 The current version introduces also the following additional hooks:
@@ -153,20 +138,20 @@ docker run --rm -it -p 1865:80 ghcr.io/matteocacciola/cheshirecat-core:latest
 
 Since this version is intended as a microservice, the `admin` panel is no longer automatically installed with the package.
 
-As a first thing, set the **Embedder** for the Cat. A favourite **LLM** must be set for each chatbot; each chatbot can have
+As a first thing, set the **Embedder** for the Cheshire Cat. A favourite **LLM** must be set for each chatbot; each chatbot can have
 its own language model, with custom settings.
 Everything can be done via the [Admin Panel](https://www.github.com/matteocacciola/cheshirecat-admin) or via the REST API endpoints.
 
-Enjoy the Cat!  
+Enjoy the Cheshire Cat!  
 Follow instructions on how to run it with [docker compose and volumes](https://cheshire-cat-ai.github.io/docs/quickstart/installation-configuration/).
 
 # Admin panel and UI widget
 You can install an admin panel by using the [`cheshirecat-admin`](https://www.github.com/matteocacciola/cheshirecat-admin) repository.
-The admin panel is a separate project that allows you to manage the Cat and its settings, plugins, and chatbots.
+The admin panel is a separate project that allows you to manage the Cheshire Cat and its settings, plugins, and chatbots.
 It is built with Streamlit and is designed to be easy to use and customizable.
 
 Moreover, a suitable widget for the current fork is available in [my Github account](https://github.com/matteocacciola/cheshirecat-widget-vue)
-to chat the Cat.
+to chat the Cheshire Cat.
 
 # API Usage
 
@@ -284,16 +269,14 @@ class PizzaForm(CatForm):
 **For your PHP based projects**, I developed a [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk) that allows you to
 easily interact with the Cat. Please, refer to the [SDK documentation](https://www.github.com/matteocacciola/cheshirecat-php-sdk/blob/master/README.md) for more information.
 
-**For your Node.js / React.js / Vue.js based projects**, I developed a [Typescript library](https://www.github.com/matteocacciola/cheshirecat-nodejs-sdk) that allows you to
-easily interact with the Cat. Please, refer to the [library documentation](https://www.github.com/matteocacciola/cheshirecat-nodejs-sdk/blob/master/README.md) for more information.
+**For your Node.js / React.js / Vue.js based projects**, I developed a [Typescript library](https://www.github.com/matteocacciola/cheshirecat-typescript-client) that allows you to
+easily interact with the Cheshire Cat. Please, refer to the [library documentation](https://www.github.com/matteocacciola/cheshirecat-typescript-client/blob/master/README.md) for more information.
 
 List of resources:
-- [Official Documentation](https://cheshire-cat-ai.github.io/docs/)
+- [Official Documentation](https://deepwiki.com/matteocacciola/cheshirecat-core)
 - [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk)
 - [Typescript SDK](https://www.github.com/matteocacciola/cheshirecat-typescript-client)
 - [Python SDK](https://www.github.com/matteocacciola/cheshirecat-python-sdk)
-- [Discord Server](https://discord.gg/bHX5sNFCYU)
-- [Website](https://cheshirecat.ai/)
 - [Tutorial - Write your first plugin](https://cheshirecat.ai/write-your-first-plugin/)
 
 # Roadmap & Contributing
