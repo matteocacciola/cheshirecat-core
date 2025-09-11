@@ -45,7 +45,7 @@ def test_instantiation_discovery(lizard):
             "Get the content of the Working Memory.",
             "Get the weather for a given city and date."
         ]
-        assert isfunction(tool.func)
+        assert isfunction(tool.run)
         if tool.name == "get_the_time":
             assert len(tool.start_examples) == 2
             assert "what time is it" in tool.start_examples

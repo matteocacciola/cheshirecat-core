@@ -7,6 +7,8 @@ from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplat
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import StructuredTool
 
+from cat.log import log
+
 
 async def run_agent(
     llm: BaseLanguageModel,
@@ -103,6 +105,8 @@ async def run_agent(
     try:
         res = await run_with_bind()
         return res
-    except Exception:
+    except Exception as e:
+        log.warning(f"Tool binding failed with error: {e}. Falling back to direct LLM invocation.")
+
         res = await run_no_bind()
         return res

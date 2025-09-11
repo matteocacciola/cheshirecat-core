@@ -47,7 +47,7 @@ async def test_execute_agent_with_form_submit(secure_client, secure_client_heade
         result = self.submit(self._model)
         self._state = CatFormState.CLOSED
         return result
-    monkeypatch.setattr("cat.experimental.form.cat_form.CatForm.func", mock_func)
+    monkeypatch.setattr("cat.experimental.form.cat_form.CatForm.run", mock_func)
 
     # empty agent execution with form
     out = await agent.run_agent(

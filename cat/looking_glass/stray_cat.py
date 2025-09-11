@@ -502,6 +502,26 @@ Just output the class, nothing else."""
         """
         return self.cheshire_cat.plugin_manager
 
+    @property
+    def mad_hatter(self) -> Tweedledee:
+        """
+        Gives access to the `Tweedledee` plugin manager.
+
+        Returns:
+            mad_hatter: Tweedledee
+                Module to manage plugins.
+
+        Examples
+        --------
+        Obtain the path in which your plugin is located
+        >> cat.mad_hatter.get_plugin().path
+        /app/cat/plugins/my_plugin
+        Obtain plugin settings
+        >> cat.mad_hatter.get_plugin().load_settings()
+        {"num_cats": 44, "rows": 6, "remainder": 0}
+        """
+        return self.plugin_manager
+
     # each time we access the file handlers, plugins can intervene
     @property
     def file_handlers(self) -> Dict:

@@ -3,9 +3,8 @@ import glob
 import shutil
 from typing import List
 
-from cat.db.cruds import settings as crud_settings, plugins as crud_plugins
+from cat.db.cruds import plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
-from cat.db.models import Setting
 from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.plugin_extractor import PluginExtractor
@@ -136,15 +135,16 @@ class Tweedledum(MadHatter):
         # plugins are found in the plugins folder,
         # plus the default core plugin (where default hooks and tools are defined)
         # plugin folder is "cat/plugins/" in production, "tests/mocks/mock_plugin_folder/" during tests
-        all_plugin_folders = list(set(
-            glob.glob(f"{utils.get_core_plugins_path()}/*/") + glob.glob(f"{utils.get_plugins_path()}/*/")
-        ))
+        self.active_plugins = self.load_active_plugins_from_db()
+        if not self.active_plugins:
+            self.active_plugins = self._load_active_plugins_from_folders()
 
-        # discover plugins, folder by folder
-        active_plugins = []
-        for folder in all_plugin_folders:
-            plugin_id = os.path.basename(os.path.normpath(folder))
-            if plugin_id in self.__skip_folders:
+        for plugin_id in self.active_plugins:
+            folder = os.path.join(utils.get_core_plugins_path(), plugin_id)
+            if not os.path.exists(folder):
+                folder = os.path.join(utils.get_plugins_path(), plugin_id)
+            if not os.path.exists(folder):
+                log.error(f"Plugin {plugin_id} not found in plugins folder")
                 continue
 
             if not self._load_plugin(folder):
@@ -153,19 +153,47 @@ class Tweedledum(MadHatter):
 
             try:
                 self.on_plugin_activation(plugin_id)
-                active_plugins.append(plugin_id)
             except Exception as e:
                 # Couldn't activate the plugin -> Deactivate it
                 self.deactivate_plugin(plugin_id)
+                self.active_plugins.remove(plugin_id)
                 raise e
 
-        crud_settings.upsert_setting_by_name(self.agent_key, Setting(name="active_plugins", value=active_plugins))
-        self.active_plugins = self.load_active_plugins_from_db()
+        self._on_finish_finding_plugins()
 
-        log.info("ACTIVE PLUGINS:")
-        log.info(self.active_plugins)
+    # activate / deactivate plugin
+    def toggle_plugin(self, plugin_id: str):
+        if plugin_id == self.get_base_core_plugin_id:
+            raise Exception("base_plugin cannot be deactivated")
 
-        self._sync_hooks_tools_and_forms()
+        if not self.plugin_exists(plugin_id):
+            raise Exception(f"Plugin {plugin_id} not present in plugins folder")
+
+        # update list of active plugins
+        if plugin_id in self.active_plugins:
+            endpoints = self.plugins[plugin_id].endpoints
+            self.active_plugins.remove(plugin_id)
+            what = "deactivated"
+        else:
+            endpoints = []
+            self.active_plugins.append(plugin_id)
+            what = "activated"
+
+        self._on_finish_toggle_plugin()
+
+        # notify toggling has finished
+        utils.dispatch(self.on_end_plugin_toggle_callback, plugin_id=plugin_id, endpoints=endpoints, what=what)
+
+    def _load_active_plugins_from_folders(self):
+        all_plugin_folders = list(set(
+            glob.glob(f"{utils.get_core_plugins_path()}/*/") + glob.glob(f"{utils.get_plugins_path()}/*/")
+        ))
+
+        return [
+            plugin_id
+            for folder in all_plugin_folders
+            if ((plugin_id := os.path.basename(os.path.normpath(folder))) not in self.__skip_folders)
+        ]
 
     def _load_plugin(self, plugin_path: str) -> bool:
         # Instantiate plugin.

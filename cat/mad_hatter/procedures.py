@@ -9,7 +9,7 @@ from langchain_core.tools import StructuredTool
 class CatProcedure(ABC):
     name: str
     description: str
-    func: Callable
+    run: Callable
 
     def _remove_cat_from_args(self, function: Callable) -> Callable:
         """
@@ -53,12 +53,12 @@ class CatProcedure(ABC):
             return StructuredTool(
                 name=self.name.strip().replace(" ", "_"),
                 description=self.description,
-                func=self._remove_cat_from_args(self.func),
+                func=self._remove_cat_from_args(self.run),
                 args_schema=getattr(self, "arg_schema"),
             )
 
         return StructuredTool.from_function(
             name=self.name.strip().replace(" ", "_"),
             description=self.description,
-            func=self._remove_cat_from_args(self.func),
+            func=self._remove_cat_from_args(self.run),
         )

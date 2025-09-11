@@ -90,7 +90,7 @@ JSON must be in this format:
         return "true" in response.output.lower()
 
     # Check if the user wants to exit the form
-    # it is run at the beginning of every form.func()
+    # it is run at the beginning of every form.run()
     async def _check_exit_intent(self) -> bool:
         # Get user message
         user_message = self._stray.cheshire_cat.working_memory.user_message.text
@@ -262,7 +262,7 @@ Updated JSON:
             # Set state to INCOMPLETE
             self._state = CatFormState.INCOMPLETE
 
-    async def func(self) -> str:
+    async def run(self) -> str:
         if self.state == CatFormState.CLOSED:
             # form is closed
             return ""
