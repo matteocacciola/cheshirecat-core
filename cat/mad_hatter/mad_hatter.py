@@ -83,7 +83,7 @@ class MadHatter(ABC):
             raise Exception(f"Plugin {plugin_id} not present in plugins folder")
 
         # update list of active plugins, `base_plugin` cannot be deactivated
-        if plugin_id in self.active_plugins or plugin_id == self.get_base_core_plugin_id:
+        if plugin_id not in self.active_plugins or plugin_id == self.get_base_core_plugin_id:
             return
 
         # Deactivate the plugin
