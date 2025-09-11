@@ -71,4 +71,4 @@ def test_reactivate_plugin(secure_client, secure_client_headers):
 
 def test_deactivate_base_plugin(lizard, secure_client, secure_client_headers):
     with pytest.raises(Exception):
-        response = secure_client.put("/plugins/toggle/base_plugin", headers=secure_client_headers)
+        secure_client.put("/plugins/toggle/base_plugin", headers=secure_client_headers)
