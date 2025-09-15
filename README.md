@@ -119,10 +119,7 @@ from cat.experimental.mcp_client import CatMcpClient, CatMcpDiscoveredProcedure,
 
 @mcp_client
 class MyMcpClient(CatMcpClient):
-    name = "my_mcp_client"
-    description = "My custom MCP client"
-
-    def __init__(self, api_key: str, cat):
+    def __init__(self, cat = None, api_key: str = ""):
         super().__init__(cat=cat)
 
         self.api_key = api_key
@@ -132,6 +129,10 @@ class MyMcpClient(CatMcpClient):
         return []
 
     def call_procedure(self, procedure_name: str, **kwargs: Any) -> Any:
+        # call the procedure from the MCP client
+        return {}
+
+    async def call_procedure_async(self, procedure_name: str, **kwargs: Any) -> Any:
         # call the procedure from the MCP client
         return {}
 ```
