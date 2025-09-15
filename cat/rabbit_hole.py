@@ -32,7 +32,8 @@ class RabbitHole:
 
         Notes
         -----
-        This method allows uploading a JSON file containing vector and text memories directly to the declarative memory.
+        This method allows uploading a JSON file containing vector and content memories directly to the declarative
+        memory.
         When doing this, please, make sure the embedder used to export the memories is the same as the one used
         when uploading.
         The method also performs a check on the dimensionality of the embeddings (i.e. length of each vector).
@@ -119,7 +120,7 @@ class RabbitHole:
         Load and convert files to Langchain `Document`.
 
         This method takes a file either from a Python script, from the `/rabbithole/` or `/rabbithole/web` endpoints.
-        Hence, it loads it in memory and splits it in overlapped chunks of text.
+        Hence, it loads it in memory and splits it in chunks.
 
         Args:
             stray: StrayCat
@@ -130,7 +131,7 @@ class RabbitHole:
 
         Returns:
             (bytes, content_type, docs): Tuple[bytes, List[Document]]
-                The file bytes, the content type and the list of Langchain `Document` of chunked text.
+                The file bytes, the content type and the list of chunked Langchain `Document`.
 
         Notes
         -----
@@ -193,7 +194,7 @@ class RabbitHole:
         # Parser based on the mime type
         parser = MimeTypeBasedParser(handlers=stray.file_handlers)
 
-        # Parse the text
+        # Parse the content
         await stray.send_ws_message(
             "I'm parsing the content. Big content could require some minutes..."
         )
@@ -201,7 +202,7 @@ class RabbitHole:
 
         # Split
         await stray.send_ws_message("Parsing completed. Now let's go with reading process...")
-        docs = self._split_text(stray=stray, text=super_docs)
+        docs = self._split_docs(stray=stray, docs=super_docs)
         return file_bytes, content_type, docs
 
     async def _store_documents(
@@ -307,16 +308,16 @@ class RabbitHole:
 
         return stored_points
 
-    def _split_text(self, stray: "StrayCat", text: List[Document]):
-        """Split text in overlapped chunks.
+    def _split_docs(self, stray: "StrayCat", docs: List[Document]):
+        """Split LangChain documents in chunks.
 
-        This method splits the incoming text in overlapped  chunks of text. Other two hooks are available to edit the
-        text before and after the split step.
+        This method splits the incoming documents in chunks. Other two hooks are available to edit the
+        documents before and after the split step.
 
         Args:
             stray: StrayCat
                 Stray Cat instance.
-            text: List[Document]
+            docs: List[Document]
                 Content of the loaded file.
 
         Returns:
@@ -324,20 +325,20 @@ class RabbitHole:
                 List of split Langchain `Document`.
 
         See Also:
-            before_rabbithole_splits_text
+            before_rabbithole_splits_documents
 
         Notes
         -----
-        The default behavior splits the text and executes the hooks, before the splitting.
-        `before_rabbithole_splits_text` hook returns the original input without any modification.
+        The default behavior splits the content and executes the hooks, before the splitting.
+        `before_rabbithole_splits_documents` hook returns the original input without any modification.
         """
         plugin_manager = stray.plugin_manager
 
-        # do something on the text before it is split
-        text = plugin_manager.execute_hook("before_rabbithole_splits_text", text, cat=stray)
+        # do something on the docs before they are split
+        docs = plugin_manager.execute_hook("before_rabbithole_splits_documents", docs, cat=stray)
 
-        # split text
-        docs = stray.chunker.split_documents(text)
+        # split docs
+        docs = stray.chunker.split_documents(docs)
 
         # join each short chunk with previous one, instead of deleting them
         try:

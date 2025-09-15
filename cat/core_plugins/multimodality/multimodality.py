@@ -1,17 +1,17 @@
-from typing import List
+from typing import List, Dict
 
-from cat.core_plugins.multimodality.chunker import ImageChunkerSettings
+from langchain_community.document_loaders import (
+    UnstructuredWordDocumentLoader,
+    UnstructuredPowerPointLoader,
+    UnstructuredExcelLoader,
+    UnstructuredImageLoader,
+)
+from langchain_community.document_loaders.parsers import PyMuPDFParser
+
 from cat.core_plugins.multimodality.embedder import EmbedderJinaMultimodalConfig
-from cat.factory.chunker import ChunkerSettings
+from cat.core_plugins.multimodality.unstructured_parser import UnstructuredParser
 from cat.factory.embedder import EmbedderSettings
 from cat.mad_hatter.decorators import hook
-
-
-@hook(priority=0)
-def factory_allowed_chunkers(allowed: List[ChunkerSettings], cat) -> List:
-    return allowed + [
-        ImageChunkerSettings,
-    ]
 
 
 @hook(priority=0)
@@ -19,3 +19,37 @@ def factory_allowed_embedders(allowed: List[EmbedderSettings], cat) -> List:
     return allowed + [
         EmbedderJinaMultimodalConfig,
     ]
+
+
+@hook(priority=0)
+def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
+    """Hook the available parsers for ingesting files in the declarative memory.
+
+    Allows replacing or extending existing supported mime types and related parsers to customize the file ingestion.
+
+    Args:
+        file_handlers: Dict
+            Keys are the supported mime types and values are the related parsers.
+        cat: CheshireCat
+            Cheshire Cat instance.
+
+    Returns:
+        file_handlers: Dict
+            Edited dictionary of supported mime types and related parsers.
+    """
+    return file_handlers | {
+        "application/msword": UnstructuredParser(UnstructuredWordDocumentLoader),
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": UnstructuredParser(UnstructuredWordDocumentLoader),
+        "application/vnd.ms-powerpoint": UnstructuredParser(UnstructuredPowerPointLoader),
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": UnstructuredParser(UnstructuredPowerPointLoader),
+        "application/pdf": PyMuPDFParser(extract_images=True),
+        "application/vnd.ms-excel": UnstructuredParser(UnstructuredExcelLoader),
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": UnstructuredParser(UnstructuredExcelLoader),
+        "image/png": UnstructuredParser(UnstructuredImageLoader),
+        "image/jpeg": UnstructuredParser(UnstructuredImageLoader),
+        "image/jpg": UnstructuredParser(UnstructuredImageLoader),
+        "image/gif": UnstructuredParser(UnstructuredImageLoader),
+        "image/bmp": UnstructuredParser(UnstructuredImageLoader),
+        "image/tiff": UnstructuredParser(UnstructuredImageLoader),
+        "image/webp": UnstructuredParser(UnstructuredImageLoader),
+    }
