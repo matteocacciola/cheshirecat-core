@@ -56,3 +56,6 @@ class MockMcpClient(CatMcpClient):
             details={"param3": request.param3, "param4": request.param4, "param5": request.param5, "param6": request.param6}
         )
         return response
+
+    async def call_procedure_async(self, procedure_name: str, **kwargs: Any) -> Any:
+        pass
