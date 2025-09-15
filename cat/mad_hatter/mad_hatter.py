@@ -5,9 +5,8 @@ from typing import List, Dict, Any
 
 from cat.db.cruds import settings as crud_settings
 from cat.db.models import Setting
-from cat.experimental.form.cat_form import CatForm
 from cat.log import log
-from cat.mad_hatter.decorators import CustomEndpoint, CatHook, CatTool
+from cat.mad_hatter.decorators import CustomEndpoint, CatHook
 from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.procedures import CatProcedure
 import cat.utils as utils
@@ -18,12 +17,14 @@ class MadHatter(ABC):
     This is the abstract class that defines the methods that the plugin managers should implement.
     """
     def __init__(self):
-        self.plugins: Dict[str, Plugin] = {}  # plugins dictionary
+        self.plugins: Dict[str, Plugin] = {}
 
-        self.hooks: Dict[str, List[CatHook]] = {}  # dict of active plugins hooks (hook_name -> [CatHook, CatHook, ...])
-        self.tools: List[CatTool] = []  # list of active plugins tools
-        self.forms: List[CatForm] = []  # list of active plugins forms
-        self.endpoints: List[CustomEndpoint] = []  # list of active plugins endpoints
+        # a unified registry for all procedures (local tools, forms, remote clients)
+        self.procedures_registry: Dict[str, CatProcedure] = {}
+        # dict of active plugins hooks (hook_name -> [CatHook, CatHook, ...])
+        self.hooks: Dict[str, List[CatHook]] = {}
+        # list of active plugins endpoints
+        self.endpoints: List[CustomEndpoint] = []
 
         self.active_plugins: List[str] = []
 
@@ -33,20 +34,18 @@ class MadHatter(ABC):
         # this callback is set from outside to be notified when plugin toggle is completed
         self.on_end_plugin_toggle_callback = lambda plugin_id, endpoints, what: None
 
-    # Load hooks, tools and forms of the active plugins into the plugin manager
-    def _sync_hooks_tools_and_forms(self):
-        # emptying tools, hooks and forms
+    def _sync_hooks_and_procedures(self):
+        """
+        Load hooks and procedures from active plugins and external sources.
+        """
         self.hooks = {}
-        self.tools = []
-        self.forms = []
+        self.procedures_registry = {}
         self.endpoints = []
 
         for plugin_id in self.active_plugins:
             plugin = self.plugins[plugin_id]
-            # load hooks, tools, forms and endpoints from active plugins
-            # cache tools
-            self.tools += plugin.tools
-            self.forms += plugin.forms
+            # Load local tools, forms and mcp clients as procedures
+            self.procedures_registry |= {p.name: p for p in plugin.procedures}
             self.endpoints += plugin.endpoints
 
             # cache hooks (indexed by hook name)
@@ -82,7 +81,6 @@ class MadHatter(ABC):
         if not self.plugin_exists(plugin_id):
             raise Exception(f"Plugin {plugin_id} not present in plugins folder")
 
-        # update list of active plugins, `base_plugin` cannot be deactivated
         if plugin_id not in self.active_plugins or plugin_id == self.get_base_core_plugin_id:
             return
 
@@ -117,7 +115,7 @@ class MadHatter(ABC):
         crud_settings.upsert_setting_by_name(self.agent_key, Setting(name="active_plugins", value=active_plugins))
 
         # update cache and embeddings
-        self._sync_hooks_tools_and_forms()
+        self._sync_hooks_and_procedures()
 
     def _on_finish_finding_plugins(self):
         # store active plugins in db
@@ -127,23 +125,17 @@ class MadHatter(ABC):
 
         log.info(f"Agent '{self.agent_key}' - ACTIVE PLUGINS:")
         log.info(self.active_plugins)
-
-        self._sync_hooks_tools_and_forms()
+        self._sync_hooks_and_procedures()
 
     # execute requested hook
     def execute_hook(self, hook_name: str, *args, cat) -> Any:
-        # check if hook is supported
         if hook_name not in self.hooks.keys():
             raise Exception(f"Hook {hook_name} not present in any plugin")
 
-        # Hook has no arguments (aside cat)
-        #  no need to pipe
         if len(args) == 0:
             for hook in self.hooks[hook_name]:
                 try:
-                    log.debug(
-                        f"Executing {hook.plugin_id}::{hook.name} with priority {hook.priority}"
-                    )
+                    log.debug(f"Executing {hook.plugin_id}::{hook.name} with priority {hook.priority}")
                     hook.function(cat=cat)
                 except Exception as e:
                     log.error(f"Error in plugin {hook.plugin_id}::{hook.name}: {e}")
@@ -151,42 +143,27 @@ class MadHatter(ABC):
                     log.warning(plugin_obj.plugin_specific_error_message())
             return None
 
-        # Hook with arguments.
-        #  First argument is passed to `execute_hook` is the pipeable one.
-        #  We call it `tea_cup` as every hook called will receive it as an input,
-        #  can add sugar, milk, or whatever, and return it for the next hook
         tea_cup = deepcopy(args[0])
 
         # run hooks
         for hook in self.hooks[hook_name]:
             try:
-                # pass tea_cup to the hooks, along other args
-                # hook has at least one argument, and it will be piped
-                log.debug(
-                    f"Executing {hook.plugin_id}::{hook.name} with priority {hook.priority}"
-                )
-                tea_spoon = hook.function(
-                    deepcopy(tea_cup), *deepcopy(args[1:]), cat=cat
-                )
-                # log.debug(f"Hook {hook.plugin_id}::{hook.name} returned {tea_spoon}")
+                log.debug(f"Executing {hook.plugin_id}::{hook.name} with priority {hook.priority}")
+                tea_spoon = hook.function(deepcopy(tea_cup), *deepcopy(args[1:]), cat=cat)
                 if tea_spoon is not None:
                     tea_cup = tea_spoon
             except Exception as e:
                 log.error(f"Error in plugin {hook.plugin_id}::{hook.name}: {e}")
-                plugin_obj = self.plugins[hook.plugin_id]
-                log.warning(plugin_obj.plugin_specific_error_message())
 
-        # tea_cup has passed through all hooks. Return final output
         return tea_cup
 
-    # get plugin object (used from within a plugin)
     def get_plugin(self):
         name = utils.inspect_calling_folder()
         return self.plugins[name]
 
     @property
     def procedures(self) -> List[CatProcedure]:
-        return self.tools + self.forms
+        return list(self.procedures_registry.values())
 
     @property
     def get_base_core_plugin_id(self) -> str:

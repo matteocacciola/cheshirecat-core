@@ -112,11 +112,10 @@ async def get_plugin_details(
     # get manifest and active True/False. We make a copy to avoid modifying the original obj
     plugin_info = deepcopy(plugin.manifest)
     plugin_info["active"] = plugin_id in active_plugins
-    plugin_info["hooks"] = [
-        {"name": hook.name, "priority": hook.priority} for hook in plugin.hooks
-    ]
+    plugin_info["hooks"] = [{"name": hook.name, "priority": hook.priority} for hook in plugin.hooks]
     plugin_info["tools"] = [{"name": tool.name} for tool in plugin.tools]
     plugin_info["forms"] = [{"name": form.name} for form in plugin.forms]
+    plugin_info["mcp_clients"] = [{"name": mcp_client.name} for mcp_client in plugin.mcp_clients]
     plugin_info["endpoints"] = [{"name": endpoint.name, "tags": endpoint.tags} for endpoint in plugin.endpoints]
 
     return GetPluginDetailsResponse(data=plugin_info)

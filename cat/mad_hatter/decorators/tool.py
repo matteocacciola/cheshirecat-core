@@ -1,5 +1,5 @@
-import inspect
 from typing import Callable, List
+from langchain_core.tools import StructuredTool
 from pydantic import ConfigDict
 
 from cat.mad_hatter.procedures import CatProcedure
@@ -16,26 +16,51 @@ class CatTool(CatProcedure):
         func: Callable,
         examples: List[str] = None,
     ):
-        examples = examples or []
-        description = func.__doc__.strip() if func.__doc__ else ""
-
-        self.run = func
         self.name = name
-        self.description = description
-
-        self.triggers_map = {
-            "description": [f"{name}: {description}"],
-            "start_example": examples,
-        }
-        # remove cat argument from signature so it does not end up in prompts
-        self.signature = f"{inspect.signature(self.run)}".replace(", cat)", ")")
-
-    @property
-    def start_examples(self):
-        return self.triggers_map["start_example"]
+        self.description = func.__doc__.strip() if func.__doc__ else ""
+        self.start_examples = examples or []
+        self.func = func
+        self._stray = None
 
     def __repr__(self) -> str:
         return f"CatTool(name={self.name}, description={self.description})"
+
+    def inject_cat(self, cat) -> None:
+        self._stray = cat
+
+    def langchainfy(self) -> List[StructuredTool]:
+        """
+        Convert CatProcedure to a langchain compatible StructuredTool object.
+
+        Returns
+        -------
+        List[StructuredTool]
+            The langchain compatible StructuredTool objects.
+        """
+        description = self.description + (f"\n\nE.g.:\n" if self.start_examples else "")
+        for example in self.start_examples:
+            description += f"- {example}\n"
+
+        # wrap func to inject cat instance if func has cat argument
+        func: Callable = self.func
+        if "cat" in func.__code__.co_varnames:
+            def func_with_cat(*args, **kwargs):
+                return func(*args, cat=self._stray, **kwargs)
+            func = func_with_cat
+
+        if getattr(self, "arg_schema", None) is not None:
+            return [StructuredTool(
+                name=self.name.strip().replace(" ", "_"),
+                description=description,
+                func=func,
+                args_schema=getattr(self, "arg_schema"),
+            )]
+
+        return [StructuredTool.from_function(
+            name=self.name.strip().replace(" ", "_"),
+            description=description,
+            func=func,
+        )]
 
 
 # @tool decorator, a modified version of a langchain Tool that also takes a Cat instance as argument

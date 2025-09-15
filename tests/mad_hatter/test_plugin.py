@@ -5,6 +5,8 @@ import subprocess
 from inspect import isfunction
 
 from cat.db.database import DEFAULT_SYSTEM_KEY
+from cat.experimental.form import CatForm
+from cat.experimental.mcp_client import CatMcpClient
 from cat.mad_hatter import Plugin
 from cat.mad_hatter.decorators import CatHook, CatTool
 
@@ -75,11 +77,21 @@ def test_activate_plugin(plugin):
     assert isinstance(tool, CatTool)
     assert tool.name == "mock_tool"
     assert tool.description == "Used to test mock tools. Input is the topic."
-    assert isfunction(tool.run)
+    assert isfunction(tool.func)
     # tool examples found
     assert len(tool.start_examples) == 2
     assert "mock tool example 1" in tool.start_examples
     assert "mock tool example 2" in tool.start_examples
+
+    # forms
+    assert len(plugin.forms) == 1
+    form = plugin.forms[0]
+    assert issubclass(form, CatForm)
+
+    # mcp_clients
+    assert len(plugin.mcp_clients) == 1
+    mcp_client = plugin.mcp_clients[0]
+    assert issubclass(mcp_client, CatMcpClient)
 
 
 def test_deactivate_plugin(plugin):
@@ -93,7 +105,7 @@ def test_deactivate_plugin(plugin):
 
     # hooks and tools
     assert len(plugin.hooks) == 0
-    assert len(plugin.tools) == 0
+    assert len(plugin.procedures) == 0
 
 
 def test_settings_schema(plugin):
