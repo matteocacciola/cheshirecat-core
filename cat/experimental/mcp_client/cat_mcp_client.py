@@ -43,7 +43,7 @@ class CatMcpClient(CatProcedure, ABC):
                 StructuredTool.from_function(
                     name=procedure.name,
                     description=build_description(procedure),
-                    func=lambda **kwargs: self._execute_remote_procedure(procedure_name=procedure.name, **kwargs),
+                    func=lambda **kwargs: self.call_procedure(procedure_name=procedure.name, **kwargs),
                     args_schema=procedure.request_model if procedure.request_model else None,
                 )
             )
@@ -63,7 +63,7 @@ class CatMcpClient(CatProcedure, ABC):
         pass
 
     @abstractmethod
-    def _execute_remote_procedure(self, procedure_name: str, **kwargs: Any) -> Any:
+    def call_procedure(self, procedure_name: str, **kwargs: Any) -> Any:
         """
         Executes a procedure on the remote MCP server if it exists.
         This method must be implemented by the concrete class.

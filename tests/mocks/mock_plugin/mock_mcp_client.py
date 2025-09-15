@@ -44,7 +44,7 @@ class MockMcpClient(CatMcpClient):
             )
         ]
 
-    def _execute_remote_procedure(self, procedure_name: str, **kwargs: Any) -> Any:
+    def call_procedure(self, procedure_name: str, **kwargs: Any) -> Any:
         if procedure_name != "mock_procedure":
             raise ValueError(f"Procedure {procedure_name} not found")
 
