@@ -192,7 +192,7 @@ def get_base_path() -> str:
 
 
 def get_project_path():
-    """Path to the folder from which the cat was run (contains data, plugins and static folders)"""
+    """Path to the folder from which the cat was run (contains data folder)"""
     return os.getcwd()
 
 

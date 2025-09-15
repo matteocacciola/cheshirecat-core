@@ -23,7 +23,6 @@ RUN pip install -U pip && \
 FROM libraries AS scaffold
 
 COPY ./data /app/data
-COPY ./static /app/static
 
 ### COPY CAT CODE INSIDE THE CONTAINER (so it can be run standalone) ###
 COPY ./cat /app/cat

@@ -29,7 +29,6 @@ services:
     volumes:
       - ./cat:/app/cat
       - ./data:/app/data
-      - ./static:/app/static
       - ./tests:/app/tests
       - ./pyproject.toml:/app/pyproject.toml
       - ./requirements.txt:/app/requirements.txt
