@@ -69,7 +69,7 @@ class CatForm(CatProcedure, ABC):  # base model of forms
         List[StructuredTool]
             The langchain compatible StructuredTool objects.
         """
-        description = self.description + (f"\n\nE.g.:\n" if self.start_examples else "")
+        description = self.description + ("\n\nE.g.:\n" if self.start_examples else "")
         for example in self.start_examples:
             description += f"- {example}\n"
 

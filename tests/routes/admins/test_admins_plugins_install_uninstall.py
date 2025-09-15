@@ -127,7 +127,7 @@ def test_plugin_uninstall(secure_client, secure_client_headers):
 
     # GET single plugin info, plugin is not active
     response = secure_client.get("/admins/plugins/mock_plugin", headers=secure_client_headers)
-    assert response.json()["detail"]["error"] == "Plugin not found"
+    assert response.json()["detail"] == "Plugin not found"
 
     agent_settings = crud.read(crud_plugins.format_key(agent_id, "mock_plugin"))
     system_settings = crud.read(crud_plugins.format_key(DEFAULT_SYSTEM_KEY, "mock_plugin"))

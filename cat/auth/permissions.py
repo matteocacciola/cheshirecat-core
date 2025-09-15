@@ -9,7 +9,7 @@ class AuthResource(Enum):
     CRUD = "CRUD"
     STATUS = "STATUS"
     MEMORY = "MEMORY"
-    CONVERSATION = "CONVERSATION"
+    CHAT = "CHAT"
     SETTINGS = "SETTINGS"
     LLM = "LLM"
     AUTH_HANDLER = "AUTH_HANDLER"
@@ -19,7 +19,6 @@ class AuthResource(Enum):
     USERS = "USERS"
     UPLOAD = "UPLOAD"
     PLUGINS = "PLUGINS"
-    STATIC = "STATIC"
 
 
 class AdminAuthResource(Enum):
@@ -56,10 +55,15 @@ def get_base_permissions() -> Dict[str, List[str]]:
     Returns the default permissions for new users (chat only!).
     """
     return {
-        "STATUS": ["READ"],
-        "MEMORY": ["READ", "LIST"],
-        "CONVERSATION": ["WRITE", "EDIT", "LIST", "READ", "DELETE"],
-        "STATIC": ["READ"],
+        str(AuthResource.STATUS): [
+            str(AuthPermission.LIST),
+            str(AuthPermission.READ),
+        ],
+        str(AuthResource.MEMORY): [
+            str(AuthPermission.LIST),
+            str(AuthPermission.READ),
+        ],
+        str(AuthResource.CHAT): [str(p) for p in AuthPermission],
     }
 
 

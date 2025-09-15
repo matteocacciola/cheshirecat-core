@@ -31,7 +31,7 @@ def test_get_file_manager_settings_non_existent(secure_client, secure_client_hea
     json = response.json()
 
     assert response.status_code == 400
-    assert f"{non_existent_filemanager_name} not supported" in json["detail"]["error"]
+    assert f"{non_existent_filemanager_name} not supported" in json["detail"]
 
 
 def test_get_filemanager_settings(secure_client, secure_client_headers):

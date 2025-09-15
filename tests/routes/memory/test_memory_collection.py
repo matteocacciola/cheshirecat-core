@@ -21,7 +21,7 @@ def test_memory_collection_non_existent_clear(secure_client, secure_client_heade
     response = secure_client.delete(f"/memory/collections/{non_existent_collection}", headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 404
-    assert "Collection does not exist" in json["detail"]["error"]
+    assert "Collection does not exist" in json["detail"]
 
 
 def test_memory_collections_wipe(

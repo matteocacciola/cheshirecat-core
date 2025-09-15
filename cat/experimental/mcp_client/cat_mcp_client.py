@@ -30,24 +30,21 @@ class CatMcpClient(CatProcedure, ABC):
         Converts discovered MCP procedures into a list of LangChain StructuredTools.
         This allows the LLM to access each individual tool on the remote server.
         """
+        def build_description(p) -> str:
+            desc = p.description or "No description provided."
+            if p.examples:
+                desc += "\n\nE.g.:\n" + "\n".join(f"- {ex}" for ex in p.examples)
+            return desc
+
         tools = []
         for procedure in self._discovered_procedures:
-            # Create a simple function that calls the main execution method
-            def run_func(**kwargs: Any):
-                return self._execute_remote_procedure(procedure_name=procedure.name, **kwargs)
-
-            def build_description() -> str:
-                desc = procedure.description or "No description provided."
-                if procedure.examples:
-                    desc += "\n\nE.g.:\n" + "\n".join(f"- {ex}" for ex in procedure.examples)
-                return desc
-
             # Create a StructuredTool for each discovered procedure
             tools.append(
                 StructuredTool.from_function(
                     name=procedure.name,
-                    description=build_description(),
-                    func=run_func
+                    description=build_description(procedure),
+                    func=lambda **kwargs: self._execute_remote_procedure(procedure_name=procedure.name, **kwargs),
+                    args_schema=procedure.request_model if procedure.request_model else None,
                 )
             )
         return tools

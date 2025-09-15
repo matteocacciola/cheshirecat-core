@@ -15,8 +15,20 @@ The Cheshire Cat is a framework to build custom AI agents:
 - 💬 Chat via WebSocket and manage your agent with an customizable REST API
 - 🐘 Built-in RAG with **customizable vector database**, so you can use your own technology (e.g., Qdrant, Pinecone, Weaviate, etc.)
 - 🐘 Customizable database for your documents, so that you can use your own storage (e.g., S3, MinIO, etc.)
-- 🚀 Extensible via plugins
+- 🌐 Acts as an MCP client
 - 🪛 Event callbacks, function calling (tools), conversational forms
+- 🚀 Extensible via plugins
+  - Extend endpoints
+  - Extend LLMs
+  - Extend chunkers
+  - Extend vector databases
+  - Extend file managers
+  - Extend embedders
+  - Extend authorization handlers
+  - Extend event system
+  - Extend tools
+  - Extend forms
+  - Event callbacks
 - 🏛 Easy to use Admin Panel (available with the repository [matteocacciola/cheshirecat-admin](https://www.github.com/matteocacciola/cheshirecat-admin))
 - 🌍 Supports any language model via langchain
 - 👥 Multiuser with granular permissions, compatible with any identity provider
@@ -134,7 +146,9 @@ To make Cheshire Cat run on your machine, you just need [`docker`](https://docs.
 ```bash
 docker run --rm -it -p 1865:80 ghcr.io/matteocacciola/cheshirecat-core:latest
 ```
-- Chat with the Cheshire Cat on [localhost:1865/docs](http://localhost:1865/docs).
+- Chat with the Cheshire Cat by downloading the [Admin Panel](https://www.github.com/matteocacciola/cheshirecat-admin) or by using the
+  [widget](https://www.github.com/matteocacciola/cheshirecat-widget-vue).
+- Try out the REST API on [localhost:1865/docs](http://localhost:1865/docs).
 
 Since this version is intended as a microservice, the `admin` panel is no longer automatically installed with the package.
 

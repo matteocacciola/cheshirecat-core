@@ -46,7 +46,7 @@ def test_cannot_create_duplicate_admin(client):
         "/admins/users", json={"username": "Alice", "password": "ecilA"}, headers=get_client_admin_headers(client)
     )
     assert response.status_code == 403
-    assert response.json()["detail"]["error"] == "Cannot duplicate admin"
+    assert response.json()["detail"] == "Cannot duplicate admin"
 
 
 def test_get_admins(client):
@@ -78,7 +78,7 @@ def test_get_admin(client):
     # get unexisting admin
     response = client.get("/admins/users/wrong_admin_id", headers=get_client_admin_headers(client))
     assert response.status_code == 404
-    assert response.json()["detail"]["error"] == "User not found"
+    assert response.json()["detail"] == "User not found"
 
     # create admin and obtain id
     admin_id = create_new_user(client, "/admins/users", headers=get_client_admin_headers(client))["id"]
@@ -100,7 +100,7 @@ def test_update_admin(client):
         "/admins/users/non_existent_id", json={"username": "Red Queen"}, headers=get_client_admin_headers(client)
     )
     assert response.status_code == 404
-    assert response.json()["detail"]["error"] == "User not found"
+    assert response.json()["detail"] == "User not found"
 
     # create admin and obtain id
     admin_id = create_new_user(client, "/admins/users", headers=get_client_admin_headers(client))["id"]
@@ -175,7 +175,7 @@ def test_delete_admin(client):
     # delete not existing admin
     response = client.delete("/admins/users/non_existent_id", headers=get_client_admin_headers(client))
     assert response.status_code == 404
-    assert response.json()["detail"]["error"] == "User not found"
+    assert response.json()["detail"] == "User not found"
 
     # create admin and obtain id
     admin_id = create_new_user(client, "/admins/users", headers=get_client_admin_headers(client))["id"]
@@ -189,7 +189,7 @@ def test_delete_admin(client):
     # check that the admin is not in the db anymore
     response = client.get(f"/admins/users/{admin_id}", headers=get_client_admin_headers(client))
     assert response.status_code == 404
-    assert response.json()["detail"]["error"] == "User not found"
+    assert response.json()["detail"] == "User not found"
 
     # check admin is no more in the list of admins
     response = client.get("/admins/users", headers=get_client_admin_headers(client))

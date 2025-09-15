@@ -1,6 +1,6 @@
 import json
 import pytest
-from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
 from cat import agent
 from cat.experimental.form import CatFormState
@@ -95,7 +95,7 @@ async def test_execute_main_agent_with_tool(stray, monkeypatch):
 async def test_execute_main_agent_with_mcp_client_tool(stray, secure_client, secure_client_headers, monkeypatch):
     just_installed_plugin(secure_client, secure_client_headers)
 
-    result = f"Processed test with param2=42"
+    result = "Processed test with param2=42"
     details = {"param3": None, "param4": None, "param5": None, "param6": None}
     mocked_output = f"MockResponse(result={result}, code=200, details={details})"
 
@@ -116,7 +116,7 @@ async def test_execute_main_agent_with_mcp_client_tool(stray, secure_client, sec
             HumanMessagePromptTemplate.from_template(template="{input}"),
         ]),
         prompt_variables={"input": "Call mock_procedure with param1='test', param2=42"},
-        tools=[p.langchainfy for p in stray._get_procedures()]
+        tools=[p.langchainfy() for p in stray._get_procedures()]
     )
     assert isinstance(out, AgentOutput)
     assert len(out.intermediate_steps) == 1

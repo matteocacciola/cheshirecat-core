@@ -11,9 +11,9 @@ router = APIRouter()
 
 @router.websocket("/ws")
 @router.websocket("/ws/{agent_id}")
-async def websocket_endpoint(
+async def websocket_chat(
     websocket: WebSocket,
-    info: AuthorizedInfo = check_websocket_permissions(AuthResource.CONVERSATION, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_websocket_permissions(AuthResource.CHAT, AuthPermission.EDIT),
 ):
     """
     Endpoint to handle incoming WebSocket connections by user id, process messages, and check for messages.

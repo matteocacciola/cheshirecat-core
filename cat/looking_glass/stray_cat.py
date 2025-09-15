@@ -4,6 +4,7 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
+from langchain_core.tools import StructuredTool
 from pydantic import Field
 from websockets.exceptions import ConnectionClosedOK
 
@@ -100,6 +101,8 @@ class StrayCat:
         self.user: Final[AuthUserInfo] = user_data
 
         self.working_memory = WorkingMemory(agent_id=self.agent_id, user_id=self.user.id)
+
+        self._tools: List[StructuredTool] = [lp for p in self._get_procedures() for lp in p.langchainfy()]
 
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""
@@ -329,7 +332,7 @@ class StrayCat:
                     SystemMessagePromptTemplate.from_template(template=self._get_system_prompt()),
                     *agent_input.history,
                 ]),
-                tools=[lp for p in self._get_procedures() for lp in p.langchainfy()],
+                tools=self._tools,
                 prompt_variables={"context": agent_input.context, "input": agent_input.input},
                 callbacks=self.plugin_manager.execute_hook("llm_callbacks", [NewTokenHandler(self)], cat=self),
             )

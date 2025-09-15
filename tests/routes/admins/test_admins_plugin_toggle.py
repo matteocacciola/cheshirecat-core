@@ -39,7 +39,7 @@ def test_toggle_non_existent_plugin(secure_client, secure_client_headers):
     response_json = response.json()
 
     assert response.status_code == 404
-    assert response_json["detail"]["error"] == "Plugin not found"
+    assert response_json["detail"] == "Plugin not found"
 
 
 def test_toggle_plugin(lizard, secure_client, secure_client_headers):

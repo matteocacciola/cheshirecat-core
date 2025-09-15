@@ -211,11 +211,6 @@ def get_plugins_path():
     return os.path.join(get_base_path(), "plugins")
 
 
-def get_static_path():
-    """Allows exposing the static files' path."""
-    return os.path.join(get_project_path(), "static")
-
-
 def get_file_manager_root_storage_path() -> str:
     """Allows exposing the local storage path."""
     return os.path.join(get_data_path(), "storage")

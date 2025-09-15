@@ -32,7 +32,7 @@ def test_get_vector_database_settings_non_existent(secure_client, secure_client_
     json = response.json()
 
     assert response.status_code == 400
-    assert f"{non_existent_vector_db_name} not supported" in json["detail"]["error"]
+    assert f"{non_existent_vector_db_name} not supported" in json["detail"]
 
 
 def test_get_vector_database_settings(secure_client, secure_client_headers):
@@ -125,7 +125,7 @@ def test_forbidden_access_no_permission(secure_client, secure_client_headers, cl
         "/vector_database/settings", headers={"Authorization": f"Bearer {received_token}", "agent_id": agent_id}
     )
     assert response.status_code == 403
-    assert response.json()["detail"]["error"] == "Invalid Credentials"
+    assert response.json()["detail"] == "Invalid Credentials"
 
 
 def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client):
@@ -143,4 +143,4 @@ def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers
         "/vector_database/settings", headers={"Authorization": f"Bearer {received_token}", "agent_id": agent_id}
     )
     assert response.status_code == 403
-    assert response.json()["detail"]["error"] == "Invalid Credentials"
+    assert response.json()["detail"] == "Invalid Credentials"

@@ -30,7 +30,7 @@ def test_get_chunker_settings_non_existent(secure_client, secure_client_headers)
     json = response.json()
 
     assert response.status_code == 400
-    assert f"{non_existent_chunker_name} not supported" in json["detail"]["error"]
+    assert f"{non_existent_chunker_name} not supported" in json["detail"]
 
 
 def test_get_chunker_settings(secure_client, secure_client_headers):
@@ -105,7 +105,7 @@ def test_forbidden_access_no_permission(secure_client, secure_client_headers, cl
 
     response = client.get("/chunking/settings", headers={"Authorization": f"Bearer {received_token}", "agent_id": agent_id})
     assert response.status_code == 403
-    assert response.json()["detail"]["error"] == "Invalid Credentials"
+    assert response.json()["detail"] == "Invalid Credentials"
 
 
 def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client):
@@ -119,4 +119,4 @@ def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers
 
     response = client.get("/chunking/settings", headers={"Authorization": f"Bearer {received_token}", "agent_id": agent_id})
     assert response.status_code == 403
-    assert response.json()["detail"]["error"] == "Invalid Credentials"
+    assert response.json()["detail"] == "Invalid Credentials"

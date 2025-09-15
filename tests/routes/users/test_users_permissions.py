@@ -59,7 +59,7 @@ def test_users_permissions(secure_client, secure_client_headers, endpoint):
         headers={"agent_id": agent_id}
     )
     assert res.status_code == 403
-    assert res.json()["detail"]["error"] == "Invalid Credentials"
+    assert res.json()["detail"] == "Invalid Credentials"
     
     # obtain JWT
     credentials = {"username": "user", "password": "user"}

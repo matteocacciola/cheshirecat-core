@@ -33,7 +33,7 @@ def test_get_plugin_settings_non_existent(secure_client, secure_client_headers):
     json = response.json()
 
     assert response.status_code == 404
-    assert "not found" in json["detail"]["error"]
+    assert "not found" in json["detail"]
 
 
 # endpoint to get settings and settings schema
