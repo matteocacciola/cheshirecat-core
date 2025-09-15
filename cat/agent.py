@@ -10,6 +10,84 @@ from langchain_core.tools import StructuredTool
 from cat.log import log
 
 
+def _clean_response(response: str) -> str:
+    # parse the `response` string and get the text from <answer></answer> tag
+    if "<answer>" in response and "</answer>" in response:
+        start = response.index("<answer>") + len("<answer>")
+        end = response.index("</answer>")
+        return response[start:end].strip()
+
+    # otherwise, remove from `response` all the text between whichever tag and then return the remaining string
+    # This pattern matches any complete tag pair: <tagname>content</tagname>
+    cleaned = re.sub(r'<([^>]+)>.*?</\1>', '', response, flags=re.DOTALL)
+    return cleaned.strip()
+
+
+def _extract_info(action) -> Tuple[Tuple[str | None, Dict, Dict] | None, str]:
+    if not isinstance(action, tuple) or len(action) < 2:
+        return None, str(action)
+
+    # Extract the main fields from the first element of the tuple
+    tool = getattr(action[0], "tool")
+    tool_input = getattr(action[0], "tool_input", {})
+    usage_metadata = getattr(action[0], "usage_metadata", {})
+
+    # Create a tuple with the extracted information
+    return (tool, tool_input, usage_metadata), action[1]
+
+
+async def _run_no_bind(
+    llm: BaseLanguageModel,
+    prompt: ChatPromptTemplate,
+    prompt_variables: Dict[str, Any] = None,
+    callbacks: List[BaseCallbackHandler] = None,
+) -> "AgentOutput":
+    from cat.looking_glass import AgentOutput
+
+    prompt_variables = prompt_variables or {}
+
+    chain = prompt | llm
+    langchain_msg = await chain.ainvoke(prompt_variables, config=RunnableConfig(callbacks=callbacks))
+
+    output = getattr(langchain_msg, "content", str(langchain_msg))
+    return AgentOutput(output=_clean_response(output))
+
+
+async def _run_with_bind(
+    llm: BaseLanguageModel,
+    prompt: ChatPromptTemplate,
+    prompt_variables: Dict[str, Any] = None,
+    tools: List[StructuredTool] = None,
+    callbacks: List[BaseCallbackHandler] = None,
+) -> "AgentOutput":
+    from cat.looking_glass import AgentOutput
+
+    prompt_variables = prompt_variables or {}
+
+    # Create the agent with proper prompt structure
+    agent = create_tool_calling_agent(
+        llm=llm,
+        tools=tools,
+        prompt=ChatPromptTemplate.from_messages(
+            prompt.messages + [HumanMessagePromptTemplate.from_template("{agent_scratchpad}")]
+        ),
+    )
+    # Create the agent executor
+    agent_executor = AgentExecutor.from_agent_and_tools(
+        agent=agent,
+        tools=tools,
+        return_intermediate_steps=True,
+        verbose=True,
+        handle_parsing_errors=True,  # Add error handling
+    )
+    # Run the agent
+    langchain_msg = await agent_executor.ainvoke(prompt_variables, config=RunnableConfig(callbacks=callbacks))
+
+    cleaned_output = _clean_response(langchain_msg.get("output", "")).strip()
+    extracted_steps = [_extract_info(step) for step in langchain_msg.get("intermediate_steps", [])]
+    return AgentOutput(output=cleaned_output, intermediate_steps=extracted_steps)
+
+
 async def run_agent(
     llm: BaseLanguageModel,
     prompt: ChatPromptTemplate,
@@ -37,57 +115,7 @@ async def run_agent(
         AgentOutput
             The final output from the agent, including text and any actions taken.
     """
-    from cat.looking_glass import AgentOutput, LoggingCallbackHandler
-
-    def clean_response(response: str) -> str:
-        # parse the `response` string and get the text from <answer></answer> tag
-        if "<answer>" in response and "</answer>" in response:
-            start = response.index("<answer>") + len("<answer>")
-            end = response.index("</answer>")
-            return response[start:end].strip()
-        # otherwise, remove from `response` all the text between whichever tag and then return the remaining string
-        # This pattern matches any complete tag pair: <tagname>content</tagname>
-        cleaned = re.sub(r'<([^>]+)>.*?</\1>', '', response, flags=re.DOTALL)
-        return cleaned.strip()
-
-    def extract_info(action) -> Tuple[Tuple[str | None, Dict, Dict] | None, str]:
-        if not isinstance(action, tuple) or len(action) < 2:
-            return None, str(action)
-        # Extract the main fields from the first element of the tuple
-        tool = getattr(action[0], "tool")
-        tool_input = getattr(action[0], "tool_input", {})
-        usage_metadata = getattr(action[0], "usage_metadata", {})
-        response = action[1]
-        # Create a tuple with the extracted information
-        return (tool, tool_input, usage_metadata), response
-
-    async def run_no_bind():
-        chain = prompt | llm
-        langchain_msg = await chain.ainvoke(prompt_variables, config=RunnableConfig(callbacks=callbacks))
-        return AgentOutput(output=getattr(langchain_msg, "content", str(langchain_msg)))
-
-    async def run_with_bind():
-        # Check if the prompt already has the required placeholders
-        prompt.messages.append(HumanMessagePromptTemplate.from_template("{agent_scratchpad}"))
-        # Create the agent with proper prompt structure
-        agent = create_tool_calling_agent(
-            llm=llm,
-            tools=tools,
-            prompt=ChatPromptTemplate.from_messages(prompt.messages),
-        )
-        # Create the agent executor
-        agent_executor = AgentExecutor.from_agent_and_tools(
-            agent=agent,
-            tools=tools,
-            return_intermediate_steps=True,
-            verbose=True,
-            handle_parsing_errors=True,  # Add error handling
-        )
-        # Run the agent
-        result = await agent_executor.ainvoke(prompt_variables, config=RunnableConfig(callbacks=callbacks))
-        result["output"] = clean_response(result.get("output", "")).strip()
-        result["intermediate_steps"] = [extract_info(step) for step in result.get("intermediate_steps", [])]
-        return AgentOutput(**result)
+    from cat.looking_glass import LoggingCallbackHandler
 
     callbacks = callbacks or []
     callbacks.append(LoggingCallbackHandler())
@@ -95,18 +123,16 @@ async def run_agent(
     # Intrinsic detection of tool binding support
     can_bind_tools = tools and hasattr(llm, "bind_tools")
 
-    prompt_variables = prompt_variables or {}
-
     # Direct LLM invocation
     if not can_bind_tools:
-        res = await run_no_bind()
+        res = await _run_no_bind(llm, prompt, prompt_variables, callbacks)
         return res
 
     try:
-        res = await run_with_bind()
+        res = await _run_with_bind(llm, prompt, prompt_variables, tools, callbacks)
         return res
     except Exception as e:
         log.warning(f"Tool binding failed with error: {e}. Falling back to direct LLM invocation.")
 
-        res = await run_no_bind()
+        res = await _run_no_bind(llm, prompt, prompt_variables, callbacks)
         return res
