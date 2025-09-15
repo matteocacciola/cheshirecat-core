@@ -14,29 +14,19 @@ The Cheshire Cat is a framework to build custom AI agents:
 - ⚡️ API first, to easily add a conversational layer to your app
 - 💬 Chat via WebSocket and manage your agent with an customizable REST API
 - 🐘 Built-in RAG with **customizable vector database**, so you can use your own technology (e.g., Qdrant, Pinecone, Weaviate, etc.)
-- 🐘 Customizable database for your documents, so that you can use your own storage (e.g., S3, MinIO, etc.)
-- 🌐 Acts as an MCP client
-- 🪛 Event callbacks, function calling (tools), conversational forms
-- 🚀 Extensible via plugins
-  - Extend endpoints
-  - Extend LLMs
-  - Extend chunkers
-  - Extend vector databases
-  - Extend file managers
-  - Extend embedders
-  - Extend authorization handlers
-  - Extend event system
-  - Extend tools
-  - Extend forms
-  - Event callbacks
-  - MCP clients
-  - ...and more!
+- 🐘 Customizable resources for your documents, so that you can use your own storage (e.g., S3, MinIO, etc.)
+- 🌐 Customizable integration of **MCP clients**, such as LangSmith or LlamaIndex
+- 🧩 Plugin system to easily extend the core functionality
+- 🧩 Built-in plugins
+  - 🪛 Extend core components (file managers, LLMs, vector databases)
+  - ✂️ Customizable chunking and embedding
+  - 🛠 Custom tools, forms, endpoints, MCP clients
+  - 🪛 LLM callbacks
 - 🏛 Easy to use Admin Panel (available with the repository [matteocacciola/cheshirecat-admin](https://www.github.com/matteocacciola/cheshirecat-admin))
 - 🌍 Supports any language model via langchain
 - 👥 Multiuser with granular permissions, compatible with any identity provider
 - 💬 Multi-chatbots, with configurable (even different) LLM, chunking strategy and other features per chatbot, plus specific knowledge per chatbot
 - 💬 Remembers conversations and documents and uses them in conversation
-- ✂️ Customizable chunking and embedding
 - ☁️ Cloud Ready, working even with horizontal autoscaling
 - 🐋 100% dockerized
 - 🦄 Easy to understand [docs](https://deepwiki.com/matteocacciola/cheshirecat-core)
