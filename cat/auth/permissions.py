@@ -9,8 +9,8 @@ class AuthResource(Enum):
     CRUD = "CRUD"
     STATUS = "STATUS"
     MEMORY = "MEMORY"
-    CONVERSATION = "CONVERSATION"
-    SETTINGS = "SETTINGS"
+    CHAT = "CHAT"
+    SETTING = "SETTING"
     LLM = "LLM"
     AUTH_HANDLER = "AUTH_HANDLER"
     FILE_MANAGER = "FILE_MANAGER"
@@ -18,15 +18,14 @@ class AuthResource(Enum):
     VECTOR_DATABASE = "VECTOR_DATABASE"
     USERS = "USERS"
     UPLOAD = "UPLOAD"
-    PLUGINS = "PLUGINS"
-    STATIC = "STATIC"
+    PLUGIN = "PLUGIN"
 
 
 class AdminAuthResource(Enum):
     ADMINS = "ADMINS"
     EMBEDDER = "EMBEDDER"
-    CHESHIRE_CATS = "CHESHIRE_CATS"
-    PLUGINS = "PLUGINS"
+    CHESHIRE_CAT = "CHESHIRE_CAT"
+    PLUGIN = "PLUGIN"
 
 
 class AuthPermission(Enum):
@@ -56,10 +55,15 @@ def get_base_permissions() -> Dict[str, List[str]]:
     Returns the default permissions for new users (chat only!).
     """
     return {
-        "STATUS": ["READ"],
-        "MEMORY": ["READ", "LIST"],
-        "CONVERSATION": ["WRITE", "EDIT", "LIST", "READ", "DELETE"],
-        "STATIC": ["READ"],
+        str(AuthResource.STATUS): [
+            str(AuthPermission.LIST),
+            str(AuthPermission.READ),
+        ],
+        str(AuthResource.MEMORY): [
+            str(AuthPermission.LIST),
+            str(AuthPermission.READ),
+        ],
+        str(AuthResource.CHAT): [str(p) for p in AuthPermission],
     }
 
 

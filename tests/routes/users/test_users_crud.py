@@ -45,7 +45,7 @@ def test_cannot_create_duplicate_user(secure_client, secure_client_headers):
         "/users", json={"username": data["username"], "password": "ecilA"}, headers=secure_client_headers
     )
     assert response.status_code == 403
-    assert response.json()["detail"]["error"] == "Cannot duplicate user"
+    assert response.json()["detail"] == "Cannot duplicate user"
 
 
 def test_cannot_create_duplicate_user_by_id(secure_client, secure_client_headers):
@@ -57,7 +57,7 @@ def test_cannot_create_duplicate_user_by_id(secure_client, secure_client_headers
         "/users", json={"id": data["id"], "username": "Alice2", "password": "2ecilA"}, headers=secure_client_headers
     )
     assert response.status_code == 403
-    assert response.json()["detail"]["error"] == "Cannot duplicate user"
+    assert response.json()["detail"] == "Cannot duplicate user"
 
 
 def test_get_users(secure_client, secure_client_headers):
@@ -89,7 +89,7 @@ def test_get_user(secure_client, secure_client_headers, cheshire_cat):
     # get unexisting user
     response = secure_client.get("/users/wrong_user_id", headers=secure_client_headers)
     assert response.status_code == 404
-    assert response.json()["detail"]["error"] == "User not found"
+    assert response.json()["detail"] == "User not found"
 
     # create user and obtain id
     user_id = create_new_user(secure_client, "/users", headers=secure_client_headers)["id"]
@@ -109,7 +109,7 @@ def test_update_user(secure_client, secure_client_headers):
     # update unexisting user
     response = secure_client.put("/users/non_existent_id", json={"username": "Red Queen"}, headers=secure_client_headers)
     assert response.status_code == 404
-    assert response.json()["detail"]["error"] == "User not found"
+    assert response.json()["detail"] == "User not found"
 
     # create user and obtain id
     user_id = create_new_user(secure_client, "/users", headers=secure_client_headers)["id"]
@@ -184,7 +184,7 @@ def test_delete_user(secure_client, secure_client_headers):
     # delete unexisting user
     response = secure_client.delete("/users/non_existent_id", headers=secure_client_headers)
     assert response.status_code == 404
-    assert response.json()["detail"]["error"] == "User not found"
+    assert response.json()["detail"] == "User not found"
 
     # create user and obtain id
     user_id = create_new_user(secure_client, "/users", headers=secure_client_headers)["id"]
@@ -198,7 +198,7 @@ def test_delete_user(secure_client, secure_client_headers):
     # check that the user is not in the db anymore
     response = secure_client.get(f"/users/{user_id}", headers=secure_client_headers)
     assert response.status_code == 404
-    assert response.json()["detail"]["error"] == "User not found"
+    assert response.json()["detail"] == "User not found"
 
     # check user is no more in the list of users
     response = secure_client.get("/users", headers=secure_client_headers)

@@ -1,6 +1,6 @@
 from inspect import isfunction
 
-from cat.mad_hatter import Plugin
+from cat.mad_hatter import Plugin, CatProcedure
 from cat.mad_hatter.decorators import CatHook, CatTool
 
 def test_instantiation_discovery(cheshire_cat):
@@ -30,19 +30,24 @@ def test_instantiation_discovery(cheshire_cat):
         assert h.priority >= 0.0
 
     # finds tool
-    assert len(plugin_manager.tools) == 2
-    for tool in plugin_manager.tools:
-        assert isinstance(tool, CatTool)
-        assert tool.name in ["get_the_time", "get_weather"]
-        assert tool.description in [
-            "Useful to get the current time when asked. Input is always None.",
-            "Get the content of the Working Memory.",
-            "Get the weather for a given city and date."
-        ]
-        assert isfunction(tool.run)
-        if tool.name == "get_the_time":
-            assert len(tool.start_examples) == 2
-            assert "what time is it" in tool.start_examples
-            assert "get the time" in tool.start_examples
-        elif tool.name == "get_weather":
-            assert len(tool.start_examples) == 0
+    assert len(plugin_manager.procedures_registry) == 3
+    for procedure in plugin_manager.procedures_registry.values():
+        assert isinstance(procedure, CatProcedure)
+        if isinstance(procedure, CatTool):
+            assert procedure.name in ["get_the_time", "get_weather", "read_working_memory"]
+            assert procedure.description in [
+                "Useful to get the current time when asked. Input is always None.",
+                "Get the content of the Working Memory.",
+                "Get the weather for a given city and date."
+            ]
+            assert isfunction(procedure.func)
+            if procedure.name == "get_the_time":
+                assert len(procedure.start_examples) == 2
+                assert "what time is it" in procedure.start_examples
+                assert "get the time" in procedure.start_examples
+            elif procedure.name == "get_weather":
+                assert len(procedure.start_examples) == 0
+            elif procedure.name == "read_working_memory":
+                assert len(procedure.start_examples) == 2
+                assert "log working memory" in procedure.start_examples
+                assert "show me the contents of working memory" in procedure.start_examples

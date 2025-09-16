@@ -41,4 +41,4 @@ def test_get_non_existent_plugin(secure_client, secure_client_headers):
     json = response.json()
 
     assert response.status_code == 404
-    assert json["detail"]["error"] == "Plugin not found"
+    assert json["detail"] == "Plugin not found"

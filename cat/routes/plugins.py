@@ -23,7 +23,7 @@ router = APIRouter()
 @router.get("/", response_model=GetAvailablePluginsResponse)
 async def get_cheshirecat_available_plugins(
     query: str = None,
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.LIST),
     # author: str = None, to be activated in case of more granular search
     # tag: str = None, to be activated in case of more granular search
 ) -> GetAvailablePluginsResponse:
@@ -37,7 +37,7 @@ async def get_cheshirecat_available_plugins(
 @router.put("/toggle/{plugin_id}", status_code=200, response_model=TogglePluginResponse)
 async def toggle_plugin(
     plugin_id: str,
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.WRITE),
 ) -> TogglePluginResponse:
     """Enable or disable a single plugin"""
     plugin_id = slugify(plugin_id, separator="_")
@@ -56,7 +56,7 @@ async def toggle_plugin(
 
 @router.get("/settings", response_model=PluginsSettingsResponse)
 async def get_cheshirecat_plugins_settings(
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.READ),
 ) -> PluginsSettingsResponse:
     """Returns the settings of all the plugins"""
     ccat = info.cheshire_cat
@@ -66,7 +66,7 @@ async def get_cheshirecat_plugins_settings(
 @router.get("/settings/{plugin_id}", response_model=GetSettingResponse)
 async def get_cheshirecat_plugin_settings(
     plugin_id: str,
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Returns the settings of a specific plugin"""
     plugin_id = slugify(plugin_id, separator="_")
@@ -79,7 +79,7 @@ async def get_cheshirecat_plugin_settings(
 async def upsert_cheshirecat_plugin_settings(
     plugin_id: str,
     payload: Dict = Body({"setting_a": "some value", "setting_b": "another value"}),
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.EDIT),
 ) -> GetSettingResponse:
     """Updates the settings of a specific plugin"""
     plugin_id = slugify(plugin_id, separator="_")

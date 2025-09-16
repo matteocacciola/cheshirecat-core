@@ -192,7 +192,7 @@ def get_base_path() -> str:
 
 
 def get_project_path():
-    """Path to the folder from which the cat was run (contains data, plugins and static folders)"""
+    """Path to the folder from which the cat was run (contains data folder)"""
     return os.getcwd()
 
 
@@ -209,11 +209,6 @@ def get_data_path():
 def get_plugins_path():
     """Allows exposing the plugins' path."""
     return os.path.join(get_base_path(), "plugins")
-
-
-def get_static_path():
-    """Allows exposing the static files' path."""
-    return os.path.join(get_project_path(), "static")
 
 
 def get_file_manager_root_storage_path() -> str:

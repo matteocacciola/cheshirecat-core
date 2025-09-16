@@ -10,7 +10,7 @@ class CatHook:
         self.plugin_id = plugin_id
 
     def __repr__(self) -> str:
-        return f"CatHook(name={self.name}, priority={self.priority}, plugin_id={self.plugin_id}, function={self.function})"
+        return f"CatHook(name={self.name}, priority={self.priority}, plugin_id={self.plugin_id})"
 
 
 # @hook decorator. Any function in a plugin decorated by @hook and named properly (among list of available hooks) is

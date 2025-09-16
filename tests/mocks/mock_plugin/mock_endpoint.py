@@ -29,12 +29,12 @@ def test_endpoint_prefix():
 
 
 @endpoint.get(path="/crud", prefix="/tests", tags=["Tests"])
-def test_get(info: AuthorizedInfo = check_permissions(AuthResource.PLUGINS, AuthPermission.LIST)):
+def test_get(info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.LIST)):
     return {"result": "ok", "user_id": info.user.id}
 
 
 @endpoint.get(path="/admin/crud", prefix="/tests", tags=["Tests"])
-def test_get_admin(lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGINS, AuthPermission.LIST)):
+def test_get_admin(lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGIN, AuthPermission.LIST)):
     return {"result": "ok"}
 
 

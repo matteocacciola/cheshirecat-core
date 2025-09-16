@@ -2,6 +2,7 @@ import json
 from abc import ABC, abstractmethod
 from typing import List, Dict
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
+from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, ValidationError
 
 from cat.log import log
@@ -20,13 +21,11 @@ class CatFormState(Enum):
 
 class CatForm(CatProcedure, ABC):  # base model of forms
     model_class: BaseModel
-    start_examples: List[str]
     stop_examples: List[str] = []
     ask_confirm: bool = False
-    triggers_map = None
     _autopilot = False
 
-    def __init__(self, cat) -> None:
+    def __init__(self, cat):
         """
         Args:
             cat: StrayCat instance
@@ -61,6 +60,25 @@ class CatForm(CatProcedure, ABC):  # base model of forms
     def autopilot(self) -> bool:
         return self._autopilot
 
+    def langchainfy(self) -> List[StructuredTool]:
+        """
+        Convert CatProcedure to a langchain compatible StructuredTool object.
+
+        Returns
+        -------
+        List[StructuredTool]
+            The langchain compatible StructuredTool objects.
+        """
+        description = self.description + ("\n\nE.g.:\n" if self.start_examples else "")
+        for example in self.start_examples:
+            description += f"- {example}\n"
+
+        return [StructuredTool.from_function(
+            name=self.name.strip().replace(" ", "_"),
+            description=description,
+            func=self.next,
+        )]
+
     @abstractmethod
     def submit(self, form_data) -> str:
         pass
@@ -90,7 +108,7 @@ JSON must be in this format:
         return "true" in response.output.lower()
 
     # Check if the user wants to exit the form
-    # it is run at the beginning of every form.run()
+    # it is triggered at the beginning of every form.next()
     async def _check_exit_intent(self) -> bool:
         # Get user message
         user_message = self._stray.cheshire_cat.working_memory.user_message.text
@@ -262,7 +280,7 @@ Updated JSON:
             # Set state to INCOMPLETE
             self._state = CatFormState.INCOMPLETE
 
-    async def run(self) -> str:
+    async def next(self) -> str:
         if self.state == CatFormState.CLOSED:
             # form is closed
             return ""

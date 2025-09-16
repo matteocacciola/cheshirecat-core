@@ -30,6 +30,9 @@ admin
 data/*
 !data/.gitkeep
 
+# static folder
+static/*
+
 # plugins are not tracked by git
 cat/plugins/*
 # plugins readme can stay

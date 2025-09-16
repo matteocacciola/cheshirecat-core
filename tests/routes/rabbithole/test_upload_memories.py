@@ -35,7 +35,7 @@ def test_upload_memory_check_mimetype(secure_client, secure_client_headers):
     
     assert response.status_code == 400
     assert (
-        f"MIME type {content_type} not supported." in response.json()["detail"]["error"]
+        f"MIME type {content_type} not supported." in response.json()["detail"]
     )
 
 

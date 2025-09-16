@@ -25,7 +25,7 @@ def test_refuse_issue_jwt(client):
     # wrong credentials
     assert res.status_code == 403
     json = res.json()
-    assert json["detail"]["error"] == "Invalid Credentials"
+    assert json["detail"] == "Invalid Credentials"
 
 
 def test_issue_jwt(client, lizard):
@@ -75,7 +75,7 @@ def test_issue_jwt_for_new_admin(client, secure_client, secure_client_headers):
     # because it does not exist
     res = client.post("/admins/auth/token", json=creds)
     assert res.status_code == 403
-    assert res.json()["detail"]["error"] == "Invalid Credentials"
+    assert res.json()["detail"] == "Invalid Credentials"
 
     # let's create the user
     res = secure_client.post("/admins/users", json=creds, headers=secure_client_headers)

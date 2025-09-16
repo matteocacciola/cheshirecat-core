@@ -4,6 +4,7 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
+from langchain_core.tools import StructuredTool
 from pydantic import Field
 from websockets.exceptions import ConnectionClosedOK
 
@@ -14,6 +15,7 @@ from cat.looking_glass import NewTokenHandler
 from cat.log import log
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.mad_hatter import Tweedledee, CatProcedure
+from cat.mad_hatter.decorators import CatTool
 from cat.memory.messages import CatMessage, UserMessage
 from cat.memory.working_memory import WorkingMemory
 from cat.services.websocket_manager import WebSocketManager
@@ -99,6 +101,8 @@ class StrayCat:
         self.user: Final[AuthUserInfo] = user_data
 
         self.working_memory = WorkingMemory(agent_id=self.agent_id, user_id=self.user.id)
+
+        self._tools: List[StructuredTool] = [lp for p in self._get_procedures() for lp in p.langchainfy()]
 
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""
@@ -238,20 +242,25 @@ class StrayCat:
         return prompt_prefix + prompt_suffix
 
     def _get_procedures(self) -> List[CatProcedure]:
-        """Get both plugins' tools and MCP tools in CatTool format, plus internal forms."""
-        mcp_tools = []  # await self.cat.mcp.list_tools()
+        """
+        Get all procedures (tools and forms) available to the agent. If a procedure is a form, it is
+        instantiated with a reference to the current `StrayCat` instance.
 
-        # Tools are already instances, keep them as is
-        tools = mcp_tools + self.plugin_manager.tools
+        Returns:
+            procedures: List[CatProcedure]
+                List of procedures (tools and forms) available to the agent.
+        """
+        # get all procedures (tools and forms) from plugins
+        procedures = self.plugin_manager.procedures
 
-        # Forms need to be instantiated
-        form_instances = []
-        for form_class in self.plugin_manager.forms:
-            # Create form instance with stray reference
-            form_instance = form_class(self)
-            form_instances.append(form_instance)
+        for i, p in enumerate(procedures):
+            if isinstance(p, CatTool):
+                p.inject_cat(self)
+                continue
 
-        procedures = tools + form_instances
+            # Create instance with stray reference, valid for forms or mcp clients
+            procedures[i] = p(self)
+
         return procedures
 
     async def __call__(self, user_message: UserMessage, **kwargs) -> CatMessage:
@@ -323,7 +332,7 @@ class StrayCat:
                     SystemMessagePromptTemplate.from_template(template=self._get_system_prompt()),
                     *agent_input.history,
                 ]),
-                tools=[p.langchainfy() for p in self._get_procedures()],
+                tools=self._tools,
                 prompt_variables={"context": agent_input.context, "input": agent_input.input},
                 callbacks=self.plugin_manager.execute_hook("llm_callbacks", [NewTokenHandler(self)], cat=self),
             )

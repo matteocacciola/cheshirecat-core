@@ -28,8 +28,6 @@ from cat.routes import (
     chunker,
     plugins,
     rabbit_hole,
-    settings,
-    static,
     users,
     vector_database,
     websocket,
@@ -101,30 +99,22 @@ cheshire_cat_api.include_router(file_manager.router, tags=["File Manager"], pref
 cheshire_cat_api.include_router(llm.router, tags=["Large Language Model"], prefix="/llm")
 cheshire_cat_api.include_router(plugins.router, tags=["Plugins"], prefix="/plugins")
 cheshire_cat_api.include_router(rabbit_hole.router, tags=["Rabbit Hole"], prefix="/rabbithole")
-cheshire_cat_api.include_router(settings.router, tags=["Settings"], prefix="/settings")
 cheshire_cat_api.include_router(auth.router, tags=["User Auth"], prefix="/auth")
 cheshire_cat_api.include_router(users.router, tags=["Users"], prefix="/users")
 cheshire_cat_api.include_router(vector_database.router, tags=["Vector Database"], prefix="/vector_database")
 cheshire_cat_api.include_router(websocket.router, tags=["Websocket"])
 
-# mount static files
-# this cannot be done via fastapi.APIRouter:
-# https://github.com/tiangolo/fastapi/discussions/9070
-
-# static files (for plugins and other purposes)
-static.mount(cheshire_cat_api)
-
 
 @cheshire_cat_api.exception_handler(Exception)
 async def generic_exception_handler(request, exc):
     log.error(f"An unexpected error occurred: {exc}")
-    return JSONResponse(status_code=500, content={"detail": {"error": str(exc)}})
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 
 @cheshire_cat_api.exception_handler(ValueError)
 async def value_error_exception_handler(request, exc):
     log.error(f"An unexpected value error occurred: {exc}")
-    return JSONResponse(status_code=500, content={"detail": {"error": str(exc)}})
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 
 @cheshire_cat_api.exception_handler(RequestValidationError)
@@ -149,32 +139,32 @@ async def validation_exception_handler(request, exc):
 
     return JSONResponse(
         status_code=400,
-        content={"detail": {"errors": serializable_errors}}
+        content={"detail": serializable_errors}
     )
 
 
 @cheshire_cat_api.exception_handler(LoadMemoryException)
 async def load_memory_exception_handler(request, exc):
     log.error(exc)
-    return JSONResponse(status_code=500, content={"detail": {"error": str(exc)}})
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 
 @cheshire_cat_api.exception_handler(CustomValidationException)
 async def custom_validation_exception_handler(request, exc):
     log.error(exc)
-    return JSONResponse(status_code=400, content={"detail": {"error": str(exc)}})
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
 @cheshire_cat_api.exception_handler(CustomNotFoundException)
 async def custom_not_found_exception_handler(request, exc):
     log.error(exc)
-    return JSONResponse(status_code=404, content={"detail": {"error": str(exc)}})
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
 @cheshire_cat_api.exception_handler(CustomForbiddenException)
 async def custom_forbidden_exception_handler(request, exc):
     log.error(exc)
-    return JSONResponse(status_code=403, content={"detail": {"error": str(exc)}})
+    return JSONResponse(status_code=403, content={"detail": str(exc)})
 
 
 # openapi customization

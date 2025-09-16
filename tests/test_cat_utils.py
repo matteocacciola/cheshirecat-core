@@ -30,10 +30,6 @@ def test_get_data_path(client):
     assert utils.get_data_path() == os.path.join(utils.get_project_path(), "data")
 
 
-def test_get_static_path(client):
-    assert utils.get_static_path() == os.path.join(utils.get_project_path(), "static")
-
-
 def test_levenshtein_distance():
     assert utils.levenshtein_distance("hello world", "hello world") == 0.0
     assert utils.levenshtein_distance("hello world", "") == 1.0

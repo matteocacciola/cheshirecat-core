@@ -3,7 +3,7 @@ import pytest
 from inspect import isfunction
 
 import cat.utils as utils
-from cat.mad_hatter import Plugin
+from cat.mad_hatter import Plugin, CatProcedure
 from cat.mad_hatter.decorators import CatHook, CatTool
 
 from tests.utils import create_mock_plugin_zip
@@ -35,23 +35,28 @@ def test_instantiation_discovery(lizard):
         assert isfunction(h.function)
         assert h.priority >= 0.0
 
-    # finds tool
-    assert len(plugin_manager.tools) == 2
-    for tool in plugin_manager.tools:
-        assert isinstance(tool, CatTool)
-        assert tool.name in ["get_the_time", "get_weather"]
-        assert tool.description in [
-            "Useful to get the current time when asked. Input is always None.",
-            "Get the content of the Working Memory.",
-            "Get the weather for a given city and date."
-        ]
-        assert isfunction(tool.run)
-        if tool.name == "get_the_time":
-            assert len(tool.start_examples) == 2
-            assert "what time is it" in tool.start_examples
-            assert "get the time" in tool.start_examples
-        elif tool.name == "get_weather":
-            assert len(tool.start_examples) == 0
+    # finds procedures
+    assert len(plugin_manager.procedures_registry) == 3
+    for procedure in plugin_manager.procedures_registry.values():
+        assert isinstance(procedure, CatProcedure)
+        if isinstance(procedure, CatTool):
+            assert procedure.name in ["get_the_time", "get_weather", "read_working_memory"]
+            assert procedure.description in [
+                "Useful to get the current time when asked. Input is always None.",
+                "Get the content of the Working Memory.",
+                "Get the weather for a given city and date."
+            ]
+            assert isfunction(procedure.func)
+            if procedure.name == "get_the_time":
+                assert len(procedure.start_examples) == 2
+                assert "what time is it" in procedure.start_examples
+                assert "get the time" in procedure.start_examples
+            elif procedure.name == "get_weather":
+                assert len(procedure.start_examples) == 0
+            elif procedure.name == "read_working_memory":
+                assert len(procedure.start_examples) == 2
+                assert "log working memory" in procedure.start_examples
+                assert "show me the contents of working memory" in procedure.start_examples
 
 
 # installation tests will be run for both flat and nested plugin
@@ -76,13 +81,15 @@ def test_plugin_install(lizard, plugin_is_flat):
 
     # plugin is activated by default
     assert len(plugin_manager.plugins["mock_plugin"].hooks) == 3
+    assert len(plugin_manager.plugins["mock_plugin"].procedures) == 3
     assert len(plugin_manager.plugins["mock_plugin"].tools) == 1
     assert len(plugin_manager.plugins["mock_plugin"].forms) == 1
+    assert len(plugin_manager.plugins["mock_plugin"].mcp_clients) == 1
 
     # tool found
     new_tool = plugin_manager.plugins["mock_plugin"].tools[0]
     assert new_tool.plugin_id == "mock_plugin"
-    assert id(new_tool) == id(plugin_manager.tools[2])  # cached and same object in memory!
+    assert id(new_tool) == id(plugin_manager.procedures_registry["mock_tool"])  # cached and same object in memory!
     # tool examples found
     assert len(new_tool.start_examples) == 2
     assert "mock tool example 1" in new_tool.start_examples
@@ -152,8 +159,7 @@ def test_plugin_uninstall(lizard, plugin_is_flat):
     for h_name, h_list in plugin_manager.hooks.items():
         assert len(h_list) >= 1
         assert h_list[0].plugin_id in core_plugins
-    assert len(plugin_manager.tools) == 2
-    assert len(plugin_manager.forms) == 0
+    assert len(plugin_manager.procedures_registry) == 3
 
     # list of active plugins in DB is correct
     active_plugins = plugin_manager.load_active_plugins_from_db()

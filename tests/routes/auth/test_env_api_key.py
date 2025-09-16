@@ -48,7 +48,7 @@ def test_api_key_http(secure_client, header_name):
     for headers in wrong_headers:
         status_code, json = http_message(secure_client, headers)
         assert status_code == 403
-        assert json["detail"]["error"] == "Invalid Credentials"
+        assert json["detail"] == "Invalid Credentials"
 
     # allow access if CCAT_API_KEY is right
     headers = {header_name: f"{key_prefix}{api_key}"}

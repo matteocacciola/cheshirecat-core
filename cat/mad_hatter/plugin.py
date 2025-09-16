@@ -12,8 +12,8 @@ from packaging.requirements import Requirement
 
 from cat.db.cruds import plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
-from cat.experimental.form.cat_form import CatForm
-from cat.mad_hatter.decorators import CustomEndpoint, CatHook, CatPluginDecorator, CatTool
+from cat.mad_hatter.procedures import CatProcedure
+from cat.mad_hatter.decorators import CustomEndpoint, CatHook, CatPluginDecorator
 from cat.utils import to_camel_case, inspect_calling_agent, get_base_path
 from cat.log import log
 
@@ -26,8 +26,6 @@ class PluginSettingsModel(BaseModel):
 # this class represents a plugin in memory
 # the plugin itself is managed as much as possible unix style
 #      (i.e. by saving information in the folder itself)
-
-
 class Plugin:
     def __init__(self, plugin_path: str):
         # does folder exist?
@@ -54,12 +52,8 @@ class Plugin:
         # plugin manifest (name, description, thumb, etc.)
         self._manifest = self._load_manifest()
 
-        # list of tools, forms and hooks contained in the plugin.
-        # The plugin manager will cache them for easier access,
-        # but they are created and stored in each plugin instance
         self._hooks: List[CatHook] = []  # list of plugin hooks
-        self._tools: List[CatTool] = []  # list of plugin tools
-        self._forms: List[CatForm] = []  # list of plugin forms
+        self._procedures: List[CatProcedure] = []  # list of plugin procedures (tools + forms)
         self._endpoints: List[CustomEndpoint] = []  # list of plugin endpoints
 
         # list of @plugin decorated functions overriding default plugin behaviour
@@ -346,9 +340,12 @@ class Plugin:
 
     # lists of hooks and tools
     def _load_decorated_functions(self):
+        from cat.experimental.form import CatForm
+        from cat.experimental.mcp_client import CatMcpClient
+        from cat.mad_hatter.decorators import CatTool
+
         hooks = []
-        tools = []
-        forms = []
+        procedures = []
         endpoints = []
         plugin_overrides = []
 
@@ -364,13 +361,20 @@ class Plugin:
                 importlib.reload(plugin_module)
 
                 hooks += getmembers(plugin_module, lambda obj: isinstance(obj, CatHook))
-                tools += getmembers(plugin_module, lambda obj: isinstance(obj, CatTool))
-                forms += getmembers(plugin_module, lambda obj: (
-                        isclass(obj) and
-                        obj is not CatForm and
-                        issubclass(obj, CatForm) and
-                        obj._autopilot
-                ))
+                procedures += (
+                        getmembers(plugin_module, lambda obj: isinstance(obj, CatTool)) +
+                        getmembers(plugin_module, lambda obj: (
+                                isclass(obj)
+                                and obj is not CatForm
+                                and issubclass(obj, CatForm)
+                                and obj._autopilot
+                        )) +
+                        getmembers(plugin_module, lambda obj: (
+                                isclass(obj)
+                                and obj is not CatMcpClient
+                                and issubclass(obj, CatMcpClient)
+                        ))
+                )
                 endpoints += getmembers(plugin_module, lambda obj: isinstance(obj, CustomEndpoint))
                 plugin_overrides += getmembers(
                     plugin_module, lambda obj: isinstance(obj, CatPluginDecorator)
@@ -389,16 +393,14 @@ class Plugin:
 
         # clean and enrich instances
         self._hooks = list(map(self._clean_hook, hooks))
-        self._tools = list(map(self._clean_tool, tools))
-        self._forms = list(map(self._clean_form, forms))
+        self._procedures = list(map(self._clean_procedure, procedures))
         self._endpoints = list(map(self._clean_endpoint, endpoints))
 
         self._plugin_overrides = {override.name: override for _, override in plugin_overrides}
 
     def _unload_decorated_functions(self):
         self._hooks = []
-        self._tools = []
-        self._forms = []
+        self._procedures = []
         self._endpoints = []
         self._plugin_overrides = {}
 
@@ -415,17 +417,11 @@ class Plugin:
         h.plugin_id = self._id
         return h
 
-    def _clean_tool(self, tool: Tuple[str, CatTool]):
+    def _clean_procedure(self, procedure: Tuple[str, CatProcedure]):
         # getmembers returns a tuple
-        _, t = tool
-        t.plugin_id = self._id
-        return t
-
-    def _clean_form(self, form: Tuple[str, CatForm]):
-        # getmembers returns a tuple
-        _, f = form
-        f.plugin_id = self._id
-        return f
+        _, p = procedure
+        p.plugin_id = self._id
+        return p
 
     def _clean_endpoint(self, endpoint: Tuple[str, CustomEndpoint]):
         # getmembers returns a tuple
@@ -454,12 +450,26 @@ class Plugin:
         return self._hooks
 
     @property
+    def procedures(self):
+        return self._procedures
+
+    @property
     def tools(self):
-        return self._tools
+        from cat.mad_hatter.decorators import CatTool
+
+        return [p for p in self._procedures if isinstance(p, CatTool)]
 
     @property
     def forms(self):
-        return self._forms
+        from cat.experimental.form import CatForm
+
+        return [p for p in self._procedures if isinstance(p, type) and issubclass(p, CatForm)]
+
+    @property
+    def mcp_clients(self):
+        from cat.experimental.mcp_client import CatMcpClient
+
+        return [p for p in self._procedures if isinstance(p, type) and issubclass(p, CatMcpClient)]
 
     @property
     def endpoints(self):
