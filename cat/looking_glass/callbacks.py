@@ -42,7 +42,7 @@ class LoggingCallbackHandler(BaseCallbackHandler):
             lc_prompt = messages[0] if isinstance(messages, list) else messages
             print(self.colored_text("\n============== LLM INPUT ===============", "green"))
             for m in lc_prompt:
-                print(m.model_dump())
+                print(m if isinstance(m, str) else m.model_dump())
             print(self.colored_text("========================================", "green"))
 
     def on_llm_end(self, response, **kwargs):
