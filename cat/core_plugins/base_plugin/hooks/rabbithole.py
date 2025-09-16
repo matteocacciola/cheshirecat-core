@@ -68,8 +68,8 @@ def before_rabbithole_insert_memory(doc: Document, cat) -> Document:
     Args:
         doc: Document
             Langchain `Document` to be inserted in memory.
-        cat: StrayCat
-            Stray Cat instance.
+        cat: CheshireCat
+            Cheshire Cat instance.
 
     Returns:
         doc: Document
@@ -100,8 +100,8 @@ def before_rabbithole_splits_text(docs: List[Document], cat) -> List[Document]:
     Args:
         docs: List[Document]
             Langchain `Document`s resulted after parsing the file uploaded in the *RabbitHole*.
-        cat: StrayCat
-            Stray Cat instance.
+        cat: CheshireCat
+            Cheshire Cat instance.
 
     Returns:
         docs: List[Document]
@@ -125,8 +125,8 @@ def before_rabbithole_stores_documents(docs: List[Document], cat) -> List[Docume
     Args:
         docs: List[Document]
             List of Langchain `Document` to be edited.
-        cat: StrayCat
-            Stray Cat instance.
+        cat: CheshireCat
+            Cheshire Cat instance.
 
     Returns:
         docs: List[Document]
@@ -146,7 +146,7 @@ def after_rabbithole_stored_documents(source, stored_points: List[PointStruct], 
             Name of ingested file/url
         stored_points: List[PointStruct]
             List of PointStruct just inserted into the db.
-        cat: StrayCat
-            Stray Cat instance.
+        cat: CheshireCat
+            Cheshire Cat instance.
     """
     pass

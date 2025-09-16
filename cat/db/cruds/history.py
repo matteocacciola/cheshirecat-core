@@ -23,27 +23,29 @@ def _get_expiration() -> int | None:
         raise ValueError(f"Invalid CCAT_HISTORY_EXPIRATION: {e}")
 
 
-def format_key(agent_id: str, user_id: str) -> str:
+def format_key(agent_id: str, user_id: str, chat_id: str) -> str:
     """
     Format Redis key for a conversation.
 
     Args:
         agent_id: ID of the chatbot.
         user_id: ID of the user.
+        chat_id: ID of the chat session.
 
     Returns:
         Formatted key (e.g., "agent_id:history:user_id").
     """
-    return f"{agent_id}:history:{user_id}"
+    return f"{agent_id}:history:{user_id}:{chat_id}"
 
 
-def get_history(agent_id: str, user_id: str) -> List[Dict[str, Any]]:
+def get_history(agent_id: str, user_id: str, chat_id: str) -> List[Dict[str, Any]]:
     """
     Retrieve conversation history from Redis.
 
     Args:
         agent_id: ID of the chatbot.
         user_id: ID of the user.
+        chat_id: ID of the chat session.
 
     Returns:
         List of conversation history items, or empty list if not found.
@@ -52,20 +54,23 @@ def get_history(agent_id: str, user_id: str) -> List[Dict[str, Any]]:
         RedisError: If Redis connection fails.
     """
     try:
-        history = crud.read(format_key(agent_id, user_id))
+        history = crud.read(format_key(agent_id, user_id, chat_id))
         return history if history else []
     except RedisError as e:
         log.error(f"Failed to get history for {agent_id}:{user_id}: {e}")
         raise
 
 
-def set_history(agent_id: str, user_id: str, history: List[ConversationHistoryItem]) -> List[Dict[str, Any]]:
+def set_history(
+    agent_id: str, user_id: str, chat_id: str, history: List[ConversationHistoryItem]
+) -> List[Dict[str, Any]]:
     """
     Store conversation history in Redis with optional TTL.
 
     Args:
         agent_id: ID of the chatbot.
         user_id: ID of the user.
+        chat_id: ID of the chat session.
         history: List of conversation history items.
 
     Returns:
@@ -79,21 +84,24 @@ def set_history(agent_id: str, user_id: str, history: List[ConversationHistoryIt
     try:
         formatted = [message.model_dump() for message in history]
         expiration = _get_expiration()
-        crud.store(format_key(agent_id, user_id), formatted, expire=expiration)
+        crud.store(format_key(agent_id, user_id, chat_id), formatted, expire=expiration)
 
         return formatted
     except RedisError as e:
-        log.error(f"Redis error storing history for {agent_id}:{user_id}: {e}")
+        log.error(f"Redis error storing history for '{agent_id}:{user_id}:{chat_id}': {e}")
         raise
 
 
-def update_history(agent_id: str, user_id: str, updated_info: ConversationHistoryItem) -> List[Dict[str, Any]]:
+def update_history(
+    agent_id: str, user_id: str, chat_id: str, updated_info: ConversationHistoryItem
+) -> List[Dict[str, Any]]:
     """
     Append a new item to the conversation history in Redis atomically.
 
     Args:
         agent_id: ID of the chatbot.
         user_id: ID of the user.
+        chat_id: ID of the chat session.
         updated_info: New conversation item to append.
 
     Returns:
@@ -105,31 +113,32 @@ def update_history(agent_id: str, user_id: str, updated_info: ConversationHistor
     """
     try:
         updated_info = crud.serialize_to_redis_json(updated_info.model_dump())
-        history_db = get_history(agent_id, user_id)
+        history_db = get_history(agent_id, user_id, chat_id)
         history_db.append(updated_info)
 
         log.debug(f"Appended history item for {agent_id}:{user_id}")
         return set_history(
-            agent_id, user_id, [ConversationHistoryItem(**item) for item in history_db]
+            agent_id, user_id, chat_id, [ConversationHistoryItem(**item) for item in history_db]
         )
     except (RedisError, ValueError) as e:
         log.error(f"Redis error updating history for {agent_id}:{user_id}: {e}")
         raise
 
 
-def delete_history(agent_id: str, user_id: str):
+def delete_history(agent_id: str, user_id: str, chat_id: str):
     """
     Delete conversation history for a specific user and agent.
 
     Args:
         agent_id: ID of the chatbot.
         user_id: ID of the user.
+        chat_id: ID of the chat session.
 
     Raises:
         RedisError: If Redis connection fails.
     """
     try:
-        return crud.delete(format_key(agent_id, user_id))
+        return crud.delete(format_key(agent_id, user_id, chat_id))
     except RedisError as e:
         log.error(f"Redis error deleting history for {agent_id}:{user_id}: {e}")
         raise
@@ -146,7 +155,7 @@ def destroy_all(agent_id: str):
         RedisError: If Redis connection fails.
     """
     try:
-        crud.destroy(format_key(agent_id, "*"))
+        crud.destroy(format_key(agent_id, "*", "*"))
     except RedisError as e:
         log.error(f"Redis error destroying histories for {agent_id}: {e}")
         raise

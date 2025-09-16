@@ -79,15 +79,15 @@ class RabbitHole:
             collection_name="declarative", ids=ids, payloads=payloads, vectors=vectors
         )
 
-    async def ingest_file(self, stray: "StrayCat", file: str | UploadFile, metadata: Dict = None):
+    async def ingest_file(self, ccat: "CheshireCat", file: str | UploadFile, metadata: Dict = None):
         """Load a file in the Cat's declarative memory.
 
         The method splits and converts the file in Langchain `Document`. Then, it stores the `Document` in the Cat's
         memory.
 
         Args:
-            stray: StrayCat
-                Stray Cat instance.
+            ccat: CheshireCat
+                Cheshire Cat instance.
             file: str, UploadFile
                 The file can be a path passed as a string or an `UploadFile` object if the document is ingested using the
                 `rabbithole` endpoint.
@@ -103,17 +103,17 @@ class RabbitHole:
         You cn add custom ones or substitute the above via RabbitHole hooks.
         """
         # split file into a list of docs
-        file_bytes, content_type, docs = await self._file_to_docs(stray=stray, file=file)
+        file_bytes, content_type, docs = await self._file_to_docs(ccat=ccat, file=file)
         metadata = metadata or {}
 
         # store in memory
         filename = file if isinstance(file, str) else file.filename
 
-        await self._store_documents(stray=stray, docs=docs, source=filename, metadata=metadata)
-        await self._save_file(stray, file_bytes, content_type, filename)
+        await self._store_documents(ccat=ccat, docs=docs, source=filename, metadata=metadata)
+        await self._save_file(ccat, file_bytes, content_type, filename)
 
     async def _file_to_docs(
-        self, stray: "StrayCat", file: str | UploadFile
+        self, ccat: "CheshireCat", file: str | UploadFile
     ) -> Tuple[bytes, str | None, List[Document]]:
         """
         Load and convert files to Langchain `Document`.
@@ -122,8 +122,8 @@ class RabbitHole:
         Hence, it loads it in memory and splits it in overlapped chunks of text.
 
         Args:
-            stray: StrayCat
-                Stray Cat instance.
+            ccat: CheshireCat
+                Cheshire Cat instance.
             file: str, UploadFile
                 The file can be either a string path if loaded programmatically, a FastAPI `UploadFile`
                 if coming from the `/rabbithole/` endpoint or a URL if coming from the `/rabbithole/web` endpoint.
@@ -167,7 +167,7 @@ class RabbitHole:
                     # Get binary content of url
                     file_bytes = request.content
                 except HTTPError as e:
-                    log.error(f"Agent id: {stray.agent_id}. Error: {e}")
+                    log.error(f"Agent id: {ccat.id}. Error: {e}")
             else:
                 # Get mime type from file extension and source
                 content_type = mimetypes.guess_type(file)[0]
@@ -184,29 +184,24 @@ class RabbitHole:
 
         log.debug(f"Attempting to parse file: {source}")
         log.debug(f"Detected MIME type: {content_type}")
-        log.debug(f"Available handlers: {list(stray.file_handlers.keys())}")
+        log.debug(f"Available handlers: {list(ccat.file_handlers.keys())}")
 
         # Load the bytes in the Blob schema
         blob = Blob(data=file_bytes, mimetype=content_type).from_data(
             data=file_bytes, mime_type=content_type, path=source
         )
         # Parser based on the mime type
-        parser = MimeTypeBasedParser(handlers=stray.file_handlers)
+        parser = MimeTypeBasedParser(handlers=ccat.file_handlers)
 
-        # Parse the text
-        await stray.send_ws_message(
-            "I'm parsing the content. Big content could require some minutes..."
-        )
         super_docs = parser.parse(blob)
 
         # Split
-        await stray.send_ws_message("Parsing completed. Now let's go with reading process...")
-        docs = self._split_text(stray=stray, text=super_docs)
+        docs = self._split_text(ccat=ccat, text=super_docs)
         return file_bytes, content_type, docs
 
     async def _store_documents(
         self,
-        stray: "StrayCat",
+        ccat: "CheshireCat",
         docs: List[Document],
         source: str,
         metadata: Dict = None
@@ -217,8 +212,8 @@ class RabbitHole:
         timestamp of insertion. Once done, the method notifies the client via Websocket connection.
 
         Args:
-            stray: StrayCat
-                Stray Cat instance.
+            ccat: CheshireCat
+                Cheshire Cat instance.
             docs: List[Document]
                 List of Langchain `Document` to be inserted in the Cat's declarative memory.
             source: str
@@ -238,14 +233,13 @@ class RabbitHole:
         At this point, it is possible to customize the Cat's behavior using the `before_rabbithole_insert_memory` hook
         to edit the memories before they are inserted in the vector database.
         """
-        ccat = stray.cheshire_cat
         log.info(f"Agent id: {ccat.id}. Preparing to memorize {len(docs)} vectors")
 
         embedder = ccat.embedder
-        plugin_manager = stray.plugin_manager
+        plugin_manager = ccat.plugin_manager
 
         # hook the docs before they are stored in the vector memory
-        docs = plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, cat=stray)
+        docs = plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, cat=ccat)
 
         metadata = metadata or {}
 
@@ -259,7 +253,6 @@ class RabbitHole:
                 time_last_notification = time.time()
                 perc_read = int(d / len(docs) * 100)
                 read_message = f"Read {perc_read}% of {source}"
-                await stray.send_ws_message(read_message)
                 log.info(read_message)
 
             # add custom metadata (sent via endpoint) and default metadata (source and when)
@@ -271,7 +264,7 @@ class RabbitHole:
             }
 
             doc = plugin_manager.execute_hook(
-                "before_rabbithole_insert_memory", doc, cat=stray
+                "before_rabbithole_insert_memory", doc, cat=ccat
             )
             inserting_info = f"{d + 1}/{len(docs)}):    {doc.page_content}"
             if doc.page_content != "":
@@ -293,29 +286,22 @@ class RabbitHole:
 
         # hook the points after they are stored in the vector memory
         plugin_manager.execute_hook(
-            "after_rabbithole_stored_documents", source, stored_points, cat=stray
+            "after_rabbithole_stored_documents", source, stored_points, cat=ccat
         )
-
-        # notify client
-        finished_reading_message = (
-            f"Finished reading {source}, I made {len(docs)} thoughts on it."
-        )
-
-        await stray.send_ws_message(finished_reading_message)
 
         log.warning(f"Agent id: {ccat.id}. Done uploading {source}")
 
         return stored_points
 
-    def _split_text(self, stray: "StrayCat", text: List[Document]):
+    def _split_text(self, ccat: "CheshireCat", text: List[Document]):
         """Split text in overlapped chunks.
 
         This method splits the incoming text in overlapped  chunks of text. Other two hooks are available to edit the
         text before and after the split step.
 
         Args:
-            stray: StrayCat
-                Stray Cat instance.
+            ccat: CheshireCat
+                Cheshire Cat instance.
             text: List[Document]
                 Content of the loaded file.
 
@@ -331,20 +317,20 @@ class RabbitHole:
         The default behavior splits the text and executes the hooks, before the splitting.
         `before_rabbithole_splits_text` hook returns the original input without any modification.
         """
-        plugin_manager = stray.plugin_manager
+        plugin_manager = ccat.plugin_manager
 
         # do something on the text before it is split
-        text = plugin_manager.execute_hook("before_rabbithole_splits_text", text, cat=stray)
+        text = plugin_manager.execute_hook("before_rabbithole_splits_text", text, cat=ccat)
 
         # split text
-        docs = stray.chunker.split_documents(text)
+        docs = ccat.chunker.split_documents(text)
 
         # join each short chunk with previous one, instead of deleting them
         try:
-            return self._merge_short_chunks(docs, stray.chunker)
+            return self._merge_short_chunks(docs, ccat.chunker)
         except Exception as e:
             # Log error but don't fail the entire process
-            stray.log.warning(f"Error merging short chunks: {e}. Proceeding with original chunks.")
+            log.warning(f"Error merging short chunks: {e}. Proceeding with original chunks.")
             return docs
 
     def _merge_short_chunks(self, docs: List[Document], chunker: BaseChunker) -> List[Document]:
@@ -434,7 +420,7 @@ class RabbitHole:
         return Document(page_content=merged_content, metadata=merged_metadata)
 
     async def _save_file(
-        self, stray: "StrayCat", file_bytes: bytes, content_type: str, source: str
+        self, ccat: "CheshireCat", file_bytes: bytes, content_type: str, source: str
     ):
         """
         Save file in the Rabbit Hole remote storage handled by the CheshireCat's file manager.
@@ -442,8 +428,8 @@ class RabbitHole:
         stored in the remote storage handled by the CheshireCat's file manager.
 
         Args:
-            stray: StrayCat
-                Stray Cat instance.
+            ccat: CheshireCat
+                Cheshire Cat instance.
             file_bytes: bytes
                 The file bytes to be saved.
             content_type: str
@@ -462,7 +448,7 @@ class RabbitHole:
 
         # upload a file to CheshireCat's file manager
         try:
-            stray.cheshire_cat.file_manager.upload_file_to_storage(file_path, stray.agent_id, source)
+            ccat.file_manager.upload_file_to_storage(file_path, ccat.id, source)
         except Exception as e:
             log.error(f"Error while uploading file {file_path}: {e}")
         finally:

@@ -47,7 +47,7 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
     c = await cheshire_cat.vector_memory_handler._client.get_collections()
     assert len(c.collections) == 1
 
-    histories = get_db().get(crud_history.format_key(cheshire_cat.id, "*"))
+    histories = get_db().get(crud_history.format_key(cheshire_cat.id, "*", "*"))
     assert histories is None
 
     plugins = get_db().get(crud_plugins.format_key(cheshire_cat.id, "*"))
@@ -78,7 +78,7 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
     settings = crud_settings.get_settings(cheshire_cat.id)
     assert len(settings) == 0
 
-    histories = get_db().get(crud_history.format_key(cheshire_cat.id, "*"))
+    histories = get_db().get(crud_history.format_key(cheshire_cat.id, "*", "*"))
     assert histories is None
 
     plugins = get_db().get(crud_plugins.format_key(cheshire_cat.id, "*"))
@@ -115,7 +115,7 @@ async def test_agent_reset_success(client, lizard, cheshire_cat):
     settings = crud_settings.get_settings(cheshire_cat.id)
     assert len(settings) > 0
 
-    histories = get_db().get(crud_history.format_key(cheshire_cat.id, "*"))
+    histories = get_db().get(crud_history.format_key(cheshire_cat.id, "*", "*"))
     assert histories is None
 
     plugins = get_db().get(crud_plugins.format_key(cheshire_cat.id, "*"))
@@ -214,7 +214,7 @@ async def test_agent_create_success(client, lizard):
     settings = crud_settings.get_settings(new_agent_id)
     assert len(settings) > 0
 
-    histories = get_db().get(crud_history.format_key(new_agent_id, "*"))
+    histories = get_db().get(crud_history.format_key(new_agent_id, "*", "*"))
     assert histories is None
 
     plugins = get_db().get(crud_plugins.format_key(new_agent_id, "*"))

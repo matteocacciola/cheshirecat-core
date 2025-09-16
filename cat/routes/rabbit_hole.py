@@ -10,7 +10,7 @@ from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException
 from cat.log import log
-from cat.looking_glass import BillTheLizard, StrayCat
+from cat.looking_glass import BillTheLizard, CheshireCat
 from cat.routes.routes_utils import format_upload_file
 
 router = APIRouter()
@@ -112,7 +112,7 @@ async def upload_file(
     # https://github.com/tiangolo/fastapi/discussions/10936
     background_tasks.add_task(
         lizard.rabbit_hole.ingest_file,
-        stray=StrayCat(user_data=info.user, agent_id=ccat.id),
+        ccat=ccat,
         file=uploaded_file,
         metadata=json.loads(metadata)
     )
@@ -223,7 +223,7 @@ async def upload_url(
             # upload file to long term memory, in the background
             background_tasks.add_task(
                 request.app.state.lizard.rabbit_hole.ingest_file,
-                stray=StrayCat(user_data=info.user, agent_id=info.cheshire_cat.id),
+                ccat=info.cheshire_cat,
                 file=upload_config.url,
                 **upload_config.model_dump(exclude={"url"})
             )
