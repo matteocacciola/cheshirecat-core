@@ -8,6 +8,7 @@ from cat.looking_glass import StrayCat
 from cat.memory.messages import CatMessage, UserMessage
 from cat.utils import get_cat_version
 
+
 router = APIRouter()
 
 
