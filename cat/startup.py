@@ -28,7 +28,6 @@ from cat.routes import (
     chunker,
     plugins,
     rabbit_hole,
-    settings,
     users,
     vector_database,
     websocket,
@@ -100,7 +99,6 @@ cheshire_cat_api.include_router(file_manager.router, tags=["File Manager"], pref
 cheshire_cat_api.include_router(llm.router, tags=["Large Language Model"], prefix="/llm")
 cheshire_cat_api.include_router(plugins.router, tags=["Plugins"], prefix="/plugins")
 cheshire_cat_api.include_router(rabbit_hole.router, tags=["Rabbit Hole"], prefix="/rabbithole")
-cheshire_cat_api.include_router(settings.router, tags=["Settings"], prefix="/settings")
 cheshire_cat_api.include_router(auth.router, tags=["User Auth"], prefix="/auth")
 cheshire_cat_api.include_router(users.router, tags=["Users"], prefix="/users")
 cheshire_cat_api.include_router(vector_database.router, tags=["Vector Database"], prefix="/vector_database")
