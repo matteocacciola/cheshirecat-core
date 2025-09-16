@@ -11,14 +11,13 @@ router = APIRouter()
 
 class Chat(BaseModel):
     id: str
+    agent_id: str
     user_id: str
     updated_at: int
-    body: dict
     title: str
 
 
-class ChatCreateUpdate(BaseModel):
-    body: dict
+class ChatCreate(BaseModel):
     title: str
 
 
@@ -33,9 +32,9 @@ async def get_chats(
     return chats
 
 
-@router.get("/{id}")
+@router.get("/{chat_id}")
 async def get_chat(
-    id: str,
+    chat_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.CHAT, AuthPermission.READ),
 ) -> Chat:
     """Get a specific chat by id."""
@@ -45,9 +44,9 @@ async def get_chat(
     return chat
 
 
-@router.post("")
+@router.post("/")
 async def create_chat(
-    data: ChatCreateUpdate = Body(...),
+    data: ChatCreate = Body(...),
     info: AuthorizedInfo = check_permissions(AuthResource.CHAT, AuthPermission.WRITE),
 ) -> Chat:
     """Create a new chat."""
@@ -55,9 +54,9 @@ async def create_chat(
     return chat
 
 
-@router.delete("/{id}")
+@router.delete("/{chat_id}")
 async def delete_chat(
-    id: str,
+    chat_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.CHAT, AuthPermission.DELETE),
 ):
     """Delete a specific chat"""
