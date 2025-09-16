@@ -38,6 +38,28 @@ def format_key(agent_id: str, user_id: str, chat_id: str) -> str:
     return f"{agent_id}:history:{user_id}:{chat_id}"
 
 
+def get_histories(agent_id: str, user_id: str) -> List[List[Dict[str, Any]]]:
+    """
+    Retrieve conversation histories from Redis.
+
+    Args:
+        agent_id: ID of the chatbot.
+        user_id: ID of the user.
+
+    Returns:
+        List of conversation histories, or empty list if not found.
+
+    Raises:
+        RedisError: If Redis connection fails.
+    """
+    try:
+        histories = crud.read(format_key(agent_id, user_id, "*"))
+        return histories if histories else []
+    except RedisError as e:
+        log.error(f"Failed to get history for {agent_id}:{user_id}: {e}")
+        raise
+
+
 def get_history(agent_id: str, user_id: str, chat_id: str) -> List[Dict[str, Any]]:
     """
     Retrieve conversation history from Redis.

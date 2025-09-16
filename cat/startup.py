@@ -22,7 +22,6 @@ from cat.routes import (
     auth,
     auth_handler,
     base,
-    chats,
     embedder,
     file_manager,
     llm,
@@ -103,7 +102,6 @@ cheshire_cat_api.include_router(rabbit_hole.router, tags=["Rabbit Hole"], prefix
 cheshire_cat_api.include_router(auth.router, tags=["User Auth"], prefix="/auth")
 cheshire_cat_api.include_router(users.router, tags=["Users"], prefix="/users")
 cheshire_cat_api.include_router(vector_database.router, tags=["Vector Database"], prefix="/vector_database")
-cheshire_cat_api.include_router(chats.router, tags=["Chats"], prefix="/chats")
 cheshire_cat_api.include_router(websocket.router, tags=["Websocket"])
 
 
