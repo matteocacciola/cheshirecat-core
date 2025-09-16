@@ -21,9 +21,9 @@ def test_validation_errors():
     with pytest.raises(ValidationError):
         AdminUpdate(username="Alice", permissions={"READ": []})
     with pytest.raises(ValidationError):
-        AdminUpdate(username="Alice", permissions={"CHESHIRE_CATS": []})
+        AdminUpdate(username="Alice", permissions={"CHESHIRE_CAT": []})
     with pytest.raises(ValidationError):
-        AdminUpdate(username="Alice", permissions={"CHESHIRE_CATS": ["WRITE", "WRONG"]})
+        AdminUpdate(username="Alice", permissions={"CHESHIRE_CAT": ["WRITE", "WRONG"]})
 
 
 def test_create_admin(client):

@@ -28,7 +28,7 @@ class CreatedResponse(BaseModel):
 @router.post("/factory/reset", response_model=ResetResponse)
 async def factory_reset(
     request: Request,
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CAT, AuthPermission.DELETE),
 ) -> ResetResponse:
     """
     Factory reset the entire application. This will delete all settings, memories, and metadata.
@@ -80,7 +80,7 @@ async def factory_reset(
     )
 
 
-@router.get("/agents", dependencies=[check_admin_permissions(AdminAuthResource.CHESHIRE_CATS, AuthPermission.LIST)])
+@router.get("/agents", dependencies=[check_admin_permissions(AdminAuthResource.CHESHIRE_CAT, AuthPermission.LIST)])
 async def get_agents() -> List[str]:
     """
     Get all agents.
@@ -95,7 +95,7 @@ async def get_agents() -> List[str]:
 @router.post("/agent/create", response_model=CreatedResponse)
 async def agent_create(
     request: Request,
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CAT, AuthPermission.DELETE),
 ) -> CreatedResponse:
     """
     Reset a single agent. This will delete all settings, memories, and metadata, for the agent.
@@ -113,7 +113,7 @@ async def agent_create(
 @router.post("/agent/destroy", response_model=ResetResponse)
 async def agent_destroy(
     request: Request,
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CAT, AuthPermission.DELETE),
 ) -> ResetResponse:
     """
     Destroy a single agent. This will completely delete all settings, memories, and metadata, for the agent.
@@ -143,7 +143,7 @@ async def agent_destroy(
 @router.post("/agent/reset", response_model=ResetResponse)
 async def agent_reset(
     request: Request,
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CATS, AuthPermission.DELETE),
+    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CAT, AuthPermission.DELETE),
 ) -> ResetResponse:
     """
     Reset a single agent. This will delete all settings, memories, and metadata, for the agent.

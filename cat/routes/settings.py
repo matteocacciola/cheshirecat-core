@@ -26,7 +26,7 @@ class DeleteSettingResponse(BaseModel):
 @router.get("/", response_model=GetSettingsResponse)
 async def get_settings(
     search: str = "",
-    info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.SETTING, AuthPermission.LIST),
 ) -> GetSettingsResponse:
     """Get the entire list of settings available in the database"""
     settings = crud_settings.get_settings(info.cheshire_cat.id, search=search)
@@ -37,7 +37,7 @@ async def get_settings(
 @router.post("/", response_model=SettingResponse)
 async def create_setting(
     payload: models.SettingBody,
-    info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.SETTING, AuthPermission.WRITE),
 ) -> SettingResponse:
     """Create a new setting in the database"""
     # complete the payload with setting_id and updated_at
@@ -52,7 +52,7 @@ async def create_setting(
 @router.get("/{setting_id}", response_model=SettingResponse)
 async def get_setting(
     setting_id: str,
-    info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.SETTING, AuthPermission.READ),
 ) -> SettingResponse:
     """Get the specific setting from the database"""
     setting = crud_settings.get_setting_by_id(info.cheshire_cat.id, setting_id)
@@ -65,7 +65,7 @@ async def get_setting(
 async def update_setting(
     setting_id: str,
     payload: models.SettingBody,
-    info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.SETTING, AuthPermission.EDIT),
 ) -> SettingResponse:
     """Update a specific setting in the database if it exists"""
     agent_id = info.cheshire_cat.id
@@ -88,7 +88,7 @@ async def update_setting(
 @router.delete("/{setting_id}", response_model=DeleteSettingResponse)
 async def delete_setting(
     setting_id: str,
-    info: AuthorizedInfo = check_permissions(AuthResource.SETTINGS, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.SETTING, AuthPermission.DELETE),
 ) -> DeleteSettingResponse:
     """Delete a specific setting in the database"""
     agent_id = info.cheshire_cat.id

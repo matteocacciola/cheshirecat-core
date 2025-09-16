@@ -125,7 +125,7 @@ def test_custom_endpoints_on_plugin_deactivation_or_uninstall(switch_type, secur
         assert response.status_code == (404 if switch_type == "uninstall" or upon_auth else 200)
 
 
-@pytest.mark.parametrize("resource", ["PLUGINS", "LLM"])
+@pytest.mark.parametrize("resource", ["PLUGIN", "LLM"])
 @pytest.mark.parametrize("permission", ["LIST", "DELETE"])
 def test_custom_endpoint_permissions(resource, permission, client, secure_client, secure_client_headers):
     just_installed_plugin(secure_client, secure_client_headers)
@@ -142,9 +142,9 @@ def test_custom_endpoint_permissions(resource, permission, client, secure_client
     response = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
     received_token = response.json()["access_token"]
 
-    # use endpoint (requires PLUGINS resource and LIST permission)
+    # use endpoint (requires PLUGIN resource and LIST permission)
     response = client.get("/tests/crud", headers={"Authorization": f"Bearer {received_token}", "agent_id": agent_id})
-    if resource == "PLUGINS" and permission == "LIST":
+    if resource == "PLUGIN" and permission == "LIST":
         assert response.status_code == 200
     else:
         assert response.status_code == 403

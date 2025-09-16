@@ -10,7 +10,7 @@ class AuthResource(Enum):
     STATUS = "STATUS"
     MEMORY = "MEMORY"
     CHAT = "CHAT"
-    SETTINGS = "SETTINGS"
+    SETTING = "SETTING"
     LLM = "LLM"
     AUTH_HANDLER = "AUTH_HANDLER"
     FILE_MANAGER = "FILE_MANAGER"
@@ -18,14 +18,14 @@ class AuthResource(Enum):
     VECTOR_DATABASE = "VECTOR_DATABASE"
     USERS = "USERS"
     UPLOAD = "UPLOAD"
-    PLUGINS = "PLUGINS"
+    PLUGIN = "PLUGIN"
 
 
 class AdminAuthResource(Enum):
     ADMINS = "ADMINS"
     EMBEDDER = "EMBEDDER"
-    CHESHIRE_CATS = "CHESHIRE_CATS"
-    PLUGINS = "PLUGINS"
+    CHESHIRE_CAT = "CHESHIRE_CAT"
+    PLUGIN = "PLUGIN"
 
 
 class AuthPermission(Enum):

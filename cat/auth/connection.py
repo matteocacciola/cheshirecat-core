@@ -104,7 +104,7 @@ class HTTPAuth(ConnectionAuth):
         # is that an admin able to manage agents?
         user = lizard.core_auth_handler.authorize(
             connection,
-            AdminAuthResource.CHESHIRE_CATS,
+            AdminAuthResource.CHESHIRE_CAT,
             self.permission,
             key_id=lizard.config_key,
             http_permissions=get_full_admin_permissions(),
