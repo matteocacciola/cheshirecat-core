@@ -34,7 +34,7 @@ class MadHatter(ABC):
         # this callback is set from outside to be notified when plugin toggle is completed
         self.on_end_plugin_toggle_callback = lambda plugin_id, endpoints, what: None
 
-    def _sync_hooks_and_procedures(self):
+    def _sync_decorated(self):
         """
         Load hooks and procedures from active plugins and external sources.
         """
@@ -115,7 +115,7 @@ class MadHatter(ABC):
         crud_settings.upsert_setting_by_name(self.agent_key, Setting(name="active_plugins", value=active_plugins))
 
         # update cache and embeddings
-        self._sync_hooks_and_procedures()
+        self._sync_decorated()
 
     def _on_finish_finding_plugins(self):
         # store active plugins in db
@@ -125,7 +125,7 @@ class MadHatter(ABC):
 
         log.info(f"Agent '{self.agent_key}' - ACTIVE PLUGINS:")
         log.info(self.active_plugins)
-        self._sync_hooks_and_procedures()
+        self._sync_decorated()
 
     # execute requested hook
     def execute_hook(self, hook_name: str, *args, cat) -> Any:

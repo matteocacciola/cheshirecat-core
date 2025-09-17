@@ -15,11 +15,11 @@ from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
 from cat.factory.base_factory import BaseFactory
 from cat.looking_glass import BillTheLizard, CheshireCat, WhiteRabbit
-from cat.mad_hatter import MadHatter, Plugin, registry_search_plugins
+from cat.mad_hatter import MadHatter, Plugin, registry_search_plugins, PluginManifest
 
 
 class Plugins(BaseModel):
-    installed: List[Dict]
+    installed: List[PluginManifest]
     registry: List[Dict]
 
 
@@ -94,7 +94,7 @@ class PluginsSettingsResponse(BaseModel):
 
 
 class GetPluginDetailsResponse(BaseModel):
-    data: Dict
+    data: PluginManifest
 
 
 class DeletePluginResponse(BaseModel):
@@ -128,6 +128,41 @@ async def auth_token(credentials: UserCredentials, agent_id: str):
     raise CustomForbiddenException("Invalid Credentials")
 
 
+def create_plugin_manifest(
+    plugin: Plugin,
+    active_plugins: List[str],
+    registry_plugins_index: Dict[str, Dict] | None = None,
+    query: str | None = None
+) -> PluginManifest:
+    # get manifest
+    manifest: PluginManifest = deepcopy(plugin.manifest)  # we make a copy to avoid modifying the plugin obj
+    manifest.local_info = {
+        "active": (plugin.id in active_plugins),  # pass along if plugin is active or not
+        "hooks": [{"name": hook.name, "priority": hook.priority} for hook in plugin.hooks],
+        "tools": [{"name": tool.name} for tool in plugin.tools],
+        "forms": [{"name": form.name} for form in plugin.forms],
+        "mcp_clients": [{"name": mcp_client.name} for mcp_client in plugin.mcp_clients],
+        "endpoints": [{"name": endpoint.name, "tags": endpoint.tags} for endpoint in plugin.endpoints],
+    }
+
+    if registry_plugins_index is not None:
+        manifest.local_info["upgrade"] = None
+
+        # do not show already installed plugins among registry plugins
+        r = registry_plugins_index.pop(manifest.plugin_url, None)
+        # filter by query
+        plugin_text = manifest.model_dump_json()
+        if (
+                (query is None or query.lower() in plugin_text)
+                and r is not None
+                and r.get("version") is not None
+                and r.get("version") != plugin.manifest.get("version")
+        ):
+            manifest.local_info["upgrade"] = r.get("version")
+
+    return manifest
+
+
 async def get_plugins(plugin_manager: MadHatter, query: str | None = None) -> Plugins:
     """
     Get the plugins related to the passed plugin manager instance and the query.
@@ -138,29 +173,6 @@ async def get_plugins(plugin_manager: MadHatter, query: str | None = None) -> Pl
     Returns:
         The list of plugins
     """
-    def create_manifest(plugin: Plugin) -> Dict[str, Any]:
-        # get manifest
-        manifest = deepcopy(plugin.manifest)  # we make a copy to avoid modifying the plugin obj
-        manifest["active"] = (plugin.id in active_plugins)  # pass along if plugin is active or not
-        manifest["upgrade"] = None
-        manifest["hooks"] = [{"name": hook.name, "priority": hook.priority} for hook in plugin.hooks]
-        manifest["tools"] = [{"name": tool.name} for tool in plugin.tools]
-        manifest["forms"] = [{"name": form.name} for form in plugin.forms]
-        manifest["endpoints"] = [{"name": endpoint.name, "tags": endpoint.tags} for endpoint in plugin.endpoints]
-        # do not show already installed plugins among registry plugins
-        r = registry_plugins_index.pop(manifest["plugin_url"], None)
-        # filter by query
-        plugin_text = [str(field) for field in manifest.values()]
-        plugin_text = " ".join(plugin_text).lower()
-        if (
-                (query is None or query.lower() in plugin_text)
-                and r is not None
-                and r.get("version") is not None
-                and r.get("version") != plugin.manifest.get("version")
-        ):
-            manifest["upgrade"] = r["version"]
-        return manifest
-
     # retrieve plugins from official repo
     registry_plugins = await registry_search_plugins(query)
     # index registry plugins by url
@@ -170,7 +182,10 @@ async def get_plugins(plugin_manager: MadHatter, query: str | None = None) -> Pl
     active_plugins = plugin_manager.load_active_plugins_from_db()
 
     # list installed plugins' manifest
-    installed_plugins = [create_manifest(p) for p in plugin_manager.plugins.values()]
+    installed_plugins = [
+        create_plugin_manifest(p, active_plugins, registry_plugins_index, query)
+        for p in plugin_manager.plugins.values()
+    ]
 
     return Plugins(installed=installed_plugins, registry=list(registry_plugins_index.values()))
 

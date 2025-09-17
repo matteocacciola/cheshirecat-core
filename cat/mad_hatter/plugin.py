@@ -12,9 +12,10 @@ from packaging.requirements import Requirement
 
 from cat.db.cruds import plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
+from cat.mad_hatter.plugin_manifest import PluginManifest
 from cat.mad_hatter.procedures import CatProcedure
 from cat.mad_hatter.decorators import CustomEndpoint, CatHook, CatPluginDecorator
-from cat.utils import to_camel_case, inspect_calling_agent, get_base_path
+from cat.utils import inspect_calling_agent, get_base_path
 from cat.log import log
 
 
@@ -256,12 +257,11 @@ class Plugin:
 
         return True
 
-    def _load_manifest(self):
+    def _load_manifest(self) -> PluginManifest:
         plugin_json_metadata_file_name = "plugin.json"
         plugin_json_metadata_file_path = os.path.join(
             self._path, plugin_json_metadata_file_name
         )
-        meta = {"id": self._id}
         json_file_data = {}
 
         if os.path.isfile(plugin_json_metadata_file_path):
@@ -269,30 +269,13 @@ class Plugin:
                 json_file = open(plugin_json_metadata_file_path)
                 json_file_data = json.load(json_file)
                 json_file.close()
-            except:
-                log.debug(
+            except Exception:
+                log.error(
                     f"Loading plugin {self._path} metadata, defaulting to generated values"
                 )
 
-        meta["name"] = json_file_data.get("name", to_camel_case(self._id))
-        meta["description"] = json_file_data.get(
-            "description",
-            (
-                "Description not found for this plugin. "
-                f"Please create a `{plugin_json_metadata_file_name}`"
-                " in the plugin folder."
-            ),
-        )
-        meta["author_name"] = json_file_data.get("author_name", "Unknown author")
-        meta["author_url"] = json_file_data.get("author_url", "")
-        meta["plugin_url"] = json_file_data.get("plugin_url", "")
-        meta["tags"] = json_file_data.get("tags", "unknown")
-        meta["thumb"] = json_file_data.get("thumb", "")
-        meta["version"] = json_file_data.get("version", "0.0.1")
-        meta["min_cat_version"] = json_file_data.get("min_cat_version", "")
-        meta["max_cat_version"] = json_file_data.get("max_cat_version", "")
-
-        return meta
+        json_file_data["id"] = self.id
+        return PluginManifest(**json_file_data)
 
     def _install_requirements(self):
         req_file = os.path.join(self.path, "requirements.txt")
