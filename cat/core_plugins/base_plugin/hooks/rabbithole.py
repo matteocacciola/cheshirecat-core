@@ -13,6 +13,7 @@ from langchain_community.document_loaders.parsers.msword import MsWordParser
 from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
 from langchain_community.document_loaders.parsers.txt import TextParser
 from langchain_core.documents import Document
+from typing_extensions import deprecated
 
 from cat.core_plugins.base_plugin.parsers import YoutubeParser, TableParser, JSONParser, PowerPointParser
 from cat.mad_hatter.decorators import hook
@@ -38,11 +39,12 @@ def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
     return file_handlers | {
         "application/json": JSONParser(),
         "application/msword": MsWordParser(),
-        "application/vnd.ms-powerpoint": PowerPointParser(),
-        "application/pdf": PyMuPDFParser(),
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": TableParser(),
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document": MsWordParser(),
+        "application/vnd.ms-powerpoint": PowerPointParser(),
         "application/vnd.openxmlformats-officedocument.presentationml.presentation": PowerPointParser(),
+        "application/pdf": PyMuPDFParser(),
+        "application/vnd.ms-excel": TableParser(),
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": TableParser(),
         "text/csv": TableParser(),
         "text/html": BS4HTMLParser(),
         "text/javascript": LanguageParser(language="js"),
@@ -79,23 +81,24 @@ def before_rabbithole_insert_memory(doc: Document, cat) -> Document:
     -----
     The `Document` has two properties::
 
-        `page_content`: the string with the text to save in memory;
+        `page_content`: the string with the content to save in memory;
         `metadata`: a dictionary with at least two keys:
-            `source`: where the text comes from;
+            `source`: where the content comes from;
             `when`: timestamp to track when it's been uploaded.
     """
     return doc
 
 
-# Hook called just before rabbithole splits text. Input is whole Document
+# Hook called just before rabbithole splits file content converted to LangChain Documents.
+# Input is whole list of Documents
 @hook(priority=0)
-def before_rabbithole_splits_text(docs: List[Document], cat) -> List[Document]:
+def before_rabbithole_splits_documents(docs: List[Document], cat) -> List[Document]:
     """Hook the `Documents` before they are split into chunks.
 
     Allows editing the uploaded document main Document(s) before the *RabbitHole* recursively splits it in shorter ones.
-    Please note that this is a list because parsers can output one or more Document, that are afterwards splitted.
+    Please note that this is a list because parsers can output one or more Document, that are afterward split.
 
-    For instance, the hook allows to change the text or edit/add metadata.
+    For instance, the hook allows to change the content or edit/add metadata.
 
     Args:
         docs: List[Document]
@@ -108,6 +111,12 @@ def before_rabbithole_splits_text(docs: List[Document], cat) -> List[Document]:
             Edited Langchain `Document`s.
     """
     return docs
+
+
+@hook(priority=0)
+@deprecated("Use `before_rabbithole_splits_documents` instead.")
+def before_rabbithole_splits_text(docs: List[Document], cat) -> List[Document]:
+    return before_rabbithole_splits_documents(docs, cat)
 
 
 # Hook called when a list of Document is going to be inserted in memory from the rabbit hole.

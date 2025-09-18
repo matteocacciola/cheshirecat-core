@@ -1,6 +1,6 @@
 import re
 import string
-from abc import ABC
+from abc import ABC, abstractmethod
 from itertools import combinations
 from typing import Type, List
 from langchain_core.embeddings import Embeddings
@@ -8,6 +8,20 @@ from pydantic import ConfigDict
 from sklearn.feature_extraction.text import CountVectorizer
 
 from cat.factory.base_factory import BaseFactory, BaseFactoryConfigModel
+
+
+class MultimodalEmbeddings(Embeddings, ABC):
+    """Base class for all embedders."""
+
+    @abstractmethod
+    def embed_image(self, image: str | bytes) -> List[float]:
+        """Embed an image and returns the embedding vector as a list of floats."""
+        pass
+
+    @abstractmethod
+    def embed_images(self, images: List[str | bytes]) -> List[List[float]]:
+        """Embed a list of images and returns the embedding vectors that are lists of floats."""
+        pass
 
 
 class DumbEmbedder(Embeddings):
@@ -45,8 +59,6 @@ class DumbEmbedder(Embeddings):
 
 
 class EmbedderSettings(BaseFactoryConfigModel, ABC):
-    _is_multimodal: bool = False
-
     # This is related to pydantic, because "model_*" attributes are protected.
     # We deactivate the protection because langchain relies on several "model_*" named attributes
     model_config = ConfigDict(protected_namespaces=())
@@ -55,13 +67,15 @@ class EmbedderSettings(BaseFactoryConfigModel, ABC):
     def base_class(cls) -> Type:
         return Embeddings
 
-    @classmethod
-    def is_multimodal(cls) -> bool:
-        return cls._is_multimodal.default
+    @property
+    def is_multimodal(self) -> bool:
+        return False
 
 
 class EmbedderMultimodalSettings(EmbedderSettings, ABC):
-    _is_multimodal: bool = True
+    @property
+    def is_multimodal(self) -> bool:
+        return True
 
 
 class EmbedderDumbConfig(EmbedderSettings):
