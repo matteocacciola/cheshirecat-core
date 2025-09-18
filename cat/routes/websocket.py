@@ -10,6 +10,7 @@ router = APIRouter()
 
 
 @router.websocket("/ws")
+@router.websocket("/ws/{agent_id}")
 @router.websocket("/ws/{agent_id}/{chat_id}")
 async def websocket_chat(
     websocket: WebSocket,

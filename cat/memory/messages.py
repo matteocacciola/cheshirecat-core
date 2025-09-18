@@ -95,6 +95,7 @@ class ConversationHistoryItem(BaseModelDict):
         when (float): when the message was sent in seconds since epoch (default: time.time())
         content (BaseMessage): content of the message
     """
+    chat_id: str
     who: Literal["user", "assistant"]
     when: float | None = time.time()
     content: CatMessage | UserMessage
@@ -105,7 +106,7 @@ class ConversationHistoryItem(BaseModelDict):
         self.content = CatMessage(**content_dict) if self.who == "assistant" else UserMessage(**content_dict)
 
     def __str__(self):
-        return f"\n - {str(self.who)}: {self.content.text}"
+        return f"{self.chat_id} - {str(self.who)}: {self.content.text}"
 
     @computed_field
     @property

@@ -38,7 +38,7 @@ def format_key(agent_id: str, user_id: str, chat_id: str) -> str:
     return f"{agent_id}:history:{user_id}:{chat_id}"
 
 
-def get_histories(agent_id: str, user_id: str) -> List[List[Dict[str, Any]]]:
+def get_histories(agent_id: str, user_id: str) -> Dict[str, List[Dict[str, Any]]]:
     """
     Retrieve conversation histories from Redis.
 
@@ -47,18 +47,35 @@ def get_histories(agent_id: str, user_id: str) -> List[List[Dict[str, Any]]]:
         user_id: ID of the user.
 
     Returns:
-        List of conversation histories, or empty list if not found.
+        Dictionary of chat_id to list of conversation history items, or empty dict if not found.
 
     Raises:
         RedisError: If Redis connection fails.
     """
     try:
-        histories = crud.read(format_key(agent_id, user_id, "*"))
-        return histories if histories else []
-    except RedisError as e:
-        log.error(f"Failed to get history for {agent_id}:{user_id}: {e}")
-        raise
+        histories = {}
+        # Construct the pattern to find all keys for the user
+        pattern = format_key(agent_id, user_id, "*")
 
+        db = crud.get_db()
+
+        # Use scan_iter for efficient key discovery without blocking the server
+        for key_str in db.scan_iter(match=pattern):
+            # Extract the chat_id from the key string
+            parts = key_str.split(":")
+            if len(parts) != 4:
+                continue
+            agent_id, _, user_id, chat_id = parts
+
+            # Retrieve the history for the specific key
+            history_data = get_history(agent_id, user_id, chat_id)
+            if history_data:
+                histories[chat_id] = history_data
+
+        return histories
+    except RedisError as e:
+        log.error(f"Failed to get histories for {agent_id}:{user_id}: {e}")
+        raise
 
 def get_history(agent_id: str, user_id: str, chat_id: str) -> List[Dict[str, Any]]:
     """
@@ -104,7 +121,7 @@ def set_history(
     """
 
     try:
-        formatted = [message.model_dump() for message in history]
+        formatted = [message.model_dump(exclude={"chat_id"}) for message in history]
         expiration = _get_expiration()
         crud.store(format_key(agent_id, user_id, chat_id), formatted, expire=expiration)
 
@@ -140,7 +157,10 @@ def update_history(
 
         log.debug(f"Appended history item for {agent_id}:{user_id}")
         return set_history(
-            agent_id, user_id, chat_id, [ConversationHistoryItem(**item) for item in history_db]
+            agent_id,
+            user_id,
+            chat_id,
+            [ConversationHistoryItem(**(item | {"chat_id": chat_id})) for item in history_db],
         )
     except (RedisError, ValueError) as e:
         log.error(f"Redis error updating history for {agent_id}:{user_id}: {e}")

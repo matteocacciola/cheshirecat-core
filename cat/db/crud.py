@@ -51,7 +51,7 @@ def read(key: str, path: str | None = "$") -> List[Dict] | Dict | None:
         if isinstance(value, list) and isinstance(value[0], list):
             return value[0]
 
-        return value
+        return value  # type: ignore
     except RedisError as e:
         log.error(f"Redis read error for key {key}: {e}")
         raise

@@ -51,7 +51,7 @@ class WorkingMemory(BaseModelDict):
         super().__init__(**data)
 
         self.history = [
-            ConversationHistoryItem(**info)
+            ConversationHistoryItem(**info, chat_id=self.chat_id)
             for info in crud_history.get_history(self.agent_id, self.user_id, self.chat_id)
         ]
 
@@ -118,11 +118,11 @@ class WorkingMemory(BaseModelDict):
             content: BaseMessage, the message said.
         """
         # we are sure that who is not change in the current call
-        conversation_history_item = ConversationHistoryItem(who=who, content=content)
+        conversation_history_item = ConversationHistoryItem(who=who, content=content, chat_id=self.chat_id)
 
         # append the latest message in conversation
         self.history = [
-            ConversationHistoryItem(**info)
+            ConversationHistoryItem(**info, chat_id=self.chat_id)
             for info in crud_history.update_history(self.agent_id, self.user_id, self.chat_id, conversation_history_item)
         ]
 

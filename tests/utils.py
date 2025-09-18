@@ -8,7 +8,7 @@ from cat.db.cruds import users as crud_users
 from cat.env import get_env
 
 agent_id = "agent_test"
-chat_id = "chat_test"
+chat_id = "a1157e2d-ca3d-4f21-a4a5-b57a64dd01c9"
 api_key = "meow_http"
 jwt_secret = "meow_jwt"
 
@@ -31,8 +31,8 @@ def send_file(file_name, content_type, client, headers, payload=None):
 
 
 # utility function to communicate with the cat via websocket
-def send_websocket_message(msg, client, query_params):
-    url = f"/ws/{agent_id}/{chat_id}?" + urlencode(query_params)
+def send_websocket_message(msg, client, query_params, ch_id=None):
+    url = (f"/ws/{agent_id}?" if not ch_id else f"/ws/{agent_id}/{ch_id}?") + urlencode(query_params)
 
     with client.websocket_connect(url) as websocket:
         # Send ws message
@@ -42,10 +42,10 @@ def send_websocket_message(msg, client, query_params):
 
 
 # utility to send n messages via chat
-def send_n_websocket_messages(num_messages, client, image=None):
+def send_n_websocket_messages(num_messages, client, image=None, ch_id=None):
     responses = []
 
-    url = f"/ws/{agent_id}?" + urlencode({"token": api_key})
+    url = (f"/ws/{agent_id}?" if not ch_id else f"/ws/{agent_id}/{ch_id}?") + urlencode({"token": api_key})
 
     with client.websocket_connect(url) as websocket:
         for m in range(num_messages):

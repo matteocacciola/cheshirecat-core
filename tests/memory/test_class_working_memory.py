@@ -4,13 +4,12 @@ from cat.db.models import generate_uuid
 from cat.memory.messages import UserMessage, CatMessage, ConversationHistoryItem
 from cat.memory.working_memory import WorkingMemory
 
-from tests.utils import agent_id
+from tests.utils import agent_id, chat_id
 
 
 def create_working_memory_with_convo_history():
     """Utility to create a working memory and populate its convo history."""
-
-    working_memory = WorkingMemory(agent_id=agent_id, user_id=generate_uuid())
+    working_memory = WorkingMemory(agent_id=agent_id, user_id=generate_uuid(), chat_id=chat_id)
     human_message = UserMessage(text="Hi")
     working_memory.update_history(who="user", content=human_message)
     cat_message = CatMessage(text="Meow")
@@ -19,7 +18,7 @@ def create_working_memory_with_convo_history():
 
 
 def test_create_working_memory():
-    wm = WorkingMemory(agent_id=agent_id, user_id=generate_uuid())
+    wm = WorkingMemory(agent_id=agent_id, user_id=generate_uuid(), chat_id=chat_id)
     assert wm.history == []
     assert wm.user_message_json is None
     assert wm.recall_query == ""
@@ -61,12 +60,10 @@ def test_langchainfy_chat_history():
 
 
 def test_working_memory_as_dictionary_object():
-    wm = WorkingMemory(agent_id=agent_id, user_id=generate_uuid())
+    wm = WorkingMemory(agent_id=agent_id, user_id=generate_uuid(), chat_id=chat_id)
     wm.a = "a"
     wm["b"] = "b"
     assert wm.a == "a"
     assert wm["a"] == "a"
     assert wm.b == "b"
     assert wm["b"] == "b"
-
-# TODO V2: add tests for multimodal messages!

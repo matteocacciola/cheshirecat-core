@@ -1,7 +1,7 @@
 from cat.auth.permissions import AuthUserInfo
 from cat.looking_glass import StrayCat
 
-from tests.utils import send_websocket_message, api_key, agent_id, create_new_user, new_user_password
+from tests.utils import send_websocket_message, api_key, agent_id, create_new_user, new_user_password, chat_id
 
 
 def test_session_creation_from_websocket(
@@ -22,14 +22,14 @@ def test_session_creation_from_websocket(
 
     # send websocket message
     mex = {"text": "Where do I go?"}
-    res = send_websocket_message(mex, client, query_params={"token": received_token, "user_id": user_id})
+    res = send_websocket_message(mex, client, query_params={"token": received_token, "user_id": user_id}, ch_id=chat_id)
 
     # check response
     assert "You did not configure" in res["content"]
 
     # verify session
     user = AuthUserInfo(id=user_id, name=data["username"], permissions=data["permissions"])
-    stray_cat = StrayCat(user_data=user, agent_id=agent_id)
+    stray_cat = StrayCat(user_data=user, agent_id=agent_id, stray_id=chat_id)
 
     convo = stray_cat.working_memory.history
     assert len(convo) == 2
