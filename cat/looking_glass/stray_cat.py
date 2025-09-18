@@ -1,3 +1,4 @@
+import uuid
 from typing import Literal, List, Dict, Any, get_args, Final, Tuple
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
@@ -73,6 +74,8 @@ class StrayCat:
 
     Attributes
     ----------
+    id : str
+        Unique identifier of the cat session.
     user : AuthUserInfo
         User data object containing user information.
     agent_id : str
@@ -95,23 +98,24 @@ class StrayCat:
         >> cat.working_memory.location
         "Rome"
     """
-    def __init__(self, agent_id: str, user_data: AuthUserInfo):
+    def __init__(self, agent_id: str, user_data: AuthUserInfo, stray_id: str | None = None):
+        self.id = stray_id or str(uuid.uuid4())
         self.agent_id: Final[str] = agent_id
         self.user: Final[AuthUserInfo] = user_data
 
-        self.working_memory = WorkingMemory(agent_id=self.agent_id, user_id=self.user.id)
+        self.working_memory = WorkingMemory(agent_id=self.agent_id, user_id=self.user.id, chat_id=self.id)
 
         self._tools: List[StructuredTool] = [lp for p in self._get_procedures() for lp in p.langchainfy()]
 
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""
-        return self.user.id == other.user.id
+        return self.user.id == other.user.id and self.agent_id == other.agent_id and self.id == other.id
 
     def __hash__(self):
-        return hash(self.user.id)
+        return hash(self.id)
 
     def __repr__(self):
-        return f"StrayCat(user_id={self.user.id}, agent_id={self.agent_id})"
+        return f"StrayCat(id={self.id}, user_id={self.user.id}, agent_id={self.agent_id})"
 
     async def _send_ws_json(self, data: Any):
         ws_connection = self.websocket_manager.get_connection(self.user.id)

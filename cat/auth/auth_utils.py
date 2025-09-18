@@ -63,6 +63,16 @@ def extract_agent_id_from_request(request: HTTPConnection) -> str:
     )
 
 
+def extract_chat_id_from_request(request: HTTPConnection) -> str | None:
+    return request.headers.get(
+        "chat_id",
+        request.path_params.get(
+            "chat_id",
+            request.query_params.get("chat_id")
+        )
+    )
+
+
 def extract_user_info_on_api_key(agent_key: str, user_id: str | None = None) -> UserInfo | None:
     from cat.db.cruds import users as crud_users
 

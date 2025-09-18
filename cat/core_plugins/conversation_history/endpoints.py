@@ -1,9 +1,9 @@
-from typing import List, Literal
+from typing import List, Literal, Dict
 from pydantic import BaseModel
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
-from cat.looking_glass import StrayCat
+from cat.db.cruds import history as crud_history
 from cat.mad_hatter.decorators import endpoint
 from cat.memory.messages import ConversationHistoryItem, CatMessage, UserMessage, MessageWhy
 
@@ -25,43 +25,40 @@ class PostConversationHistoryPayload(BaseModel):
 
 # DELETE conversation history from working memory
 @endpoint.delete(
-    "/conversation_history",
+    "/{chat_id}",
     response_model=DeleteConversationHistoryResponse,
-    tags=["Working Memory - Current Conversation"],
-    prefix="/memory",
+    tags=["Conversation History"],
+    prefix="/conversation",
 )
 async def destroy_conversation_history(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteConversationHistoryResponse:
     """Delete the specified user's conversation history from working memory"""
-    stray = StrayCat(user_data=info.user, agent_id=info.cheshire_cat.id)
-    stray.working_memory.reset_history()
+    info.stray_cat.working_memory.reset_history()
 
     return DeleteConversationHistoryResponse(deleted=True)
 
 
 # GET conversation history from working memory
 @endpoint.get(
-    "/conversation_history",
+    "/{chat_id}",
     response_model=GetConversationHistoryResponse,
-    tags=["Working Memory - Current Conversation"],
-    prefix="/memory",
+    tags=["Conversation History"],
+    prefix="/conversation",
 )
 async def get_conversation_history(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> GetConversationHistoryResponse:
     """Get the specified user's conversation history from working memory"""
-    stray = StrayCat(user_data=info.user, agent_id=info.cheshire_cat.id)
-
-    return GetConversationHistoryResponse(history=stray.working_memory.history)
+    return GetConversationHistoryResponse(history=info.stray_cat.working_memory.history)
 
 
 # PUT conversation history into working memory
 @endpoint.post(
-    "/conversation_history",
+    "/{chat_id}",
     response_model=GetConversationHistoryResponse,
-    tags=["Working Memory - Current Conversation"],
-    prefix="/memory",
+    tags=["Conversation History"],
+    prefix="/conversation",
 )
 async def add_conversation_history(
     payload: PostConversationHistoryPayload,
@@ -71,7 +68,29 @@ async def add_conversation_history(
     payload_dict = payload.model_dump()
     content = UserMessage(**payload_dict) if payload.who == "user" else CatMessage(**payload_dict)
 
-    stray = StrayCat(user_data=info.user, agent_id=info.cheshire_cat.id)
-    stray.working_memory.update_history(payload.who, content)
+    info.stray_cat.working_memory.update_history(payload.who, content)
 
-    return GetConversationHistoryResponse(history=stray.working_memory.history)
+    return GetConversationHistoryResponse(history=info.stray_cat.working_memory.history)
+
+
+# GET all conversation history from working memory
+@endpoint.get(
+    "/",
+    response_model=Dict[str, GetConversationHistoryResponse],
+    tags=["Conversation History"],
+    prefix="/conversation",
+)
+async def get_conversation_histories(
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
+) -> Dict[str, GetConversationHistoryResponse]:
+    """Get the specified user's conversation history from working memory"""
+    histories = crud_history.get_histories(info.cheshire_cat.id, info.user.id)
+
+    response = {
+        chat_id: GetConversationHistoryResponse(
+            history=[ConversationHistoryItem(**item, chat_id=chat_id) for item in history]
+        )
+        for chat_id, history in histories.items()
+    }
+
+    return response

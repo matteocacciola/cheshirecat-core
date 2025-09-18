@@ -3,7 +3,7 @@ from fastapi import Request, WebSocket, WebSocketException
 from fastapi.requests import HTTPConnection
 from pydantic import BaseModel, ConfigDict
 
-from cat.auth.auth_utils import extract_agent_id_from_request
+from cat.auth.auth_utils import extract_agent_id_from_request, extract_chat_id_from_request
 from cat.auth.permissions import (
     AdminAuthResource,
     AuthPermission,
@@ -15,12 +15,13 @@ from cat.auth.permissions import (
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException
 from cat.factory.auth_handler import BaseAuthHandler
-from cat.looking_glass import BillTheLizard, CheshireCat
+from cat.looking_glass import BillTheLizard, CheshireCat, StrayCat
 
 
 class AuthorizedInfo(BaseModel):
     cheshire_cat: CheshireCat
     user: AuthUserInfo
+    stray_cat: StrayCat | None = None
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -57,6 +58,7 @@ class ConnectionAuth(ABC):
 
     def __call__(self, connection: HTTPConnection) -> AuthorizedInfo:
         agent_id = extract_agent_id_from_request(connection)
+        chat_id = extract_chat_id_from_request(connection)
         lizard: BillTheLizard = connection.app.state.lizard
         ccat = lizard.get_cheshire_cat(agent_id)
 
@@ -73,7 +75,11 @@ class ConnectionAuth(ABC):
             # if no user was obtained, raise an exception
             self.not_allowed(connection)
 
-        return AuthorizedInfo(cheshire_cat=ccat, user=user)
+        stray_cat = None
+        if chat_id:
+            stray_cat = StrayCat(user_data=user, agent_id=ccat.id, stray_id=chat_id)
+
+        return AuthorizedInfo(cheshire_cat=ccat, user=user, stray_cat=stray_cat)
 
     @abstractmethod
     def get_user_from_auth_handlers(

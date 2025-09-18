@@ -26,11 +26,11 @@ async def home() -> HomeResponse:
 @router.post("/message", response_model=CatMessage, tags=["Message"])
 async def http_chat(
     payload: Dict = Body(...),
-    info: AuthorizedInfo = check_message_permissions(AuthResource.CHAT, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_message_permissions(AuthResource.CHAT, AuthPermission.WRITE),
 ) -> CatMessage:
     """Get a response from the Cat"""
-    stray = StrayCat(user_data=info.user, agent_id=info.cheshire_cat.id)
+    stray_cat = info.stray_cat or StrayCat(user_data=info.user, agent_id=info.cheshire_cat.id)
 
     user_message = UserMessage(**payload)
-    answer = await stray.run_http(user_message)
+    answer = await stray_cat.run_http(user_message)
     return answer
