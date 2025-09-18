@@ -2,7 +2,7 @@
 
 ![GitHub Repo stars](https://img.shields.io/github/stars/matteocacciola/cheshirecat-core?style=social)
 ![GitHub Release](https://img.shields.io/github/v/release/matteocacciola/cheshirecat-core)
-![GitHub commits since latest release](https://img.shields.io/github/commits-since/matteocacciola/pyvolutionary/latest)
+![GitHub commits since latest release](https://img.shields.io/github/commits-since/matteocacciola/cheshirecat-core/latest)
 ![GitHub issues](https://img.shields.io/github/issues/matteocacciola/cheshirecat-core)
 ![GitHub Release Date](https://img.shields.io/github/release-date/matteocacciola/cheshirecat-core.svg)
 ![GitHub tag (with filter)](https://img.shields.io/github/v/tag/matteocacciola/cheshirecat-core)
