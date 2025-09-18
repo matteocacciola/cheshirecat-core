@@ -15,7 +15,8 @@ The Cheshire Cat is a framework to build custom AI agents:
 - 💬 Chat via WebSocket and manage your agent with an customizable REST API
 - 🐘 Built-in RAG with **customizable vector database**, so you can use your own technology (e.g., Qdrant, Pinecone, Weaviate, etc.)
 - 🐘 Customizable resources for your documents, so that you can use your own storage (e.g., S3, MinIO, etc.)
-- 🌐 Customizable integration of **MCP clients**, such as LangSmith or LlamaIndex
+- 🌐 Customizable integration of **MCP clients**, such as LangSmith or LlamaIndex 
+- 🕐 History of conversations and documents, to make your agent smarter
 - 🧩 Plugin system to easily extend the core functionality
 - 🧩 Built-in plugins
   - 🪛 Extend core components (file managers, LLMs, vector databases)
@@ -64,10 +65,10 @@ to chat the Cheshire Cat.
 # API Usage
 
 ## For Streaming Responses (Real-time chat)
-- **Use WebSocket connection** at `/ws`
-- Receive tokens in real-time as they're generated
-- Message type: `chat_token` for individual tokens
-- Message type: `chat` for complete responses
+- **Use WebSocket connection** at `/ws`, `/ws/{agent_id}` or `/ws/{agent_id}/{chat_id}`; add the token or the API key as
+  a querystring parameter with the syntax `?token=...`
+- Receive tokens in real-time as they're generated: message type `chat_token` for individual tokens; message type `chat`
+  for complete responses
 
 ## For Non-Streaming Responses (Simple API calls)
 - **Use HTTP POST** to `/message`
@@ -169,17 +170,24 @@ This version allows you to configure the vector database per chatbot, meaning th
 - **The current version supports multiple vector databases**, meaning that you can use different vector databases for different chatbots.
 - **The current version supports the extension of the list of allowed vector databases**, so you can use your own vector database.
 
+## Multiple chat histories
+The original version did not store the chat histories, meaning that the chat history was lost when the chatbot was restarted.
+This version stores the chat histories into the Redis database, meaning that the chat history is preserved even when the chatbot is restarted.
+
+A consequence of this is that **the current version supports multiple chat histories**, meaning that you can have different chat histories for different chatbots.
+
 ## New features
 Here, I have introduced some new features and improvements, such as:
-  - The `Embedder` is centralized and can be used by multiple RAGs and other language models.
-  - New API admin endpoints allowing to configure the `Embedder`.
-  - New API endpoints allowing to configure the `File Manager`, per chatbot.
-  - New API endpoints allowing to configure the chunking strategy, per chatbot.
-  - New API endpoints allowing to configure the vector database, per chatbot.
-  - A new event system that allows you to get fine-grained control over the AI.
-  - **The ability to manage multiple RAGs and other language models at the same time**.
-  - **The current version is agnostic to the vector database and chunking strategy**, meaning that you can use your own
-    vector database and chunking strategy.
+- The `Embedder` is centralized and can be used by multiple RAGs and other language models.
+- New API admin endpoints allowing to configure the `Embedder`.
+- New API endpoints allowing to configure the `File Manager`, per chatbot.
+- New API endpoints allowing to configure the chunking strategy, per chatbot.
+- New API endpoints allowing to configure the vector database, per chatbot.
+- A new event system that allows you to get fine-grained control over the AI.
+- **The ability to manage multiple RAGs and other language models at the same time**.
+- **The current version is agnostic to the vector database and chunking strategy**, meaning that you can use your own
+  vector database and chunking strategy.
+- The current version provides **histories of conversations and documents**.
 
 ## Compatibility with plugins
 This new version is no more completely compatible with the original version, since the architecture has been deeply changed.
