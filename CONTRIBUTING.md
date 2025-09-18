@@ -30,10 +30,10 @@ All types of contributions are encouraged and valued. See the [Table of Contents
 
 ## I Have a Question
 
-> If you want to ask a question, we assume that you have read the available [Documentation](https://cheshire-cat-ai.github.io/docs/) and [FAQs](https://cheshire-cat-ai.github.io/docs/faq/general/).
+> If you want to ask a question, we assume that you have read the available [Documentation](https://deepwiki.com/matteocacciola/cheshirecat-core)
+> and [FAQs](https://deepwiki.com/matteocacciola/cheshirecat-corefaq/general/).
 
 Before you ask a question, it is best to search for existing Issues ([here](https://github.com/matteocacciola/cheshirecat-core/issues/)
-or on the [original repository](https://github.com/cheshire-cat-ai/core/issues/))
 that might help you. In case you have found a suitable issue and still need clarification, you can comment in the issue.
 If the problem you encountered is not strictly related to the Cat, try to search the internet for answers first.
 
@@ -44,7 +44,6 @@ If you then still feel the need to ask a question and need clarification, we rec
 - Provide a description on how to repeat the error, in case you have one.
 
 We will then take care of the issue as soon as possible.
-We have also a [Discord server](https://discord.gg/bHX5sNFCYU) to engage with the community.
 
 ## I Want To Contribute
 
@@ -63,11 +62,11 @@ following steps in advance to help us fix any potential bug as fast as possible.
 
 - Make sure that you are using the latest version.
 - Determine if your bug is really a bug and not an error on your side e.g. using incompatible environment components/versions
-(make sure that you have read the [documentation](https://cheshire-cat-ai.github.io/docs/).
+(make sure that you have read the [documentation](https://deepwiki.com/matteocacciola/cheshirecat-core).
 If you are looking for support, you might want to check [this section](#i-have-a-question)).
 - To see if other users have experienced (and potentially already solved) the same issue you are having, check if there
 is not already a bug report existing for your bug or error in the [bug tracker](https://github.com/matteocacciola/cheshirecat-core/issues?q=label%3Abug)
-of the current repository, or in the one of the [original repository](https://github.com/cheshire-cat-ai/core/issues?q=label%3Abug).
+of the current repository.
 - Also make sure to search the internet (including Stack Overflow) to see if users outside of the GitHub community have discussed the issue.
 - Collect information about the bug:
   - Stack trace (Traceback)
@@ -102,10 +101,10 @@ community to understand your suggestion and find related suggestions.
 #### Before Submitting an Enhancement
 
 - Make sure that you are using the latest version.
-- Read the [documentation](https://cheshire-cat-ai.github.io/docs/) carefully and find out if the functionality is
-already covered, maybe by an individual configuration.
-- Perform an issue search [here](https://github.com/matteocacciola/cheshirecat-core/issues/) or in the [original repository](https://github.com/cheshire-cat-ai/core/issues/)
-to see if the enhancement has already been suggested. If it has, add a comment to the existing issue instead of opening a new one.
+- Read the [documentation](https://deepwiki.com/matteocacciola/cheshirecat-core) carefully and find out if the functionality
+is already covered, maybe by an individual configuration.
+- Perform an issue search [here](https://github.com/matteocacciola/cheshirecat-core/issues/) to see if the enhancement
+has already been suggested. If it has, add a comment to the existing issue instead of opening a new one.
 - Find out whether your idea fits with the scope and aims of the project. It's up to you to make a strong case to
 convince the project's developers of the merits of this feature. Keep in mind that we want features that will be useful
 to the majority of our users and not just a small subset. If you're just targeting a minority of users, consider writing an add-on/plugin library.
@@ -129,11 +128,11 @@ projects that solved it better and which could serve as inspiration.
 
 1. Fork the Project (all branches) and clone the forked repository to your machine (`git clone "url of repository"`),
 where the "url of repository" means the url of your fork of the project.
-2. Checkout the `develop` branch (`git checkout develop` and then `git pull origin develop`)
+2. Checkout the `main` branch (`git checkout main` and then `git pull origin main`)
 3. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
 4. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
 5. Push to the Branch (`git push origin feature/AmazingFeature`)
-6. Open a Pull Request against the `develop` branch (if it contains lots of code, please discuss it beforehand opening a issue)
+6. Open a Pull Request against the `main` branch (if it contains lots of code, please discuss it beforehand opening a issue)
 
 Try to keep your PRs small and in line with roadmap and issues.
 

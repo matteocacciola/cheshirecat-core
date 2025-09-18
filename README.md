@@ -67,9 +67,9 @@ to chat the Cheshire Cat.
 
 ## For Streaming Responses (Real-time chat)
 - **Use WebSocket connection** at `/ws`, `/ws/{agent_id}` or `/ws/{agent_id}/{chat_id}`; add the token or the API key as
-  a querystring parameter with the syntax `?token=...`
+a querystring parameter with the syntax `?token=...`
 - Receive tokens in real-time as they're generated: message type `chat_token` for individual tokens; message type `chat`
-  for complete responses
+for complete responses
 
 ## For Non-Streaming Responses (Simple API calls)
 - **Use HTTP POST** to `/message`
