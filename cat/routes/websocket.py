@@ -3,6 +3,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_websocket_permissions
 from cat.log import log
+from cat.looking_glass import StrayCat
 from cat.memory.messages import UserMessage
 
 router = APIRouter()
@@ -17,12 +18,14 @@ async def websocket_chat(
     """
     Endpoint to handle incoming WebSocket connections by user id, process messages, and check for messages.
     """
+    stray_cat = info.stray_cat or StrayCat(user_data=info.user, agent_id=info.cheshire_cat.id)
+
     # Establish connection
     await websocket.accept()
 
     # Add the new WebSocket connection to the manager.
     websocket_manager = info.cheshire_cat.websocket_manager
-    websocket_manager.add_connection(info.stray_cat.user.id, websocket)
+    websocket_manager.add_connection(stray_cat.user.id, websocket)
 
     try:
         # Process messages
@@ -42,9 +45,9 @@ async def websocket_chat(
             user_message = UserMessage(**payload)
 
             # Run the `stray` object's method in a threadpool since it might be a CPU-bound operation.
-            await info.stray_cat.run_websocket(user_message)
+            await stray_cat.run_websocket(user_message)
     except WebSocketDisconnect:
-        log.info(f"WebSocket connection closed for user {info.stray_cat.user.id}")
+        log.info(f"WebSocket connection closed for user {stray_cat.user.id}")
     finally:
         # Remove connection on disconnect
-        websocket_manager.remove_connection(info.stray_cat.user.id)
+        websocket_manager.remove_connection(stray_cat.user.id)

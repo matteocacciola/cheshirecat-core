@@ -8,6 +8,7 @@ from cat.db.cruds import users as crud_users
 from cat.env import get_env
 
 agent_id = "agent_test"
+chat_id = "chat_test"
 api_key = "meow_http"
 jwt_secret = "meow_jwt"
 
@@ -31,7 +32,7 @@ def send_file(file_name, content_type, client, headers, payload=None):
 
 # utility function to communicate with the cat via websocket
 def send_websocket_message(msg, client, query_params):
-    url = f"/ws/{agent_id}?" + urlencode(query_params)
+    url = f"/ws/{agent_id}/{chat_id}?" + urlencode(query_params)
 
     with client.websocket_connect(url) as websocket:
         # Send ws message

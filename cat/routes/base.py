@@ -4,9 +4,9 @@ from pydantic import BaseModel
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_message_permissions
+from cat.looking_glass import StrayCat
 from cat.memory.messages import CatMessage, UserMessage
 from cat.utils import get_cat_version
-
 
 router = APIRouter()
 
@@ -29,6 +29,8 @@ async def http_chat(
     info: AuthorizedInfo = check_message_permissions(AuthResource.CHAT, AuthPermission.WRITE),
 ) -> CatMessage:
     """Get a response from the Cat"""
+    stray_cat = info.stray_cat or StrayCat(user_data=info.user, agent_id=info.cheshire_cat.id)
+
     user_message = UserMessage(**payload)
-    answer = await info.stray_cat.run_http(user_message)
+    answer = await stray_cat.run_http(user_message)
     return answer
