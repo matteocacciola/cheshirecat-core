@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
-from pydantic import Field
-
 from langchain_core.tools import StructuredTool
+from pydantic import Field
 
 
 class CatProcedure(ABC):

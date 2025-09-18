@@ -1,8 +1,8 @@
 import ast
-import os
-import uuid
-import shutil
 import mimetypes
+import os
+import shutil
+import uuid
 from slugify import slugify
 
 from cat.log import log

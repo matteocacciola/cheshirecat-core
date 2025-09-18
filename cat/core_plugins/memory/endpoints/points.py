@@ -1,12 +1,13 @@
 from typing import Dict, List, Any
-from pydantic import BaseModel
 from fastapi import Query, Depends
+from pydantic import BaseModel
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.env import get_env_bool
 from cat.exceptions import CustomValidationException
 from cat.mad_hatter.decorators import endpoint
+from cat.memory.utils import DocumentRecall, UpdateResult, Record
 from cat.routes.routes_utils import (
     MemoryPointBase,
     MemoryPoint,
@@ -14,7 +15,6 @@ from cat.routes.routes_utils import (
     verify_memory_point_existence,
     create_dict_parser,
 )
-from cat.memory.utils import DocumentRecall, UpdateResult, Record
 
 
 class RecallResponseQuery(BaseModel):

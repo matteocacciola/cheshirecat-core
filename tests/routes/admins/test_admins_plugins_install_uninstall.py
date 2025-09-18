@@ -22,8 +22,8 @@ def test_plugin_install_from_zip(lizard, secure_client, secure_client_headers, c
     assert response.status_code == 200
     json = response.json()
     assert json["data"]["id"] == "mock_plugin"
-    assert isinstance(json["data"]["active"], bool)
-    assert json["data"]["active"]
+    assert isinstance(json["data"]["local_info"]["active"], bool)
+    assert json["data"]["local_info"]["active"]
 
     # GET plugins endpoint lists the plugin
     response = secure_client.get("/admins/plugins", headers=secure_client_headers)
@@ -32,8 +32,8 @@ def test_plugin_install_from_zip(lizard, secure_client, secure_client_headers, c
     assert "mock_plugin" in installed_plugins_names
     # core plugins and mock_plugin are active
     for p in installed_plugins:
-        assert isinstance(p["active"], bool)
-        assert p["active"]
+        assert isinstance(p["local_info"]["active"], bool)
+        assert p["local_info"]["active"]
 
     # now, lists the plugins as an agent (new plugins are deactivated, initially)
     response = secure_client.get(
@@ -45,16 +45,16 @@ def test_plugin_install_from_zip(lizard, secure_client, secure_client_headers, c
     assert len(installed_plugins_names) == len(core_plugins)  # only core plugins are active
     # core plugins are active, mock_plugin is not at an agent level
     for idx in range(len(installed_plugins)):
-        assert isinstance(installed_plugins[idx]["active"], bool)
-        assert installed_plugins[idx]["active"]
+        assert isinstance(installed_plugins[idx]["local_info"]["active"], bool)
+        assert installed_plugins[idx]["local_info"]["active"]
 
     # plugin has been actually extracted in (mock) plugins folder
     assert os.path.exists(mock_plugin_final_folder)
 
     # GET single plugin info, plugin is active
     response = secure_client.get("/admins/plugins/mock_plugin", headers=secure_client_headers)
-    assert isinstance(response.json()["data"]["active"], bool)
-    assert response.json()["data"]["active"]
+    assert isinstance(response.json()["data"]["local_info"]["active"], bool)
+    assert response.json()["data"]["local_info"]["active"]
 
 
 @pytest.mark.asyncio
@@ -97,8 +97,8 @@ async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client,
     assert len(installed_plugins_names) == len(core_plugins)  # only core plugins are active
     # core plugins are active, mock_plugin is not at an agent level
     for p in installed_plugins:
-        assert isinstance(p["active"], bool)
-        assert p["active"]
+        assert isinstance(p["local_info"]["active"], bool)
+        assert p["local_info"]["active"]
 
 
 def test_plugin_uninstall(secure_client, secure_client_headers):
@@ -169,8 +169,8 @@ async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_he
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
     assert "mock_plugin" in installed_plugins_names
     for p in installed_plugins:
-        assert isinstance(p["active"], bool)
-        assert p["active"]
+        assert isinstance(p["local_info"]["active"], bool)
+        assert p["local_info"]["active"]
 
 
 @pytest.mark.asyncio

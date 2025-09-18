@@ -14,17 +14,17 @@ def test_upload_memory(secure_client, secure_client_headers):
         response = secure_client.post("/rabbithole/memory/", files=files, headers=secure_client_headers)
 
     assert response.status_code == 200
-    json = response.json()
-    assert json["filename"] == file_name
-    assert json["content_type"] == content_type
-    assert "Memory is being ingested" in json["info"]
+    json_res = response.json()
+    assert json_res["filename"] == file_name
+    assert json_res["content_type"] == content_type
+    assert "Memory is being ingested" in json_res["info"]
 
     # new declarative memory was saved
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
     assert collections_n_points["declarative"] == 1 # new declarative memory (just uploaded)
 
 
-# upload a file different than a JSON
+# upload a file different from a JSON
 def test_upload_memory_check_mimetype(secure_client, secure_client_headers):
     content_type = "text/plain"
     file_name = "sample.txt"

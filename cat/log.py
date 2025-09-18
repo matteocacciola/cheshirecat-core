@@ -1,9 +1,9 @@
 """The log engine."""
+import json
 import logging
 import sys
-import json
-import traceback
 import time
+import traceback
 from abc import abstractmethod, ABC
 from pprint import pformat
 from typing import Callable
@@ -64,14 +64,14 @@ class CatLogEngine:
 
     def default_log(self):
         """Set the same debug level to all the project dependencies."""
-        time = "<green>[{time:YYYY-MM-DD HH:mm:ss.SSS}]</green>"
+        t = "<green>[{time:YYYY-MM-DD HH:mm:ss.SSS}]</green>"
         level = "<level>{level}:</level>"
         # origin = "<level>{extra[original_name]}.{extra[original_class]}.{extra[original_caller]}::{extra[original_line]}</level>"
         message = "<level>{message}</level>"
-        log_format = f"{time} {level}\t{message}"
+        log_format = f"{t} {level}\t{message}"
 
         logger.remove()
-        logger.add(
+        logger.add(  # type: ignore
             sys.stdout,
             level=self.LOG_LEVEL,
             colorize=True,

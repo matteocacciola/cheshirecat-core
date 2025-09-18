@@ -3,7 +3,6 @@ import uvicorn
 from cat.env import get_env, get_env_bool
 from cat.utils import get_base_path, get_plugins_path
 
-
 # RUN!
 if __name__ == "__main__":
     # debugging utilities, to deactivate put `DEBUG=false` in .env

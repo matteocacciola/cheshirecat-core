@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Type, List, Dict, Any, Final
+from typing import Type, List, Dict, Any, ClassVar
 from pydantic import BaseModel
 
 from cat.db.cruds import settings as crud_settings
@@ -9,7 +9,7 @@ from cat.services.string_crypto import StringCrypto
 
 
 class BaseFactoryConfigModel(ABC, BaseModel):
-    crypto: Final = StringCrypto()
+    crypto: ClassVar[StringCrypto] = StringCrypto()
 
     @classmethod
     def _parse_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:

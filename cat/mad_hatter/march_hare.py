@@ -1,8 +1,8 @@
+import json
 import time
 from os import getenv
 from typing import Dict, Callable
 import pika
-import json
 from pika.exceptions import AMQPConnectionError
 
 from cat.log import log

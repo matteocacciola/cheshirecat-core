@@ -1,22 +1,22 @@
-import os
-import sys
-import json
 import glob
-import tempfile
 import importlib
+import json
+import os
 import subprocess
-from typing import Dict, List, Tuple
+import sys
+import tempfile
 from inspect import getmembers, isclass
-from pydantic import BaseModel, ValidationError
+from typing import Dict, List, Tuple
 from packaging.requirements import Requirement
+from pydantic import BaseModel, ValidationError
 
 from cat.db.cruds import plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
+from cat.log import log
+from cat.mad_hatter.decorators import CustomEndpoint, CatHook, CatPluginDecorator
 from cat.mad_hatter.plugin_manifest import PluginManifest
 from cat.mad_hatter.procedures import CatProcedure
-from cat.mad_hatter.decorators import CustomEndpoint, CatHook, CatPluginDecorator
-from cat.utils import inspect_calling_agent, get_base_path
-from cat.log import log
+from cat.utils import inspect_calling_agent, get_base_path, to_camel_case
 
 
 # Empty class to represent basic plugin Settings model
@@ -274,7 +274,8 @@ class Plugin:
                     f"Loading plugin {self._path} metadata, defaulting to generated values"
                 )
 
-        json_file_data["id"] = self.id
+        json_file_data["id"] = self._id
+        json_file_data["name"] = json_file_data.get("name", to_camel_case(self._id))
         return PluginManifest(**json_file_data)
 
     def _install_requirements(self):

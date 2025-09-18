@@ -1,10 +1,10 @@
-from pydantic import BaseModel, Field, ConfigDict, field_validator
 from typing import List, Dict
 from fastapi import APIRouter
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
-from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions, check_permissions
 from cat.auth.auth_utils import hash_password
 from cat.auth.connection import AuthorizedInfo
+from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions, check_permissions
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException
 

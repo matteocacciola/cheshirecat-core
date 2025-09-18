@@ -7,7 +7,7 @@ from inspect import isfunction
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.experimental.form import CatForm
 from cat.experimental.mcp_client import CatMcpClient
-from cat.mad_hatter import Plugin
+from cat.mad_hatter import Plugin, PluginManifest
 from cat.mad_hatter.decorators import CatHook, CatTool
 
 from tests.conftest import clean_up
@@ -39,10 +39,10 @@ def test_create_plugin(plugin):
     assert plugin.id == "mock_plugin"
 
     # manifest
-    assert isinstance(plugin.manifest, dict)
-    assert plugin.manifest["id"] == plugin.id
-    assert plugin.manifest["name"] == "MockPlugin"
-    assert "Description not found" in plugin.manifest["description"]
+    assert isinstance(plugin.manifest, PluginManifest)
+    assert plugin.manifest.id == plugin.id
+    assert plugin.manifest.name == "MockPlugin"
+    assert "Description not found" in plugin.manifest.description
 
     # hooks and tools
     assert plugin.hooks == []

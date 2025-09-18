@@ -1,15 +1,15 @@
+import asyncio
+import os
 import socket
 import sys
+import uuid
 from abc import ABC, abstractmethod
-import asyncio
 from typing import Any, List, Iterable, Dict, Tuple, Type
 from urllib.parse import urlparse
-from pydantic import ConfigDict
-from qdrant_client import AsyncQdrantClient
-import os
-import uuid
 import aiofiles
 import httpx
+from pydantic import ConfigDict
+from qdrant_client import AsyncQdrantClient
 from qdrant_client.http.models import (
     Distance,
     VectorParams,
@@ -141,7 +141,7 @@ class BaseVectorDatabaseHandler(ABC):
         content: str,
         vector: Iterable,
         metadata: Dict = None,
-        id: str | None = None,
+        id_point: str | None = None,
         **kwargs,
     ) -> PointStruct | None:
         """Add a point (and its metadata) to the vectorstore.
@@ -151,8 +151,7 @@ class BaseVectorDatabaseHandler(ABC):
             content: original text.
             vector: Embedding vector.
             metadata: Optional metadata dictionary associated with the text.
-            id:
-                Optional id to associate with the point. Id has to be an uuid-like string.
+            id_point: Optional id to associate with the point. Id has to be an uuid-like string.
 
         Returns:
             PointStruct: The stored point.
@@ -659,7 +658,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         content: str,
         vector: Iterable,
         metadata: Dict = None,
-        id: str | None = None,
+        id_point: str | None = None,
         **kwargs,
     ) -> PointStruct | None:
         """Add a point (and its metadata) to the vectorstore.
@@ -669,20 +668,19 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             content: original text.
             vector: Embedding vector.
             metadata: Optional metadata dictionary associated with the text.
-            id:
-                Optional id to associate with the point. Id has to be an uuid-like string.
+            id_point: Optional id to associate with the point. Id has to be an uuid-like string.
 
         Returns:
             PointStruct: The stored point.
         """
         point = QdrantPointStruct(
-            id=id or uuid.uuid4().hex,
+            id=id_point or uuid.uuid4().hex,
             payload={
                 "page_content": content,
                 "metadata": metadata,
                 "tenant_id": self.agent_id,
             },
-            vector=vector,
+            vector=vector,  # type: ignore
         )
 
         update_status = await self._client.upsert(collection_name=collection_name, points=[point], **kwargs)

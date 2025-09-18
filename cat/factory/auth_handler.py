@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Type, Literal, Dict, List
 import jwt
-from pydantic import ConfigDict
 from fastapi.requests import HTTPConnection
+from pydantic import ConfigDict
 
 from cat.auth.auth_utils import is_jwt, extract_token, extract_user_info_on_api_key
 from cat.auth.permissions import AuthResource, AdminAuthResource, AuthPermission, AuthUserInfo

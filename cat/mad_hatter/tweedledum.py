@@ -1,15 +1,15 @@
-import os
 import glob
+import os
 import shutil
 from typing import List
 
+import cat.utils as utils
 from cat.db.cruds import plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
-from cat.mad_hatter.plugin_extractor import PluginExtractor
 from cat.mad_hatter.plugin import Plugin
-import cat.utils as utils
+from cat.mad_hatter.plugin_extractor import PluginExtractor
 from cat.utils import singleton
 
 

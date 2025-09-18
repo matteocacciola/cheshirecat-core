@@ -11,8 +11,8 @@ from websockets.exceptions import ConnectionClosedOK
 from cat import utils
 from cat.agent import run_agent
 from cat.auth.permissions import AuthUserInfo
-from cat.looking_glass import NewTokenHandler
 from cat.log import log
+from cat.looking_glass import NewTokenHandler
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.mad_hatter import Tweedledee, CatProcedure
 from cat.mad_hatter.decorators import CatTool
@@ -20,7 +20,6 @@ from cat.memory.messages import CatMessage, UserMessage
 from cat.memory.working_memory import WorkingMemory
 from cat.services.websocket_manager import WebSocketManager
 from cat.templates import prompts
-
 
 MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
 

@@ -9,9 +9,7 @@ from cat.factory.llm import LLMSettings
 
 class FakeLLMConfig(LLMSettings):
     """Fake LLM for testing purposes."""
-
     responses: List[str] = ["I'm a fake LLM!"]
-    _pyclass: Type = FakeListChatModel
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -20,6 +18,10 @@ class FakeLLMConfig(LLMSettings):
             "link": "",
         }
     )
+
+    @classmethod
+    def pyclass(cls) -> Type:
+        return FakeListChatModel
 
 @hook
 def factory_allowed_llms(allowed, cat) -> List:

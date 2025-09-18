@@ -1,9 +1,9 @@
 import time
 from typing import List, Dict, Any
+import tiktoken
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import BaseMessage
 from langchain_core.outputs.llm_result import LLMResult
-import tiktoken
 
 from cat.core_plugins.interactions.models import LLMModelInteraction
 from cat.log import log
@@ -48,19 +48,19 @@ class ModelInteractionHandler(BaseCallbackHandler):
 
             if isinstance(m.content, list):
                 for c in m.content:
-                    if c["type"] == "text":
-                        input_tokens += self._count_tokens(c["text"])
-                        input_prompt.append(c["text"])
+                    if c["type"] == "text":  # type: ignore
+                        input_tokens += self._count_tokens(c["text"])  # type: ignore
+                        input_prompt.append(c["text"])  # type: ignore
                         continue
 
-                    if c["type"] == "image_url":
+                    if c["type"] == "image_url":  # type: ignore
                         # TODO V2: how do we count image tokens?
                         log.warning("Could not count tokens for image message")
                         # do not send back to the client the whole base64 image
                         input_prompt.append("(image, tokens not counted)")
                         continue
 
-                    log.warning(f"Could not count tokens for message type {c['type']}")
+                    log.warning(f"Could not count tokens for message type {c['type']}")  # type: ignore
 
         self.last_interaction.input_tokens = int(input_tokens * 1.2) # You never know
         self.last_interaction.prompt = input_prompt

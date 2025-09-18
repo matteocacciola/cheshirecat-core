@@ -1,12 +1,12 @@
 from typing import Type
-from langchain_mistralai import MistralAIEmbeddings
-from langchain_voyageai import VoyageAIEmbeddings
-from pydantic import ConfigDict, Field
+from fastembed import TextEmbedding
 from langchain_cohere import CohereEmbeddings
 from langchain_community.embeddings import FakeEmbeddings, FastEmbedEmbeddings
-from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
-from fastembed import TextEmbedding
+from langchain_mistralai import MistralAIEmbeddings
+from langchain_openai import OpenAIEmbeddings, AzureOpenAIEmbeddings
+from langchain_voyageai import VoyageAIEmbeddings
+from pydantic import ConfigDict, Field
 
 from cat.core_plugins.factories.embedder.custom import CustomOpenAIEmbeddings, CustomOllamaEmbeddings
 from cat.factory.embedder import EmbedderSettings
@@ -114,7 +114,7 @@ FastEmbedModels = Enum(
 
 
 class EmbedderQdrantFastEmbedConfig(EmbedderSettings):
-    model_name: FastEmbedModels = Field(title="Model name", default="BAAI/bge-base-en")
+    model_name: FastEmbedModels = Field(title="Model name", default="BAAI/bge-base-en")  # type: ignore
     # Unknown behavior for values > 512.
     max_length: int = 512
     # as suggest on fastembed documentation, "passage" is the best option for documents.

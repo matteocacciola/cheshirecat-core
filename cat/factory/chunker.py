@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Type, List, Iterable
-from pydantic import ConfigDict
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from pydantic import ConfigDict
 
 from cat.factory.base_factory import BaseFactory, BaseFactoryConfigModel
 

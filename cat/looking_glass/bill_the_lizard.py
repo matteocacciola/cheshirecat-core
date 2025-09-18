@@ -3,8 +3,8 @@ import threading
 from copy import deepcopy
 from typing import Dict, Literal, List
 from uuid import uuid4
-from langchain_core.embeddings import Embeddings
 from fastapi import FastAPI
+from langchain_core.embeddings import Embeddings
 
 from cat import utils
 from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
@@ -232,6 +232,7 @@ class BillTheLizard:
         Replace the current embedder with a new one. This method is used to change the embedder of the lizard.
 
         Args:
+            language_embedder_name: name of the new embedder
             settings: settings of the new embedder
 
         Returns:

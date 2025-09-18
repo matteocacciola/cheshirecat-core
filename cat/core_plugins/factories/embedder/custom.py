@@ -1,7 +1,7 @@
 import os
 from typing import List
-from langchain_core.embeddings import Embeddings
 import httpx
+from langchain_core.embeddings import Embeddings
 
 
 class CustomOpenAIEmbeddings(Embeddings):

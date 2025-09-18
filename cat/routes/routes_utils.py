@@ -1,17 +1,17 @@
 import asyncio
-from ast import literal_eval
+import io
 import time
+from ast import literal_eval
 from copy import deepcopy
 from typing import Dict, List, Any
 from fastapi import Query, UploadFile
 from pydantic import BaseModel, Field, model_serializer
-import io
 
 from cat import utils
 from cat.auth.auth_utils import issue_jwt
 from cat.auth.connection import AuthorizedInfo
-from cat.db.database import DEFAULT_AGENT_KEY
 from cat.db.cruds import settings as crud_settings
+from cat.db.database import DEFAULT_AGENT_KEY
 from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
 from cat.factory.base_factory import BaseFactory
 from cat.looking_glass import BillTheLizard, CheshireCat, WhiteRabbit
@@ -20,7 +20,7 @@ from cat.mad_hatter import MadHatter, Plugin, registry_search_plugins, PluginMan
 
 class Plugins(BaseModel):
     installed: List[PluginManifest]
-    registry: List[Dict]
+    registry: List[PluginManifest]
 
 
 class UserCredentials(BaseModel):
@@ -131,7 +131,7 @@ async def auth_token(credentials: UserCredentials, agent_id: str):
 def create_plugin_manifest(
     plugin: Plugin,
     active_plugins: List[str],
-    registry_plugins_index: Dict[str, Dict] | None = None,
+    registry_plugins_index: Dict[str, PluginManifest] | None = None,
     query: str | None = None
 ) -> PluginManifest:
     # get manifest
@@ -176,7 +176,7 @@ async def get_plugins(plugin_manager: MadHatter, query: str | None = None) -> Pl
     # retrieve plugins from official repo
     registry_plugins = await registry_search_plugins(query)
     # index registry plugins by url
-    registry_plugins_index = {p.get("plugin_url"): p for p in registry_plugins if p.get("plugin_url") is not None}
+    registry_plugins_index = {p.plugin_url: p for p in registry_plugins if p.plugin_url is not None}
 
     # get active plugins
     active_plugins = plugin_manager.load_active_plugins_from_db()
@@ -274,7 +274,7 @@ async def upsert_memory_point(
         content=point.content,
         vector=embedding,
         metadata=point.metadata,
-        id=point_id,
+        id_point=point_id,
     )
 
     return MemoryPoint(

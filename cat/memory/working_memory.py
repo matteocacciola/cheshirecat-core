@@ -1,6 +1,6 @@
 from typing import List, Any, Literal, Dict
-from typing_extensions import deprecated
 from pydantic import Field
+from typing_extensions import deprecated
 
 from cat.db.cruds import history as crud_history
 from cat.memory.messages import BaseMessage, CatMessage, UserMessage, ConversationHistoryItem, MessageWhy

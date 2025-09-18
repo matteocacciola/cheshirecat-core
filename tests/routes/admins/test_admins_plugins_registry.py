@@ -67,8 +67,8 @@ def test_plugin_install_from_registry(secure_client, secure_client_headers, monk
     assert response.status_code == 200
     json = response.json()
     assert json["data"]["id"] == "mock_plugin"
-    assert isinstance(json["data"]["active"], bool)
-    assert json["data"]["active"]
+    assert isinstance(json["data"]["local_info"]["active"], bool)
+    assert json["data"]["local_info"]["active"]
 
     # GET plugins endpoint lists the plugin
     response = secure_client.get("/admins/plugins", headers=secure_client_headers)
@@ -78,8 +78,8 @@ def test_plugin_install_from_registry(secure_client, secure_client_headers, monk
     assert "mock_plugin" in installed_plugins_names
     # core plugins and new_plugin are active
     for p in installed_plugins:
-        assert isinstance(p["active"], bool)
-        assert p["active"]
+        assert isinstance(p["local_info"]["active"], bool)
+        assert p["local_info"]["active"]
 
     # plugin has been actually extracted in (mock) plugins folder
     assert os.path.exists(new_plugin_final_folder)

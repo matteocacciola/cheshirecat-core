@@ -14,10 +14,10 @@ def test_rabbithole_upload_txt(secure_client, secure_client_headers):
 
     # check response
     assert response.status_code == 200
-    json = response.json()
-    assert json["filename"] == file_name
-    assert json["content_type"] == content_type
-    assert "File is being ingested" in json["info"]
+    json_res = response.json()
+    assert json_res["filename"] == file_name
+    assert json_res["content_type"] == content_type
+    assert "File is being ingested" in json_res["info"]
 
     # check memory contents
     # check declarative memory is empty
@@ -37,10 +37,10 @@ async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_header
 
     # check response
     assert response.status_code == 200
-    json = response.json()
-    assert json["filename"] == file_name
-    assert json["content_type"] == content_type
-    assert "File is being ingested" in json["info"]
+    json_res = response.json()
+    assert json_res["filename"] == file_name
+    assert json_res["content_type"] == content_type
+    assert "File is being ingested" in json_res["info"]
 
     # check memory contents: declarative memory is not empty
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
@@ -70,12 +70,12 @@ def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers):
 
     # check response
     assert response.status_code == 200
-    json = response.json()
-    assert len(json) == 1
-    assert file_name in json
-    assert json[file_name]["filename"] == file_name
-    assert json[file_name]["content_type"] == content_type
-    assert "File is being ingested" in json[file_name]["info"]
+    json_res = response.json()
+    assert len(json_res) == 1
+    assert file_name in json_res
+    assert json_res[file_name]["filename"] == file_name
+    assert json_res[file_name]["content_type"] == content_type
+    assert "File is being ingested" in json_res[file_name]["info"]
 
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 4
@@ -93,13 +93,13 @@ def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_hea
 
     # check response
     assert response.status_code == 200
-    json = response.json()
-    assert len(json) == len(files_to_upload)
+    json_res = response.json()
+    assert len(json_res) == len(files_to_upload)
     for file_name in files_to_upload:
-        assert file_name in json
-        assert json[file_name]["filename"] == file_name
-        assert json[file_name]["content_type"] == files_to_upload[file_name]
-        assert "File is being ingested" in json[file_name]["info"]
+        assert file_name in json_res
+        assert json_res[file_name]["filename"] == file_name
+        assert json_res[file_name]["content_type"] == files_to_upload[file_name]
+        assert "File is being ingested" in json_res[file_name]["info"]
 
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 7

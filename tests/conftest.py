@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Callable
 import pytest
 import pytest_asyncio
 import os
@@ -58,7 +58,7 @@ def mock_classes(monkeypatch):
     def mock_notify_event(self, event_type: str, payload: Dict, exchange: str, exchange_type: str = "fanout"):
         pass
     monkeypatch.setattr(get_class_from_decorated_singleton(MarchHare), "notify_event", mock_notify_event)
-    def mock_consume_event(self, callback: callable, exchange: str, exchange_type: str = "fanout"):
+    def mock_consume_event(self, callback: Callable, exchange: str, exchange_type: str = "fanout"):
         pass
     monkeypatch.setattr(get_class_from_decorated_singleton(MarchHare), "consume_event", mock_consume_event)
 
@@ -243,7 +243,7 @@ async def stray(stray_no_memory):
     yield stray_no_memory
 
 
-# autouse fixture will be applied to *all* the tests
+# auto-use fixture will be applied to *all* the tests
 @pytest.fixture(autouse=True, scope="function")
 def apply_warning_filters():
     # ignore deprecation warnings due to langchain not updating to pydantic v2
@@ -253,10 +253,10 @@ def apply_warning_filters():
 #fixture for mock time.time function
 @pytest.fixture(scope="function")
 def patch_time_now(monkeypatch):
-    def mytime():
+    def my_time():
         return fake_timestamp
 
-    monkeypatch.setattr(time, 'time', mytime)
+    monkeypatch.setattr(time, "time", my_time)
 
 
 # this fixture will give test functions a ready instantiated plugin

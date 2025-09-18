@@ -1,7 +1,7 @@
 from abc import ABC
-from langchain_core.language_models import BaseLanguageModel, LLM
-from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
 from typing import Type, List, Any
+from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
+from langchain_core.language_models import BaseLanguageModel, LLM
 from pydantic import ConfigDict
 
 from cat.factory.base_factory import BaseFactory, BaseFactoryConfigModel

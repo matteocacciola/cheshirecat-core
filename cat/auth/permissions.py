@@ -1,6 +1,6 @@
 from typing import Dict, List
-from pydantic import Field
 from fastapi import Depends
+from pydantic import Field
 
 from cat.utils import BaseModelDict, Enum
 

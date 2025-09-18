@@ -16,9 +16,10 @@ def test_list_plugins(lizard, secure_client, secure_client_headers):
         assert "id" in json["installed"][idx].keys()
         assert json["installed"][idx]["id"] in core_plugins
 
-        assert "active" in json["installed"][idx].keys()
-        assert isinstance(json["installed"][idx]["active"], bool)
-        assert json["installed"][idx]["active"]
+        assert "local_info" in json["installed"][idx].keys()
+        assert "active" in json["installed"][idx]["local_info"].keys()
+        assert isinstance(json["installed"][idx]["local_info"]["active"], bool)
+        assert json["installed"][idx]["local_info"]["active"]
 
     # registry (see more registry tests in `./test_plugins_registry.py`)
     assert isinstance(json["registry"], list)
@@ -32,8 +33,8 @@ def test_get_plugin_id(secure_client, secure_client_headers):
     assert "data" in json.keys()
     assert json["data"] is not None
     assert json["data"]["id"] == "base_plugin"
-    assert isinstance(json["data"]["active"], bool)
-    assert json["data"]["active"]
+    assert isinstance(json["data"]["local_info"]["active"], bool)
+    assert json["data"]["local_info"]["active"]
 
 
 def test_get_non_existent_plugin(secure_client, secure_client_headers):

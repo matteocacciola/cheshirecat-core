@@ -1,23 +1,23 @@
 import asyncio
 import base64
 import concurrent.futures
-from io import BytesIO
-import aiofiles
-from datetime import timedelta
-from enum import Enum as BaseEnum, EnumMeta
-import requests
-from PIL import Image
-from fastapi import UploadFile
+import hashlib
 import inspect
-from pydantic import BaseModel, ConfigDict
-from rapidfuzz.distance import Levenshtein
-from langchain_core.embeddings import Embeddings
-from langchain_core.output_parsers import JsonOutputParser
 import mimetypes
 import os
-import tomli
+from datetime import timedelta
+from enum import Enum as BaseEnum, EnumMeta
+from io import BytesIO
 from typing import Dict, List, Type, TypeVar, Any, Callable
-import hashlib
+import aiofiles
+import requests
+import tomli
+from PIL import Image
+from fastapi import UploadFile
+from langchain_core.embeddings import Embeddings
+from langchain_core.output_parsers import JsonOutputParser
+from pydantic import BaseModel, ConfigDict
+from rapidfuzz.distance import Levenshtein
 
 from cat.db import models
 from cat.env import get_env

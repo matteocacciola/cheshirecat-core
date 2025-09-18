@@ -17,9 +17,11 @@ def test_list_plugins(lizard, secure_client, secure_client_headers):
         assert "id" in json["installed"][idx].keys()
         assert json["installed"][idx]["id"] in core_plugins
 
-        assert "active" in json["installed"][idx].keys()
-        assert isinstance(json["installed"][idx]["active"], bool)
-        assert json["installed"][idx]["active"]
+        assert "local_info" in json["installed"][idx].keys()
+        assert isinstance(json["installed"][idx]["local_info"], dict)
+        assert "active" in json["installed"][idx]["local_info"].keys()
+        assert isinstance(json["installed"][idx]["local_info"]["active"], bool)
+        assert json["installed"][idx]["local_info"]["active"]
 
     # registry (see more registry tests in `./test_plugins_registry.py`)
     assert isinstance(json["registry"], list)

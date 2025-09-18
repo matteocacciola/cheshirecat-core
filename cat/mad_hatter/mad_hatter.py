@@ -3,13 +3,13 @@ from copy import deepcopy
 from pathlib import Path
 from typing import List, Dict, Any
 
+import cat.utils as utils
 from cat.db.cruds import settings as crud_settings
 from cat.db.models import Setting
 from cat.log import log
 from cat.mad_hatter.decorators import CustomEndpoint, CatHook
 from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.procedures import CatProcedure
-import cat.utils as utils
 
 
 class MadHatter(ABC):

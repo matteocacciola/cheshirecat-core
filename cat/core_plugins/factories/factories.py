@@ -43,9 +43,9 @@ from cat.core_plugins.factories.llm.configs import (
     LLMLiteLLMChatConfig,
 )
 from cat.factory.chunker import ChunkerSettings
-from cat.factory.llm import LLMSettings
 from cat.factory.embedder import EmbedderSettings
 from cat.factory.file_manager import FileManagerConfig
+from cat.factory.llm import LLMSettings
 from cat.mad_hatter.decorators import hook
 
 

@@ -1,15 +1,15 @@
+import json
+import mimetypes
 import os
 import tempfile
 import time
-import json
-import mimetypes
-import httpx
 from typing import List, Dict, Tuple
-from urllib.parse import urlparse
 from urllib.error import HTTPError
-from starlette.datastructures import UploadFile
-from langchain_core.documents.base import Document, Blob
+from urllib.parse import urlparse
+import httpx
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
+from langchain_core.documents.base import Document, Blob
+from starlette.datastructures import UploadFile
 
 from cat.env import get_env_bool
 from cat.factory.chunker import BaseChunker
@@ -159,7 +159,7 @@ class RabbitHole:
                 # Define mime type and source of url
                 # Add fallback for empty/None content_type
                 content_type = request.headers.get(
-                    "Content-Type", "text/html" if file.startswith(("http://", "https://")) else "text/plain"
+                    "Content-Type", "text/html" if file.startswith("http") else "text/plain"
                 ).split(";")[0]
                 source = file
 
@@ -277,10 +277,10 @@ class RabbitHole:
             if doc.page_content != "":
                 doc_embedding = embedder.embed_documents([doc.page_content])
                 if (stored_point := await ccat.vector_memory_handler.add_point(
-                    "declarative",
-                    doc.page_content,
-                    doc_embedding[0],
-                    doc.metadata,
+                    collection_name="declarative",
+                    content=doc.page_content,
+                    vector=doc_embedding[0],
+                    metadata=doc.metadata,
                 )) is not None:
                     stored_points.append(stored_point)
 

@@ -1,10 +1,10 @@
-import mimetypes
-import httpx
 import json
-from typing import Dict, List
+import mimetypes
 from copy import deepcopy
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Dict, List
+import httpx
 from fastapi import Form, APIRouter, UploadFile, BackgroundTasks, Request
+from pydantic import BaseModel, Field, ConfigDict
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions

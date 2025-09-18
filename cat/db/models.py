@@ -1,7 +1,7 @@
 from datetime import datetime
+from typing import Dict, List
 from uuid import uuid4
 from pydantic import BaseModel, Field, field_validator
-from typing import Dict, List
 
 
 def generate_uuid():

@@ -1,10 +1,10 @@
+from datetime import datetime, timedelta
 from typing import Dict, List
 import bcrypt
 import jwt
-from jwt.exceptions import InvalidTokenError
 from fastapi.requests import HTTPConnection
+from jwt.exceptions import InvalidTokenError
 from pydantic import BaseModel
-from datetime import datetime, timedelta
 from pytz import utc
 
 from cat.db.database import DEFAULT_AGENT_KEY, DEFAULT_SYSTEM_KEY

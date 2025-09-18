@@ -1,8 +1,8 @@
 import json
-import pandas as pd
 from typing import Iterator
-from langchain_core.documents.base import Document, Blob
+import pandas as pd
 from langchain.document_loaders.base import BaseBlobParser
+from langchain_core.documents.base import Document, Blob
 
 
 class TableParser(BaseBlobParser):

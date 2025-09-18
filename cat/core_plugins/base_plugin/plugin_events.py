@@ -95,8 +95,7 @@ def activated(plugin):
     """This method allows executing custom code right after a plugin is activated.
 
     Args:
-        plugin
-            Plugin: Cat object representing the plugin instance in memory.
+        plugin (Plugin): Cat object representing the plugin instance in memory.
     """
     return None
 
@@ -106,7 +105,6 @@ def deactivated(plugin):
     """This method allows executing custom code right after a plugin is deactivated.
 
     Args:
-        plugin
-            Plugin: Cat object representing the plugin instance in memory.
+        plugin (Plugin): Cat object representing the plugin instance in memory.
     """
     return None

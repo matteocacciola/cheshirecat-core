@@ -6,17 +6,17 @@ These hooks allow to intercept the uploaded documents at different places before
 
 """
 from typing import List, Dict
-from langchain_core.documents import Document
 from langchain_community.document_loaders.parsers.audio import FasterWhisperParser
-from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
 from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
-from langchain_community.document_loaders.parsers.txt import TextParser
 from langchain_community.document_loaders.parsers.language.language_parser import LanguageParser
 from langchain_community.document_loaders.parsers.msword import MsWordParser
+from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
+from langchain_community.document_loaders.parsers.txt import TextParser
+from langchain_core.documents import Document
 
+from cat.core_plugins.base_plugin.parsers import YoutubeParser, TableParser, JSONParser, PowerPointParser
 from cat.mad_hatter.decorators import hook
 from cat.memory.utils import PointStruct
-from cat.core_plugins.base_plugin.parsers import YoutubeParser, TableParser, JSONParser, PowerPointParser
 
 
 @hook(priority=999)

@@ -1,9 +1,10 @@
-import httpx
 import random
+from typing import List
 import aiofiles
+import httpx
 
-from cat.mad_hatter.plugin_manifest import PluginManifest
 from cat.log import log
+from cat.mad_hatter.plugin_manifest import PluginManifest
 
 
 def get_registry_url():
@@ -14,7 +15,7 @@ async def registry_search_plugins(
     query: str = None,
     # author: str = None,
     # tag: str = None,
-):
+) -> List[PluginManifest]:
     registry_url = get_registry_url()
     plugins = []
 
@@ -50,7 +51,7 @@ async def registry_search_plugins(
     return manifests
 
 
-async def registry_download_plugin(url: str):
+async def registry_download_plugin(url: str) -> str:
     log.info(f"Downloading {url}")
 
     registry_url = get_registry_url()

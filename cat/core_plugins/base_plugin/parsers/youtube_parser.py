@@ -1,9 +1,9 @@
 from typing import Iterator
+from langchain.document_loaders.base import BaseBlobParser
+from langchain_core.documents.base import Document, Blob
 from pytube import extract
 from youtube_transcript_api import YouTubeTranscriptApi
 from youtube_transcript_api.formatters import TextFormatter
-from langchain_core.documents.base import Document, Blob
-from langchain.document_loaders.base import BaseBlobParser
 
 
 class YoutubeParser(BaseBlobParser):

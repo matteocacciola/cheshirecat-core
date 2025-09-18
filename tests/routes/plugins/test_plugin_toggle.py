@@ -8,14 +8,14 @@ def _check_activation(secure_client, secure_client_headers):
     response = secure_client.get("/plugins", headers=secure_client_headers)
     available_plugins = response.json()["installed"]
     mock_plugin = [p for p in available_plugins if p["id"] == "mock_plugin"][0]
-    assert isinstance(mock_plugin["active"], bool)
-    assert mock_plugin["active"]  # plugin active
+    assert isinstance(mock_plugin["local_info"]["active"], bool)
+    assert mock_plugin["local_info"]["active"]  # plugin active
 
     assert mock_plugin["id"] == "mock_plugin"
-    assert len(mock_plugin["hooks"]) == 3
-    assert len(mock_plugin["tools"]) == 1
-    assert len(mock_plugin["forms"]) == 1
-    assert len(mock_plugin["endpoints"]) == 7
+    assert len(mock_plugin["local_info"]["hooks"]) == 3
+    assert len(mock_plugin["local_info"]["tools"]) == 1
+    assert len(mock_plugin["local_info"]["forms"]) == 1
+    assert len(mock_plugin["local_info"]["endpoints"]) == 7
 
 
 def test_toggle_non_existent_plugin(secure_client, secure_client_headers):

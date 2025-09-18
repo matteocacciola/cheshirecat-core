@@ -3,9 +3,9 @@ from pydantic import BaseModel
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
+from cat.looking_glass import StrayCat
 from cat.mad_hatter.decorators import endpoint
 from cat.memory.messages import ConversationHistoryItem, CatMessage, UserMessage, MessageWhy
-from cat.looking_glass import StrayCat
 
 
 class DeleteConversationHistoryResponse(BaseModel):

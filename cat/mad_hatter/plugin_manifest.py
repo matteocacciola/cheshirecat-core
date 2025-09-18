@@ -1,5 +1,5 @@
 from typing import Dict
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PluginManifest(BaseModel):
@@ -18,4 +18,4 @@ class PluginManifest(BaseModel):
     plugin_url: str = "Unknown"
     min_cat_version: str = None
     max_cat_version: str = "Unknown"
-    local_info: Dict = {} # store here installed plugin info
+    local_info: Dict = Field(default_factory=dict)

@@ -1,11 +1,11 @@
+from datetime import datetime, timedelta
 from typing import Dict, List
+from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
+from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
+from apscheduler.jobstores.memory import MemoryJobStore
+from apscheduler.schedulers.background import BackgroundScheduler
 from pydantic import BaseModel
 from pytz import utc
-from datetime import datetime, timedelta
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.jobstores.memory import MemoryJobStore
-from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
-from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
 
 from cat.log import log
 from cat.utils import singleton, dispatch

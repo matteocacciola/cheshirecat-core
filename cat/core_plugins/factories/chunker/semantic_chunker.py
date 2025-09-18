@@ -1,9 +1,9 @@
+from collections import defaultdict
+from typing import List, Dict, Any
 import numpy as np
 import torch
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
-from typing import List, Dict, Any
-from collections import defaultdict
 
 
 class SemanticChunker:

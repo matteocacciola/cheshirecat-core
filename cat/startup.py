@@ -1,12 +1,12 @@
 from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
 from langchain.globals import set_llm_cache
 from langchain_core.caches import InMemoryCache
 from scalar_fastapi import get_scalar_api_reference
-from fastapi import FastAPI
-from fastapi.routing import APIRoute
-from fastapi.responses import JSONResponse
-from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
 
 from cat.db.database import get_db
 from cat.env import get_env

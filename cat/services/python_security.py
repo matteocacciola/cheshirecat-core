@@ -57,7 +57,7 @@ class PythonSecurityVisitor(ast.NodeVisitor):
             if alias.name in FORBIDDEN_IMPORTS:
                 self.found_malicious = True
                 raise MaliciousCodeError(f"Forbidden import: {alias.name} in {self.file_path} line {node.lineno}")
-        self.generic_visit(node)
+        self.generic_visit(node)  # type: ignore
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
         if node.module and node.module in FORBIDDEN_IMPORTS:
@@ -69,7 +69,7 @@ class PythonSecurityVisitor(ast.NodeVisitor):
             if full_name in FORBIDDEN_IMPORTS:  # Check if importing a forbidden specific item
                 self.found_malicious = True
                 raise MaliciousCodeError(f"Forbidden import: {full_name} in {self.file_path} line {node.lineno}")
-        self.generic_visit(node)
+        self.generic_visit(node)  # type: ignore
 
     def visit_Call(self, node: ast.Call):
         # Check for direct calls to forbidden built-in functions
@@ -97,7 +97,7 @@ class PythonSecurityVisitor(ast.NodeVisitor):
                 raise MaliciousCodeError(
                     f"Forbidden function call: {full_call_name} in {self.file_path} line {node.lineno}"
                 )
-        self.generic_visit(node)
+        self.generic_visit(node)  # type: ignore
 
     # Detect `exec` and `eval` usage
     def visit_Expr(self, node: ast.Expr):
@@ -107,7 +107,7 @@ class PythonSecurityVisitor(ast.NodeVisitor):
                 raise MaliciousCodeError(
                     f"Direct call to code execution function: {node.value.func.id} in {self.file_path} line {node.lineno}"
                 )
-        self.generic_visit(node)
+        self.generic_visit(node)  # type: ignore
 
     # Detect direct calls to builtins like `open` or `__import__`
     def visit_Name(self, node: ast.Name):
@@ -115,4 +115,4 @@ class PythonSecurityVisitor(ast.NodeVisitor):
             # This only catches the name usage, `visit_Call` will catch the actual call.
             # This is more for flagging the mere presence if desired, but `visit_Call` is more precise.
             pass  # We handle this in visit_Call for accuracy.
-        self.generic_visit(node)
+        self.generic_visit(node)  # type: ignore

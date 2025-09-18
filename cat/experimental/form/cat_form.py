@@ -5,8 +5,8 @@ from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplat
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, ValidationError
 
-from cat.log import log
 from cat.agent import run_agent
+from cat.log import log
 from cat.mad_hatter.procedures import CatProcedure
 from cat.utils import Enum, parse_json
 
