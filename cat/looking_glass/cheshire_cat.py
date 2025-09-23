@@ -122,9 +122,8 @@ class CheshireCat:
         crud_plugins.destroy_all(self.id)
         crud_users.destroy_all(self.id)
 
-        # if Rabbit Hole storage is enabled, remove the folder from storage
-        if get_env_bool("CCAT_RABBIT_HOLE_STORAGE_ENABLED") and self.file_manager is not None:
-            self.file_manager.remove_folder_from_storage(self.id)
+        # remove the folder from storage
+        self.file_manager.remove_folder_from_storage(self.id)
 
     def send_ws_message(self, content: str, msg_type = "notification"):
         log.error(f"Agent id: {self.id}. No websocket connection open")

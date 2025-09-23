@@ -26,7 +26,6 @@ def get_supported_env_variables():
         "CCAT_HTTPS_PROXY_MODE": "false",
         "CCAT_CORS_FORWARDED_ALLOW_IPS": "*",
         "CCAT_HISTORY_EXPIRATION": None,  # in minutes
-        "CCAT_RABBIT_HOLE_STORAGE_ENABLED": "false",
         "CCAT_CORS_ENABLED": "true",
         "CCAT_WORKERS": None,
         "CCAT_LIMIT_MAX_REQUESTS": None,

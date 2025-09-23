@@ -1,8 +1,6 @@
 import os
-import shutil
 import tempfile
 from abc import ABC, abstractmethod
-from datetime import datetime
 from typing import Type, List
 from pydantic import ConfigDict, BaseModel
 
@@ -236,64 +234,24 @@ class BaseFileManager(ABC):
         return filename in [file.name for file in self.get_attributes(remote_root_dir).files]
 
 
-class LocalFileManager(BaseFileManager):
+class DummyFileManager(BaseFileManager):
     def _download(self, file_path: str) -> bytes | None:
-        try:
-            if not os.path.exists(file_path):
-                return None
-
-            with open(file_path, "rb") as f:
-                return f.read()
-        except Exception as e:
-            log.error(f"Error while downloading file {file_path} from storage: {e}")
-            return None
+        pass
 
     def _upload_file_to_storage(self, file_path: str, destination_path: str) -> str:
-        if file_path != destination_path:
-            os.makedirs(os.path.dirname(destination_path), exist_ok=True)
-            # move the file from file_path to destination_path
-            shutil.move(file_path, destination_path)
-        return destination_path
+        pass
 
     def _download_file_from_storage(self, file_path: str, local_path: str) -> str:
-        if file_path != local_path:
-            # move the file from origin_path to local_path
-            shutil.move(file_path, local_path)
-        return local_path
+        pass
 
     def _remove_file_from_storage(self, file_path: str) -> bool:
-        if os.path.exists(file_path) and os.path.isfile(file_path):
-            try:
-                os.remove(file_path)
-            except Exception as e:
-                log.error(f"Error while removing file {file_path} from storage: {e}")
-                return False
-        return True
+        pass
 
     def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
-        if os.path.exists(remote_root_dir) and os.path.isdir(remote_root_dir):
-            try:
-                shutil.rmtree(remote_root_dir)
-            except Exception as e:
-                log.error(f"Error while removing storage: {e}")
-                return False
-        return True
+        pass
 
     def _list_files(self, remote_root_dir: str) -> List[FileResponse]:
-        # list all the files in the directory: retrieve the full path, the size and the last modified date
-        return [
-            FileResponse(
-                path=os.path.join(root, file),
-                name=file,
-                hash=utils.get_file_hash(os.path.join(root, file)),
-                size=int(os.path.getsize(os.path.join(root, file))),
-                last_modified=datetime.fromtimestamp(
-                    os.path.getmtime(os.path.join(root, file))
-                ).strftime("%Y-%m-%d")
-            )
-            for root, _, files in os.walk(remote_root_dir)
-            for file in files
-        ]
+        pass
 
 
 class FileManagerConfig(BaseFactoryConfigModel, ABC):
@@ -302,24 +260,18 @@ class FileManagerConfig(BaseFactoryConfigModel, ABC):
         return BaseFileManager
 
 
-class LocalFileManagerConfig(FileManagerConfig):
-    model_config = ConfigDict(
-        json_schema_extra={
-            "humanReadableName": "Local API File Manager",
-            "description": "Configuration for File Manager to be used to locally move files and directories",
-            "link": "",
-        }
-    )
+class DummyFileManagerConfig(FileManagerConfig):
+    model_config = ConfigDict(extra="forbid")
 
     @classmethod
     def pyclass(cls) -> Type:
-        return LocalFileManager
+        return DummyFileManager
 
 
 class FileManagerFactory(BaseFactory):
     def get_allowed_classes(self) -> List[Type[FileManagerConfig]]:
         list_file_managers_default = self._hook_manager.execute_hook(
-            "factory_allowed_file_managers", [LocalFileManagerConfig], cat=None
+            "factory_allowed_file_managers", [DummyFileManagerConfig], cat=None
         )
         return list_file_managers_default
 
@@ -329,7 +281,7 @@ class FileManagerFactory(BaseFactory):
 
     @property
     def default_config_class(self) -> Type[BaseFactoryConfigModel]:
-        return LocalFileManagerConfig
+        return DummyFileManagerConfig
 
     @property
     def schema_name(self) -> str:

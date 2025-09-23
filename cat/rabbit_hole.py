@@ -437,9 +437,6 @@ class RabbitHole:
             source: str
                 The source of the file, e.g. the file name or URL.
         """
-        if not get_env_bool("CCAT_RABBIT_HOLE_STORAGE_ENABLED"):
-            return
-
         # save a file in a temporary folder
         extension = mimetypes.guess_extension(content_type)
         with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as temp_file:

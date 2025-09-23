@@ -116,8 +116,6 @@ async def encapsulate_each_test(request, monkeypatch):
     # env variables
     current_debug = get_env("CCAT_DEBUG")
     os.environ["CCAT_DEBUG"] = "false"  # do not autoreload
-    current_rabbit_hole_storage_enabled = get_env("CCAT_RABBIT_HOLE_STORAGE_ENABLED")
-    os.environ["CCAT_RABBIT_HOLE_STORAGE_ENABLED"] = "true"
 
     # clean up tmp files, folders and redis database
     clean_up()
@@ -134,10 +132,6 @@ async def encapsulate_each_test(request, monkeypatch):
         os.environ["CCAT_DEBUG"] = current_debug
     else:
         del os.environ["CCAT_DEBUG"]
-    if current_rabbit_hole_storage_enabled:
-        os.environ["CCAT_RABBIT_HOLE_STORAGE_ENABLED"] = current_rabbit_hole_storage_enabled
-    else:
-        del os.environ["CCAT_RABBIT_HOLE_STORAGE_ENABLED"]
 
 
 @pytest_asyncio.fixture(scope="function")

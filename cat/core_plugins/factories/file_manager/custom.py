@@ -1,8 +1,71 @@
 import os
+import shutil
 from typing import List
+from datetime import datetime
 
+from cat import utils
 from cat.factory.file_manager import BaseFileManager, FileResponse
 from cat.log import log
+
+
+class LocalFileManager(BaseFileManager):
+    def _download(self, file_path: str) -> bytes | None:
+        try:
+            if not os.path.exists(file_path):
+                return None
+
+            with open(file_path, "rb") as f:
+                return f.read()
+        except Exception as e:
+            log.error(f"Error while downloading file {file_path} from storage: {e}")
+            return None
+
+    def _upload_file_to_storage(self, file_path: str, destination_path: str) -> str:
+        if file_path != destination_path:
+            os.makedirs(os.path.dirname(destination_path), exist_ok=True)
+            # move the file from file_path to destination_path
+            shutil.move(file_path, destination_path)
+        return destination_path
+
+    def _download_file_from_storage(self, file_path: str, local_path: str) -> str:
+        if file_path != local_path:
+            # move the file from origin_path to local_path
+            shutil.move(file_path, local_path)
+        return local_path
+
+    def _remove_file_from_storage(self, file_path: str) -> bool:
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as e:
+                log.error(f"Error while removing file {file_path} from storage: {e}")
+                return False
+        return True
+
+    def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
+        if os.path.exists(remote_root_dir) and os.path.isdir(remote_root_dir):
+            try:
+                shutil.rmtree(remote_root_dir)
+            except Exception as e:
+                log.error(f"Error while removing storage: {e}")
+                return False
+        return True
+
+    def _list_files(self, remote_root_dir: str) -> List[FileResponse]:
+        # list all the files in the directory: retrieve the full path, the size and the last modified date
+        return [
+            FileResponse(
+                path=os.path.join(root, file),
+                name=file,
+                hash=utils.get_file_hash(os.path.join(root, file)),
+                size=int(os.path.getsize(os.path.join(root, file))),
+                last_modified=datetime.fromtimestamp(
+                    os.path.getmtime(os.path.join(root, file))
+                ).strftime("%Y-%m-%d")
+            )
+            for root, _, files in os.walk(remote_root_dir)
+            for file in files
+        ]
 
 
 class AWSFileManager(BaseFileManager):
