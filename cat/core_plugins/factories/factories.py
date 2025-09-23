@@ -20,7 +20,7 @@ from cat.core_plugins.factories.embedder.configs import (
     EmbedderOllamaConfig,
 )
 from cat.core_plugins.factories.file_manager.configs import (
-    LocalFileManager,
+    LocalFileManagerConfig,
     AWSFileManagerConfig,
     AzureFileManagerConfig,
     GoogleFileManagerConfig,
@@ -90,7 +90,7 @@ def factory_allowed_embedders(allowed: List[EmbedderSettings], cat) -> List:
 @hook(priority=1)
 def factory_allowed_file_managers(allowed: List[FileManagerConfig], cat) -> List:
     return allowed + [
-        LocalFileManager,
+        LocalFileManagerConfig,
         AWSFileManagerConfig,
         AzureFileManagerConfig,
         GoogleFileManagerConfig,

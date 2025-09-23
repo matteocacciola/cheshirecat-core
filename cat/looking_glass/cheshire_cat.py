@@ -122,7 +122,8 @@ class CheshireCat:
         crud_users.destroy_all(self.id)
 
         # remove the folder from storage
-        self.file_manager.remove_folder_from_storage(self.id)
+        if self.file_manager is not None:
+            self.file_manager.remove_folder_from_storage(self.id)
 
     def send_ws_message(self, content: str, msg_type = "notification"):
         log.error(f"Agent id: {self.id}. No websocket connection open")

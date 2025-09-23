@@ -20,7 +20,7 @@ def test_get_all_file_manager_settings(secure_client, secure_client_headers, che
         assert dumps(jsonable_encoder(expected_schema)) == dumps(setting["scheme"])
 
     # automatically selected file manager
-    assert json["selected_configuration"] == "LocalFileManagerConfig"
+    assert json["selected_configuration"] == "DummyFileManagerConfig"
 
 
 def test_get_file_manager_settings_non_existent(secure_client, secure_client_headers):
