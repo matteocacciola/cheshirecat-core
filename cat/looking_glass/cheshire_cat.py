@@ -11,7 +11,6 @@ from cat.db.cruds import (
     plugins as crud_plugins,
     users as crud_users,
 )
-from cat.env import get_env_bool
 from cat.factory.auth_handler import AuthHandlerFactory
 from cat.factory.auth_handler import BaseAuthHandler
 from cat.factory.chunker import ChunkerFactory, BaseChunker

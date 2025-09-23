@@ -11,7 +11,6 @@ from langchain_community.document_loaders.parsers.generic import MimeTypeBasedPa
 from langchain_core.documents.base import Document, Blob
 from starlette.datastructures import UploadFile
 
-from cat.env import get_env_bool
 from cat.factory.chunker import BaseChunker
 from cat.log import log
 from cat.memory.utils import PointStruct

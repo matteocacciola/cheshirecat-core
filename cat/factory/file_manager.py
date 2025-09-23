@@ -239,19 +239,19 @@ class DummyFileManager(BaseFileManager):
         pass
 
     def _upload_file_to_storage(self, file_path: str, destination_path: str) -> str:
-        pass
+        return ""
 
     def _download_file_from_storage(self, file_path: str, local_path: str) -> str:
-        pass
+        return ""
 
     def _remove_file_from_storage(self, file_path: str) -> bool:
-        pass
+        return False
 
     def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
-        pass
+        return False
 
     def _list_files(self, remote_root_dir: str) -> List[FileResponse]:
-        pass
+        return []
 
 
 class FileManagerConfig(BaseFactoryConfigModel, ABC):

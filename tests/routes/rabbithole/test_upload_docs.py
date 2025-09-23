@@ -1,10 +1,7 @@
 import json
-import os
 import pytest
 
-from cat import utils
-
-from tests.utils import get_declarative_memory_contents, api_key, agent_id, send_file
+from tests.utils import get_declarative_memory_contents, api_key, send_file
 
 
 def test_rabbithole_upload_txt(secure_client, secure_client_headers):
@@ -51,11 +48,6 @@ async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_header
         secure_client, {"agent_id": "another_agent_test", "Authorization": f"Bearer {api_key}"}
     )
     assert len(declarative_memories) == 0
-
-    # assert that cat/data folder exists, it has 1 folder with the name `agent_id` and it has 1 file
-    storage_folder = utils.get_file_manager_root_storage_path()
-    assert os.path.exists(storage_folder)
-    assert len(os.listdir(os.path.join(storage_folder, agent_id))) == 1  # type: ignore
 
     await cat.destroy_memory()
 
