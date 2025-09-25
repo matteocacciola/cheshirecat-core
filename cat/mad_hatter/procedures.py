@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Dict
 from langchain_core.tools import StructuredTool
 from pydantic import Field
 
@@ -7,8 +7,12 @@ from pydantic import Field
 class CatProcedure(ABC):
     name: str
     description: str | None = None
-    start_examples: List[str] | None = Field(default_factory=list)
+    input_schema: Dict = Field(default_factory=dict)
+    output_schema: Dict = Field(default_factory=dict)
+    examples: List[str] | None = Field(default_factory=list)
     plugin_id: str | None = None
+
+    stray = None
 
     @abstractmethod
     def langchainfy(self) -> List[StructuredTool]:

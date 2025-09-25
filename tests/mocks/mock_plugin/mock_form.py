@@ -1,7 +1,7 @@
 from enum import Enum
 from pydantic import BaseModel, Field
 
-from cat.experimental.form import CatForm, form
+from cat.mad_hatter.decorators import CatForm, form
 
 
 class PizzaBorderEnum(Enum):
@@ -21,7 +21,7 @@ class PizzaForm(CatForm):
     name = "pizza_order"
     description = "Pizza Order"
     model_class = PizzaOrder
-    start_examples = ["order a pizza", "I want pizza"]
+    examples = ["order a pizza", "I want pizza"]
     stop_examples = [
         "stop pizza order",
         "I do not want a pizza anymore",

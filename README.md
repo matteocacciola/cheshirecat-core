@@ -116,7 +116,7 @@ MCP clients can be added via plugins, by using the `@mcp_client` decorator, simi
 ```python
 from typing import List, Any
 
-from cat.experimental.mcp_client import CatMcpClient, CatMcpDiscoveredProcedure, mcp_client
+from cat.mad_hatter.decorators import CatMcpClient, mcp_client
 
 
 @mcp_client
@@ -276,7 +276,7 @@ def socks_prices(color, cat):
 
 ```python
 from pydantic import BaseModel
-from cat.experimental.form import form, CatForm
+from cat.mad_hatter.decorators import form, CatForm
 
 # data structure to fill up
 class PizzaOrder(BaseModel):
@@ -288,7 +288,7 @@ class PizzaOrder(BaseModel):
 class PizzaForm(CatForm):
     description = "Pizza Order"
     model_class = PizzaOrder
-    start_examples = [
+    examples = [
         "order a pizza!",
         "I want pizza"
     ]

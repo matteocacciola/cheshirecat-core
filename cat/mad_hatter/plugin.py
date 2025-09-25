@@ -324,9 +324,7 @@ class Plugin:
 
     # lists of hooks and tools
     def _load_decorated_functions(self):
-        from cat.experimental.form import CatForm
-        from cat.experimental.mcp_client import CatMcpClient
-        from cat.mad_hatter.decorators import CatTool
+        from cat.mad_hatter.decorators import CatTool, CatForm, CatMcpClient
 
         hooks = []
         procedures = []
@@ -389,8 +387,8 @@ class Plugin:
         self._plugin_overrides = {}
 
     def plugin_specific_error_message(self):
-        name = self.manifest.get("name")
-        url = self.manifest.get("plugin_url")
+        name = self.manifest.name
+        url = self.manifest.plugin_url
         if url:
             return f"To resolve any problem related to {name} plugin, contact the creator using github issue at the link {url}"
         return f"Error in {name} plugin, contact the creator"
@@ -445,13 +443,13 @@ class Plugin:
 
     @property
     def forms(self):
-        from cat.experimental.form import CatForm
+        from cat.mad_hatter.decorators import CatForm
 
         return [p for p in self._procedures if isinstance(p, type) and issubclass(p, CatForm)]
 
     @property
     def mcp_clients(self):
-        from cat.experimental.mcp_client import CatMcpClient
+        from cat.mad_hatter.decorators import CatMcpClient
 
         return [p for p in self._procedures if isinstance(p, type) and issubclass(p, CatMcpClient)]
 

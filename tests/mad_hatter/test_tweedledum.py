@@ -48,15 +48,15 @@ def test_instantiation_discovery(lizard):
             ]
             assert isfunction(procedure.func)
             if procedure.name == "get_the_time":
-                assert len(procedure.start_examples) == 2
-                assert "what time is it" in procedure.start_examples
-                assert "get the time" in procedure.start_examples
+                assert len(procedure.examples) == 2
+                assert "what time is it" in procedure.examples
+                assert "get the time" in procedure.examples
             elif procedure.name == "get_weather":
-                assert len(procedure.start_examples) == 0
+                assert len(procedure.examples) == 0
             elif procedure.name == "read_working_memory":
-                assert len(procedure.start_examples) == 2
-                assert "log working memory" in procedure.start_examples
-                assert "show me the contents of working memory" in procedure.start_examples
+                assert len(procedure.examples) == 2
+                assert "log working memory" in procedure.examples
+                assert "show me the contents of working memory" in procedure.examples
 
 
 # installation tests will be run for both flat and nested plugin
@@ -91,9 +91,9 @@ def test_plugin_install(lizard, plugin_is_flat):
     assert new_tool.plugin_id == "mock_plugin"
     assert id(new_tool) == id(plugin_manager.procedures_registry["mock_tool"])  # cached and same object in memory!
     # tool examples found
-    assert len(new_tool.start_examples) == 2
-    assert "mock tool example 1" in new_tool.start_examples
-    assert "mock tool example 2" in new_tool.start_examples
+    assert len(new_tool.examples) == 2
+    assert "mock tool example 1" in new_tool.examples
+    assert "mock tool example 2" in new_tool.examples
 
     # hooks found
     new_hooks = plugin_manager.plugins["mock_plugin"].hooks

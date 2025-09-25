@@ -255,14 +255,11 @@ class StrayCat:
         """
         # get all procedures (tools and forms) from plugins
         procedures = self.plugin_manager.procedures
+        for i in range(len(procedures)):
+            if not isinstance(procedures[i], CatTool):
+                procedures[i] = procedures[i]()
 
-        for i, p in enumerate(procedures):
-            if isinstance(p, CatTool):
-                p.inject_cat(self)
-                continue
-
-            # Create instance with stray reference, valid for forms or mcp clients
-            procedures[i] = p(self)
+            procedures[i].stray = self
 
         return procedures
 

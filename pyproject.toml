@@ -16,6 +16,7 @@ dependencies = [
     "bcrypt",
     "cryptography",
     "fastapi",
+    "fastmcp",
     "gunicorn",
     "httpx",
     "langchain",

@@ -42,12 +42,12 @@ def test_instantiation_discovery(cheshire_cat):
             ]
             assert isfunction(procedure.func)
             if procedure.name == "get_the_time":
-                assert len(procedure.start_examples) == 2
-                assert "what time is it" in procedure.start_examples
-                assert "get the time" in procedure.start_examples
+                assert len(procedure.examples) == 2
+                assert "what time is it" in procedure.examples
+                assert "get the time" in procedure.examples
             elif procedure.name == "get_weather":
-                assert len(procedure.start_examples) == 0
+                assert len(procedure.examples) == 0
             elif procedure.name == "read_working_memory":
-                assert len(procedure.start_examples) == 2
-                assert "log working memory" in procedure.start_examples
-                assert "show me the contents of working memory" in procedure.start_examples
+                assert len(procedure.examples) == 2
+                assert "log working memory" in procedure.examples
+                assert "show me the contents of working memory" in procedure.examples

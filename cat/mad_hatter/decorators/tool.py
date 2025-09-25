@@ -1,12 +1,12 @@
-from typing import Callable, List
+from typing import Callable, List, Dict
 from langchain_core.tools import StructuredTool
+from fastmcp.tools.tool import ParsedFunction
+from mcp.types import Tool
 from pydantic import ConfigDict
 
 from cat.mad_hatter.procedures import CatProcedure
 
 
-# All @tool decorated functions in plugins become a CatTool.
-# The difference between base langchain Tool and CatTool is that CatTool has an instance of the cat as attribute
 class CatTool(CatProcedure):
     model_config = ConfigDict(extra="allow")
 
@@ -14,19 +14,56 @@ class CatTool(CatProcedure):
         self,
         name: str,
         func: Callable,
-        examples: List[str] = None,
+        description: str | None = None,
+        input_schema: Dict | None = None,
+        output_schema: Dict | None = None,
+        examples: List[str] | None = None,
     ):
         self.name = name
-        self.description = func.__doc__.strip() if func.__doc__ else ""
-        self.start_examples = examples or []
         self.func = func
-        self._stray = None
+        self.description = description if description else (func.__doc__.strip() if func.__doc__ else "")
+        self.input_schema = input_schema
+        self.output_schema = output_schema
+        self.examples = examples or []
 
     def __repr__(self) -> str:
         return f"CatTool(name={self.name}, description={self.description})"
 
-    def inject_cat(self, cat) -> None:
-        self._stray = cat
+    @classmethod
+    def from_decorated_function(
+        cls,
+        func: Callable,
+        examples: List[str] | None = None,
+    ) -> "CatTool":
+        examples = examples or []
+        parsed_function = ParsedFunction.from_function(
+            func,
+            exclude_args=["cat"],  # awesome, will only be used at execution
+            validate=False
+        )
+
+        return cls(
+            func=func,
+            name=parsed_function.name,
+            description=parsed_function.description,
+            input_schema=parsed_function.input_schema,
+            output_schema=parsed_function.output_schema,
+            examples=examples,
+        )
+
+    @classmethod
+    def from_fastmcp(
+        cls,
+        t: Tool,
+        mcp_client_func: Callable
+    ) -> "CatTool":
+        return cls(
+            func=mcp_client_func,
+            name=t.name,
+            description=t.description or t.name,
+            input_schema=t.inputSchema,
+            output_schema=t.output_schema,
+        )
 
     def langchainfy(self) -> List[StructuredTool]:
         """
@@ -37,36 +74,28 @@ class CatTool(CatProcedure):
         List[StructuredTool]
             The langchain compatible StructuredTool objects.
         """
-        description = self.description + ("\n\nE.g.:\n" if self.start_examples else "")
-        for example in self.start_examples:
+        description = self.description + ("\n\nE.g.:\n" if self.examples else "")
+        for example in self.examples:
             description += f"- {example}\n"
 
         # wrap func to inject cat instance if func has cat argument
         func: Callable = self.func
-        if "cat" in func.__code__.co_varnames:
+        if "cat" in func.__code__.co_varnames and self.stray is not None:
+            # create a closure to capture self.stray
             def func_with_cat(*args, **kwargs):
-                return func(*args, cat=self._stray, **kwargs)
+                return func(*args, cat=self.stray, **kwargs)
             func = func_with_cat
-
-        if getattr(self, "arg_schema", None) is not None:
-            return [StructuredTool(
-                name=self.name.strip().replace(" ", "_"),
-                description=description,
-                func=func,
-                args_schema=getattr(self, "arg_schema"),
-            )]
 
         return [StructuredTool.from_function(
             name=self.name.strip().replace(" ", "_"),
             description=description,
             func=func,
+            args_schema=self.input_schema,
         )]
 
 
-# @tool decorator, a modified version of a langchain Tool that also takes a Cat instance as argument
-# adapted from https://github.com/hwchase17/langchain/blob/master/langchain/agents/tools.py
 def tool(
-    *args: str | Callable, examples: List[str] = None
+    *args: str | Callable, examples: List[str] | None = None
 ) -> Callable:
     """
     Make tools out of functions, can be used with or without arguments.
@@ -85,31 +114,22 @@ def tool(
     """
     examples = examples or []
 
-    def _make_with_name(tool_name: str) -> Callable:
+    def decorator() -> Callable:
         def _make_tool(func: Callable[[str], str]) -> CatTool:
             assert func.__doc__, "Function must have a docstring"
-            tool_ = CatTool(
-                name=tool_name,
-                func=func,
-                examples=examples,
-            )
+            tool_ = CatTool.from_decorated_function(func, examples=examples)
             return tool_
 
         return _make_tool
 
-    if len(args) == 1 and isinstance(args[0], str):
-        # if the argument is a string, then we use the string as the tool name
-        # Example usage: @tool("search")
-        return _make_with_name(args[0])
-    if len(args) == 1 and callable(args[0]):
-        # if the argument is a function, then we use the function name as the tool name
-        # Example usage: @tool
-        return _make_with_name(args[0].__name__)(args[0])
+    # example usages: @tool("search") or @tool with a function as argument (e.g. @tool(func))
+    if len(args) == 1:
+        return decorator()(args[0]) if callable(args[0]) else decorator()
+
+    # if there are no arguments; example usage: @tool
     if len(args) == 0:
-        # if there are no arguments, then we use the function name as the tool name
-        # Example usage: @tool
         def _partial(func: Callable[[str], str]) -> CatTool:
-            return _make_with_name(func.__name__)(func)
+            return decorator()(func)
 
         return _partial
 

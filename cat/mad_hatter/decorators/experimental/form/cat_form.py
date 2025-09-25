@@ -25,18 +25,12 @@ class CatForm(CatProcedure, ABC):  # base model of forms
     ask_confirm: bool = False
     _autopilot = False
 
-    def __init__(self, cat):
-        """
-        Args:
-            cat: StrayCat instance
-        """
+    def __init__(self):
         if not hasattr(self, "name") or not self.name:
             self.name = type(self).__name__
 
         self._state = CatFormState.INCOMPLETE
         self._model: Dict = {}
-
-        self._stray = cat
 
         self._errors: List[str] = []
         self._missing_fields: List[str] = []
@@ -47,7 +41,7 @@ class CatForm(CatProcedure, ABC):  # base model of forms
         Returns:
             StrayCat: StrayCat instance
         """
-        return self._stray
+        return self.stray
 
     def _model_getter(self) -> BaseModel:
         return self.model_class
@@ -69,8 +63,8 @@ class CatForm(CatProcedure, ABC):  # base model of forms
         List[StructuredTool]
             The langchain compatible StructuredTool objects.
         """
-        description = self.description + ("\n\nE.g.:\n" if self.start_examples else "")
-        for example in self.start_examples:
+        description = self.description + ("\n\nE.g.:\n" if self.examples else "")
+        for example in self.examples:
             description += f"- {example}\n"
 
         return [StructuredTool.from_function(
@@ -86,7 +80,7 @@ class CatForm(CatProcedure, ABC):  # base model of forms
     # Check user confirm the form data
     async def _confirm(self) -> bool:
         # Get user message
-        user_message = self._stray.cheshire_cat.working_memory.user_message.text
+        user_message = self.stray.cheshire_cat.working_memory.user_message.text
 
         # Confirm prompt
         confirm_prompt = """Your task is to produce a JSON representing whether a user is confirming or not.
@@ -99,7 +93,7 @@ JSON must be in this format:
 
         # Queries the LLM and check if user agrees or not
         response = await run_agent(
-            llm=self._stray.large_language_model,
+            llm=self.stray.large_language_model,
             prompt=ChatPromptTemplate.from_messages([
                 HumanMessagePromptTemplate.from_template(template=confirm_prompt)
             ]),
@@ -111,7 +105,7 @@ JSON must be in this format:
     # it is triggered at the beginning of every form.next()
     async def _check_exit_intent(self) -> bool:
         # Get user message
-        user_message = self._stray.cheshire_cat.working_memory.user_message.text
+        user_message = self.stray.cheshire_cat.working_memory.user_message.text
 
         # Stop examples
         stop_examples = """
@@ -137,7 +131,7 @@ JSON:
 
         # Queries the LLM and check if user agrees or not
         response = await run_agent(
-            llm=self._stray.large_language_model,
+            llm=self.stray.large_language_model,
             prompt=ChatPromptTemplate.from_messages([
                 HumanMessagePromptTemplate.from_template(template=check_exit_prompt)
             ]),
@@ -196,7 +190,7 @@ JSON:
     # Extract model information from user message
     async def _extract(self):
         json_str = await run_agent(
-            llm=self._stray.large_language_model,
+            llm=self.stray.large_language_model,
             prompt=ChatPromptTemplate.from_messages([
                 HumanMessagePromptTemplate.from_template(template=self._extraction_prompt())
             ]),
@@ -213,7 +207,7 @@ JSON:
         return output_model
 
     def _extraction_prompt(self, latest_n: int = 10):
-        history = "".join([str(h) for h in self._stray.cheshire_cat.working_memory.history[-latest_n:]])
+        history = "".join([str(h) for h in self.stray.cheshire_cat.working_memory.history[-latest_n:]])
 
         # JSON structure
         # BaseModel.__fields__['my_field'].type_
