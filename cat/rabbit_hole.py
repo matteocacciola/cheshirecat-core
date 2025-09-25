@@ -221,7 +221,7 @@ class RabbitHole:
         # Split
         if self.stray:
             await self.stray.send_ws_message("Parsing completed. Now let's go with reading process...")
-        docs = self._split_text(text=super_docs)
+        docs = self._split_text(docs=super_docs)
         return file_bytes, content_type, docs
 
     async def _store_documents(
