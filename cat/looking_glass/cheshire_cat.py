@@ -125,7 +125,7 @@ class CheshireCat:
         if self.file_manager is not None:
             self.file_manager.remove_folder_from_storage(self.id)
 
-    def send_ws_message(self, content: str, msg_type = "notification"):
+    async def send_ws_message(self, content: str, msg_type = "notification"):
         log.error(f"Agent id: {self.id}. No websocket connection open")
 
     def replace_llm(self, language_model_name: str, settings: Dict) -> Dict:
@@ -330,3 +330,14 @@ class CheshireCat:
     @property
     def file_handlers(self) -> Dict:
         return self.plugin_manager.execute_hook("rabbithole_instantiates_parsers",  {}, cat=self)
+
+    @property
+    def agent_id(self) -> str:
+        """
+        The unique identifier of the cat.
+
+        Returns:
+            agent_id: str
+                The unique identifier of the cat.
+        """
+        return self.id

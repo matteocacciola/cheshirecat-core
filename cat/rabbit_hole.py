@@ -19,12 +19,30 @@ from cat.utils import singleton
 
 @singleton
 class RabbitHole:
+    def __init__(self):
+        self.cat = None
+        self.stray = None
+
+    def setup(self, cat):
+        from cat.looking_glass import CheshireCat, StrayCat
+
+        if isinstance(cat, CheshireCat):
+            self.cat = cat
+            return
+
+        if isinstance(cat, StrayCat):
+            self.stray = cat
+            self.cat = cat.cheshire_cat
+            return
+
+        raise ValueError("RabbitHole can only be setup with CheshireCat or StrayCat instances.")
+
     """Manages content ingestion. I'm late... I'm late!"""
-    async def ingest_memory(self, ccat: "CheshireCat", file: UploadFile):
+    async def ingest_memory(self, cat: "CheshireCat", file: UploadFile):
         """Upload memories to the declarative memory from a JSON file.
 
         Args:
-            ccat: CheshireCat
+            cat: CheshireCat
                 Cheshire Cat instance.
             file: UploadFile
                 File object sent via `rabbithole/memory` hook.
@@ -36,6 +54,8 @@ class RabbitHole:
         when uploading.
         The method also performs a check on the dimensionality of the embeddings (i.e. length of each vector).
         """
+        self.setup(cat)
+
         # Get file bytes
         file_bytes = file.file.read()
 
@@ -44,7 +64,7 @@ class RabbitHole:
 
         # Check the embedder used for the uploaded memories is the same the Cat is using now
         upload_embedder = memories["embedder"]
-        cat_embedder = str(ccat.embedder.__class__.__name__)
+        cat_embedder = str(self.cat.embedder.__class__.__name__)
 
         if upload_embedder != cat_embedder:
             raise Exception(
@@ -62,10 +82,10 @@ class RabbitHole:
         ]
         vectors = [m["vector"] for m in declarative_memories]
 
-        log.info(f"Agent id: {ccat.id}. Preparing to load {len(vectors)} vector memories")
+        log.info(f"Agent id: {self.cat.id}. Preparing to load {len(vectors)} vector memories")
 
         # Check embedding size is correct
-        embedder_size = ccat.lizard.embedder_size
+        embedder_size = self.cat.lizard.embedder_size
         len_mismatch = [len(v) == embedder_size for v in vectors]
 
         if not any(len_mismatch):
@@ -74,19 +94,19 @@ class RabbitHole:
             )
 
         # Upsert memories in batch mode
-        await ccat.vector_memory_handler.add_points(
+        await cat.vector_memory_handler.add_points(
             collection_name="declarative", ids=ids, payloads=payloads, vectors=vectors
         )
 
-    async def ingest_file(self, ccat: "CheshireCat", file: str | UploadFile, metadata: Dict = None):
+    async def ingest_file(self, cat, file: str | UploadFile, metadata: Dict = None):
         """Load a file in the Cat's declarative memory.
 
         The method splits and converts the file in Langchain `Document`. Then, it stores the `Document` in the Cat's
         memory.
 
         Args:
-            ccat: CheshireCat
-                Cheshire Cat instance.
+            cat: CheshireCat or StrayCat
+                Cheshire Cat or Stray Cat instance.
             file: str, UploadFile
                 The file can be a path passed as a string or an `UploadFile` object if the document is ingested using the
                 `rabbithole` endpoint.
@@ -101,19 +121,19 @@ class RabbitHole:
         Currently supported formats are `.txt`, `.pdf` and `.md`.
         You cn add custom ones or substitute the above via RabbitHole hooks.
         """
+        self.setup(cat)
+
         # split file into a list of docs
-        file_bytes, content_type, docs = await self._file_to_docs(ccat=ccat, file=file)
+        file_bytes, content_type, docs = await self._file_to_docs(file=file)
         metadata = metadata or {}
 
         # store in memory
         filename = file if isinstance(file, str) else file.filename
 
-        await self._store_documents(ccat=ccat, docs=docs, source=filename, metadata=metadata)
-        await self._save_file(ccat, file_bytes, content_type, filename)
+        await self._store_documents(docs=docs, source=filename, metadata=metadata)
+        await self._save_file(file_bytes, content_type, filename)
 
-    async def _file_to_docs(
-        self, ccat: "CheshireCat", file: str | UploadFile
-    ) -> Tuple[bytes, str | None, List[Document]]:
+    async def _file_to_docs(self, file: str | UploadFile) -> Tuple[bytes, str | None, List[Document]]:
         """
         Load and convert files to Langchain `Document`.
 
@@ -121,8 +141,6 @@ class RabbitHole:
         Hence, it loads it in memory and splits it in overlapped chunks of text.
 
         Args:
-            ccat: CheshireCat
-                Cheshire Cat instance.
             file: str, UploadFile
                 The file can be either a string path if loaded programmatically, a FastAPI `UploadFile`
                 if coming from the `/rabbithole/` endpoint or a URL if coming from the `/rabbithole/web` endpoint.
@@ -166,7 +184,7 @@ class RabbitHole:
                     # Get binary content of url
                     file_bytes = request.content
                 except HTTPError as e:
-                    log.error(f"Agent id: {ccat.id}. Error: {e}")
+                    log.error(f"Agent id: {self.cat.agent_id}. Error: {e}")
             else:
                 # Get mime type from file extension and source
                 content_type = mimetypes.guess_type(file)[0]
@@ -183,24 +201,30 @@ class RabbitHole:
 
         log.debug(f"Attempting to parse file: {source}")
         log.debug(f"Detected MIME type: {content_type}")
-        log.debug(f"Available handlers: {list(ccat.file_handlers.keys())}")
+        log.debug(f"Available handlers: {list(self.cat.file_handlers.keys())}")
 
         # Load the bytes in the Blob schema
         blob = Blob(data=file_bytes, mimetype=content_type).from_data(
             data=file_bytes, mime_type=content_type, path=source
         )
         # Parser based on the mime type
-        parser = MimeTypeBasedParser(handlers=ccat.file_handlers)
+        parser = MimeTypeBasedParser(handlers=self.cat.file_handlers)
 
+        # Parse the text
+        if self.stray:
+            await self.stray.send_ws_message(
+                "I'm parsing the content. Big content could require some minutes..."
+            )
         super_docs = parser.parse(blob)
 
         # Split
-        docs = self._split_text(ccat=ccat, text=super_docs)
+        if self.stray:
+            await self.stray.send_ws_message("Parsing completed. Now let's go with reading process...")
+        docs = self._split_text(text=super_docs)
         return file_bytes, content_type, docs
 
     async def _store_documents(
         self,
-        ccat: "CheshireCat",
         docs: List[Document],
         source: str,
         metadata: Dict = None
@@ -211,8 +235,6 @@ class RabbitHole:
         timestamp of insertion. Once done, the method notifies the client via Websocket connection.
 
         Args:
-            ccat: CheshireCat
-                Cheshire Cat instance.
             docs: List[Document]
                 List of Langchain `Document` to be inserted in the Cat's declarative memory.
             source: str
@@ -232,13 +254,13 @@ class RabbitHole:
         At this point, it is possible to customize the Cat's behavior using the `before_rabbithole_insert_memory` hook
         to edit the memories before they are inserted in the vector database.
         """
-        log.info(f"Agent id: {ccat.id}. Preparing to memorize {len(docs)} vectors")
+        log.info(f"Agent id: {self.cat.agent_id}. Preparing to memorize {len(docs)} vectors")
 
-        embedder = ccat.embedder
-        plugin_manager = ccat.plugin_manager
+        embedder = self.cat.embedder
+        plugin_manager = self.cat.plugin_manager
 
         # hook the docs before they are stored in the vector memory
-        docs = plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, cat=ccat)
+        docs = plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, cat=self.stray or self.cat)
 
         metadata = metadata or {}
 
@@ -252,6 +274,9 @@ class RabbitHole:
                 time_last_notification = time.time()
                 perc_read = int(d / len(docs) * 100)
                 read_message = f"Read {perc_read}% of {source}"
+                if self.stray:
+                    await self.stray.send_ws_message(read_message)
+
                 log.info(read_message)
 
             # add custom metadata (sent via endpoint) and default metadata (source and when)
@@ -262,13 +287,11 @@ class RabbitHole:
                 "when": time.time(),
             }
 
-            doc = plugin_manager.execute_hook(
-                "before_rabbithole_insert_memory", doc, cat=ccat
-            )
+            doc = plugin_manager.execute_hook("before_rabbithole_insert_memory", doc, cat=self.stray or self.cat)
             inserting_info = f"{d + 1}/{len(docs)}):    {doc.page_content}"
             if doc.page_content != "":
                 doc_embedding = embedder.embed_documents([doc.page_content])
-                if (stored_point := await ccat.vector_memory_handler.add_point(
+                if (stored_point := await self.cat.vector_memory_handler.add_point(
                     collection_name="declarative",
                     content=doc.page_content,
                     vector=doc_embedding[0],
@@ -276,31 +299,37 @@ class RabbitHole:
                 )) is not None:
                     stored_points.append(stored_point)
 
-                log.info(f"Agent id: {ccat.id}. Inserted into memory ({inserting_info})")
+                log.info(f"Agent id: {self.cat.agent_id}. Inserted into memory ({inserting_info})")
             else:
-                log.info(f"Agent id: {ccat.id}. Skipped memory insertion of empty doc ({inserting_info})")
+                log.info(f"Agent id: {self.cat.agent_id}. Skipped memory insertion of empty doc ({inserting_info})")
 
             # wait a little to avoid APIs rate limit errors
             time.sleep(0.05)
 
         # hook the points after they are stored in the vector memory
         plugin_manager.execute_hook(
-            "after_rabbithole_stored_documents", source, stored_points, cat=ccat
+            "after_rabbithole_stored_documents", source, stored_points, cat=self.stray or self.cat
         )
 
-        log.warning(f"Agent id: {ccat.id}. Done uploading {source}")
+        # notify client
+        finished_reading_message = (
+            f"Finished reading {source}, I made {len(docs)} thoughts on it."
+        )
+
+        if self.stray:
+            await self.stray.send_ws_message(finished_reading_message)
+
+        log.warning(f"Agent id: {self.cat.agent_id}. Done uploading {source}")
 
         return stored_points
 
-    def _split_text(self, ccat: "CheshireCat", text: List[Document]):
+    def _split_text(self, text: List[Document]):
         """Split text in overlapped chunks.
 
         This method splits the incoming text in overlapped  chunks of text. Other two hooks are available to edit the
         text before and after the split step.
 
         Args:
-            ccat: CheshireCat
-                Cheshire Cat instance.
             text: List[Document]
                 Content of the loaded file.
 
@@ -316,17 +345,18 @@ class RabbitHole:
         The default behavior splits the text and executes the hooks, before the splitting.
         `before_rabbithole_splits_text` hook returns the original input without any modification.
         """
-        plugin_manager = ccat.plugin_manager
+        plugin_manager = self.cat.plugin_manager
 
         # do something on the text before it is split
-        text = plugin_manager.execute_hook("before_rabbithole_splits_text", text, cat=ccat)
+        text = plugin_manager.execute_hook("before_rabbithole_splits_text", text, cat=self.stray or self.cat)
 
         # split text
-        docs = ccat.chunker.split_documents(text)
+        chunker = self.cat.chunker
+        docs = chunker.split_documents(text)
 
         # join each short chunk with previous one, instead of deleting them
         try:
-            return self._merge_short_chunks(docs, ccat.chunker)
+            return self._merge_short_chunks(docs, chunker)
         except Exception as e:
             # Log error but don't fail the entire process
             log.warning(f"Error merging short chunks: {e}. Proceeding with original chunks.")
@@ -358,8 +388,8 @@ class RabbitHole:
             return docs
 
         # Get configuration with safe defaults
-        chunk_size = getattr(chunker, "chunk_size", 1000)
-        chunk_overlap = getattr(chunker, "chunk_overlap", 100)
+        chunk_size = getattr(chunker.analyzer, "chunk_size", getattr(chunker.analyzer, "max_chunk_size", 1000))
+        chunk_overlap = getattr(chunker.analyzer, "chunk_overlap", 100)
 
         # Conservative thresholds
         min_chunk_size = max(50, chunk_size // 20)  # At least 50 chars
@@ -418,17 +448,13 @@ class RabbitHole:
 
         return Document(page_content=merged_content, metadata=merged_metadata)
 
-    async def _save_file(
-        self, ccat: "CheshireCat", file_bytes: bytes, content_type: str, source: str
-    ):
+    async def _save_file(self, file_bytes: bytes, content_type: str, source: str):
         """
         Save file in the Rabbit Hole remote storage handled by the CheshireCat's file manager.
         This method saves the file in the Rabbit Hole storage. The file is saved in a temporary folder and the path is
         stored in the remote storage handled by the CheshireCat's file manager.
 
         Args:
-            ccat: CheshireCat
-                Cheshire Cat instance.
             file_bytes: bytes
                 The file bytes to be saved.
             content_type: str
@@ -444,7 +470,7 @@ class RabbitHole:
 
         # upload a file to CheshireCat's file manager
         try:
-            ccat.file_manager.upload_file_to_storage(file_path, ccat.id, source)
+            self.cat.file_manager.upload_file_to_storage(file_path, self.cat.agent_id, source)
         except Exception as e:
             log.error(f"Error while uploading file {file_path}: {e}")
         finally:

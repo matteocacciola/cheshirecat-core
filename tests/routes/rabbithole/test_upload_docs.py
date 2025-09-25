@@ -1,7 +1,7 @@
 import json
 import pytest
 
-from tests.utils import get_declarative_memory_contents, api_key, send_file
+from tests.utils import get_declarative_memory_contents, api_key, send_file, chat_id
 
 
 def test_rabbithole_upload_txt(secure_client, secure_client_headers):
@@ -21,7 +21,27 @@ def test_rabbithole_upload_txt(secure_client, secure_client_headers):
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert (
         len(declarative_memories) == 3
-    )  # TODO: why txt produces one chunk less than pdf?
+    )
+
+
+def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_headers):
+    content_type = "text/plain"
+    file_name = "sample.txt"
+    response, _ = send_file(file_name, content_type, secure_client, secure_client_headers, ch_id=chat_id)
+
+    # check response
+    assert response.status_code == 200
+    json_res = response.json()
+    assert json_res["filename"] == file_name
+    assert json_res["content_type"] == content_type
+    assert "File is being ingested" in json_res["info"]
+
+    # check memory contents
+    # check declarative memory is empty
+    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    assert (
+        len(declarative_memories) == 3
+    )
 
 
 @pytest.mark.asyncio

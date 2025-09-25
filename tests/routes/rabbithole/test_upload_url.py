@@ -2,7 +2,7 @@ import logging
 import requests
 
 from cat.exceptions import CustomValidationException
-from tests.utils import get_declarative_memory_contents
+from tests.utils import get_declarative_memory_contents, chat_id
 
 
 def test_rabbithole_upload_invalid_url(secure_client, secure_client_headers):
@@ -30,6 +30,33 @@ def test_rabbithole_upload_url(secure_client, secure_client_headers):
 
     payload = {"url": url}
     response = secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
+
+    if response.status_code != 400:
+        assert True
+        return
+
+    # check response
+    assert response.status_code == 200
+    json = response.json()
+    assert json["info"] == "URL is being ingested asynchronously"
+    assert json["url"] == payload["url"]
+
+    # check declarative memories have been stored
+    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    assert len(declarative_memories) == 1
+
+
+def test_rabbithole_upload_url_to_stray(secure_client, secure_client_headers):
+    url = "https://www.example.com"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+    except requests.RequestException:
+        assert True
+        return
+
+    payload = {"url": url}
+    response = secure_client.post(f"/rabbithole/web/{chat_id}", json=payload, headers=secure_client_headers)
 
     if response.status_code != 400:
         assert True

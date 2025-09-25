@@ -11,7 +11,7 @@ from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
 from cat.auth.permissions import get_full_admin_permissions
 from cat.db import crud
 from cat.db.cruds import settings as crud_settings, users as crud_users
-from cat.db.database import DEFAULT_SYSTEM_KEY
+from cat.db.database import DEFAULT_SYSTEM_KEY, UNALLOWED_AGENT_KEYS
 from cat.env import get_env
 from cat.exceptions import LoadMemoryException
 from cat.factory.auth_handler import CoreAuthHandler
@@ -310,8 +310,8 @@ class BillTheLizard:
         Returns:
             The Cheshire Cat with the given id, or None if it doesn't exist
         """
-        if agent_id in [DEFAULT_SYSTEM_KEY]:
-            raise ValueError(f"{DEFAULT_SYSTEM_KEY} is a reserved name for agents")
+        if agent_id in UNALLOWED_AGENT_KEYS:
+            raise ValueError(f"{agent_id} is not allowed as name for agents")
 
         if agent_id in crud.get_agents_main_keys():
             return self.get_cheshire_cat(agent_id)

@@ -10,8 +10,7 @@ from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException
 from cat.log import log
-from cat.looking_glass import BillTheLizard
-from cat.routes.routes_utils import format_upload_file
+from cat.routes.routes_utils import on_upload_single_file
 
 router = APIRouter()
 
@@ -43,88 +42,8 @@ class AllowedMimeTypesResponse(BaseModel):
 
 
 # receive files via http endpoint
-@router.post("/", response_model=UploadSingleFileResponse)
-async def upload_file(
-    request: Request,
-    file: UploadFile,
-    background_tasks: BackgroundTasks,
-    metadata: str = Form(
-        default="{}",
-        description="Metadata to be stored with each chunk (e.g. author, category, etc.). "
-                    "Since we are passing this along side form data, must be a JSON string (use `json.dumps(metadata)`)."
-    ),
-    info: AuthorizedInfo = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
-) -> UploadSingleFileResponse:
-    """Upload a file containing text (.txt, .md, .pdf, etc.). File content will be extracted and segmented into chunks.
-    Chunks will be then vectorized and stored into documents memory.
-
-    Note
-    ----------
-    `metadata` must be passed as a JSON-formatted string into the form data.
-    This is necessary because the HTTP protocol does not allow file uploads to be sent as JSON.
-
-    Example
-    ----------
-    ```
-    content_type = "application/pdf"
-    file_name = "sample.pdf"
-    file_path = f"tests/mocks/{file_name}"
-    with open(file_path, "rb") as f:
-        files = {"file": (file_name, f, content_type)}
-
-        metadata = {
-            "source": "sample.pdf",
-            "title": "Test title",
-            "author": "Test author",
-            "year": 2020,
-        }
-        # upload file endpoint only accepts form-encoded data
-        payload = {
-            "metadata": json.dumps(metadata)
-        }
-
-        response = requests.post(
-            "http://localhost:1865/rabbithole/",
-            files=files,
-            data=payload
-        )
-    ```
-    """
-    lizard: BillTheLizard = request.app.state.lizard
-    ccat = info.cheshire_cat
-
-    # Check the file format is supported
-    admitted_types = ccat.file_handlers.keys()
-
-    # Get file mime type
-    content_type, _ = mimetypes.guess_type(file.filename)
-    log.info(f"Uploaded {content_type} down the rabbit hole")
-
-    # check if MIME type of uploaded file is supported
-    if content_type not in admitted_types:
-        CustomValidationException(
-            f'MIME type {content_type} not supported. Admitted types: {" - ".join(admitted_types)}'
-        )
-
-    # upload file to long term memory, in the background
-    uploaded_file = deepcopy(format_upload_file(file))
-    # we deepcopy the file because FastAPI does not keep the file in memory after the response returns to the client
-    # https://github.com/tiangolo/fastapi/discussions/10936
-    background_tasks.add_task(
-        lizard.rabbit_hole.ingest_file,
-        ccat=ccat,
-        file=uploaded_file,
-        metadata=json.loads(metadata)
-    )
-
-    # reply to client
-    return UploadSingleFileResponse(
-        filename=file.filename, content_type=file.content_type, info="File is being ingested asynchronously"
-    )
-
-
-# receive files via http endpoint
 @router.post("/batch", response_model=Dict[str, UploadSingleFileResponse])
+@router.post("/batch/{chat_id}", response_model=UploadSingleFileResponse)
 async def upload_files(
     request: Request,
     files: List[UploadFile],
@@ -190,19 +109,19 @@ async def upload_files(
     metadata_dict = json.loads(metadata)
 
     for file in files:
-        response[file.filename] = await upload_file(
-            request,
-            file,
-            background_tasks,
-            # if file.filename in dictionary pass the stringified metadata, otherwise pass empty dictionary-like string
-            metadata=json.dumps(metadata_dict[file.filename]) if file.filename in metadata_dict else "{}",
-            info=info
+        # if file.filename in dictionary pass the stringified metadata, otherwise pass empty dictionary-like string
+        metadata_dict_current = json.dumps(metadata_dict[file.filename]) if file.filename in metadata_dict else "{}"
+        on_upload_single_file(request, info, file, background_tasks, metadata_dict_current)
+
+        response[file.filename] = UploadSingleFileResponse(
+            filename=file.filename, content_type=file.content_type, info="File is being ingested asynchronously"
         )
 
     return response
 
 
 @router.post("/web", response_model=UploadUrlResponse)
+@router.post("/web/{chat_id}", response_model=UploadUrlResponse)
 async def upload_url(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -223,7 +142,7 @@ async def upload_url(
             # upload file to long term memory, in the background
             background_tasks.add_task(
                 request.app.state.lizard.rabbit_hole.ingest_file,
-                ccat=info.cheshire_cat,
+                cat=info.stray_cat or info.cheshire_cat,
                 file=upload_config.url,
                 **upload_config.model_dump(exclude={"url"})
             )
@@ -252,7 +171,7 @@ async def upload_memory(
 
     # Ingest memories in background and notify client
     background_tasks.add_task(
-        request.app.state.lizard.rabbit_hole.ingest_memory, ccat=info.cheshire_cat, file=deepcopy(file)
+        request.app.state.lizard.rabbit_hole.ingest_memory, cat=info.cheshire_cat, file=deepcopy(file)
     )
 
     # reply to client
@@ -287,3 +206,59 @@ async def get_source_urls(
                 and memory_point.payload["metadata"]["source"].startswith("http")
         )
     ]
+
+
+# receive files via http endpoint
+@router.post("/", response_model=UploadSingleFileResponse)
+@router.post("/{chat_id}", response_model=UploadSingleFileResponse)
+async def upload_file(
+    request: Request,
+    file: UploadFile,
+    background_tasks: BackgroundTasks,
+    metadata: str = Form(
+        default="{}",
+        description="Metadata to be stored with each chunk (e.g. author, category, etc.). Since we are passing this along side form data, must be a JSON string (use `json.dumps(metadata)`)."
+    ),
+    info: AuthorizedInfo = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
+) -> UploadSingleFileResponse:
+    """Upload a file containing text (.txt, .md, .pdf, etc.). File content will be extracted and segmented into chunks.
+    Chunks will be then vectorized and stored into documents memory.
+
+    Note
+    ----------
+    `metadata` must be passed as a JSON-formatted string into the form data.
+    This is necessary because the HTTP protocol does not allow file uploads to be sent as JSON.
+
+    Example
+    ----------
+    ```
+    content_type = "application/pdf"
+    file_name = "sample.pdf"
+    file_path = f"tests/mocks/{file_name}"
+    with open(file_path, "rb") as f:
+        files = {"file": (file_name, f, content_type)}
+
+        metadata = {
+            "source": "sample.pdf",
+            "title": "Test title",
+            "author": "Test author",
+            "year": 2020,
+        }
+        # upload file endpoint only accepts form-encoded data
+        payload = {
+            "metadata": json.dumps(metadata)
+        }
+
+        response = requests.post(
+            "http://localhost:1865/rabbithole/",
+            files=files,
+            data=payload
+        )
+    ```
+    """
+    on_upload_single_file(request, info, file, background_tasks, metadata)
+
+    # reply to client
+    return UploadSingleFileResponse(
+        filename=file.filename, content_type=file.content_type, info="File is being ingested asynchronously"
+    )

@@ -5,6 +5,7 @@ from cat.utils import singleton
 
 DEFAULT_AGENT_KEY = "agent"  # default agent_id for backward compatibility
 DEFAULT_SYSTEM_KEY = "system"
+UNALLOWED_AGENT_KEYS = [DEFAULT_SYSTEM_KEY, "chat_id", "user_id", "session_id", "message_id", "web", "batch"]
 
 
 @singleton

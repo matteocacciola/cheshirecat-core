@@ -543,3 +543,11 @@ Just output the class, nothing else."""
     @property
     def chunker(self):
         return self.cheshire_cat.chunker
+
+    @property
+    def file_manager(self):
+        return self.cheshire_cat.file_manager
+
+    @property
+    def vector_memory_handler(self):
+        return self.cheshire_cat.vector_memory_handler

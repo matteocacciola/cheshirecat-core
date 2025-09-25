@@ -22,11 +22,13 @@ def get_class_from_decorated_singleton(singleton):
     return singleton().__class__
 
 
-def send_file(file_name, content_type, client, headers, payload=None):
+def send_file(file_name, content_type, client, headers, payload=None, ch_id=None):
     file_path = f"tests/mocks/{file_name}"
+
+    url = "/rabbithole/" if not ch_id else f"/rabbithole/{ch_id}"
     with open(file_path, "rb") as f:
         files = {"file": (file_name, f, content_type)}
-        response = client.post("/rabbithole/", files=files, data=payload, headers=headers)
+        response = client.post(url, files=files, data=payload, headers=headers)
     return response, file_path
 
 
