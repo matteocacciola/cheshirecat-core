@@ -42,7 +42,7 @@ class CustomJinaMultimodalEmbedder(MultimodalEmbeddings):
 
         ret = httpx.post(
             self.url,
-            data={"model": self.model, "input": payload, "task": self.task},
+            json={"model": self.model, "input": payload, "task": self.task},
             headers=self.headers,
             timeout=300.0,
         )
