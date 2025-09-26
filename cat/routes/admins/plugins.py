@@ -105,7 +105,7 @@ async def get_plugin_details(
     if not lizard.plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
-    active_plugins = lizard.plugin_manager.load_active_plugins_from_db()
+    active_plugins = lizard.plugin_manager.load_active_plugins_ids_from_db()
     plugin = lizard.plugin_manager.plugins[plugin_id]
 
     # get manifest and active True/False. We make a copy to avoid modifying the original obj

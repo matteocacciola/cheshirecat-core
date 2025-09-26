@@ -43,15 +43,16 @@ class Tweedledee(MadHatter):
     def find_plugins(self):
         self.plugins = {}
 
-        self.active_plugins = self.load_active_plugins_from_db()
+        self.active_plugins = self.load_active_plugins_ids_from_db()
 
         # plugins are already loaded when BillTheLizard is created; since its plugin manager scans the plugins folder
         # then, we just need to grab the plugins from there
-        for plugin_id in self.system_plugins.keys():
+        for plugin_id in self.available_plugins.keys():
             if plugin_id not in self.active_plugins:
                 continue
 
-            self._load_plugin(plugin_id)
+            if plugin_id not in self.plugins.keys():
+                self.plugins[plugin_id] = self.available_plugins[plugin_id]
             try:
                 self.plugins[plugin_id].activate_settings(self.agent_key)
             except Exception as e:
@@ -62,26 +63,19 @@ class Tweedledee(MadHatter):
         self._on_finish_finding_plugins()
 
     def plugin_exists(self, plugin_id: str):
-        return plugin_id in self.system_plugins.keys()
-
-    def __local_plugin_exists(self, plugin_id: str):
-        return plugin_id in self.plugins.keys()
-
-    def _load_plugin(self, plugin_id: str) -> bool:
-        if self.__local_plugin_exists(plugin_id):
-            return False
-
-        self.plugins[plugin_id] = self.system_plugins[plugin_id]
-        return True
+        return plugin_id in self.available_plugins.keys()
 
     def on_plugin_activation(self, plugin_id: str):
-        self._load_plugin(plugin_id)
+        if plugin_id in self.plugins.keys():
+            return
+
+        self.plugins[plugin_id] = self.available_plugins[plugin_id]
 
         # Activate the plugin
         self.plugins[plugin_id].activate_settings(self.agent_key)
 
     def on_plugin_deactivation(self, plugin_id: str):
-        if plugin_id == self.get_base_core_plugin_id or not self.__local_plugin_exists(plugin_id):
+        if plugin_id == self.get_base_core_plugin_id or plugin_id not in self.plugins.keys():
             return
 
         # Deactivate the plugin
@@ -94,7 +88,7 @@ class Tweedledee(MadHatter):
             raise Exception("base_plugin cannot be deactivated")
 
         if not self.plugin_exists(plugin_id):
-            raise Exception(f"Plugin {plugin_id} not present in plugins folder")
+            raise Exception(f"Plugin {plugin_id} not active in the system")
 
         # update list of active plugins
         if plugin_id in self.active_plugins:
@@ -103,9 +97,10 @@ class Tweedledee(MadHatter):
             self.activate_plugin(plugin_id)
 
     @property
-    def system_plugins(self) -> Dict[str, Plugin]:
-        return Tweedledum().plugins
+    def agent_key(self) -> str:
+        return self.__agent_key
 
     @property
-    def agent_key(self):
-        return self.__agent_key
+    def available_plugins(self) -> Dict[str, Plugin]:
+        # the `plugins` property of the plugin manager of BillTheLizard contains only the globally active plugins
+        return Tweedledum().plugins

@@ -166,7 +166,12 @@ def create_plugin_manifest(
     return manifest
 
 
-async def get_plugins(plugin_manager: MadHatter, query: str | None = None) -> Plugins:
+async def get_available_plugins(
+    plugin_manager: MadHatter,
+    query: str = None,
+    # author: str = None, to be activated in case of more granular search
+    # tag: str = None, to be activated in case of more granular search
+) -> GetAvailablePluginsResponse:
     """
     Get the plugins related to the passed plugin manager instance and the query.
     Args:
@@ -182,25 +187,15 @@ async def get_plugins(plugin_manager: MadHatter, query: str | None = None) -> Pl
     registry_plugins_index = {p.plugin_url: p for p in registry_plugins if p.plugin_url is not None}
 
     # get active plugins
-    active_plugins = plugin_manager.load_active_plugins_from_db()
+    active_plugins_ids = plugin_manager.load_active_plugins_ids_from_db()
 
     # list installed plugins' manifest
     installed_plugins = [
-        create_plugin_manifest(p, active_plugins, registry_plugins_index, query)
-        for p in plugin_manager.plugins.values()
+        create_plugin_manifest(p, active_plugins_ids, registry_plugins_index, query)
+        for p in plugin_manager.available_plugins.values()
     ]
 
-    return Plugins(installed=installed_plugins, registry=list(registry_plugins_index.values()))
-
-
-async def get_available_plugins(
-    plugin_manager: MadHatter,
-    query: str = None,
-    # author: str = None, to be activated in case of more granular search
-    # tag: str = None, to be activated in case of more granular search
-) -> GetAvailablePluginsResponse:
-    """List available plugins"""
-    plugins = await get_plugins(plugin_manager, query)
+    plugins = Plugins(installed=installed_plugins, registry=list(registry_plugins_index.values()))
 
     return GetAvailablePluginsResponse(
         filters=GetAvailablePluginsFilter(
@@ -211,6 +206,7 @@ async def get_available_plugins(
         installed=plugins.installed,
         registry=plugins.registry,
     )
+
 
 def get_plugins_settings(plugin_manager: MadHatter, agent_id: str) -> PluginsSettingsResponse:
     settings = []

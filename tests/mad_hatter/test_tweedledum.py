@@ -19,7 +19,7 @@ def test_instantiation_discovery(lizard):
         assert k in all_plugins
         assert isinstance(plugin_manager.plugins[k], Plugin)
 
-    loaded_plugins = plugin_manager.load_active_plugins_from_db()
+    loaded_plugins = plugin_manager.load_active_plugins_ids_from_db()
     for p in loaded_plugins:
         assert p in all_plugins
         assert plugin_manager.plugins[p].active
@@ -76,7 +76,7 @@ def test_plugin_install(lizard, plugin_is_flat):
     assert "mock_plugin" in list(plugin_manager.plugins.keys())
     assert isinstance(plugin_manager.plugins["mock_plugin"], Plugin)
     assert (
-        "mock_plugin" in plugin_manager.load_active_plugins_from_db()
+        "mock_plugin" in plugin_manager.load_active_plugins_ids_from_db()
     )  # plugin starts active
 
     # plugin is activated by default
@@ -116,7 +116,7 @@ def test_plugin_install(lizard, plugin_is_flat):
             assert id(cached_hook) in hooks_ram_addresses  # same object in memory!
 
     # list of active plugins in DB is correct
-    active_plugins = plugin_manager.load_active_plugins_from_db()
+    active_plugins = plugin_manager.load_active_plugins_ids_from_db()
     assert len(active_plugins) == len(core_plugins) + 1
     assert "mock_plugin" in active_plugins
 
@@ -131,7 +131,7 @@ def test_plugin_uninstall_non_existent(lizard):
     assert len(plugin_manager.plugins) == len(core_plugins)
 
     # list of active plugins in DB is correct
-    active_plugins = plugin_manager.load_active_plugins_from_db()
+    active_plugins = plugin_manager.load_active_plugins_ids_from_db()
     assert len(active_plugins) == len(core_plugins)
     for p in active_plugins:
         assert p in core_plugins
@@ -162,7 +162,7 @@ def test_plugin_uninstall(lizard, plugin_is_flat):
     assert len(plugin_manager.procedures_registry) == 3
 
     # list of active plugins in DB is correct
-    active_plugins = plugin_manager.load_active_plugins_from_db()
+    active_plugins = plugin_manager.load_active_plugins_ids_from_db()
     assert len(active_plugins) == len(core_plugins)
     for p in active_plugins:
         assert p in core_plugins

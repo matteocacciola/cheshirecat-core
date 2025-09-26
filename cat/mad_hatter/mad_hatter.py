@@ -1,15 +1,16 @@
+import os
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from pathlib import Path
 from typing import List, Dict, Any
 
-import cat.utils as utils
 from cat.db.cruds import settings as crud_settings
 from cat.db.models import Setting
 from cat.log import log
 from cat.mad_hatter.decorators import CustomEndpoint, CatHook
 from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.procedures import CatProcedure
+from cat.utils import get_plugins_path, get_core_plugins_path, inspect_calling_folder, dispatch
 
 
 class MadHatter(ABC):
@@ -57,14 +58,14 @@ class MadHatter(ABC):
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
 
         # notify sync has finished
-        utils.dispatch(self.on_finish_plugins_sync_callback)
+        dispatch(self.on_finish_plugins_sync_callback)
 
     def get_core_plugins_ids(self) -> List[str]:
-        path = Path(utils.get_core_plugins_path())
+        path = Path(get_core_plugins_path())
         core_plugins = [p.name for p in path.iterdir() if p.is_dir()]
         return core_plugins
 
-    def load_active_plugins_from_db(self) -> List[str]:
+    def load_active_plugins_ids_from_db(self) -> List[str]:
         active_plugins_from_db = crud_settings.get_setting_by_name(self.agent_key, "active_plugins")
         active_plugins: List[str] = [] if active_plugins_from_db is None else active_plugins_from_db["value"]
 
@@ -158,8 +159,22 @@ class MadHatter(ABC):
         return tea_cup
 
     def get_plugin(self):
-        name = utils.inspect_calling_folder()
+        name = inspect_calling_folder()
         return self.plugins[name]
+
+    def _get_plugin_folder_path(self, plugin_id: str) -> str:
+        return os.path.join(
+            get_core_plugins_path() if plugin_id in self.get_core_plugins_ids() else get_plugins_path(),
+            plugin_id
+        )
+
+    def load_plugin(self, plugin_id: str) -> Plugin | None:
+        try:
+            folder = self._get_plugin_folder_path(plugin_id)
+            return Plugin(folder)
+        except Exception as e:
+            log.error(str(e))
+            return None
 
     @property
     def procedures(self) -> List[CatProcedure]:
@@ -189,11 +204,12 @@ class MadHatter(ABC):
     def on_plugin_deactivation(self, plugin_id: str):
         pass
 
+    @property
     @abstractmethod
-    def _load_plugin(self, plugin_path: str) -> bool:
+    def agent_key(self) -> str:
         pass
 
     @property
     @abstractmethod
-    def agent_key(self):
+    def available_plugins(self) -> Dict[str, Plugin]:
         pass
