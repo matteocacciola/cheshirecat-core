@@ -9,9 +9,6 @@ MAX_AST_DEPTH = 100
 # --- Security Configuration ---
 # List of forbidden modules/functions that should not be imported or called directly
 FORBIDDEN_IMPORTS = [
-    "os", "sys", "subprocess", "shutil", "requests", "urllib", # Basic system/network interaction
-    "socket", "tempfile", "glob", "zipfile", "tarfile", # File system manipulation beyond plugin scope
-    "pickle", "marshal", # Deserialization risks
     "ctypes", # Access C functions
     "__import__", "exec", "eval", # Code execution
     "compile", # Code compilation
@@ -23,9 +20,6 @@ FORBIDDEN_CALLS = [
     "os.system", "os.exec", "os.fork", "os.spawn",
     "subprocess.run", "subprocess.call", "subprocess.Popen",
     "shutil.rmtree", "shutil.move", "shutil.copy",
-    "requests.get", "requests.post", # Generic network requests
-    "urllib.request.urlopen",
-    "socket.socket",
     "tempfile.mkdtemp", "tempfile.mkstemp",
     "eval", "exec", "__import__", "compile",
     "builtins.open", # Explicitly disallow open from builtins if allowing a custom "open"

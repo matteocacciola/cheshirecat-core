@@ -104,6 +104,11 @@ class Plugin:
             log.debug(f"Remove module {py_filename}")
             sys.modules.pop(py_filename)
 
+        # deactivate the endpoints
+        fastapi_app = self.fastapi_app
+        for endpoint in self.endpoints:
+            endpoint.deactivate(fastapi_app)
+
         self._unload_decorated_functions()
         self._active = False
         self.deactivate_settings(agent_id)
@@ -460,3 +465,9 @@ class Plugin:
     @property
     def overrides(self):
         return self._plugin_overrides
+
+    @property
+    def fastapi_app(self):
+        from cat.looking_glass import BillTheLizard
+
+        return BillTheLizard().fastapi_app

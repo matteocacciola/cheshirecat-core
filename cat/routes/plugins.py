@@ -72,7 +72,11 @@ async def get_cheshirecat_plugin_settings(
     plugin_id = slugify(plugin_id, separator="_")
 
     ccat = info.cheshire_cat
-    return get_plugin_settings(ccat.plugin_manager, plugin_id, ccat.id)
+    plugin_manager = ccat.plugin_manager
+    if not plugin_manager.local_plugin_exists(plugin_id):
+        raise CustomNotFoundException("Plugin not found")
+
+    return get_plugin_settings(plugin_manager, plugin_id, ccat.id)
 
 
 @router.put("/settings/{plugin_id}", response_model=GetSettingResponse)
@@ -87,7 +91,7 @@ async def upsert_cheshirecat_plugin_settings(
     # access cat instance
     ccat = info.cheshire_cat
 
-    if not ccat.plugin_manager.plugin_exists(plugin_id):
+    if not ccat.plugin_manager.local_plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
     # Get the plugin object

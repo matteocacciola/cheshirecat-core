@@ -158,10 +158,10 @@ def create_plugin_manifest(
         if (
                 (query is None or query.lower() in plugin_text)
                 and r is not None
-                and r.get("version") is not None
-                and r.get("version") != plugin.manifest.get("version")
+                and r.version is not None
+                and r.version != plugin.manifest.version
         ):
-            manifest.local_info["upgrade"] = r.get("version")
+            manifest.local_info["upgrade"] = r.version
 
     return manifest
 
@@ -232,9 +232,6 @@ def get_plugins_settings(plugin_manager: MadHatter, agent_id: str) -> PluginsSet
 
 def get_plugin_settings(plugin_manager: MadHatter, plugin_id: str, agent_id: str) -> GetSettingResponse:
     """Returns the settings of a specific plugin"""
-    if not plugin_manager.plugin_exists(plugin_id):
-        raise CustomNotFoundException("Plugin not found")
-
     settings = plugin_manager.plugins[plugin_id].load_settings(agent_id)
     scheme = plugin_manager.plugins[plugin_id].settings_schema()
 
