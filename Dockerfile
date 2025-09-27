@@ -13,6 +13,10 @@ RUN apt-get update && \
         fastjar \
         libmagic-mgc \
         libmagic1 \
+        libmagic-dev \
+        poppler-utils \
+        tesseract-ocr \
+        libgl1-mesa-glx \
         mime-support && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*

@@ -349,7 +349,7 @@ class RabbitHole:
         plugin_manager = self.cat.plugin_manager
 
         # do something on the docs before they are split
-        docs = plugin_manager.execute_hook("before_rabbithole_splits_text", docs, cat=self.stray or self.cat)
+        docs = plugin_manager.execute_hook("before_rabbithole_splits_documents", docs, cat=self.stray or self.cat)
 
         # split docs
         chunker = self.cat.chunker

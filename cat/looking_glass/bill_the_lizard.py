@@ -71,6 +71,7 @@ class BillTheLizard:
         self.plugin_manager.on_start_plugin_uninstall = self.on_start_plugin_uninstall
         self.plugin_manager.on_end_plugin_uninstall = self.on_end_plugin_uninstall
         self.plugin_manager.on_finish_plugins_sync = self.on_finish_plugins_sync
+        self.plugin_manager.on_end_plugin_activate = self.on_end_plugin_activate
         self.plugin_manager.on_start_plugin_deactivate = self.on_start_plugin_deactivate
 
         # load active plugins
@@ -185,6 +186,13 @@ class BillTheLizard:
         if self.fastapi_app is not None:
             self._activate_pending_endpoints()
 
+    def on_end_plugin_activate(self, plugin_id: str) -> None:
+        # migrate plugin settings in the Cheshire Cats
+        for ccat_id in crud.get_agents_plugin_keys(plugin_id):
+            ccat = self.get_cheshire_cat(ccat_id)
+            plugin = ccat.plugin_manager.plugins[plugin_id]
+            plugin.activate_settings(ccat_id)
+
     def on_start_plugin_deactivate(self, plugin_id: str) -> None:
         self._remove_plugin_from_cheshirecats(plugin_id)
 
@@ -277,9 +285,9 @@ class BillTheLizard:
         Args:
             plugin_id: The id of the plugin to install or uninstall
         """
-        for ccat_id in crud.get_agents_main_keys():
+        # deactivate plugins in the Cheshire Cats
+        for ccat_id in crud.get_agents_plugin_keys(plugin_id):
             ccat = self.get_cheshire_cat(ccat_id)
-            # deactivate plugins in the Cheshire Cats
             ccat.plugin_manager.deactivate_plugin(plugin_id)
 
     async def create_cheshire_cat(self, agent_id: str) -> CheshireCat:

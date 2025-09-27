@@ -91,14 +91,7 @@ class MadHatter(ABC):
         if not self.plugin_exists(plugin_id):
             raise Exception(f"Plugin {plugin_id} not present in plugins folder")
 
-        if plugin_id in self.active_plugins:
-            return
-
         dispatch(self.on_start_plugin_activate, plugin_id=plugin_id)
-
-        log.warning(f"Toggle plugin '{plugin_id}' for agent '{self.agent_key}': Activate")
-        if plugin_id in self.plugins.keys():
-            return
 
         if self.on_plugin_activation(plugin_id=plugin_id):
             # Add the plugin in the list of active plugins

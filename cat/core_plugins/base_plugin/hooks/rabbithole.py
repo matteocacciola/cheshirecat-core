@@ -13,7 +13,6 @@ from langchain_community.document_loaders.parsers.msword import MsWordParser
 from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
 from langchain_community.document_loaders.parsers.txt import TextParser
 from langchain_core.documents import Document
-from typing_extensions import deprecated
 
 from cat.core_plugins.base_plugin.parsers import YoutubeParser, TableParser, JSONParser, PowerPointParser
 from cat.mad_hatter.decorators import hook
@@ -36,7 +35,7 @@ def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
         file_handlers: Dict
             Edited dictionary of supported mime types and related parsers.
     """
-    return file_handlers | {
+    file_handlers.update({
         "application/json": JSONParser(),
         "application/msword": MsWordParser(),
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document": MsWordParser(),
@@ -57,7 +56,8 @@ def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
         "audio/ogg": FasterWhisperParser(),
         "audio/wav": FasterWhisperParser(),
         "audio/webm": FasterWhisperParser(),
-    }
+    })
+    return file_handlers
 
 
 # Hook called just before of inserting a document in vector memory
@@ -111,12 +111,6 @@ def before_rabbithole_splits_documents(docs: List[Document], cat) -> List[Docume
             Edited Langchain `Document`s.
     """
     return docs
-
-
-@hook(priority=0)
-@deprecated("Use `before_rabbithole_splits_documents` instead.")
-def before_rabbithole_splits_text(docs: List[Document], cat) -> List[Document]:
-    return before_rabbithole_splits_documents(docs, cat)
 
 
 # Hook called when a list of Document is going to be inserted in memory from the rabbit hole.

@@ -26,6 +26,7 @@ services:
       - CCAT_RABBITMQ_PORT=5672
       - CCAT_RABBITMQ_USER=guest
       - CCAT_RABBITMQ_PASSWORD=guest
+      - CCAT_LOG_LEVEL=DEBUG
     volumes:
       - ./cat:/app/cat
       - ./data:/app/data

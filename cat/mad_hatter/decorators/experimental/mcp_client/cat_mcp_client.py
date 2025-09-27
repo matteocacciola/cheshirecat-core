@@ -77,10 +77,10 @@ class CatMcpClient(Client, CatProcedure, ABC):
                 # Create a StructuredTool for each discovered procedure
                 tools.append(
                     StructuredTool.from_function(
-                        name=tool.name,
+                        name=cat_tool.name,
                         description=build_description(cat_tool),
-                        func=create_tool_caller(tool.name),
-                        args_schema=tool.input_schema,
+                        func=create_tool_caller(cat_tool.name),
+                        args_schema=cat_tool.input_schema,
                     )
                 )
         except Exception as e:

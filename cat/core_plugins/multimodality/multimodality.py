@@ -5,8 +5,8 @@ from langchain_community.document_loaders import (
     UnstructuredPowerPointLoader,
     UnstructuredExcelLoader,
     UnstructuredImageLoader,
+    UnstructuredPDFLoader,
 )
-from langchain_community.document_loaders.parsers import PyMuPDFParser
 
 from cat.core_plugins.multimodality.embedder import EmbedderJinaMultimodalConfig
 from cat.core_plugins.multimodality.unstructured_parser import UnstructuredParser
@@ -37,14 +37,19 @@ def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
         file_handlers: Dict
             Edited dictionary of supported mime types and related parsers.
     """
-    return file_handlers | {
+    file_handlers.update({
         "application/msword": UnstructuredParser(UnstructuredWordDocumentLoader),
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": UnstructuredParser(UnstructuredWordDocumentLoader),
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": UnstructuredParser(
+            UnstructuredWordDocumentLoader
+        ),
         "application/vnd.ms-powerpoint": UnstructuredParser(UnstructuredPowerPointLoader),
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation": UnstructuredParser(UnstructuredPowerPointLoader),
-        "application/pdf": PyMuPDFParser(extract_images=True),
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation": UnstructuredParser(
+            UnstructuredPowerPointLoader
+        ),
+        "application/pdf": UnstructuredParser(UnstructuredPDFLoader),
         "application/vnd.ms-excel": UnstructuredParser(UnstructuredExcelLoader),
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": UnstructuredParser(UnstructuredExcelLoader),
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": UnstructuredParser(
+            UnstructuredExcelLoader),
         "image/png": UnstructuredParser(UnstructuredImageLoader),
         "image/jpeg": UnstructuredParser(UnstructuredImageLoader),
         "image/jpg": UnstructuredParser(UnstructuredImageLoader),
@@ -52,4 +57,6 @@ def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
         "image/bmp": UnstructuredParser(UnstructuredImageLoader),
         "image/tiff": UnstructuredParser(UnstructuredImageLoader),
         "image/webp": UnstructuredParser(UnstructuredImageLoader),
-    }
+    })
+
+    return file_handlers
