@@ -535,8 +535,10 @@ def retrieve_image(content_image: str | None) -> str | None:
 
 def subscribe_all_subscribers(instance: "BillTheLizard"):
     for name, method in vars(type(instance)).items():
-        if callable(method) and hasattr(method, "event_name"):
-            instance.plugin_manager.dispatcher.subscribe(
-                method.event_name,
-                method.__get__(instance),  # type: ignore
-            )
+        if not callable(method) or not hasattr(method, "event_name"):
+            continue
+
+        instance.plugin_manager.dispatcher.subscribe(
+            method.event_name,
+            method.__get__(instance),  # type: ignore
+        )

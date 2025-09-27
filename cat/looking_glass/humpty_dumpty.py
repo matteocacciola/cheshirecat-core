@@ -2,7 +2,10 @@ import asyncio
 import concurrent.futures
 from typing import Callable, Any, List, Dict
 
+from cat.utils import singleton
 
+
+@singleton
 class HumptyDumpty:
     def __init__(self):
         self._subscribers: Dict[str, List[Callable[..., Any]]] = {}

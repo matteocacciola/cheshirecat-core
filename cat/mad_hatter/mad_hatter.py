@@ -35,7 +35,7 @@ class MadHatter(ABC):
 
         self.active_plugins: List[str] = []
 
-    def _sync_decorated(self):
+    def _sync_decorated(self, dispatch_events: bool = True):
         """
         Load hooks and procedures from active plugins and external sources.
         """
@@ -58,7 +58,8 @@ class MadHatter(ABC):
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
 
         # notify sync has finished
-        self.dispatcher.dispatch("on_finish_plugins_sync")
+        if dispatch_events:
+            self.dispatcher.dispatch("on_finish_plugins_sync")
 
     def load_active_plugins_ids_from_db(self) -> List[str]:
         active_plugins_from_db = crud_settings.get_setting_by_name(self.agent_key, "active_plugins")
@@ -81,27 +82,30 @@ class MadHatter(ABC):
 
         return active_plugins
 
-    def activate_plugin(self, plugin_id: str):
+    def activate_plugin(self, plugin_id: str, dispatch_events: bool = True):
         if not self.plugin_exists(plugin_id):
             raise Exception(f"Plugin {plugin_id} not present in plugins folder")
 
-        self.dispatcher.dispatch("on_start_plugin_activate", plugin_id=plugin_id)
+        if dispatch_events:
+            self.dispatcher.dispatch("on_start_plugin_activate", plugin_id=plugin_id)
 
         if self.on_plugin_activation(plugin_id=plugin_id):
             # Add the plugin in the list of active plugins
             self.active_plugins.append(plugin_id)
 
         self._on_finish_discovering_plugins()
-        self.dispatcher.dispatch("on_end_plugin_activate", plugin_id=plugin_id)
+        if dispatch_events:
+            self.dispatcher.dispatch("on_end_plugin_activate", plugin_id=plugin_id)
 
-    def deactivate_plugin(self, plugin_id: str):
+    def deactivate_plugin(self, plugin_id: str, dispatch_events: bool = True):
         if not self.plugin_exists(plugin_id):
             raise Exception(f"Plugin {plugin_id} not present in plugins folder")
 
         if plugin_id not in self.active_plugins or plugin_id == self.get_base_core_plugin_id:
             return
 
-        self.dispatcher.dispatch("on_start_plugin_deactivate", plugin_id=plugin_id)
+        if dispatch_events:
+            self.dispatcher.dispatch("on_start_plugin_deactivate", plugin_id=plugin_id)
 
         # Deactivate the plugin
         log.warning(f"Toggle plugin '{plugin_id}' for agent '{self.agent_key}': Deactivate")
@@ -115,7 +119,8 @@ class MadHatter(ABC):
             self.plugins.pop(plugin_id, None)
 
         self._on_finish_discovering_plugins()
-        self.dispatcher.dispatch("on_end_plugin_deactivate", plugin_id=plugin_id)
+        if dispatch_events:
+            self.dispatcher.dispatch("on_end_plugin_deactivate", plugin_id=plugin_id)
 
     # activate / deactivate plugin
     def toggle_plugin(self, plugin_id: str):
