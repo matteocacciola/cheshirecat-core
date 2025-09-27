@@ -1,6 +1,4 @@
-import asyncio
 import base64
-import concurrent.futures
 import hashlib
 import inspect
 import mimetypes
@@ -8,7 +6,7 @@ import os
 from datetime import timedelta
 from enum import Enum as BaseEnum, EnumMeta
 from io import BytesIO
-from typing import Dict, List, Type, TypeVar, Any, Callable
+from typing import Dict, List, Type, TypeVar, Any
 import aiofiles
 import requests
 import tomli
@@ -439,32 +437,6 @@ def get_embedder_name(embedder: Embeddings) -> str:
     return embedder_name.lower()
 
 
-def dispatch(func: Callable[..., Any], *args, **kwargs) -> Any:
-    """
-    Execute a function whether it's sync or async.
-    If async and we're in a running event loop, execute in a separate thread.
-    """
-    if not asyncio.iscoroutinefunction(func) and not asyncio.iscoroutine(func):
-        return func(*args, **kwargs)
-
-    coro = func(*args, **kwargs)
-
-    try:
-        # Check if we're in a running event loop
-        asyncio.get_running_loop()
-
-        # We're in a running loop, so we need to use a thread
-        def run_async_in_thread():
-            return asyncio.run(coro)
-
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future = executor.submit(run_async_in_thread)
-            return future.result()  # This blocks until completion
-    except RuntimeError:
-        # No running loop, safe to use asyncio.run()
-        return asyncio.run(coro)
-
-
 def get_factory_object(agent_id: str, factory: "BaseFactory") -> Any:
     from cat.db.cruds import settings as crud_settings
 
@@ -561,14 +533,10 @@ def retrieve_image(content_image: str | None) -> str | None:
         return None
 
 
-async def run_sync_or_async(f, *args, **kwargs) -> Any:
-    if inspect.iscoroutinefunction(f):
-        return await f(*args, **kwargs)
-
-    caller = get_caller_info(3, return_short=False)
-
-    # Format and log the warning message
-    log.warning(
-        f"{caller} Deprecation Warning: Function {f} should be async. Please update it."
-    )
-    return f(*args, **kwargs)
+def subscribe_all_subscribers(instance: "BillTheLizard"):
+    for name, method in vars(type(instance)).items():
+        if callable(method) and hasattr(method, "event_name"):
+            instance.plugin_manager.dispatcher.subscribe(
+                method.event_name,
+                method.__get__(instance)
+            )

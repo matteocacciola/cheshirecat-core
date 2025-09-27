@@ -7,6 +7,8 @@ from ast import literal_eval
 from copy import deepcopy
 from typing import Dict, List, Any
 from fastapi import Query, UploadFile, BackgroundTasks, Request
+from langchain.globals import set_llm_cache
+from langchain_core.caches import InMemoryCache
 from pydantic import BaseModel, Field, model_serializer
 
 from cat import utils
@@ -304,12 +306,19 @@ def format_upload_file(upload_file: UploadFile) -> UploadFile:
 
 
 async def startup_app(app):
-    # load the Manager and the Job Handler
-    app.state.lizard = BillTheLizard()
-    app.state.lizard.fastapi_app = app
-    app.state.white_rabbit = WhiteRabbit()
+    set_llm_cache(InMemoryCache())
+    utils.pod_id()
 
-    await app.state.lizard.create_cheshire_cat(DEFAULT_AGENT_KEY)
+    bill_the_lizard = BillTheLizard()
+    bill_the_lizard.fastapi_app = app
+
+    utils.subscribe_all_subscribers(bill_the_lizard)
+
+    await bill_the_lizard.create_cheshire_cat(DEFAULT_AGENT_KEY)
+
+    # load the Manager and the Job Handler
+    app.state.lizard = bill_the_lizard
+    app.state.white_rabbit = WhiteRabbit()
 
 
 async def shutdown_app(app):

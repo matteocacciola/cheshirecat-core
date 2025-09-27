@@ -11,7 +11,7 @@ def test_list_plugins(lizard, secure_client, secure_client_headers):
         assert key in json["filters"].keys()
 
     # installed
-    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
+    core_plugins = lizard.plugin_manager.get_core_plugins_ids
     for idx in range(len(json["installed"])):
         assert "id" in json["installed"][idx].keys()
         assert json["installed"][idx]["id"] in core_plugins

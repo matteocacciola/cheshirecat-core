@@ -12,26 +12,25 @@
 # Why use the Cheshire Cat?
 The Cheshire Cat is a framework to build custom AI agents:
 
+- 🤖 Build your own AI agent in minutes, not months
+- 🧠 Make it smart with Retrieval Augmented Generation (RAG)
+- 🏆 Multi-modality, to build the RAG with any kind of documents
+- 💬 Multi-tenancy, to manage multiple chatbots at the same time, each with its own settings, plugins, LLMs, etc.
 - ⚡️ API first, to easily add a conversational layer to your app
-- 💬 Chat via WebSocket and manage your agent with an customizable REST API
-- 🐘 Built-in RAG with **customizable vector database**, so you can use your own technology (e.g., Qdrant, Pinecone, Weaviate, etc.)
-- 🐘 Customizable resources for your documents, so that you can use your own storage (e.g., S3, MinIO, etc.)
-- 🌐 Customizable integration of **MCP clients**, such as LangSmith or LlamaIndex 
-- 🕐 History of conversations and documents, to make your agent smarter
-- 🧩 Plugin system to easily extend the core functionality
+- ☁️ Cloud Ready, working even with horizontal autoscaling
+- 🔐 Secure by design, with API Key and granular permissions
+- 🏗 Production ready, cloud native and scalable
+- 🐋 100% dockerized, to run anywhere
+- 🛠 Easily extendable with plugins
 - 🧩 Built-in plugins
   - 🪛 Extend core components (file managers, LLMs, vector databases)
   - ✂️ Customizable chunking and embedding
   - 🛠 Custom tools, forms, endpoints, MCP clients
   - 🪛 LLM callbacks
+- 🌐 Customizable integration of **MCP clients**, such as LangSmith or LlamaIndex 
 - 🏛 Easy to use Admin Panel (available with the repository [matteocacciola/cheshirecat-admin](https://www.github.com/matteocacciola/cheshirecat-admin))
-- 🌍 Supports any language model via langchain
-- 👥 Multiuser with granular permissions, compatible with any identity provider
-- 💬 Multi-chatbots, with configurable (even different) LLM, chunking strategy and other features per chatbot, plus specific knowledge per chatbot
-- 💬 Remembers conversations and documents and uses them in conversation
-- ☁️ Cloud Ready, working even with horizontal autoscaling
-- 🐋 100% dockerized
 - 🦄 Easy to understand [docs](https://deepwiki.com/matteocacciola/cheshirecat-core)
+- 🌍 Supports any language model via LangChain
 
 We are committed to openness, privacy and creativity, we want to bring AI to the long tail. If you want to know more
 about our vision and values, read the [Code of Ethics](CODE-OF-ETHICS.md).
@@ -78,6 +77,11 @@ for complete responses
 
 # Key differences of this version
 The current version is a multi-tenant fork of the original [Cheshire Cat](https://www.github.com/cheshire-cat-ai/core). Here are the main differences:
+
+## Multimodal RAG
+The original version was designed to work with text documents only.
+This version is designed to work with any kind of documents, such as PDFs, Word documents, images, audio files, etc.
+This is possible by using the [LangChain](https://www.langchain.com/) framework, that allows to easily integrate different types of documents.
 
 ## Multitenancy
 The original version was designed to be a single-tenant application, meaning that it could only manage one chatbot at a time.
@@ -205,6 +209,9 @@ The current version introduces also the following additional hooks:
 
 ### Callbacks:
 - `llm_callbacks`: add custom callbacks to the LangChain LLM/ChatModel
+
+### RabbitHole:
+- `before_rabbithole_splits_documents` replaces the deprecated `before_rabbithole_splits_text`
 
 # Best practices
 

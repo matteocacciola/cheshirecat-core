@@ -9,7 +9,7 @@ from cat.log import log
 from cat.mad_hatter.mad_hatter import MadHatter
 from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.plugin_extractor import PluginExtractor
-from cat.utils import singleton, dispatch
+from cat.utils import singleton
 
 
 @singleton
@@ -67,24 +67,24 @@ class Tweedledum(MadHatter):
 
     def install_extracted_plugin(self, plugin_id: str, plugin_path: str) -> str:
         # extract the plugin from the package
-        dispatch(self.on_start_plugin_install, plugin_id=plugin_id, plugin_path=plugin_path)
+        self.dispatcher.dispatch("on_start_plugin_install", plugin_id=plugin_id, plugin_path=plugin_path)
 
         # create plugin obj, and eventually activate it
-        if plugin_id in self.get_core_plugins_ids():
+        if plugin_id in self.get_core_plugins_ids:
             return plugin_id
 
         self.activate_plugin(plugin_id)
 
         # notify uninstallation has finished
-        dispatch(self.on_end_plugin_install, plugin_id=plugin_id, plugin_path=plugin_path)
+        self.dispatcher.dispatch("on_end_plugin_install", plugin_id=plugin_id, plugin_path=plugin_path)
 
         return plugin_id
 
     def uninstall_plugin(self, plugin_id: str):
-        if not self.plugin_exists(plugin_id) or plugin_id in self.get_core_plugins_ids():
+        if not self.plugin_exists(plugin_id) or plugin_id in self.get_core_plugins_ids:
             return
 
-        dispatch(self.on_start_plugin_uninstall, plugin_id=plugin_id)
+        self.dispatcher.dispatch("on_start_plugin_uninstall", plugin_id=plugin_id)
 
         endpoints = self.plugins[plugin_id].endpoints
         plugin_path = self.plugins[plugin_id].path
@@ -99,7 +99,7 @@ class Tweedledum(MadHatter):
         crud_plugins.destroy_plugin(plugin_id)
 
         # notify uninstall has finished
-        dispatch(self.on_end_plugin_uninstall, plugin_id=plugin_id, endpoints=endpoints)
+        self.dispatcher.dispatch("on_end_plugin_uninstall", plugin_id=plugin_id, endpoints=endpoints)
 
     # discover all plugins
     def discover_plugins(self):

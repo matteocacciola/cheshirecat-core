@@ -22,7 +22,7 @@ def _check_installed_in_cat(secure_client, secure_client_headers, is_active):
 
 
 def _check_not_installed_in_cat(lizard, secure_client, secure_client_headers):
-    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
+    core_plugins = lizard.plugin_manager.get_core_plugins_ids
     # GET plugins endpoint lists the plugin
     response = secure_client.get("/plugins", headers=secure_client_headers)
     available_plugins = response.json()["installed"]

@@ -8,7 +8,7 @@ def test_get_all_plugin_settings(lizard, secure_client, secure_client_headers):
     response = secure_client.get("/plugins/settings", headers=secure_client_headers)
     json = response.json()
 
-    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
+    core_plugins = lizard.plugin_manager.get_core_plugins_ids
     available_plugins = core_plugins + ["mock_plugin"]
 
     assert response.status_code == 200

@@ -12,7 +12,6 @@ from cat.log import log
 from cat.mad_hatter.decorators import CustomEndpoint, CatHook
 from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.procedures import CatProcedure
-from cat.utils import dispatch
 
 
 class MadHatter(ABC):
@@ -20,6 +19,9 @@ class MadHatter(ABC):
     This is the abstract class that defines the methods that the plugin managers should implement.
     """
     def __init__(self):
+        from cat.looking_glass.humpty_dumpty import HumptyDumpty
+
+        self.dispatcher = HumptyDumpty()
         self._skip_folders = ["__pycache__", "lost+found"]
 
         self.plugins: Dict[str, Plugin] = {}
@@ -32,17 +34,6 @@ class MadHatter(ABC):
         self.endpoints: List[CustomEndpoint] = []
 
         self.active_plugins: List[str] = []
-
-        # internal events
-        self.on_start_plugin_install = lambda plugin_id, plugin_path: None
-        self.on_end_plugin_install = lambda plugin_id, plugin_path: None
-        self.on_start_plugin_uninstall = lambda plugin_id: None
-        self.on_end_plugin_uninstall = lambda plugin_id, endpoints: None
-        self.on_finish_plugins_sync = lambda: None
-        self.on_start_plugin_activate = lambda plugin_id: None
-        self.on_end_plugin_activate = lambda plugin_id: None
-        self.on_start_plugin_deactivate = lambda plugin_id: None
-        self.on_end_plugin_deactivate = lambda plugin_id: None
 
     def _sync_decorated(self):
         """
@@ -67,12 +58,7 @@ class MadHatter(ABC):
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
 
         # notify sync has finished
-        dispatch(self.on_finish_plugins_sync)
-
-    def get_core_plugins_ids(self) -> List[str]:
-        path = Path(utils.get_core_plugins_path())
-        core_plugins = [p.name for p in path.iterdir() if p.is_dir()]
-        return core_plugins
+        self.dispatcher.dispatch("on_finish_plugins_sync")
 
     def load_active_plugins_ids_from_db(self) -> List[str]:
         active_plugins_from_db = crud_settings.get_setting_by_name(self.agent_key, "active_plugins")
@@ -80,25 +66,33 @@ class MadHatter(ABC):
 
         if not active_plugins:
             # the core plugins should be appended when the agent is created, i.e. has no active plugins in db
-            active_plugins.extend(self.get_core_plugins_ids())
+            active_plugins.extend(self.get_core_plugins_ids)
 
         # ensure base_plugin is always active
         active_plugins.append(self.get_base_core_plugin_id)
 
-        return list(set(active_plugins))  # remove duplicates
+        # Remove duplicates
+        active_plugins = list(set(active_plugins))
+
+        # Ensure base_factory is first
+        if self.get_base_core_plugin_id in active_plugins:
+            active_plugins.remove(self.get_base_core_plugin_id)
+        active_plugins.insert(0, self.get_base_core_plugin_id)
+
+        return active_plugins
 
     def activate_plugin(self, plugin_id: str):
         if not self.plugin_exists(plugin_id):
             raise Exception(f"Plugin {plugin_id} not present in plugins folder")
 
-        dispatch(self.on_start_plugin_activate, plugin_id=plugin_id)
+        self.dispatcher.dispatch("on_start_plugin_activate", plugin_id=plugin_id)
 
         if self.on_plugin_activation(plugin_id=plugin_id):
             # Add the plugin in the list of active plugins
             self.active_plugins.append(plugin_id)
 
         self._on_finish_discovering_plugins()
-        dispatch(self.on_end_plugin_activate, plugin_id=plugin_id)
+        self.dispatcher.dispatch("on_end_plugin_activate", plugin_id=plugin_id)
 
     def deactivate_plugin(self, plugin_id: str):
         if not self.plugin_exists(plugin_id):
@@ -107,7 +101,7 @@ class MadHatter(ABC):
         if plugin_id not in self.active_plugins or plugin_id == self.get_base_core_plugin_id:
             return
 
-        dispatch(self.on_start_plugin_deactivate, plugin_id=plugin_id)
+        self.dispatcher.dispatch("on_start_plugin_deactivate", plugin_id=plugin_id)
 
         # Deactivate the plugin
         log.warning(f"Toggle plugin '{plugin_id}' for agent '{self.agent_key}': Deactivate")
@@ -121,7 +115,7 @@ class MadHatter(ABC):
             self.plugins.pop(plugin_id, None)
 
         self._on_finish_discovering_plugins()
-        dispatch(self.on_end_plugin_deactivate, plugin_id=plugin_id)
+        self.dispatcher.dispatch("on_end_plugin_deactivate", plugin_id=plugin_id)
 
     # activate / deactivate plugin
     def toggle_plugin(self, plugin_id: str):
@@ -185,7 +179,7 @@ class MadHatter(ABC):
 
     def _get_plugin_folder_path(self, plugin_id: str) -> str:
         return os.path.join(
-            utils.get_core_plugins_path() if plugin_id in self.get_core_plugins_ids() else utils.get_plugins_path(),
+            utils.get_core_plugins_path() if plugin_id in self.get_core_plugins_ids else utils.get_plugins_path(),
             plugin_id
         )
 
@@ -202,11 +196,18 @@ class MadHatter(ABC):
             glob.glob(f"{utils.get_core_plugins_path()}/*/") + glob.glob(f"{utils.get_plugins_path()}/*/")
         ))
 
-        return [
+        plugins = [
             plugin_id
             for folder in all_plugin_folders
             if ((plugin_id := os.path.basename(os.path.normpath(folder))) not in self._skip_folders)
         ]
+
+        # Ensure base_factory is first
+        if self.get_base_core_plugin_id in plugins:
+            plugins.remove(self.get_base_core_plugin_id)
+        plugins.insert(0, self.get_base_core_plugin_id)
+
+        return plugins
 
     # check if plugin exists
     def plugin_exists(self, plugin_id: str):
@@ -219,6 +220,12 @@ class MadHatter(ABC):
     @property
     def get_base_core_plugin_id(self) -> str:
         return "base_plugin"
+
+    @property
+    def get_core_plugins_ids(self) -> List[str]:
+        path = Path(utils.get_core_plugins_path())
+        core_plugins = [p.name for p in path.iterdir() if p.is_dir()]
+        return core_plugins
 
     @abstractmethod
     def discover_plugins(self):

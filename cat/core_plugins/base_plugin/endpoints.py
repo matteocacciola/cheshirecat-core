@@ -10,4 +10,4 @@ async def get_core_plugins(
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGIN, AuthPermission.WRITE),
 ) -> List[str]:
     """Get list of available core plugins"""
-    return lizard.plugin_manager.get_core_plugins_ids()
+    return lizard.plugin_manager.get_core_plugins_ids

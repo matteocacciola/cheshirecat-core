@@ -17,6 +17,7 @@ from cat.exceptions import LoadMemoryException
 from cat.factory.auth_handler import CoreAuthHandler
 from cat.factory.embedder import EmbedderFactory
 from cat.log import log
+from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.mad_hatter import MadHatter, MarchHare, MarchHareConfig, Tweedledum
 from cat.mad_hatter.decorators import CustomEndpoint
@@ -25,7 +26,6 @@ from cat.services.websocket_manager import WebSocketManager
 from cat.utils import (
     singleton,
     get_embedder_name,
-    dispatch,
     get_factory_object,
     get_updated_factory_object,
     pod_id,
@@ -66,15 +66,8 @@ class BillTheLizard:
         self.embedder_name: str | None = None
         self.embedder_size: int | None = None
 
-        self.plugin_manager = Tweedledum()
-        self.plugin_manager.on_end_plugin_install = self.on_end_plugin_install
-        self.plugin_manager.on_start_plugin_uninstall = self.on_start_plugin_uninstall
-        self.plugin_manager.on_end_plugin_uninstall = self.on_end_plugin_uninstall
-        self.plugin_manager.on_finish_plugins_sync = self.on_finish_plugins_sync
-        self.plugin_manager.on_end_plugin_activate = self.on_end_plugin_activate
-        self.plugin_manager.on_start_plugin_deactivate = self.on_start_plugin_deactivate
-
         # load active plugins
+        self.plugin_manager = Tweedledum()
         self.plugin_manager.discover_plugins()
 
         self.websocket_manager = WebSocketManager()
@@ -98,7 +91,7 @@ class BillTheLizard:
         self._start_consumer_threads()
 
     def __del__(self):
-        dispatch(self.shutdown)
+        HumptyDumpty.run_sync_or_async(self.shutdown)
 
     def _start_consumer_threads(self):
         if not MarchHareConfig.is_enabled:
@@ -145,6 +138,7 @@ class BillTheLizard:
 
         self.march_hare.consume_event(callback, MarchHareConfig.channels["PLUGIN_EVENTS"])
 
+    @subscriber("on_end_plugin_install")
     def on_end_plugin_install(self, plugin_id: str, plugin_path: str) -> None:
         # activate the eventual custom endpoints
         for endpoint in self.plugin_manager.plugins[plugin_id].endpoints:
@@ -160,9 +154,11 @@ class BillTheLizard:
             exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
         )
 
+    @subscriber("on_start_plugin_uninstall")
     def on_start_plugin_uninstall(self, plugin_id: str) -> None:
         self._remove_plugin_from_cheshirecats(plugin_id)
 
+    @subscriber("on_end_plugin_uninstall")
     def on_end_plugin_uninstall(self, plugin_id: str, endpoints: List[CustomEndpoint]) -> None:
         fastapi_app = self.fastapi_app
 
@@ -178,6 +174,7 @@ class BillTheLizard:
             exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
         )
 
+    @subscriber("on_finish_plugins_sync")
     def on_finish_plugins_sync(self) -> None:
         # Store endpoints for later activation
         self._pending_endpoints = deepcopy(self.plugin_manager.endpoints)
@@ -186,6 +183,7 @@ class BillTheLizard:
         if self.fastapi_app is not None:
             self._activate_pending_endpoints()
 
+    @subscriber("on_end_plugin_activate")
     def on_end_plugin_activate(self, plugin_id: str) -> None:
         # migrate plugin settings in the Cheshire Cats
         for ccat_id in crud.get_agents_plugin_keys(plugin_id):
@@ -193,6 +191,7 @@ class BillTheLizard:
             plugin = ccat.plugin_manager.plugins[plugin_id]
             plugin.activate_settings(ccat_id)
 
+    @subscriber("on_start_plugin_deactivate")
     def on_start_plugin_deactivate(self, plugin_id: str) -> None:
         self._remove_plugin_from_cheshirecats(plugin_id)
 

@@ -8,7 +8,7 @@ def test_get_all_plugin_settings(lizard, secure_client, secure_client_headers):
     response = secure_client.get("/admins/plugins/settings", headers=secure_client_headers)
     json = response.json()
 
-    installed_plugins = lizard.plugin_manager.get_core_plugins_ids() + ["mock_plugin"]
+    installed_plugins = lizard.plugin_manager.get_core_plugins_ids + ["mock_plugin"]
 
     assert response.status_code == 200
     assert isinstance(json["settings"], list)

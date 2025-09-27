@@ -12,7 +12,7 @@ from tests.utils import api_key, create_mock_plugin_zip, agent_id, just_installe
 # installation from registry is in `./test_plugins_registry.py`
 def test_plugin_install_from_zip(lizard, secure_client, secure_client_headers, cheshire_cat):
     just_installed_plugin(secure_client, secure_client_headers)
-    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
+    core_plugins = lizard.plugin_manager.get_core_plugins_ids
 
     # during tests, the cat uses a different folder for plugins
     mock_plugin_final_folder = "tests/mocks/mock_plugin_folder/mock_plugin"
@@ -61,7 +61,7 @@ def test_plugin_install_from_zip(lizard, secure_client, secure_client_headers, c
 async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client, secure_client_headers):
     # create a new agent
     ccat = await lizard.create_cheshire_cat("agent_test_test")
-    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
+    core_plugins = lizard.plugin_manager.get_core_plugins_ids
 
     # list the plugins as an agent: mock_plugin is not installed yet
     response = secure_client.get(
@@ -121,7 +121,7 @@ async def test_create_cheshire_cat_after_plugin_install(lizard, secure_client, s
 
     # create a new agent
     ccat = await lizard.create_cheshire_cat("agent_test_test")
-    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
+    core_plugins = lizard.plugin_manager.get_core_plugins_ids
 
     # now, lists the plugins as an agent (new plugins are installed but deactivated, initially)
     response = secure_client.get(

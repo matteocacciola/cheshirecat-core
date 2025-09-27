@@ -38,7 +38,7 @@ def test_activate_plugin(secure_client, secure_client_headers):
 def test_deactivate_plugin(lizard, secure_client, secure_client_headers):
     # install and activate
     just_installed_plugin(secure_client, secure_client_headers, activate=True)
-    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
+    core_plugins = lizard.plugin_manager.get_core_plugins_ids
 
     # verify that the plugin is active
     response = secure_client.get("/plugins", headers=secure_client_headers)

@@ -5,7 +5,7 @@ from cat.mad_hatter.decorators import CatHook, CatTool
 
 def test_instantiation_discovery(cheshire_cat):
     plugin_manager = cheshire_cat.plugin_manager
-    all_plugins = plugin_manager.get_core_plugins_ids()
+    all_plugins = plugin_manager.get_core_plugins_ids
 
     assert len(plugin_manager.plugins.keys()) == len(all_plugins)
     

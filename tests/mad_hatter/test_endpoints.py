@@ -94,7 +94,7 @@ def test_endpoints_deactivation_or_uninstall(plugin_manager):
     # custom endpoints are registered in mad_hatter, mock_plugin is installed into the plugin_manager fixture
     for e in plugin_manager.endpoints:
         assert isinstance(e, CustomEndpoint)
-        assert e.plugin_id in plugin_manager.get_core_plugins_ids() + ["mock_plugin"]
+        assert e.plugin_id in plugin_manager.get_core_plugins_ids + ["mock_plugin"]
 
     plugin_manager.uninstall_plugin("mock_plugin")
 
@@ -102,4 +102,4 @@ def test_endpoints_deactivation_or_uninstall(plugin_manager):
     for e in plugin_manager.endpoints:
         assert isinstance(e, CustomEndpoint)
         assert e.plugin_id != "mock_plugin"
-        assert e.plugin_id in plugin_manager.get_core_plugins_ids()
+        assert e.plugin_id in plugin_manager.get_core_plugins_ids

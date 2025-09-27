@@ -6,7 +6,6 @@ from fastmcp import Client
 from cat.log import log
 from cat.mad_hatter.procedures import CatProcedure
 from cat.mad_hatter.decorators.tool import CatTool
-from cat.utils import dispatch
 
 
 class CatMcpClient(Client, CatProcedure, ABC):
@@ -54,14 +53,13 @@ class CatMcpClient(Client, CatProcedure, ABC):
             """Create a closure that properly calls the MCP tool."""
             def tool_caller(**kwargs):
                 try:
-                    # Use dispatch or similar async handling mechanism
-                    from cat.utils import dispatch  # Assuming this exists
+                    from cat.looking_glass import HumptyDumpty
 
                     async def call_tool_async():
                         async with self:
                             return await self.call_tool(tool_name, **kwargs)
 
-                    return dispatch(call_tool_async)
+                    return HumptyDumpty.run_sync_or_async(call_tool_async)
                 except Exception as e:
                     log.error(f"{self.name} - Error calling tool {tool_name}: {e}")
                     return f"Error calling tool {tool_name}: {e}"
@@ -114,20 +112,26 @@ class CatMcpClient(Client, CatProcedure, ABC):
 
     @property
     def mcp_tools(self):
+        from cat.looking_glass import HumptyDumpty
+
         if self._cached_tools is None:
-            self._cached_tools = dispatch(self._get_mcp_tools_async)
+            self._cached_tools = HumptyDumpty.run_sync_or_async(self._get_mcp_tools_async)
         return self._cached_tools
 
     @property
     def mcp_prompts(self):
+        from cat.looking_glass import HumptyDumpty
+
         if self._cached_prompts is None:
-            self._cached_prompts = dispatch(self._get_mcp_prompts_async)
+            self._cached_prompts = HumptyDumpty.run_sync_or_async(self._get_mcp_prompts_async)
         return self._cached_prompts
 
     @property
     def mcp_resources(self):
+        from cat.looking_glass import HumptyDumpty
+
         if self._cached_resources is None:
-            self._cached_resources = dispatch(self._get_mcp_resources_async)
+            self._cached_resources = HumptyDumpty.run_sync_or_async(self._get_mcp_resources_async)
         return self._cached_resources
 
     @property

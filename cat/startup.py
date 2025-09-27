@@ -4,8 +4,6 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
-from langchain.globals import set_llm_cache
-from langchain_core.caches import InMemoryCache
 from scalar_fastapi import get_scalar_api_reference
 
 from cat.db.database import get_db
@@ -34,7 +32,6 @@ from cat.routes import (
 )
 from cat.routes.openapi import get_openapi_configuration_function
 from cat.routes.routes_utils import startup_app, shutdown_app
-from cat.utils import pod_id
 
 
 @asynccontextmanager
@@ -46,9 +43,6 @@ async def lifespan(app: FastAPI):
     # - Not using middleware because I can't make it work with both http and websocket;
     # - Not using "Depends" because it only supports callables (not instances)
     # - Starlette allows this: https://www.starlette.io/applications/#storing-state-on-the-app-instance
-
-    set_llm_cache(InMemoryCache())
-    pod_id()
 
     await startup_app(app)
 

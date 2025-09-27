@@ -4,16 +4,17 @@ from cat.core_plugins.memory.models import EmbedderModelInteraction
 from cat.core_plugins.memory.utils import recall_relevant_memories_to_working_memory
 from cat.exceptions import VectorMemoryError
 from cat.log import log
+from cat.looking_glass import HumptyDumpty
 from cat.mad_hatter.decorators import hook
 from cat.memory.messages import UserMessage
-from cat.utils import get_caller_info, dispatch
+from cat.utils import get_caller_info
 
 
 @hook(priority=1)
 def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
     # recall declarative memory from vector collections and store it in working_memory
     try:
-        r = dispatch(
+        r = HumptyDumpty.run_sync_or_async(
             recall_relevant_memories_to_working_memory,
             cat=cat,
             query=user_message.text,

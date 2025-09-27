@@ -2,7 +2,7 @@ def test_list_plugins(lizard, secure_client, secure_client_headers):
     response = secure_client.get("/plugins", headers=secure_client_headers)
     json = response.json()
 
-    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
+    core_plugins = lizard.plugin_manager.get_core_plugins_ids
 
     assert response.status_code == 200
     for key in ["filters", "installed", "registry"]:
