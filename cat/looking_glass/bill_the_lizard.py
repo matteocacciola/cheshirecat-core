@@ -1,7 +1,7 @@
 import json
 import threading
 from copy import deepcopy
-from typing import Dict, Literal, List
+from typing import Dict, List
 from uuid import uuid4
 from fastapi import FastAPI
 from langchain_core.embeddings import Embeddings

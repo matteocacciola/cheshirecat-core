@@ -174,8 +174,6 @@ def test_plugin_uninstall(secure_client, secure_client_headers):
 
 @pytest.mark.asyncio
 async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_headers):
-    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
-
     # create a new agent
     ccat = await lizard.create_cheshire_cat("agent_test_test")
     ccat_headers = {"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
