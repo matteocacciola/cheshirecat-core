@@ -271,36 +271,63 @@ def socks_prices(color, cat):
     </summary>
 
 ```python
-from pydantic import BaseModel
-from cat.mad_hatter.decorators import form, CatForm
+from enum import Enum
+from pydantic import BaseModel, Field
 
-# data structure to fill up
+from cat.mad_hatter.decorators import CatForm, form
+
+
+class PizzaBorderEnum(Enum):
+    HIGH = "high"
+    LOW = "low"
+
+
+# simple pydantic model
 class PizzaOrder(BaseModel):
     pizza_type: str
-    phone: int
+    pizza_border: PizzaBorderEnum
+    phone: str = Field(max_length=10)
 
-# forms let you control goal oriented conversations
+
 @form
 class PizzaForm(CatForm):
+    name = "pizza_order"
     description = "Pizza Order"
     model_class = PizzaOrder
-    examples = [
-        "order a pizza!",
-        "I want pizza"
-    ]
+    examples = ["order a pizza", "I want pizza"]
     stop_examples = [
         "stop pizza order",
-        "not hungry anymore",
+        "I do not want a pizza anymore",
     ]
-    ask_confirm = True
 
-    def submit(self, form_data):
-        # do the actual order here!
+    ask_confirm: bool = True
 
-        # return to convo
-        return {
-            "output": f"Pizza order on its way: {form_data}"
-        }
+    def submit(self, form_data) -> str:
+        return f"Form submitted: {form_data}"
+```
+</details>
+
+<details>
+    <summary>
+        MCP Clients
+    </summary>
+
+```python
+from typing import Dict, Any, List
+
+from cat.mad_hatter.decorators import CatMcpClient, mcp_client
+
+@mcp_client
+class SampleMcpClient(CatMcpClient):
+    """
+    Sample MCP Client for testing purposes.
+    """
+    name = "sample_mcp_client"
+    description = "Sample MCP Client"
+
+    @property
+    def init_args(self) -> List | Dict[str, Any]:
+        pass
 ```
 </details>
 
