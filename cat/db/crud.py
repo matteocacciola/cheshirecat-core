@@ -92,7 +92,7 @@ def store(
         if not pipeline.execute():
             return None
 
-        log.debug(f"Stored key {key}, TTL: {expire}")
+        log.debug(f"Stored key {key}, value {value}, TTL: {expire}")
         return value
     except (RedisError, ValueError) as e:
         log.error(f"Serialization error for key {key}: {e}")
@@ -153,9 +153,30 @@ def get_agents_main_keys() -> List[str]:
         RedisError: If Redis connection fails.
     """
     try:
-        return list({k.split(":")[0] for k in get_db().scan_iter("*") if k.split(":")[0] != DEFAULT_SYSTEM_KEY})
+        return list({ks for k in get_db().scan_iter("*") if (ks := k.split(":")[0]) != DEFAULT_SYSTEM_KEY})
     except RedisError as e:
         log.error(f"Redis error in get_agents_main_keys: {e}")
+        raise
+
+
+def get_agents_plugin_keys(plugin_name: str) -> List[str]:
+    """
+    Get all unique agent IDs from Redis keys that have the format *:plugin_id:<plugin_name>.
+
+    Args:
+        plugin_name: The name of the plugin to filter by.
+
+    Returns:
+        List of unique agent IDs that have keys matching the plugin format.
+
+    Raises:
+        RedisError: If Redis connection fails.
+    """
+    try:
+        pattern = f"*:plugin:{plugin_name}"
+        return list({ks for k in get_db().scan_iter(pattern) if (ks := k.split(":")[0]) != DEFAULT_SYSTEM_KEY})
+    except RedisError as e:
+        log.error(f"Redis error in get_agents_plugin_keys: {e}")
         raise
 
 

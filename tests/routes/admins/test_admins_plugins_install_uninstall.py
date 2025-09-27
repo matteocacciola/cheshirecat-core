@@ -35,18 +35,18 @@ def test_plugin_install_from_zip(lizard, secure_client, secure_client_headers, c
         assert isinstance(p["local_info"]["active"], bool)
         assert p["local_info"]["active"]
 
-    # now, lists the plugins as an agent (new plugins are deactivated, initially)
+    # now, lists the plugins as an agent (new plugins are installed but deactivated, initially)
     response = secure_client.get(
         "/plugins", headers={"agent_id": cheshire_cat.id, "Authorization": f"Bearer {api_key}"}
     )
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
-    assert "mock_plugin" not in installed_plugins_names
-    assert len(installed_plugins_names) == len(core_plugins)  # only core plugins are active
+    assert "mock_plugin" in installed_plugins_names
+    assert len(installed_plugins_names) == len(core_plugins) + 1  # all
     # core plugins are active, mock_plugin is not at an agent level
-    for idx in range(len(installed_plugins)):
-        assert isinstance(installed_plugins[idx]["local_info"]["active"], bool)
-        assert installed_plugins[idx]["local_info"]["active"]
+    for p in installed_plugins:
+        assert isinstance(p["local_info"]["active"], bool)
+        assert p["local_info"]["active"] == (p["id"] in core_plugins)
 
     # plugin has been actually extracted in (mock) plugins folder
     assert os.path.exists(mock_plugin_final_folder)
@@ -63,7 +63,7 @@ async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client,
     ccat = await lizard.create_cheshire_cat("agent_test_test")
     core_plugins = lizard.plugin_manager.get_core_plugins_ids()
 
-    # list the plugins as an agent (new plugins are deactivated, initially): mock_plugin is not installed
+    # list the plugins as an agent: mock_plugin is not installed yet
     response = secure_client.get(
         "/plugins", headers={"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
     )
@@ -87,18 +87,54 @@ async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client,
     assert response.status_code == 200
     assert response.json()["filename"] == zip_file_name
 
-    # now, lists the plugins as an agent (new plugins are deactivated, initially)
+    # now, lists the plugins as an agent (new plugins are installed but deactivated, initially)
     response = secure_client.get(
         "/plugins", headers={"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
     )
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
-    assert "mock_plugin" not in installed_plugins_names
-    assert len(installed_plugins_names) == len(core_plugins)  # only core plugins are active
+    assert "mock_plugin" in installed_plugins_names
+    assert len(installed_plugins_names) == len(core_plugins) + 1
     # core plugins are active, mock_plugin is not at an agent level
     for p in installed_plugins:
         assert isinstance(p["local_info"]["active"], bool)
-        assert p["local_info"]["active"]
+        assert p["local_info"]["active"] == (p["id"] in core_plugins)
+
+
+@pytest.mark.asyncio
+async def test_create_cheshire_cat_after_plugin_install(lizard, secure_client, secure_client_headers):
+    # now, manually install the plugin
+    zip_path = create_mock_plugin_zip(flat=True)
+    zip_file_name = zip_path.split("/")[-1]  # mock_plugin.zip in tests/mocks folder
+
+    # upload plugin via endpoint
+    with open(zip_path, "rb") as f:
+        response = secure_client.post(
+            "/admins/plugins/upload/",
+            files={"file": (zip_file_name, f, "application/zip")},
+            headers=secure_client_headers
+        )
+
+    # request was processed
+    assert response.status_code == 200
+    assert response.json()["filename"] == zip_file_name
+
+    # create a new agent
+    ccat = await lizard.create_cheshire_cat("agent_test_test")
+    core_plugins = lizard.plugin_manager.get_core_plugins_ids()
+
+    # now, lists the plugins as an agent (new plugins are installed but deactivated, initially)
+    response = secure_client.get(
+        "/plugins", headers={"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
+    )
+    installed_plugins = response.json()["installed"]
+    installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
+    assert "mock_plugin" in installed_plugins_names
+    assert len(installed_plugins_names) == len(core_plugins) + 1
+    # core plugins are active, mock_plugin is not at an agent level
+    for p in installed_plugins:
+        assert isinstance(p["local_info"]["active"], bool)
+        assert p["local_info"]["active"] == (p["id"] in core_plugins)
 
 
 def test_plugin_uninstall(secure_client, secure_client_headers):
@@ -154,6 +190,14 @@ async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_he
 
     # activate for the new agent
     secure_client.put("/plugins/toggle/mock_plugin", headers=ccat_headers)
+    response = secure_client.get("/plugins", headers=ccat_headers)
+    installed_plugins = response.json()["installed"]
+    installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
+    assert "mock_plugin" in installed_plugins_names
+
+    for p in installed_plugins:
+        assert isinstance(p["local_info"]["active"], bool)
+        assert p["local_info"]["active"]
 
     # re-install the plugin
     with open(zip_path, "rb") as f:
@@ -168,6 +212,7 @@ async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_he
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
     assert "mock_plugin" in installed_plugins_names
+
     for p in installed_plugins:
         assert isinstance(p["local_info"]["active"], bool)
         assert p["local_info"]["active"]

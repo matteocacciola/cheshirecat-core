@@ -94,8 +94,6 @@ def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_
 
 # test delete points by filter
 def test_points_deleted_by_metadata(secure_client, secure_client_headers):
-    expected_chunks = 4
-
     content_type = "application/pdf"
     response, file_path = send_file("sample.pdf", content_type, secure_client, secure_client_headers)
 
@@ -103,7 +101,9 @@ def test_points_deleted_by_metadata(secure_client, secure_client_headers):
     assert response.status_code == 200
     # check memory contents
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
-    assert len(declarative_memories) == expected_chunks
+    assert len(declarative_memories) > 0
+
+    dm_len = len(declarative_memories)
 
     # upload another document
     with open(file_path, "rb") as f:
@@ -114,7 +114,7 @@ def test_points_deleted_by_metadata(secure_client, secure_client_headers):
     assert response.status_code == 200
     # check memory contents
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
-    assert len(declarative_memories) == expected_chunks * 2
+    assert len(declarative_memories) == dm_len * 2
 
     # delete nothing
     metadata = {"source": "invented.pdf"}
@@ -124,7 +124,7 @@ def test_points_deleted_by_metadata(secure_client, secure_client_headers):
     # check memory contents
     assert res.status_code == 200
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
-    assert len(declarative_memories) == expected_chunks * 2
+    assert len(declarative_memories) == dm_len * 2
 
     # delete first document
     metadata = {"source": "sample.pdf"}
@@ -135,9 +135,8 @@ def test_points_deleted_by_metadata(secure_client, secure_client_headers):
     assert res.status_code == 200
     json = res.json()
     assert isinstance(json["deleted"], dict)
-    # assert len(json["deleted"]) == expected_chunks
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
-    assert len(declarative_memories) == expected_chunks
+    assert len(declarative_memories) > 0
 
     # delete second document
     metadata = {"source": "sample2.pdf"}

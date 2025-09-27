@@ -5,7 +5,19 @@ ENV PYTHONUNBUFFERED=1
 ENV WATCHFILES_FORCE_POLLING=true
 
 ### SYSTEM SETUP ###
-RUN apt-get -y update && apt-get install -y curl build-essential fastjar libmagic-mgc libmagic1 mime-support && \
+# Install system dependencies for Unstructured document parsing
+RUN apt-get update && \
+    apt-get install -y \
+        curl \
+        build-essential \
+        fastjar \
+        libmagic-mgc \
+        libmagic1 \
+        libmagic-dev \
+        poppler-utils \
+        tesseract-ocr \
+        libgl1-mesa-glx \
+        mime-support && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

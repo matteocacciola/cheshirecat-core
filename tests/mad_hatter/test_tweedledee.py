@@ -13,7 +13,7 @@ def test_instantiation_discovery(cheshire_cat):
         assert k in all_plugins
         assert isinstance(plugin_manager.plugins[k], Plugin)
 
-    loaded_plugins = plugin_manager.load_active_plugins_from_db()
+    loaded_plugins = plugin_manager.load_active_plugins_ids_from_db()
     for p in loaded_plugins:
         assert p in all_plugins
         assert plugin_manager.plugins[p].active

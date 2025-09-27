@@ -1,15 +1,18 @@
+import glob
+import os
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from pathlib import Path
 from typing import List, Dict, Any
 
-import cat.utils as utils
+from cat import utils
 from cat.db.cruds import settings as crud_settings
 from cat.db.models import Setting
 from cat.log import log
 from cat.mad_hatter.decorators import CustomEndpoint, CatHook
 from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.procedures import CatProcedure
+from cat.utils import dispatch
 
 
 class MadHatter(ABC):
@@ -17,6 +20,8 @@ class MadHatter(ABC):
     This is the abstract class that defines the methods that the plugin managers should implement.
     """
     def __init__(self):
+        self._skip_folders = ["__pycache__", "lost+found"]
+
         self.plugins: Dict[str, Plugin] = {}
 
         # a unified registry for all procedures (local tools, forms, remote clients)
@@ -28,11 +33,16 @@ class MadHatter(ABC):
 
         self.active_plugins: List[str] = []
 
-        # this callback is set from outside to be notified when plugin sync is completed
-        self.on_finish_plugins_sync_callback = lambda: None
-
-        # this callback is set from outside to be notified when plugin toggle is completed
-        self.on_end_plugin_toggle_callback = lambda plugin_id, endpoints, what: None
+        # internal events
+        self.on_start_plugin_install = lambda plugin_id, plugin_path: None
+        self.on_end_plugin_install = lambda plugin_id, plugin_path: None
+        self.on_start_plugin_uninstall = lambda plugin_id: None
+        self.on_end_plugin_uninstall = lambda plugin_id, endpoints: None
+        self.on_finish_plugins_sync = lambda: None
+        self.on_start_plugin_activate = lambda plugin_id: None
+        self.on_end_plugin_activate = lambda plugin_id: None
+        self.on_start_plugin_deactivate = lambda plugin_id: None
+        self.on_end_plugin_deactivate = lambda plugin_id: None
 
     def _sync_decorated(self):
         """
@@ -57,14 +67,14 @@ class MadHatter(ABC):
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
 
         # notify sync has finished
-        utils.dispatch(self.on_finish_plugins_sync_callback)
+        dispatch(self.on_finish_plugins_sync)
 
     def get_core_plugins_ids(self) -> List[str]:
         path = Path(utils.get_core_plugins_path())
         core_plugins = [p.name for p in path.iterdir() if p.is_dir()]
         return core_plugins
 
-    def load_active_plugins_from_db(self) -> List[str]:
+    def load_active_plugins_ids_from_db(self) -> List[str]:
         active_plugins_from_db = crud_settings.get_setting_by_name(self.agent_key, "active_plugins")
         active_plugins: List[str] = [] if active_plugins_from_db is None else active_plugins_from_db["value"]
 
@@ -77,6 +87,19 @@ class MadHatter(ABC):
 
         return list(set(active_plugins))  # remove duplicates
 
+    def activate_plugin(self, plugin_id: str):
+        if not self.plugin_exists(plugin_id):
+            raise Exception(f"Plugin {plugin_id} not present in plugins folder")
+
+        dispatch(self.on_start_plugin_activate, plugin_id=plugin_id)
+
+        if self.on_plugin_activation(plugin_id=plugin_id):
+            # Add the plugin in the list of active plugins
+            self.active_plugins.append(plugin_id)
+
+        self._on_finish_discovering_plugins()
+        dispatch(self.on_end_plugin_activate, plugin_id=plugin_id)
+
     def deactivate_plugin(self, plugin_id: str):
         if not self.plugin_exists(plugin_id):
             raise Exception(f"Plugin {plugin_id} not present in plugins folder")
@@ -84,47 +107,46 @@ class MadHatter(ABC):
         if plugin_id not in self.active_plugins or plugin_id == self.get_base_core_plugin_id:
             return
 
+        dispatch(self.on_start_plugin_deactivate, plugin_id=plugin_id)
+
         # Deactivate the plugin
         log.warning(f"Toggle plugin '{plugin_id}' for agent '{self.agent_key}': Deactivate")
+        if self.on_plugin_deactivation(plugin_id=plugin_id):
+            # Remove the plugin from the list of active plugins
+            self.active_plugins.remove(plugin_id)
 
-        # Remove the plugin from the list of active plugins
-        self.active_plugins.remove(plugin_id)
+            if plugin_id == self.get_base_core_plugin_id or plugin_id not in self.plugins.keys():
+                return
 
-        self.on_plugin_deactivation(plugin_id=plugin_id)
-        self._on_finish_toggle_plugin()
+            self.plugins.pop(plugin_id, None)
 
-    def activate_plugin(self, plugin_id: str):
+        self._on_finish_discovering_plugins()
+        dispatch(self.on_end_plugin_deactivate, plugin_id=plugin_id)
+
+    # activate / deactivate plugin
+    def toggle_plugin(self, plugin_id: str):
+        if plugin_id == self.get_base_core_plugin_id:
+            raise Exception("base_plugin cannot be deactivated")
+
         if not self.plugin_exists(plugin_id):
-            raise Exception(f"Plugin {plugin_id} not present in plugins folder")
+            raise Exception(f"Plugin {plugin_id} not active in the system")
 
         if plugin_id in self.active_plugins:
-            return
+            self.deactivate_plugin(plugin_id)
+        else:
+            self.activate_plugin(plugin_id)
 
-        log.warning(f"Toggle plugin '{plugin_id}' for agent '{self.agent_key}': Activate")
+        self._on_finish_discovering_plugins()
 
-        self.on_plugin_activation(plugin_id=plugin_id)
-
-        # Add the plugin in the list of active plugins
-        self.active_plugins.append(plugin_id)
-
-        self._on_finish_toggle_plugin()
-
-    def _on_finish_toggle_plugin(self):
-        # update DB with list of active plugins, delete duplicate plugins
+    def _on_finish_discovering_plugins(self):
+        # store active plugins in db
         active_plugins = list(set(self.active_plugins))
         crud_settings.upsert_setting_by_name(self.agent_key, Setting(name="active_plugins", value=active_plugins))
 
-        # update cache and embeddings
-        self._sync_decorated()
-
-    def _on_finish_finding_plugins(self):
-        # store active plugins in db
-        crud_settings.upsert_setting_by_name(
-            self.agent_key, Setting(name="active_plugins", value=self.active_plugins)
-        )
-
         log.info(f"Agent '{self.agent_key}' - ACTIVE PLUGINS:")
         log.info(self.active_plugins)
+
+        # update cache and embeddings
         self._sync_decorated()
 
     # execute requested hook
@@ -161,6 +183,35 @@ class MadHatter(ABC):
         name = utils.inspect_calling_folder()
         return self.plugins[name]
 
+    def _get_plugin_folder_path(self, plugin_id: str) -> str:
+        return os.path.join(
+            utils.get_core_plugins_path() if plugin_id in self.get_core_plugins_ids() else utils.get_plugins_path(),
+            plugin_id
+        )
+
+    def load_plugin(self, plugin_id: str) -> Plugin | None:
+        try:
+            folder = self._get_plugin_folder_path(plugin_id)
+            return Plugin(folder)
+        except Exception as e:
+            log.error(str(e))
+            return None
+
+    def load_active_plugins_ids_from_folders(self):
+        all_plugin_folders = list(set(
+            glob.glob(f"{utils.get_core_plugins_path()}/*/") + glob.glob(f"{utils.get_plugins_path()}/*/")
+        ))
+
+        return [
+            plugin_id
+            for folder in all_plugin_folders
+            if ((plugin_id := os.path.basename(os.path.normpath(folder))) not in self._skip_folders)
+        ]
+
+    # check if plugin exists
+    def plugin_exists(self, plugin_id: str):
+        return plugin_id in self.load_active_plugins_ids_from_folders()
+
     @property
     def procedures(self) -> List[CatProcedure]:
         return list(self.procedures_registry.values())
@@ -170,30 +221,23 @@ class MadHatter(ABC):
         return "base_plugin"
 
     @abstractmethod
-    def plugin_exists(self, plugin_id: str):
+    def discover_plugins(self):
         pass
 
     @abstractmethod
-    def find_plugins(self):
+    def on_plugin_activation(self, plugin_id: str) -> bool:
         pass
 
     @abstractmethod
-    def toggle_plugin(self, plugin_id: str):
-        pass
-
-    @abstractmethod
-    def on_plugin_activation(self, plugin_id: str):
-        pass
-
-    @abstractmethod
-    def on_plugin_deactivation(self, plugin_id: str):
-        pass
-
-    @abstractmethod
-    def _load_plugin(self, plugin_path: str) -> bool:
+    def on_plugin_deactivation(self, plugin_id: str) -> bool:
         pass
 
     @property
     @abstractmethod
-    def agent_key(self):
+    def agent_key(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def available_plugins(self) -> Dict[str, Plugin]:
         pass

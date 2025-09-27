@@ -62,7 +62,7 @@ class CatTool(CatProcedure):
             name=t.name,
             description=t.description or t.name,
             input_schema=t.inputSchema,
-            output_schema=t.output_schema,
+            output_schema=t.outputSchema,
         )
 
     def langchainfy(self) -> List[StructuredTool]:

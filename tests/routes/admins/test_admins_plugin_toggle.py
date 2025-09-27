@@ -6,13 +6,13 @@ from cat.db.database import DEFAULT_SYSTEM_KEY
 from tests.utils import just_installed_plugin, agent_id
 
 
-def _check_activation(secure_client, secure_client_headers):
+def _check_installed_in_cat(secure_client, secure_client_headers, is_active):
     # GET plugins endpoint lists the plugin
     response = secure_client.get("/plugins", headers=secure_client_headers)
     available_plugins = response.json()["installed"]
     mock_plugin = [p for p in available_plugins if p["id"] == "mock_plugin"][0]
     assert isinstance(mock_plugin["local_info"]["active"], bool)
-    assert mock_plugin["local_info"]["active"]  # plugin active
+    assert mock_plugin["local_info"]["active"] == is_active
 
     assert mock_plugin["id"] == "mock_plugin"
     assert len(mock_plugin["local_info"]["hooks"]) == 3
@@ -21,7 +21,7 @@ def _check_activation(secure_client, secure_client_headers):
     assert len(mock_plugin["local_info"]["endpoints"]) == 7
 
 
-def check_deactivation(lizard, secure_client, secure_client_headers):
+def _check_not_installed_in_cat(lizard, secure_client, secure_client_headers):
     core_plugins = lizard.plugin_manager.get_core_plugins_ids()
     # GET plugins endpoint lists the plugin
     response = secure_client.get("/plugins", headers=secure_client_headers)
@@ -50,7 +50,7 @@ def test_toggle_plugin(lizard, secure_client, secure_client_headers):
     # toggle plugin for a cheshirecat
     secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
     assert "mock_plugin" in crud_settings.get_setting_by_name(agent_id, "active_plugins")["value"]
-    _check_activation(secure_client, secure_client_headers)
+    _check_installed_in_cat(secure_client, secure_client_headers, True)
 
     # toggle plugin (deactivate) on a system level
     response = secure_client.put("/admins/plugins/toggle/mock_plugin", headers=secure_client_headers)
@@ -64,7 +64,7 @@ def test_toggle_plugin(lizard, secure_client, secure_client_headers):
     assert "mock_plugin" not in crud_settings.get_setting_by_name(agent_id, "active_plugins")["value"]
 
     # the mock_plugin is no longer available into the cheshire cat
-    check_deactivation(lizard, secure_client, secure_client_headers)
+    _check_not_installed_in_cat(lizard, secure_client, secure_client_headers)
 
     # toggle plugin (reactivate) on a system level
     response = secure_client.put("/admins/plugins/toggle/mock_plugin", headers=secure_client_headers)
@@ -78,8 +78,8 @@ def test_toggle_plugin(lizard, secure_client, secure_client_headers):
     assert "mock_plugin" in crud_settings.get_setting_by_name(DEFAULT_SYSTEM_KEY, "active_plugins")["value"]
     assert "mock_plugin" not in crud_settings.get_setting_by_name(agent_id, "active_plugins")["value"]
 
-    # the mock_plugin is still no longer available into the cheshire cat
-    check_deactivation(lizard, secure_client, secure_client_headers)
+    # the mock_plugin is available into the cheshire cat, but not active
+    _check_installed_in_cat(secure_client, secure_client_headers, False)
 
 
 def test_untoggle_base_plugin(lizard, secure_client, secure_client_headers):

@@ -1,7 +1,7 @@
 import json
 import threading
 from copy import deepcopy
-from typing import Dict, Literal, List
+from typing import Dict, List
 from uuid import uuid4
 from fastapi import FastAPI
 from langchain_core.embeddings import Embeddings
@@ -67,13 +67,15 @@ class BillTheLizard:
         self.embedder_size: int | None = None
 
         self.plugin_manager = Tweedledum()
-        self.plugin_manager.on_end_plugin_install_callback = self._on_end_plugin_install
-        self.plugin_manager.on_start_plugin_uninstall_callback = self._on_start_plugin_uninstall
-        self.plugin_manager.on_end_plugin_uninstall_callback = self._on_end_plugin_uninstall
-        self.plugin_manager.on_finish_plugins_sync_callback = self._on_finish_plugins_sync
-        self.plugin_manager.on_end_plugin_toggle_callback = self._on_end_plugin_toggle
+        self.plugin_manager.on_end_plugin_install = self.on_end_plugin_install
+        self.plugin_manager.on_start_plugin_uninstall = self.on_start_plugin_uninstall
+        self.plugin_manager.on_end_plugin_uninstall = self.on_end_plugin_uninstall
+        self.plugin_manager.on_finish_plugins_sync = self.on_finish_plugins_sync
+        self.plugin_manager.on_end_plugin_activate = self.on_end_plugin_activate
+        self.plugin_manager.on_start_plugin_deactivate = self.on_start_plugin_deactivate
+
         # load active plugins
-        self.plugin_manager.find_plugins()
+        self.plugin_manager.discover_plugins()
 
         self.websocket_manager = WebSocketManager()
 
@@ -143,12 +145,10 @@ class BillTheLizard:
 
         self.march_hare.consume_event(callback, MarchHareConfig.channels["PLUGIN_EVENTS"])
 
-    def _on_end_plugin_install(self, plugin_id: str, plugin_path: str):
+    def on_end_plugin_install(self, plugin_id: str, plugin_path: str) -> None:
         # activate the eventual custom endpoints
         for endpoint in self.plugin_manager.plugins[plugin_id].endpoints:
             endpoint.activate(self.fastapi_app)
-
-        self._inform_cheshirecats_plugin(plugin_id, "install")
 
         # notify the RabbitMQ about the new plugin installed
         self.march_hare.notify_event(
@@ -160,14 +160,16 @@ class BillTheLizard:
             exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
         )
 
-    def _on_start_plugin_uninstall(self, plugin_id: str):
-        self._inform_cheshirecats_plugin(plugin_id, "uninstall")
+    def on_start_plugin_uninstall(self, plugin_id: str) -> None:
+        self._remove_plugin_from_cheshirecats(plugin_id)
 
-    def _on_end_plugin_uninstall(self, plugin_id: str, endpoints: List[CustomEndpoint]):
+    def on_end_plugin_uninstall(self, plugin_id: str, endpoints: List[CustomEndpoint]) -> None:
+        fastapi_app = self.fastapi_app
+
         # deactivate the eventual custom endpoints
         for endpoint in endpoints:
             if endpoint.plugin_id == plugin_id:
-                endpoint.deactivate(self.fastapi_app)
+                endpoint.deactivate(fastapi_app)
 
         # notify the RabbitMQ about the new uninstalled plugin
         self.march_hare.notify_event(
@@ -176,7 +178,7 @@ class BillTheLizard:
             exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
         )
 
-    def _on_finish_plugins_sync(self):
+    def on_finish_plugins_sync(self) -> None:
         # Store endpoints for later activation
         self._pending_endpoints = deepcopy(self.plugin_manager.endpoints)
 
@@ -184,18 +186,15 @@ class BillTheLizard:
         if self.fastapi_app is not None:
             self._activate_pending_endpoints()
 
-    def _on_end_plugin_toggle(
-        self, plugin_id: str, endpoints: List[CustomEndpoint], what: Literal["activated", "deactivated"]
-    ):
-        if what == "activated":
-            return
+    def on_end_plugin_activate(self, plugin_id: str) -> None:
+        # migrate plugin settings in the Cheshire Cats
+        for ccat_id in crud.get_agents_plugin_keys(plugin_id):
+            ccat = self.get_cheshire_cat(ccat_id)
+            plugin = ccat.plugin_manager.plugins[plugin_id]
+            plugin.activate_settings(ccat_id)
 
-        # deactivate the eventual custom endpoints
-        for endpoint in endpoints:
-            if endpoint.plugin_id == plugin_id:
-                endpoint.deactivate(self.fastapi_app)
-
-        self._inform_cheshirecats_plugin(plugin_id, "deactivated")
+    def on_start_plugin_deactivate(self, plugin_id: str) -> None:
+        self._remove_plugin_from_cheshirecats(plugin_id)
 
     def _activate_pending_endpoints(self):
         for endpoint in self._pending_endpoints:
@@ -279,26 +278,17 @@ class BillTheLizard:
 
         return CheshireCat(agent_id)
 
-    def _inform_cheshirecats_plugin(
-        self, plugin_id: str, what: Literal["install", "uninstall", "activated", "deactivated"]
-    ):
+    def _remove_plugin_from_cheshirecats(self, plugin_id: str):
         """
         Find the plugins for the given Cheshire Cat and update its plugin manager.
 
         Args:
             plugin_id: The id of the plugin to install or uninstall
-            what: The action to perform, either "install" or "uninstall"
-
-        Returns:
-            The Cheshire Cat with the given id, or None if it doesn't exist
         """
-        for ccat_id in crud.get_agents_main_keys():
-            # on installation, it's enough to get the Cheshire Cat, it will load the plugin manager,
-            # which will load the plugins
+        # deactivate plugins in the Cheshire Cats
+        for ccat_id in crud.get_agents_plugin_keys(plugin_id):
             ccat = self.get_cheshire_cat(ccat_id)
-            if what in ["uninstall", "deactivated"]:
-                # deactivate plugins in the Cheshire Cats
-                ccat.plugin_manager.deactivate_plugin(plugin_id)
+            ccat.plugin_manager.deactivate_plugin(plugin_id)
 
     async def create_cheshire_cat(self, agent_id: str) -> CheshireCat:
         """

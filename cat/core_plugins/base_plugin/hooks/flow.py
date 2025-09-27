@@ -14,9 +14,7 @@ def before_cat_bootstrap(cat) -> None:
     """
     Hook into the Cat start up.
 
-    Bootstrapping is the process of loading the plugins, the natural language objects (e.g. the LLM), the memories,
-    the *Main Agent*, the *Rabbit Hole* and the *White Rabbit*.
-
+    Bootstrapping is the process of loading the plugins, the natural language objects (e.g. the LLM), the memories, etc.
     This hook allows to intercept such process and is executed in the middle of plugins and
     natural language objects loading.
 
@@ -35,9 +33,7 @@ def after_cat_bootstrap(cat) -> None:
     """
     Hook into the end of the Cat start up.
 
-    Bootstrapping is the process of loading the plugins, the natural language objects (e.g. the LLM), the memories,
-    the *Main Agent*, the *Rabbit Hole* and the *White Rabbit*.
-
+    Bootstrapping is the process of loading the plugins, the natural language objects (e.g. the LLM), the memories, etc.
     This hook allows to intercept the end of such process and is executed right after the Cat has finished loading
     its components.
 

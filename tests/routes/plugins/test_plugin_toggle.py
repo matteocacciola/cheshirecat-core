@@ -48,13 +48,12 @@ def test_deactivate_plugin(lizard, secure_client, secure_client_headers):
     # deactivate
     secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
 
-    # the mock_plugin is no longer available
+    # the mock_plugin is installed but no more active
     response = secure_client.get("/plugins", headers=secure_client_headers)
     available_plugins = response.json()["installed"]
-    assert len(available_plugins) == len(core_plugins)  # core plugins only
-
-    mock_plugin = [p for p in available_plugins if p["id"] == "mock_plugin"]
-    assert len(mock_plugin) == 0  # plugin not available
+    assert len(available_plugins) == len(core_plugins) + 1  # core plugins and mock_plugin
+    for p in available_plugins:
+        assert p["local_info"]["active"] == (p["id"] in core_plugins)
 
 
 def test_reactivate_plugin(secure_client, secure_client_headers):

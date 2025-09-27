@@ -18,6 +18,7 @@ from cat.core_plugins.factories.embedder.configs import (
     EmbedderMistralAIChatConfig,
     EmbedderVoyageAIChatConfig,
     EmbedderOllamaConfig,
+    EmbedderJinaConfig,
 )
 from cat.core_plugins.factories.file_manager.configs import (
     LocalFileManagerConfig,
@@ -84,6 +85,7 @@ def factory_allowed_embedders(allowed: List[EmbedderSettings], cat) -> List:
         EmbedderMistralAIChatConfig,
         EmbedderVoyageAIChatConfig,
         EmbedderOllamaConfig,
+        EmbedderJinaConfig,
     ]
 
 
