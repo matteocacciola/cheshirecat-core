@@ -1,7 +1,10 @@
 import pytest
 from langchain.base_language import BaseLanguageModel
+from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
 from langchain_core.embeddings import Embeddings
+from langchain_community.document_loaders import UnstructuredPDFLoader
 
+from cat.core_plugins.multimodality.unstructured_parser import UnstructuredParser
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.factory.chunker import BaseChunker
 from cat.factory.file_manager import BaseFileManager
@@ -38,3 +41,15 @@ def test_default_embedder_loaded(lizard):
 async def test_cheshire_cat_created_with_system_key(lizard):
     with pytest.raises(ValueError):
         await lizard.create_cheshire_cat(DEFAULT_SYSTEM_KEY)
+
+
+def test_file_handler_pdf(lizard, cheshire_cat):
+    file_handlers = cheshire_cat.file_handlers
+
+    assert "application/pdf" in file_handlers
+
+    if "multimodality" in lizard.plugin_manager.plugins.keys():
+        assert file_handlers["application/pdf"].__class__.__name__ == UnstructuredParser.__name__
+        assert file_handlers["application/pdf"].document_loader_type == UnstructuredPDFLoader
+    else:
+        assert file_handlers["application/pdf"].__class__.__name__ == PyMuPDFParser.__name__

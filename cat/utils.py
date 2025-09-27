@@ -538,5 +538,5 @@ def subscribe_all_subscribers(instance: "BillTheLizard"):
         if callable(method) and hasattr(method, "event_name"):
             instance.plugin_manager.dispatcher.subscribe(
                 method.event_name,
-                method.__get__(instance)
+                method.__get__(instance),  # type: ignore
             )

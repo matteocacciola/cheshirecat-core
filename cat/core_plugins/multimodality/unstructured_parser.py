@@ -30,3 +30,7 @@ class UnstructuredParser(BaseBlobParser):
             finally:
                 if os.path.exists(temp_path):
                     os.unlink(temp_path)
+
+    @property
+    def document_loader_type(self) -> Type[UnstructuredFileLoader]:
+        return self._document_loader_type
