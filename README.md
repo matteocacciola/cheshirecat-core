@@ -121,22 +121,18 @@ from cat.mad_hatter.decorators import CatMcpClient, mcp_client
 
 @mcp_client
 class MyMcpClient(CatMcpClient):
-    def __init__(self, cat = None, api_key: str = ""):
-        super().__init__(cat=cat)
+    name = "your_mcp_client"
+    description = "Description of your MCP Client"
 
-        self.api_key = api_key
+    @property
+    def init_args(self) -> List | Dict[str, Any]:
+        """
+        Define the input arguments to be passed to the constructor of the MCP client
 
-    def discover_procedures(self) -> List[CatMcpDiscoveredProcedure]:
-        # discover procedures from the MCP client
-        return []
-
-    def call_procedure(self, procedure_name: str, **kwargs: Any) -> Any:
-        # call the procedure from the MCP client
-        return {}
-
-    async def call_procedure_async(self, procedure_name: str, **kwargs: Any) -> Any:
-        # call the procedure from the MCP client
-        return {}
+        Returns:
+            List of arguments, or a dictionary identifying each name of the arguments with the corresponding value
+        """
+        pass
 ```
 
 ## Security
