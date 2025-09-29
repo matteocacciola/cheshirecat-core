@@ -18,7 +18,7 @@ from cat.routes.routes_utils import (
     on_upsert_factory_setting,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["File Manager"], prefix="/file_manager")
 
 
 # get configured Plugin File Managers and configuration schemas

@@ -5,7 +5,7 @@ from cat.looking_glass import BillTheLizard
 from cat.mad_hatter.decorators import endpoint
 
 
-@endpoint.get("/", prefix="/admins/core_plugins", tags=["Admin Plugins"])
+@endpoint.get("/", prefix="/admins/core_plugins", tags=["Admins - Plugins"])
 async def get_core_plugins(
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGIN, AuthPermission.WRITE),
 ) -> List[str]:

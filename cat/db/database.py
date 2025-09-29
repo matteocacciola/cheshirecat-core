@@ -41,6 +41,20 @@ class Database:
             ssl=tls,
         )
 
+    @property
+    def connection_string(self):
+        secure = "s" if get_env("CCAT_REDIS_TLS") else ""
+
+        host = get_env("CCAT_REDIS_HOST")
+        port = get_env("CCAT_REDIS_PORT")
+        db = get_env("CCAT_REDIS_DB")
+
+        return f"redis{secure}://{host}:{port}/{db}"
+
 
 def get_db() -> redis.Redis:
     return Database().db
+
+
+def get_db_connection_string() -> str:
+    return Database().connection_string

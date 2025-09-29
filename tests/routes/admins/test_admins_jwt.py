@@ -3,7 +3,7 @@ import jwt
 
 from cat.env import get_env
 from cat.auth.permissions import AdminAuthResource, AuthPermission
-from cat.auth.auth_utils import is_jwt
+from cat.auth.auth_utils import is_jwt, DEFAULT_JWT_ALGORITHM
 from cat.db.database import DEFAULT_SYSTEM_KEY
 
 
@@ -13,7 +13,7 @@ def test_is_jwt():
     actual_jwt = jwt.encode(
         {"username": "Alice"},
         get_env("CCAT_JWT_SECRET"),
-        algorithm=get_env("CCAT_JWT_ALGORITHM"),
+        algorithm=DEFAULT_JWT_ALGORITHM,
     )
     assert is_jwt(actual_jwt)
 
@@ -57,7 +57,7 @@ def test_issue_jwt(client, lizard):
         payload = jwt.decode(
             received_token,
             get_env("CCAT_JWT_SECRET"),
-            algorithms=[get_env("CCAT_JWT_ALGORITHM")],
+            algorithms=[DEFAULT_JWT_ALGORITHM],
         )
         assert payload["username"] == "admin"
         assert (

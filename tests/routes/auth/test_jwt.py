@@ -4,7 +4,7 @@ import jwt
 
 from cat.env import get_env
 from cat.auth.permissions import AuthPermission, AuthResource
-from cat.auth.auth_utils import is_jwt
+from cat.auth.auth_utils import is_jwt, DEFAULT_JWT_ALGORITHM
 
 from tests.utils import agent_id, chat_id
 
@@ -15,7 +15,7 @@ def test_is_jwt():
     actual_jwt = jwt.encode(
         {"username": "Alice"},
         "some_secret",
-        algorithm=get_env("CCAT_JWT_ALGORITHM"),
+        algorithm=DEFAULT_JWT_ALGORITHM,
     )
     assert is_jwt(actual_jwt)
 
@@ -56,7 +56,7 @@ def test_issue_jwt(client, cheshire_cat):
         payload = jwt.decode(
             received_token,
             get_env("CCAT_JWT_SECRET"),
-            algorithms=[get_env("CCAT_JWT_ALGORITHM")],
+            algorithms=[DEFAULT_JWT_ALGORITHM],
         )
         assert payload["username"] == "user"
         assert (payload["exp"] - time.time() < 60 * 60 * 24)  # expires in less than 24 hours

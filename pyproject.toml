@@ -16,6 +16,7 @@ dependencies = [
     "bcrypt",
     "cryptography",
     "fastapi",
+    "fastapi-healthz[redis,rabbitmq]",
     "fastmcp",
     "gunicorn",
     "httpx",

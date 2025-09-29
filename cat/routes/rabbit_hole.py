@@ -12,7 +12,7 @@ from cat.exceptions import CustomValidationException
 from cat.log import log
 from cat.routes.routes_utils import on_upload_single_file
 
-router = APIRouter()
+router = APIRouter(tags=["Rabbit Hole"], prefix="/rabbithole")
 
 
 class UploadURLConfig(BaseModel):

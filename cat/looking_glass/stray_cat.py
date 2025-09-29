@@ -233,17 +233,6 @@ class StrayCat:
 
         await self._send_ws_json(error_message)
 
-    def _get_system_prompt(self) -> str:
-        # obtain prompt parts from plugins
-        prompt_prefix = self.plugin_manager.execute_hook(
-            "agent_prompt_prefix", prompts.MAIN_PROMPT, cat=self
-        )
-        prompt_suffix = self.plugin_manager.execute_hook(
-            "agent_prompt_suffix", "", cat=self
-        )
-
-        return prompt_prefix + prompt_suffix
-
     def _get_procedures(self) -> List[CatProcedure]:
         """
         Get all procedures (tools and forms) available to the agent. If a procedure is a form, it is
@@ -325,15 +314,25 @@ class StrayCat:
             AgentInput
         )
 
+        # obtain prompt parts from plugins
+        prompt_prefix = self.plugin_manager.execute_hook("agent_prompt_prefix", prompts.MAIN_PROMPT, cat=self)
+        prompt_suffix = self.plugin_manager.execute_hook("agent_prompt_suffix", "", cat=self)
+        prompt_variables = self.plugin_manager.execute_hook(
+            "agent_prompt_variables",
+            {"context": agent_input.context, "input": agent_input.input},
+            cat=self,
+        )
+
+        system_prompt = prompt_prefix + prompt_suffix
         try:
             agent_output = await run_agent(
                 llm=self.large_language_model,
                 prompt=ChatPromptTemplate.from_messages([
-                    SystemMessagePromptTemplate.from_template(template=self._get_system_prompt()),
+                    SystemMessagePromptTemplate.from_template(template=system_prompt),
                     *agent_input.history,
                 ]),
                 tools=self._tools,
-                prompt_variables={"context": agent_input.context, "input": agent_input.input},
+                prompt_variables=prompt_variables,
                 callbacks=self.plugin_manager.execute_hook("llm_callbacks", [NewTokenHandler(self)], cat=self),
             )
             if agent_output.output == utils.default_llm_answer_prompt():

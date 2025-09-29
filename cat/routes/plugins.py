@@ -16,7 +16,7 @@ from cat.routes.routes_utils import (
     get_plugin_settings,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["Plugins"], prefix="/plugins")
 
 
 # GET plugins

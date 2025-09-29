@@ -13,7 +13,7 @@ from cat.routes.routes_utils import (
     on_upsert_factory_setting,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["Vector Database"], prefix="/vector_database")
 
 
 # get configured LLMs and configuration schemas

@@ -8,7 +8,7 @@ from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissi
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException
 
-router = APIRouter()
+router = APIRouter(tags=["Users"], prefix="/users")
 
 
 class UserBase(BaseModel):

@@ -38,17 +38,19 @@ restart:  ## Restart service(s) [args="<name_of_service>"].
 	@docker compose ${docker-compose-files} restart ${args}
 
 test:  ## Run tests.
-	@docker exec cheshire_cat_core python -m pytest --color=yes -vvv -W ignore ${args}
+	@docker exec cheshire_cat_core python -m pytest --color=yes -vvv -W ignore --disable-warnings ${args}
 
 install: ## Update the local virtual environment with the latest requirements.
 	@$(PYTHON) -m pip install --upgrade pip-tools pip wheel
 	@$(PIP_SYNC) requirements.txt
-	@$(PYTHON) -m pip install -r requirements.txt
+	@$(PYTHON) -m pip install --no-cache-dir -r requirements.txt
 	# look for requirements.txt in subdirectories of core_plugins and install them
 	@find $(PWD)/cat/core_plugins -name requirements.txt -exec $(PYTHON) -m pip install -r {} \;
 
 compile: ## Compile requirements for the local virtual environment.
+	@$(PYTHON) -m pip install --upgrade pip-tools pip wheel
 	@$(PIP_COMPILE) --no-upgrade --output-file requirements.txt pyproject.toml
 
 update: ## Update and compile requirements for the local virtual environment.
+	@$(PYTHON) -m pip install --upgrade pip-tools pip wheel
 	@$(PIP_COMPILE) --upgrade --output-file requirements.txt pyproject.toml

@@ -13,6 +13,7 @@ from cat.log import log
 
 DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_USER_USERNAME = "user"
+DEFAULT_JWT_ALGORITHM = "HS256"
 
 
 class UserInfo(BaseModel):
@@ -141,4 +142,4 @@ def issue_jwt(username: str, password: str, **kwargs) -> str | None:
         "permissions": user["permissions"],  # User permissions
         "exp": expires                       # Expiry date as a Unix timestamp
     }
-    return jwt.encode(jwt_content, get_env("CCAT_JWT_SECRET"), algorithm=get_env("CCAT_JWT_ALGORITHM"))
+    return jwt.encode(jwt_content, get_env("CCAT_JWT_SECRET"), algorithm=DEFAULT_JWT_ALGORITHM)

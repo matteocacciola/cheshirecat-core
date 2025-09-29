@@ -213,6 +213,9 @@ The current version introduces also the following additional hooks:
 ### RabbitHole:
 - `before_rabbithole_splits_documents` replaces the deprecated `before_rabbithole_splits_text`
 
+### Prompt:
+- `agent_prompt_variables`: to add custom variables to the prompt template
+
 # Best practices
 
 ## Custom endpoints and permissions

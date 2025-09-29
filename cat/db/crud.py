@@ -2,7 +2,11 @@ from enum import Enum
 from typing import List, Dict
 from redis.exceptions import RedisError
 
-from cat.db.database import get_db as get_db_base, DEFAULT_SYSTEM_KEY
+from cat.db.database import (
+    get_db as get_db_base,
+    get_db_connection_string as get_db_connection_string_base,
+    DEFAULT_SYSTEM_KEY,
+)
 from cat.log import log
 
 
@@ -188,3 +192,7 @@ def get_db():
         Redis database connection.
     """
     return get_db_base()
+
+
+def get_db_connection_string() -> str:
+    return get_db_connection_string_base()

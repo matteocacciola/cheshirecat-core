@@ -13,7 +13,7 @@ from cat.routes.routes_utils import (
     on_upsert_factory_setting,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["Large Language Model"], prefix="/llm")
 
 
 # get configured LLMs and configuration schemas

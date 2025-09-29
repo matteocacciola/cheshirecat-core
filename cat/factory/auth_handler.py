@@ -4,7 +4,7 @@ import jwt
 from fastapi.requests import HTTPConnection
 from pydantic import ConfigDict
 
-from cat.auth.auth_utils import is_jwt, extract_token, extract_user_info_on_api_key
+from cat.auth.auth_utils import is_jwt, extract_token, extract_user_info_on_api_key, DEFAULT_JWT_ALGORITHM
 from cat.auth.permissions import AuthResource, AdminAuthResource, AuthPermission, AuthUserInfo
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
@@ -207,7 +207,7 @@ class CoreAuthHandler(BaseAuthHandler):
 
         try:
             # decode token
-            payload = jwt.decode(token, get_env("CCAT_JWT_SECRET"), algorithms=[get_env("CCAT_JWT_ALGORITHM")])
+            payload = jwt.decode(token, get_env("CCAT_JWT_SECRET"), algorithms=[DEFAULT_JWT_ALGORITHM])
         except Exception as e:
             log.error(f"Could not auth user from JWT: {e}")
             # do not pass

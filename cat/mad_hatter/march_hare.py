@@ -1,10 +1,11 @@
 import json
 import time
-from os import getenv
+from ssl import SSLContext, PROTOCOL_TLSv1_2
 from typing import Dict, Callable
 import pika
 from pika.exceptions import AMQPConnectionError
 
+from cat.env import get_env
 from cat.log import log
 from cat.utils import singleton, pod_id
 
@@ -21,7 +22,7 @@ class MarchHareConfig:
         "PLUGIN_UNINSTALLATION": "plugin_uninstallation",
     }
 
-    is_enabled = getenv("CCAT_RABBITMQ_HOST") is not None
+    is_enabled = get_env("CCAT_RABBITMQ_HOST") is not None
 
 
 @singleton
@@ -31,14 +32,23 @@ class MarchHare:
         self.pod_id = pod_id()
 
         if MarchHareConfig.is_enabled:
-            self._connection_parameters = pika.ConnectionParameters(
-                host=getenv("CCAT_RABBITMQ_HOST"),
-                port=int(getenv("CCAT_RABBITMQ_PORT")),
+            parameters = pika.ConnectionParameters(
+                host=get_env("CCAT_RABBITMQ_HOST"),
+                port=int(get_env("CCAT_RABBITMQ_PORT")),
                 credentials=pika.PlainCredentials(
-                    username=getenv("CCAT_RABBITMQ_USER"),
-                    password=getenv("CCAT_RABBITMQ_PASSWORD")
+                    username=get_env("CCAT_RABBITMQ_USER"),
+                    password=get_env("CCAT_RABBITMQ_PASSWORD"),
                 )
             )
+
+            if get_env("CCAT_RABBITMQ_TLS"):
+                # SSL Context for TLS configuration of Amazon MQ for RabbitMQ
+                ssl_context = SSLContext(PROTOCOL_TLSv1_2)
+                ssl_context.set_ciphers("ECDHE+AESGCM:!ECDSA")
+
+                parameters.ssl_options = pika.SSLOptions(context=ssl_context)
+
+            self._connection_parameters = parameters
 
     def notify_event(self, event_type: str, payload: Dict, exchange: str, exchange_type: str = "fanout"):
         """

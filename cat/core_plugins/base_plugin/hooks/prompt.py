@@ -3,6 +3,8 @@
 Here is a collection of methods to hook the prompts components that instruct the *Agent*.
 
 """
+from typing import Dict, Any
+
 from cat.mad_hatter.decorators import hook
 
 
@@ -31,26 +33,28 @@ def agent_prompt_prefix(prompt: str, cat) -> str:
 
 
 @hook(priority=0)
-def agent_prompt_instructions(instructions: str, cat) -> str:
-    """Hook the instruction prompt.
-
-    Allows to edit the instructions that the Cat feeds to the *Agent* to select tools and forms.
+def agent_prompt_variables(variables: Dict[str, Any], cat) -> Dict[str, Any]:
+    """Hook the main prompt variables.
+    Allows to edit the variables that will be used to format the *Main Prompt* that the Cat feeds to the *Agent*.
 
     Args:
-        instructions: str
-            Instructions prompt to select tool or form.
+        variables: Dict[str, Any]
+            The variables that will be used to format the *Main Prompt*.
         cat: StrayCat
             Stray Cat instance.
 
     Returns:
-        instructions: str
-            Instructions prompt to select tool or form
+        variables: Dict[str, Any]
+            The variables that will be used to format the *Main Prompt*.
 
     Notes
     -----
-    This prompt explains the *Agent* how to select a tool or form.
+    The default variables are:
+    - `context`: the retrieved context from RAG (if any)
+    - `history`: the recent conversation history
+    - `agent_scratchpad`: where the *Agent* can concatenate tools use and multiple calls to the LLM.
     """
-    return instructions
+    return variables
 
 
 @hook(priority=0)

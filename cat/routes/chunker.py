@@ -13,7 +13,7 @@ from cat.routes.routes_utils import (
     on_upsert_factory_setting,
 )
 
-router = APIRouter()
+router = APIRouter(tags=["Chunking"], prefix="/chunking")
 
 
 @router.get("/settings", response_model=GetSettingsResponse)

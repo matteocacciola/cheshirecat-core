@@ -20,8 +20,8 @@ def get_supported_env_variables():
         "CCAT_RABBITMQ_PORT": "5672",
         "CCAT_RABBITMQ_USER": "guest",
         "CCAT_RABBITMQ_PASSWORD": "guest",
+        "CCAT_RABBITMQ_TLS": False,
         "CCAT_JWT_SECRET": "secret",
-        "CCAT_JWT_ALGORITHM": "HS256",
         "CCAT_JWT_EXPIRE_MINUTES": str(60 * 24),  # JWT expires after 1 day
         "CCAT_HTTPS_PROXY_MODE": "false",
         "CCAT_CORS_FORWARDED_ALLOW_IPS": "*",

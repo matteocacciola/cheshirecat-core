@@ -9,7 +9,7 @@ from pprint import pformat
 from typing import Callable
 from loguru import logger
 
-from cat.env import get_env
+from cat.env import get_env, get_env_bool
 
 
 def get_log_level():
@@ -173,7 +173,7 @@ class CatLogEngine:
         from cat.utils import get_base_path
 
         """Welcome message in the terminal."""
-        secure = "s" if get_env("CCAT_CORE_USE_SECURE_PROTOCOLS") in ("true", "1") else ""
+        secure = "s" if get_env_bool("CCAT_CORE_USE_SECURE_PROTOCOLS") else ""
 
         cat_host = get_env("CCAT_CORE_HOST")
         cat_port = get_env("CCAT_CORE_PORT")

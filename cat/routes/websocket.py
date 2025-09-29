@@ -6,7 +6,7 @@ from cat.log import log
 from cat.looking_glass import StrayCat
 from cat.memory.messages import UserMessage
 
-router = APIRouter()
+router = APIRouter(tags=["Websocket"])
 
 
 @router.websocket("/ws")

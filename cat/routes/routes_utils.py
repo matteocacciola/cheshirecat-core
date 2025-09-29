@@ -10,12 +10,14 @@ from fastapi import Query, UploadFile, BackgroundTasks, Request
 from langchain.globals import set_llm_cache
 from langchain_core.caches import InMemoryCache
 from pydantic import BaseModel, Field, model_serializer
+from fastapi_healthz import HealthCheckStatusEnum, HealthCheckAbstract
 
 from cat import utils
 from cat.auth.auth_utils import issue_jwt
 from cat.auth.connection import AuthorizedInfo
 from cat.db.cruds import settings as crud_settings
 from cat.db.database import DEFAULT_AGENT_KEY
+from cat.env import get_env, get_env_bool
 from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
 from cat.factory.base_factory import BaseFactory
 from cat.log import log
@@ -115,6 +117,31 @@ class MemoryPointBase(BaseModel):
 class MemoryPoint(MemoryPointBase):
     id: str
     vector: List[float]
+
+
+class HealthCheckLocal(HealthCheckAbstract):
+    @property
+    def service(self) -> str:
+        return "cheshire-cat"
+
+    @property
+    def connection_uri(self) -> str | None:
+        secure = "s" if get_env_bool("CCAT_CORE_USE_SECURE_PROTOCOLS") else ""
+
+        cat_host = get_env("CCAT_CORE_HOST")
+        cat_port = get_env("CCAT_CORE_PORT")
+        return f"http{secure}://{cat_host}:{cat_port}"
+
+    @property
+    def tags(self) -> List[str]:
+        return ["cheshire-cat", "local"]
+
+    @property
+    def comments(self) -> list[str]:
+        return [f"version: {utils.get_cat_version()}"]
+
+    def check_health(self) -> HealthCheckStatusEnum:
+        return HealthCheckStatusEnum.HEALTHY
 
 
 async def auth_token(credentials: UserCredentials, agent_id: str):
