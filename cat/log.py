@@ -1,15 +1,14 @@
-"""The log engine."""
 import json
 import logging
+import os
 import sys
 import time
-import traceback
 from abc import abstractmethod, ABC
 from pprint import pformat
 from typing import Callable
 from loguru import logger
 
-from cat.env import get_env, get_env_bool
+from cat.env import get_env
 
 
 def get_log_level():
@@ -99,19 +98,17 @@ class CatLogEngine:
 
     def error(self, msg):
         """Logs an ERROR message"""
-        self.log(msg, level="ERROR")
+        from cat.utils import print_short_traceback
 
-        # Only print the traceback if an exception handler is being executed
-        if sys.exc_info()[0] is not None:
-            traceback.print_exc()
+        self.log(msg, level="ERROR")
+        print_short_traceback()
 
     def critical(self, msg):
         """Logs a CRITICAL message"""
-        self.log(msg, level="CRITICAL")
+        from cat.utils import print_short_traceback
 
-        # Only print the traceback if an exception handler is being executed
-        if sys.exc_info()[0] is not None:
-            traceback.print_exc()
+        self.log(msg, level="CRITICAL")
+        print_short_traceback()
 
     def log(self, msg, level="DEBUG"):
         """Log a message and dispatch to registered plugin handlers.
@@ -170,14 +167,9 @@ class CatLogEngine:
             self.warning(f"Attempted to unregister a log handler that was not registered: {handler_func}")
 
     def welcome(self):
-        from cat.utils import get_base_path
+        from cat.utils import get_base_path, get_base_url
 
-        """Welcome message in the terminal."""
-        secure = "s" if get_env_bool("CCAT_CORE_USE_SECURE_PROTOCOLS") else ""
-
-        cat_host = get_env("CCAT_CORE_HOST")
-        cat_port = get_env("CCAT_CORE_PORT")
-        cat_address = f"http{secure}://{cat_host}:{cat_port}"
+        cat_docs_address = os.path.join(get_base_url().strip("/"), "docs")
 
         print("\n\n")
         try:
@@ -188,7 +180,7 @@ class CatLogEngine:
             self.warning("welcome.txt not found. Skipping welcome message.")
 
         print("\n=============== ^._.^ ===============\n")
-        print(f"Cat REST API:   {cat_address}/docs")
+        print(f"Cat REST API:   {cat_docs_address}")
         print("======================================")
 
         # self.log_examples() # You can uncomment this for testing purposes

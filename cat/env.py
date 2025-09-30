@@ -3,9 +3,6 @@ import os
 
 def get_supported_env_variables():
     return {
-        "CCAT_CORE_HOST": "localhost",
-        "CCAT_CORE_PORT": "1865",
-        "CCAT_CORE_USE_SECURE_PROTOCOLS": "",
         "CCAT_ADMIN_DEFAULT_PASSWORD": "AIBlackBirdWithCheshireCat",
         "CCAT_API_KEY": None,
         "CCAT_DEBUG": "true",
@@ -27,8 +24,6 @@ def get_supported_env_variables():
         "CCAT_CORS_FORWARDED_ALLOW_IPS": "*",
         "CCAT_HISTORY_EXPIRATION": None,  # in minutes
         "CCAT_CORS_ENABLED": "true",
-        "CCAT_WORKERS": None,
-        "CCAT_LIMIT_MAX_REQUESTS": None,
         "CCAT_CRYPTO_KEY": "cheshirecat",
         "CCAT_CRYPTO_SALT": "cheshirecat_salt",
     }

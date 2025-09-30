@@ -1,3 +1,6 @@
+import sys
+import traceback
+import socket
 import base64
 import hashlib
 import inspect
@@ -18,7 +21,6 @@ from pydantic import BaseModel, ConfigDict
 from rapidfuzz.distance import Levenshtein
 
 from cat.db import models
-from cat.env import get_env
 from cat.exceptions import CustomValidationException
 from cat.log import log
 
@@ -177,10 +179,7 @@ def verbal_timedelta(td: timedelta) -> str:
 
 def get_base_url() -> str:
     """Allows exposing the base url."""
-    secure = "s" if get_env("CCAT_CORE_USE_SECURE_PROTOCOLS") in ("true", "1") else ""
-    cat_host = get_env("CCAT_CORE_HOST")
-    cat_port = get_env("CCAT_CORE_PORT")
-    return f"http{secure}://{cat_host}:{cat_port}/"
+    return socket.gethostbyname(socket.gethostname())
 
 
 def get_base_path() -> str:
@@ -542,3 +541,35 @@ def subscribe_all_subscribers(instance: "BillTheLizard"):
             method.event_name,
             method.__get__(instance),  # type: ignore
         )
+
+def colored_text(text: str, color: str):
+    """Get colored text.
+
+    Args:
+        text: The text to color.
+        color: The color to use.
+
+    Returns:
+        The colored text. Supports blue, yellow, pink, green and red
+    """
+    colors = {
+        "blue": "36;1",
+        "yellow": "33;1",
+        "pink": "38;5;200",
+        "green": "32;1",
+        "red": "31;1",
+    }
+
+    color_str = colors[color]
+    return f"\u001b[{color_str}m\033[1;3m{text}\u001b[0m"
+
+
+def print_short_traceback():
+    """Print a short traceback of the last exception."""
+    if sys.exc_info()[0] is not None:
+        exc_type, exc_value, exc_traceback = sys.exc_info()
+        formatted_traceback = traceback.format_exception(exc_type, exc_value, exc_traceback)
+        if len(formatted_traceback) > 10:
+            formatted_traceback = formatted_traceback[-10:]
+        for err in formatted_traceback:
+            print(colored_text(err, "red"))

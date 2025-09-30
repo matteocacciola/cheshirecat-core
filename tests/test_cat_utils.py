@@ -6,17 +6,6 @@ from cat import utils
 from tests.utils import agent_id
 
 
-def test_get_base_url():
-    assert utils.get_base_url() == "http://localhost:1865/"
-     # test when CCAT_CORE_USE_SECURE_PROTOCOLS is set
-    os.environ["CCAT_CORE_USE_SECURE_PROTOCOLS"] = "1"
-    assert utils.get_base_url() == "https://localhost:1865/"
-    os.environ["CCAT_CORE_USE_SECURE_PROTOCOLS"] = "0"
-    assert utils.get_base_url() == "http://localhost:1865/"
-    os.environ["CCAT_CORE_USE_SECURE_PROTOCOLS"] = ""
-    assert utils.get_base_url() == "http://localhost:1865/"
-
-
 def test_get_base_path():
     assert utils.get_base_path() == "/app/cat/"
 
