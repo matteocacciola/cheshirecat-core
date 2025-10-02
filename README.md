@@ -323,21 +323,129 @@ class PizzaForm(CatForm):
     </summary>
 
 ```python
-from typing import Dict, Any, List
+# my_mcp_plugin.py
 
-from cat.mad_hatter.decorators import CatMcpClient, mcp_client
+from cat.mad_hatter.decorators import hook, plugin
+from cat.log import log
 
+from cat.mad_hatter.decorators.experimental.mcp_client.mcp_client_decorator import mcp_client
+from cat.mad_hatter.decorators.experimental.mcp_client.cat_mcp_client import CatMcpClient
+
+
+# 1. Define your MCP client
 @mcp_client
-class SampleMcpClient(CatMcpClient):
-    """
-    Sample MCP Client for testing purposes.
-    """
-    name = "sample_mcp_client"
-    description = "Sample MCP Client"
-
+class WeatherMcpClient(CatMcpClient):
+    """MCP client for weather information"""
+    
     @property
-    def init_args(self) -> List | Dict[str, Any]:
-        pass
+    def init_args(self):
+        # Return the connection parameters for your MCP server
+        return {
+            "server_url": "http://localhost:3000",
+            # or for stdio: ["python", "path/to/mcp_server.py"]
+        }
+
+
+# 2. Hook to intercept elicitation requests and ask the user
+@hook
+def agent_fast_reply(fast_reply, cat):
+    """
+    Intercept tool responses that require elicitation.
+    This hook runs after tools are executed but before the agent generates a response.
+    """
+    
+    # Check if a tool returned an elicitation request
+    if isinstance(fast_reply, dict) and fast_reply.get("status") == "elicitation_required":
+        # Extract information about what we need
+        field_description = fast_reply["message"]
+        
+        log.info(f"Elicitation required: {field_description}")
+        
+        # Return a message asking the user for the information
+        # This will be sent to the user instead of going through the LLM
+        return field_description
+    
+    # If not an elicitation, continue normally
+    return fast_reply
+
+
+# 3. Hook to capture user responses and store them
+@hook
+def before_agent_starts(agent_input, cat):
+    """
+    Handle user responses to pending elicitations.
+    This hook runs at the start of each conversation turn.
+    """
+    
+    # Check if there's a pending elicitation in working memory
+    pending_elicitation = cat.working_memory.get("pending_mcp_elicitation")
+    
+    if pending_elicitation:
+        log.info("Processing user response to pending elicitation")
+        
+        # Extract elicitation details
+        mcp_client_name = pending_elicitation["mcp_client_name"]
+        elicitation_id = pending_elicitation["elicitation_id"]
+        missing_fields = pending_elicitation["missing_fields"]
+        
+        # Find the MCP client instance from plugin procedures
+        mcp_client = None
+        for procedure in cat.plugin_manager.procedures:
+            if hasattr(procedure, 'name') and procedure.name == mcp_client_name:
+                mcp_client = procedure
+                break
+        
+        if mcp_client and missing_fields:
+            # Get the first missing field (we handle one field per turn)
+            first_field = missing_fields[0]
+            field_name = first_field.get("name")
+            
+            # The user's input is their response to our question
+            user_response = agent_input.input
+            
+            # Store the response
+            mcp_client.store_elicitation_response(
+                elicitation_id=elicitation_id,
+                field_name=field_name,
+                value=user_response,
+                stray=cat
+            )
+            
+            # Clear the pending elicitation
+            del cat.working_memory["pending_mcp_elicitation"]
+            
+            log.info(f"Stored response for field '{field_name}': {user_response}")
+            
+            # Modify the input to tell the agent to retry the original tool
+            # This ensures the agent knows to call the tool again
+            original_tool = pending_elicitation.get("original_tool_call", "")
+            agent_input.input = f"Please retry the tool call with the information I just provided: {original_tool}"
+    
+    return agent_input
+
+
+# 4. (Optional) Hook to track which tool was being called
+@hook
+def before_cat_sends_message(message, cat):
+    """
+    You can use this to clean up or track state.
+    """
+    # Clean up any stale elicitation data if needed
+    # (Usually not necessary as it's handled in before_agent_starts)
+    
+    return message
+
+
+# 5. (Optional) Settings for your plugin
+@plugin
+def settings_schema():
+    return {
+        "mcp_server_url": {
+            "title": "MCP Server URL",
+            "type": "string",
+            "default": "http://localhost:3000"
+        }
+    }
 ```
 </details>
 
