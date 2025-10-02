@@ -387,15 +387,15 @@ def before_agent_starts(agent_input, cat):
         mcp_client_name = pending_elicitation["mcp_client_name"]
         elicitation_id = pending_elicitation["elicitation_id"]
         missing_fields = pending_elicitation["missing_fields"]
-        
+
         # Find the MCP client instance from plugin procedures
-        mcp_client = None
+        client = None
         for procedure in cat.plugin_manager.procedures:
-            if hasattr(procedure, 'name') and procedure.name == mcp_client_name:
-                mcp_client = procedure
+            if procedure.name == mcp_client_name:
+                client = procedure
                 break
         
-        if mcp_client and missing_fields:
+        if client and missing_fields:
             # Get the first missing field (we handle one field per turn)
             first_field = missing_fields[0]
             field_name = first_field.get("name")
@@ -404,7 +404,7 @@ def before_agent_starts(agent_input, cat):
             user_response = agent_input.input
             
             # Store the response
-            mcp_client.store_elicitation_response(
+            client.store_elicitation_response(
                 elicitation_id=elicitation_id,
                 field_name=field_name,
                 value=user_response,
@@ -418,9 +418,9 @@ def before_agent_starts(agent_input, cat):
             
             # Modify the input to tell the agent to retry the original tool
             # This ensures the agent knows to call the tool again
-            original_tool = pending_elicitation.get("original_tool_call", "")
-            agent_input.input = f"Please retry the tool call with the information I just provided: {original_tool}"
-    
+            original_tool_call = pending_elicitation.get("original_tool_call", "the original action")
+            agent_input.input = f"I've just provided the required information: '{user_response}'. Please **retry the original tool call**: {original_tool_call}"
+
     return agent_input
 
 
@@ -432,7 +432,6 @@ def before_cat_sends_message(message, cat):
     """
     # Clean up any stale elicitation data if needed
     # (Usually not necessary as it's handled in before_agent_starts)
-    
     return message
 
 

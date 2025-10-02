@@ -139,7 +139,7 @@ class CatMcpClient(Client, CatProcedure, ABC):
                                 return result
                         except Exception as ex:
                             # Check if this is an elicitation-related error
-                            # Note: Adjust this based on how fastmcp signals elicitations
+                            # TODO: Adjust this based on how fastmcp signals elicitations
                             error_dict = getattr(ex, '__dict__', {})
 
                             if "elicitation" in str(ex).lower() or "elicitation_data" in error_dict:
@@ -168,7 +168,15 @@ class CatMcpClient(Client, CatProcedure, ABC):
                     return HumptyDumpty.run_sync_or_async(call_tool_async)
 
                 except ElicitationRequiredException as elx:
-                    # Return structured data for the agent to handle
+                    # Generate a string representative of the tool call for the elicitation context and retry prompt
+                    joined_kwargs = ', '.join(f'{k}=\"{v}\"' for k, v in kwargs.items())
+                    original_tool_call_str = f"{tool_name}({joined_kwargs})"
+
+                    # Store the necessary context to restart into the hook
+                    self.stray.working_memory["pending_mcp_elicitation"].update({
+                        "original_tool_call": original_tool_call_str,
+                    })
+
                     first_field = elx.missing_fields[0] if elx.missing_fields else {}
                     return {
                         "status": "elicitation_required",
