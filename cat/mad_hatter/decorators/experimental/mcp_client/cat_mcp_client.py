@@ -125,57 +125,42 @@ class CatMcpClient(Client, CatProcedure, ABC):
         def create_tool_caller(tool_name: str):
             """Create a closure that properly calls the MCP tool with elicitation support."""
             def tool_caller(**kwargs):
-                """
-                Tool caller with access to StrayCat instance.
-                Note: The 'stray' parameter is injected by the framework.
-                """
+                from cat.looking_glass import HumptyDumpty
+
+                async def call_tool_async():
+                    try:
+                        async with self:
+                            result = await self.call_tool(tool_name, **kwargs)
+                            return result
+                    except Exception as ex:
+                        elicitation_data = getattr(ex, "elicitation_data", None)
+                        if not elicitation_data:
+                            raise
+                        log.info(f"{self.name} - Elicitation signaled by exception payload.")
+                        # Handle the elicitation - will raise ElicitationRequiredException if needed
+                        responses = self.handle_elicitation(elicitation_data)
+                        # If we got responses without exception, merge and retry once (internal retry)
+                        kwargs.update(responses)
+                        async with self:
+                            return await self.call_tool(tool_name, **kwargs)
+
                 try:
-                    from cat.looking_glass import HumptyDumpty
-
-                    async def call_tool_async():
-                        try:
-                            async with self:
-                                result = await self.call_tool(tool_name, **kwargs)
-                                return result
-                        except Exception as ex:
-                            # Check if this is an elicitation-related error
-                            # TODO: Adjust this based on how fastmcp signals elicitations
-                            error_dict = getattr(ex, '__dict__', {})
-
-                            if "elicitation" in str(ex).lower() or "elicitation_data" in error_dict:
-                                # Try to extract elicitation data from the exception
-                                elicitation_data = error_dict.get("elicitation_data")
-
-                                if not elicitation_data:
-                                    # Construct minimal elicitation data if not provided
-                                    elicitation_data = {
-                                        "id": f"elicitation_{tool_name}",
-                                        "title": f"Additional input needed for {tool_name}",
-                                        "fields": []
-                                    }
-
-                                # Handle the elicitation - will raise ElicitationRequiredException if needed
-                                responses = self.handle_elicitation(elicitation_data)
-
-                                # If we got responses without exception, merge and retry once
-                                kwargs.update(responses)
-                                async with self:
-                                    return await self.call_tool(tool_name, **kwargs)
-                            else:
-                                # Not an elicitation error, re-raise
-                                raise
-
                     return HumptyDumpty.run_sync_or_async(call_tool_async)
-
                 except ElicitationRequiredException as elx:
                     # Generate a string representative of the tool call for the elicitation context and retry prompt
-                    joined_kwargs = ', '.join(f'{k}=\"{v}\"' for k, v in kwargs.items())
+                    joined_kwargs = ", ".join(f'{k}=\"{v}\"' for k, v in kwargs.items())
                     original_tool_call_str = f"{tool_name}({joined_kwargs})"
 
                     # Store the necessary context to restart into the hook
-                    self.stray.working_memory["pending_mcp_elicitation"].update({
+                    pending_data = self.stray.working_memory.get("pending_mcp_elicitation", {})
+                    pending_data.update({
                         "original_tool_call": original_tool_call_str,
+                        "elicitation_id": elx.elicitation_id,
+                        "elicitation_data": elx.elicitation_data,
+                        "missing_fields": elx.missing_fields,
+                        "mcp_client_name": self.name
                     })
+                    self.stray.working_memory["pending_mcp_elicitation"] = pending_data
 
                     first_field = elx.missing_fields[0] if elx.missing_fields else {}
                     return {
