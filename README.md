@@ -98,18 +98,19 @@ forth.
 You can **configure the Redis database by environment variables**. The [`compose.yml`](./compose.yml) file is provided as an example. 
 Hence, the current version is multi-tenant, meaning that you can manage multiple RAGs and other language models at the same time.
 
-The Cheshire Cat is still stateless, so it can be easily scaled.  In case of a cluster environment, we suggest to use a shared storage,
+The Cheshire Cat is still stateless, so it can be easily scaled. In case of a cluster environment, we suggest to use a shared storage,
 mounted in the `cat/plugins` folder, to share the plugins.
 
 A **RabbitMQ message broker** is recommended in a cluster environment, so that the installation
 of plugins can be synchronized along all the PODs and the management of the Cheshire Cat can be done in a distributed way. Its
 configuration is done via environment variables, too. The [`compose.yml`](./compose.yml) file is provided as an example.
 
-## RAG Customization:
+## RAG Customization
 The original version used a fixed RAG implementation, meaning that it could only use a specific vector database and chunking strategy.
 This version allows you to configure the RAG per chatbot, meaning that you can use your own vector database and chunking strategy.
-- **The current version supports multiple vector databases**, such as Qdrant, Pinecone, Weaviate, etc.
-- **The current version supports multiple chunking strategies**, such as text splitting or Semantic chunking.
+**The current version supports**:
+- **multiple vector databases**, such as Qdrant, Pinecone, Weaviate, etc.
+- **multiple chunking strategies**, such as text splitting or Semantic chunking.
 
 ## MCP clients
 In this version, the Cheshire Cat can integrate several MCP clients, such as
@@ -148,28 +149,32 @@ In this way, I tried to make the Cheshire Cat more secure and production-ready.
 ## Customizable LLM
 The original version used a fixed LLM implementation, meaning that it could only use a specific language model.
 This version allows you to configure the LLM per chatbot, meaning that you can use your own language model.
-- **The current version supports multiple language models**, such as OpenAI, Ollama, Google, HuggingFace, etc.
-- **The current version supports multiple LLMs**, meaning that you can use different language models for different chatbots.
+**The current version supports**:
+- **multiple language models**, such as OpenAI, Ollama, Google, HuggingFace, etc.
+- **multiple LLMs**, meaning that you can use different language models for different chatbots.
 
 ## Customizable Storage
 The original did not use any storage solution for the documents composing your RAG, meaning that you were able to store the documents into the knowledge base of each RAG, but not into a remote storage.
 This version allows you to configure the storage per chatbot, meaning that you can use your own storage solution.
-- **The current version supports multiple storage solutions**, such as S3, MinIO, etc.
-- **The current version supports multiple file managers**, meaning that you can use different file managers for different chatbots.
+**The current version supports**:
+- **multiple storage solutions**, such as S3, MinIO, etc.
+- **multiple file managers**, meaning that you can use different file managers for different chatbots.
 
 ## Customizable Chunking strategy
 The original version used a fixed chunking strategy, meaning that it could only use a specific chunking strategy.
 This version allows you to configure the chunking strategy per chatbot, meaning that you can use your own chunking strategy.
-- **The current version supports multiple chunking strategies**, such as text splitting or Semantic chunking.
-- **The current version supports multiple chunkers**, meaning that you can use different chunkers for different chatbots.
-- **The current version supports the extension of the list of allowed chunkers**, so you can use your own chunking strategy.
+**The current version supports**:
+- **multiple chunking strategies**, such as text splitting or Semantic chunking;
+- **multiple chunkers**, meaning that you can use different chunkers for different chatbots;
+- **the extension of the list of allowed chunkers**, so you can use your own chunking strategy.
 
 ## Customizable Vector Database
 The original version used a fixed vector database, meaning that it could only use a specific vector database.
 This version allows you to configure the vector database per chatbot, meaning that you can use your own vector database.
-- **The current version supports multiple vector databases**, such as Qdrant, Pinecone, Weaviate, etc.
-- **The current version supports multiple vector databases**, meaning that you can use different vector databases for different chatbots.
-- **The current version supports the extension of the list of allowed vector databases**, so you can use your own vector database.
+**The current version supports**:
+- **multiple vector databases**, such as Qdrant, Pinecone, Weaviate, etc.
+- **multiple vector databases**, meaning that you can use different vector databases for different chatbots;
+- **the extension of the list of allowed vector databases**, so you can use your own vector database.
 
 ## Multiple chat histories
 The original version did not store the chat histories, meaning that the chat history was lost when the chatbot was restarted.
@@ -193,13 +198,13 @@ Here, I have introduced some new features and improvements, such as:
 ## Compatibility with plugins
 This new version is no more completely compatible with the original version, since the architecture has been deeply changed.
 However, **most of the plugins developed for the original version should work with this version**.
-Some plugins may require some changes to work with this version, since the architecture has been deeply changed.
+Few plugins may require minor changes to work with this version.
 In this case, please feel free to contact me for support.
 
 ## List of available hooks
 The Cheshire Cat provides a set of hooks that can be used to customize the behavior of the AI agent. Hooks are events that can be
 triggered at specific points in the conversation, allowing you to modify the behavior of the AI agent or to add custom functionality.
-The list of available hooks is available in the [documentation](https://cheshire-cat-ai.github.io/docs/plugins/plugins/).
+The list of available hooks is available in the [documentation](https://deepwiki.com/matteocacciola/cheshirecat-core).
 The current version introduces also the following additional hooks:
 
 ### Factories:
@@ -221,7 +226,7 @@ The current version introduces also the following additional hooks:
 ## Custom endpoints and permissions
 
 When implementing custom endpoints, you can use the `@endpoint` decorator to create a new endpoint. Please, refer to the
-[documentation](https://cheshire-cat-ai.github.io/docs/plugins/endpoints/) for more information.
+[documentation](https://deepwiki.com/matteocacciola/cheshirecat-core) for more information.
 
 > [!IMPORTANT]
 > **Each endpoint implemented for chatbots must use the `check_permissions` method to authenticate**. See this
@@ -457,7 +462,7 @@ easily interact with the Cat. Please, refer to the [SDK documentation](https://w
 easily interact with the Cheshire Cat. Please, refer to the [library documentation](https://www.github.com/matteocacciola/cheshirecat-typescript-client/blob/master/README.md) for more information.
 
 List of resources:
-- [Official Documentation](https://deepwiki.com/matteocacciola/cheshirecat-core)
+- [Official Documentation](https://deepwiki.com/matteocacciola/cheshirecat-core) of the current fork
 - [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk)
 - [Typescript SDK](https://www.github.com/matteocacciola/cheshirecat-typescript-client)
 - [Python SDK](https://www.github.com/matteocacciola/cheshirecat-python-sdk)
