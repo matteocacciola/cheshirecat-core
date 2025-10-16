@@ -19,7 +19,7 @@ def format_key(agent_id: str, plugin_id: str) -> str:
     return f"{agent_id}:plugin:{plugin_id}"
 
 
-def get_setting(agent_id: str, plugin_id: str) -> Dict[str, Any]:
+def get_setting(agent_id: str, plugin_id: str) -> Dict[str, Any] | None:
     """
     Retrieve plugin settings from Redis.
 
@@ -28,7 +28,7 @@ def get_setting(agent_id: str, plugin_id: str) -> Dict[str, Any]:
         plugin_id: ID of the plugin.
 
     Returns:
-        Dictionary of plugin settings, or empty dict if not found.
+        Dictionary of plugin settings, or None if not found.
 
     Raises:
         RedisError: If Redis connection fails.
@@ -37,7 +37,7 @@ def get_setting(agent_id: str, plugin_id: str) -> Dict[str, Any]:
         settings = crud.read(format_key(agent_id, plugin_id))
         if settings is None:
             log.debug(f"No settings found for {agent_id}:{plugin_id}")
-            return {}
+            return None
 
         if isinstance(settings, list):
             settings = settings[0]
@@ -91,7 +91,7 @@ def update_setting(agent_id: str, plugin_id: str, updated_settings: Dict[str, An
         ValueError: If serialization fails.
     """
     try:
-        settings_db = get_setting(agent_id, plugin_id)
+        settings_db = get_setting(agent_id, plugin_id) or {}
         settings_db.update(updated_settings)
 
         return set_setting(agent_id, plugin_id, settings_db)

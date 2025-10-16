@@ -85,7 +85,7 @@ class Plugin:
         # the new setting coming from the model to be activated
         new_setting = self._get_settings_from_model()
 
-        if setting and new_setting and setting == new_setting:
+        if setting is not None and new_setting and setting == new_setting:
             # settings are the same, no need to migrate
             return True
 
@@ -211,7 +211,7 @@ class Plugin:
         log.debug(f"{self.id} have no settings, created with settings model default values")
 
         # load settings from Redis database, in case of new settings, the already grabbed values are loaded otherwise
-        settings = settings if settings else crud_plugins.get_setting(agent_id, self._id)
+        settings = settings if settings else (crud_plugins.get_setting(agent_id, self._id) or {})
         try:
             # Validate the settings
             self.settings_model().model_validate(settings)

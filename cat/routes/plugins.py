@@ -1,11 +1,13 @@
 from typing import Dict
-from fastapi import Body, APIRouter
+from fastapi import Body, APIRouter, Request
 from pydantic import ValidationError
 from slugify import slugify
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
+from cat.db.cruds import plugins as crud_plugins
 from cat.exceptions import CustomValidationException, CustomNotFoundException
+from cat.looking_glass import BillTheLizard
 from cat.routes.routes_utils import (
     GetAvailablePluginsResponse,
     GetSettingResponse,
@@ -106,3 +108,29 @@ async def upsert_cheshirecat_plugin_settings(
     final_settings = plugin.save_settings(payload, ccat.id)
 
     return GetSettingResponse(name=plugin_id, value=final_settings)
+
+
+@router.post("/settings/{plugin_id}", response_model=GetSettingResponse)
+async def reset_cheshirecat_plugin_settings(
+    request: Request,
+    plugin_id: str,
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.EDIT),
+) -> GetSettingResponse:
+    """Resets the settings of a specific plugin"""
+    plugin_id = slugify(plugin_id, separator="_")
+
+    # Get the factory settings of the plugin
+    lizard: BillTheLizard = request.app.state.lizard
+    factory_settings = crud_plugins.get_setting(lizard.config_key, plugin_id)
+    if factory_settings is None:
+        raise CustomNotFoundException("Plugin not found.")
+
+    # access cat instance
+    ccat = info.cheshire_cat
+
+    if not ccat.plugin_manager.local_plugin_exists(plugin_id):
+        raise CustomNotFoundException("Plugin not found")
+
+    crud_plugins.set_setting(ccat.id, plugin_id, factory_settings)
+
+    return GetSettingResponse(name=plugin_id, value=factory_settings)

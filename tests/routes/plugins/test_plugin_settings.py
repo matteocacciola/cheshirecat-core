@@ -115,3 +115,33 @@ def test_base_plugin_settings(secure_client, secure_client_headers):
     assert json["name"] == "base_plugin"
     assert json["value"] == {}
     assert json["scheme"] == {}
+
+
+def test_reset_plugin_settings(secure_client, secure_client_headers):
+    just_installed_plugin(secure_client, secure_client_headers, activate=True)
+
+    # save settings
+    fake_settings = {"a": "a", "b": 1}
+    response = secure_client.put("/plugins/settings/mock_plugin", json=fake_settings, headers=secure_client_headers)
+    assert response.status_code == 200
+
+    # reset settings
+    response = secure_client.post("/plugins/settings/mock_plugin", headers=secure_client_headers)
+    assert response.status_code == 200
+    json = response.json()
+    assert json["name"] == "mock_plugin"
+    assert json["value"] == {"a": "a", "b": 0}
+
+    # get settings back for this specific plugin
+    response = secure_client.get("/plugins/settings/mock_plugin", headers=secure_client_headers)
+    json = response.json()
+    assert response.status_code == 200
+    assert json["name"] == "mock_plugin"
+    assert json["value"] == {"a": "a", "b": 0}
+
+    # retrieve all plugins settings to check if it was saved in DB
+    response = secure_client.get("/plugins/settings", headers=secure_client_headers)
+    json = response.json()
+    assert response.status_code == 200
+    saved_config = [c for c in json["settings"] if c["name"] == "mock_plugin"]
+    assert saved_config[0]["value"] == {"a": "a", "b": 0}
