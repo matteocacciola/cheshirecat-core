@@ -62,26 +62,23 @@ async def _run_with_bind(
 ) -> "AgentOutput":
     from cat.looking_glass import AgentOutput
 
-    prompt_variables = prompt_variables or {}
+    prompt.messages.append(HumanMessagePromptTemplate.from_template("{agent_scratchpad}"))
 
     # Create the agent with proper prompt structure
-    agent = create_tool_calling_agent(
-        llm=llm,
-        tools=tools,
-        prompt=ChatPromptTemplate.from_messages(
-            prompt.messages + [HumanMessagePromptTemplate.from_template("{agent_scratchpad}")]
-        ),
-    )
+    agent = create_tool_calling_agent(llm=llm, tools=tools, prompt=prompt)
     # Create the agent executor
     agent_executor = AgentExecutor.from_agent_and_tools(
         agent=agent,
         tools=tools,
+        callbacks=callbacks,
         return_intermediate_steps=True,
         verbose=True,
         handle_parsing_errors=True,  # Add error handling
     )
     # Run the agent
-    langchain_msg = await agent_executor.ainvoke(prompt_variables, config=RunnableConfig(callbacks=callbacks))
+    langchain_msg = await agent_executor.ainvoke(
+        prompt_variables or {}, config=RunnableConfig(callbacks=callbacks)
+    )
 
     cleaned_output = _clean_response(langchain_msg.get("output", "")).strip()
     extracted_steps = [_extract_info(step) for step in langchain_msg.get("intermediate_steps", [])]

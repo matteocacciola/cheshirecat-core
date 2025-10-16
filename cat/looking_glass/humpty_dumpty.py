@@ -7,6 +7,21 @@ from cat.utils import singleton
 
 @singleton
 class HumptyDumpty:
+    """
+    A singleton class for managing event subscriptions and dispatching.
+
+    The HumptyDumpty class provides a mechanism to subscribe
+    callbacks to named events and dispatch those events with optional
+    positional and keyword arguments. It supports both synchronous
+    and asynchronous callbacks.
+
+    Attributes:
+        _subscribers: A dictionary mapping event names to lists of callbacks.
+
+    Methods:
+        subscribe: Add a callback to the list of subscribers for a given event.
+        dispatch: Dispatch an event to all registered callbacks.
+    """
     def __init__(self):
         self._subscribers: Dict[str, List[Callable[..., Any]]] = {}
 
