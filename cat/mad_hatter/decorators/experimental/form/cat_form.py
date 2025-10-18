@@ -4,10 +4,11 @@ from typing import List, Dict
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, ValidationError
+from slugify import slugify
 
 from cat.agent import run_agent
 from cat.log import log
-from cat.mad_hatter.procedures import CatProcedure
+from cat.mad_hatter.procedures import CatProcedure, CatProcedureType
 from cat.utils import Enum, parse_json
 
 
@@ -28,6 +29,7 @@ class CatForm(CatProcedure, ABC):  # base model of forms
     def __init__(self):
         if not hasattr(self, "name") or not self.name:
             self.name = type(self).__name__
+        self.name = slugify(self.name.strip(), separator="_")
 
         self._state = CatFormState.INCOMPLETE
         self._model: Dict = {}
@@ -68,10 +70,14 @@ class CatForm(CatProcedure, ABC):  # base model of forms
             description += f"- {example}\n"
 
         return [StructuredTool.from_function(
-            name=self.name.strip().replace(" ", "_"),
+            name=self.name,
             description=description,
             func=self.next,
         )]
+
+    @property
+    def type(self) -> CatProcedureType:
+        return CatProcedureType.TOOL
 
     @abstractmethod
     def submit(self, form_data) -> str:

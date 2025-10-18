@@ -5,6 +5,7 @@ from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomNotFoundException
 from cat.mad_hatter.decorators import endpoint
+from cat.factory.vector_db import VectorMemoryType
 
 
 class GetCollectionsItem(BaseModel):
@@ -47,12 +48,16 @@ async def destroy_all_collection_points(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> WipeCollectionsResponse:
     """Delete and create all collections"""
-    vector_memory_handler = info.cheshire_cat.vector_memory_handler
+    ccat = info.cheshire_cat
+    vector_memory_handler = ccat.vector_memory_handler
 
     to_return = {
         collection: await vector_memory_handler.destroy_all_points(collection)
         for collection in await vector_memory_handler.get_collection_names()
     }
+
+    ccat.plugin_manager.find_plugins()
+    await ccat.embed_procedures()
 
     return WipeCollectionsResponse(deleted=to_return)
 
@@ -69,15 +74,22 @@ async def destroy_all_single_collection_points(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> WipeCollectionsResponse:
     """Delete and recreate a collection"""
-    vector_memory_handler = info.cheshire_cat.vector_memory_handler
+    ccat = info.cheshire_cat
+
+    vector_memory_handler = ccat.vector_memory_handler
     existing_collections = await vector_memory_handler.get_collection_names()
 
-    # check if collection exists
+    # check if the collection exists
     if collection_id not in existing_collections:
         raise CustomNotFoundException("Collection does not exist.")
 
     ret = await vector_memory_handler.destroy_all_points(collection_id)
-    return WipeCollectionsResponse(deleted={collection_id: ret})
+
+    if collection_id == VectorMemoryType.PROCEDURAL:
+        ccat.plugin_manager.find_plugins()
+        await ccat.embed_procedures()
+
+    return WipeCollectionsResponse(deleted={str(collection_id): ret})
 
 
 # CREATE a new collection

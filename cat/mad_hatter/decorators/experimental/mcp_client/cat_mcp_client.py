@@ -2,9 +2,10 @@ from abc import ABC, abstractmethod
 from typing import Any, List, Dict
 from langchain.tools import StructuredTool
 from fastmcp import Client
+from slugify import slugify
 
 from cat.log import log
-from cat.mad_hatter.procedures import CatProcedure
+from cat.mad_hatter.procedures import CatProcedure, CatProcedureType
 from cat.mad_hatter.decorators.tool import CatTool
 
 
@@ -26,7 +27,7 @@ class CatMcpClient(Client, CatProcedure, ABC):
             super().__init__(**init_args)
 
         # Initialize CatProcedure attributes
-        self.name = self.__class__.__name__
+        self.name = slugify(self.__class__.__name__.strip(), separator="_")
         self.description = self.__class__.__doc__ or "No description provided."
         self.input_schema = {}
         self.output_schema = {}
@@ -179,9 +180,9 @@ class CatMcpClient(Client, CatProcedure, ABC):
             return tool_caller
 
         tools = []
-        try:
-            # Get tools with proper connection handling
-            for tool in self.mcp_tools:
+        # Get tools with proper connection handling
+        for tool in self.mcp_tools:
+            try:
                 cat_tool = CatTool.from_fastmcp(tool, self.call_tool)
 
                 # Create a StructuredTool for each discovered procedure
@@ -193,10 +194,21 @@ class CatMcpClient(Client, CatProcedure, ABC):
                         args_schema=cat_tool.input_schema,
                     )
                 )
-        except Exception as e:
-            log.error(f"{self.name} - Error creating LangChain tools: {e}")
+            except Exception as e:
+                log.error(f"{self.name} - Error creating LangChain tools: {e}")
 
         return tools
+
+    def dictify(self) -> List[Dict]:
+        result = []
+        for tool in self.mcp_tools:
+            try:
+                cat_tool = CatTool.from_fastmcp(tool, self.call_tool)
+                result.extend(cat_tool.dictify())
+            except Exception as e:
+                log.error(f"{self.name} - Error creating dictionaries representing tools: {e}")
+
+        return result
 
     def __repr__(self) -> str:
         return f"McpClient(name={self.name})"
@@ -215,6 +227,10 @@ class CatMcpClient(Client, CatProcedure, ABC):
         """Asynchronously fetch MCP resources using proper context manager."""
         async with self:
             return await self.list_resources()
+
+    @property
+    def type(self) -> CatProcedureType:
+        return CatProcedureType.MCP
 
     @property
     def mcp_tools(self):

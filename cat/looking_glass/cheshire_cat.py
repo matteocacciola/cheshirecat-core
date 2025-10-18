@@ -1,3 +1,4 @@
+import time
 from typing import Dict
 from uuid import uuid4
 from langchain_core.embeddings import Embeddings
@@ -16,8 +17,9 @@ from cat.factory.auth_handler import BaseAuthHandler
 from cat.factory.chunker import ChunkerFactory, BaseChunker
 from cat.factory.file_manager import BaseFileManager, FileManagerFactory
 from cat.factory.llm import LLMFactory
-from cat.factory.vector_db import VectorDatabaseFactory, BaseVectorDatabaseHandler
+from cat.factory.vector_db import VectorDatabaseFactory, BaseVectorDatabaseHandler, VectorMemoryType
 from cat.log import log
+from cat.looking_glass.humpty_dumpty import subscriber
 from cat.mad_hatter import Tweedledee
 from cat.utils import get_factory_object, get_updated_factory_object
 
@@ -242,6 +244,39 @@ class CheshireCat:
         await self.vector_memory_handler.initialize(lizard.embedder_name, lizard.embedder_size)
 
         return {"name":vector_memory_name, "value": updater.new_setting["value"]}
+
+    async def embed_procedures(self):
+        log.info(f"Agent id: {self.id}. Embedding procedures in vector memory")
+
+        # Destroy all procedural embeddings
+        collection_name = str(VectorMemoryType.PROCEDURAL)
+        await self.vector_memory_handler.destroy_all_points(collection_name)
+
+        # Easy access to active procedures in plugin_manager (source of truth!)
+        active_procedures_hashes = []
+        for ap in self.plugin_manager.procedures:
+            active_procedures_hashes.extend(ap.dictify())
+
+        payloads = []
+        vectors = []
+        for t in active_procedures_hashes:
+            payloads.append({
+                "page_content": t["content"],
+                "metadata": {
+                    "source": t["source"],
+                    "type": t["type"],
+                    "trigger_type": t["trigger_type"],
+                    "when": time.time(),
+                }
+            })
+            vectors.append(self.embedder.embed_documents([t["content"]])[0])
+
+        await self.vector_memory_handler.add_points(collection_name=collection_name, payloads=payloads, vectors=vectors)
+        log.info(f"Agent id: {self.id}. Embedded {len(active_procedures_hashes)} triggers in {collection_name} vector memory")
+
+    @subscriber("on_finish_plugins_sync")
+    def on_finish_plugins_sync(self) -> None:
+        self.embed_procedures()
 
     @property
     def lizard(self) -> "BillTheLizard":

@@ -106,7 +106,7 @@ class StrayCat:
         self.working_memory = WorkingMemory(agent_id=self.agent_id, user_id=self.user.id, chat_id=self.id)
         self.latest_n_history = 1
 
-        self._tools: List[StructuredTool] = [lp for p in self._get_procedures() for lp in p.langchainfy()]
+        self._tools: List[StructuredTool] = [lp for p in self.get_procedures() for lp in p.langchainfy()]
 
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""
@@ -234,7 +234,7 @@ class StrayCat:
 
         await self._send_ws_json(error_message)
 
-    def _get_procedures(self) -> List[CatProcedure]:
+    def get_procedures(self) -> List[CatProcedure]:
         """
         Get all procedures (tools and forms) available to the agent. If a procedure is a form, it is
         instantiated with a reference to the current `StrayCat` instance.
@@ -331,7 +331,7 @@ class StrayCat:
                     SystemMessagePromptTemplate.from_template(template=system_prompt),
                     *agent_input.history,
                 ]),
-                tools=self._tools,
+                tools=self.plugin_manager.execute_hook("pick_tools_from_memory", self._tools, cat=self),
                 prompt_variables=prompt_variables,
                 callbacks=self.plugin_manager.execute_hook("llm_callbacks", [NewTokenHandler(self)], cat=self),
             )

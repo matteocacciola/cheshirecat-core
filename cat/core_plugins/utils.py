@@ -2,6 +2,7 @@ from typing import List, Dict
 from pydantic import Field
 
 from cat import utils
+from cat.factory.vector_db import VectorMemoryType
 from cat.log import log
 from cat.memory.working_memory import DocumentRecall
 
@@ -17,6 +18,7 @@ class RecallSettings(utils.BaseModelDict):
 async def recall(
     cat: "StrayCat",
     query: List[float],
+    collection: VectorMemoryType,
     k: int | None = 5,
     threshold: int | None = None,
     metadata: Dict | None = None,
@@ -34,6 +36,8 @@ async def recall(
         query: List[float]
             The search query, passed as embedding vector.
             Please first run cheshire_cat.embedder.embed_query(query) if you have a string query to pass here.
+        collection: VectorMemoryType
+            The name of the vector memory collection to retrieve memories from.
         k: int | None
             The number of memories to retrieve.
             If `None` retrieves all the available memories.
@@ -51,15 +55,15 @@ async def recall(
 
     if k:
         memories = await cheshire_cat.vector_memory_handler.recall_memories_from_embedding(
-            "declarative", query, metadata, k, threshold
+            str(collection), query, metadata, k, threshold
         )
         return memories
 
-    memories = await cheshire_cat.vector_memory_handler.recall_all_memories("declarative")
+    memories = await cheshire_cat.vector_memory_handler.recall_all_memories(str(collection))
     return memories
 
 
-async def recall_relevant_memories_to_working_memory(cat: "StrayCat", query: str):
+async def recall_relevant_memories_to_working_memory(cat: "StrayCat", collection: VectorMemoryType, query: str):
     """
     Retrieve context from memory.
     The method retrieves the relevant memories from the vector collections that are given as context to the LLM.
@@ -68,6 +72,8 @@ async def recall_relevant_memories_to_working_memory(cat: "StrayCat", query: str
     Args:
         cat: StrayCat
             The StrayCat instance.
+        collection: VectorMemoryType
+            The name of the vector memory collection to retrieve memories from.
         query: str
             The query used to make a similarity search in the Cat's vector memories.
 
@@ -112,6 +118,7 @@ async def recall_relevant_memories_to_working_memory(cat: "StrayCat", query: str
     memories = await recall(
         cat=cat,
         query=config.embedding,
+        collection=collection,
         k=config.k,
         threshold=config.threshold,
         metadata=config.metadata,

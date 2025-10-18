@@ -160,9 +160,7 @@ class BillTheLizard:
     @subscriber("on_start_plugin_uninstall")
     def on_start_plugin_uninstall(self, plugin_id: str) -> None:
         # deactivate plugins in the Cheshire Cats
-        for ccat_id in crud.get_agents_plugin_keys(plugin_id):
-            ccat = self.get_cheshire_cat(ccat_id)
-            ccat.plugin_manager.deactivate_plugin(plugin_id, dispatch_events=False)
+        self.on_start_plugin_deactivate(plugin_id)
 
     @subscriber("on_end_plugin_uninstall")
     def on_end_plugin_uninstall(self, plugin_id: str, endpoints: List[CustomEndpoint]) -> None:
@@ -194,6 +192,10 @@ class BillTheLizard:
         # migrate plugin settings in the Cheshire Cats
         for ccat_id in crud.get_agents_plugin_keys(plugin_id):
             ccat = self.get_cheshire_cat(ccat_id)
+            # if the plugin is not active for the Cheshire Cat, then skip it
+            if not ccat.plugin_manager.local_plugin_exists(plugin_id):
+                continue
+            # if the plugin is active for the Cheshire Cat, then re-activate to incrementally apply the new settings
             ccat.plugin_manager.activate_plugin(plugin_id, dispatch_events=False)
 
     @subscriber("on_start_plugin_deactivate")
@@ -258,10 +260,10 @@ class BillTheLizard:
             self.load_language_embedder()
 
             for ccat_id in crud.get_agents_main_keys():
-                ccat = self.get_cheshire_cat(ccat_id)
-
                 # inform the Cheshire Cats about the new embedder available in the system
+                ccat = self.get_cheshire_cat(ccat_id)
                 await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
+                await ccat.embed_procedures()
         except Exception as e:  # restore the original Embedder
             log.error(e)
 
@@ -309,6 +311,7 @@ class BillTheLizard:
 
         ccat = CheshireCat(agent_id)
         await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
+        await ccat.embed_procedures()
 
         return ccat
 

@@ -4,9 +4,11 @@ Here is a collection of methods to hook into the Cat execution pipeline.
 
 """
 from typing import Dict, List
+from langchain_core.tools import StructuredTool
 
-from cat.core_plugins.base_plugin.utils import recall_relevant_memories_to_working_memory
+from cat.core_plugins.utils import recall_relevant_memories_to_working_memory
 from cat.exceptions import VectorMemoryError
+from cat.factory.vector_db import VectorMemoryType
 from cat.log import log
 from cat.looking_glass import HumptyDumpty
 from cat.mad_hatter.decorators import hook
@@ -94,6 +96,7 @@ def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
         r = HumptyDumpty.run_sync_or_async(
             recall_relevant_memories_to_working_memory,
             cat=cat,
+            collection=VectorMemoryType.DECLARATIVE,
             query=user_message.text,
         )
         if hasattr(r, "__await__"):
@@ -273,3 +276,22 @@ def llm_callbacks(callbacks: List, cat) -> List:
             Edited list of callbacks to be passed to the LLM/ChatModel
     """
     return callbacks
+
+
+@hook(priority=0)
+def pick_tools_from_memory(tools: List[StructuredTool], cat) -> List[StructuredTool]:
+    """
+    Selects tools from the provided memory procedures and returns them as a list of
+    structured tools.
+
+    Args:
+        tools: List[StructuredTool]
+            List of existing structured tools.
+        cat:
+            Stray Cat instance.
+
+    Returns:
+        List[StructuredTool]: A list of structured tools extracted and processed
+        from the memory procedures.
+    """
+    return tools

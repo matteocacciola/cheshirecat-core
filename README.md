@@ -216,14 +216,14 @@ The current version introduces also the following additional hooks:
 - `llm_callbacks`: add custom callbacks to the LangChain LLM/ChatModel
 
 ### RabbitHole:
-- `before_rabbithole_splits_documents` replaces the deprecated `before_rabbithole_splits_text`
+- `before_rabbithole_splits_documents` replaces the removed `before_rabbithole_splits_text`
 
 ### Prompt:
 - `agent_prompt_variables`: to add custom variables to the prompt template
 
 ### Memory:
-- `before_cat_recalls_memories` replaces the deprecated `before_cat_recalls_episodic_memories`,
-`before_cat_recalls_declarative_memories` and `before_cat_recalls_procedural_memories`
+- `before_cat_recalls_memories` replaces the removed `before_cat_recalls_declarative_memories`
+- `pick_tools_from_memory` to add custom tools to the memory or to optimize the selection of available tools by using the working memory
 
 ## List of suppressed hooks
 
