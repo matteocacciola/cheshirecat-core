@@ -1,34 +1,27 @@
+from typing import Literal
+from pydantic import Field
 import tiktoken
 
-from cat.core_plugins.memory.models import EmbedderModelInteraction
-from cat.core_plugins.memory.utils import recall_relevant_memories_to_working_memory
-from cat.exceptions import VectorMemoryError
-from cat.log import log
-from cat.looking_glass import HumptyDumpty
 from cat.mad_hatter.decorators import hook
-from cat.memory.messages import UserMessage
+from cat.memory.interactions import ModelInteraction
 from cat.utils import get_caller_info
 
 
-@hook(priority=1)
-def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
-    # recall declarative memory from vector collections and store it in working_memory
-    try:
-        r = HumptyDumpty.run_sync_or_async(
-            recall_relevant_memories_to_working_memory,
-            cat=cat,
-            query=user_message.text,
-        )
-        if hasattr(r, "__await__"):
-            import asyncio
+class EmbedderModelInteraction(ModelInteraction):
+    """
+    Represents an interaction with an embedding model.
 
-            asyncio.get_event_loop().run_until_complete(r)
-    except Exception as e:
-        log.error(f"Agent id: {cat.agent_id}. Error during recall {e}")
+    Inherits from ModelInteraction and includes attributes specific to embedding interactions.
 
-        raise VectorMemoryError("An error occurred while recalling relevant memories.")
-
-    return user_message
+    Attributes
+    ----------
+    model_type : Literal["embedder"]
+        The type of model, which is fixed to "embedder".
+    source : str
+        The source of the interaction, defaulting to "recall".
+    """
+    model_type: Literal["embedder"] = Field(default="embedder")
+    source: str = Field(default="recall")
 
 
 @hook(priority=1)

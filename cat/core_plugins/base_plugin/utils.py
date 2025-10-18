@@ -1,8 +1,17 @@
 from typing import List, Dict
+from pydantic import Field
 
-from cat.core_plugins.memory.models import RecallSettings
+from cat import utils
 from cat.log import log
 from cat.memory.working_memory import DocumentRecall
+
+
+class RecallSettings(utils.BaseModelDict):
+    embedding: List[float] = Field(default_factory=list)
+    k: int | None = 3
+    latest_n_history: int | None = 3
+    threshold: float | None = 0.5
+    metadata: dict | None = None
 
 
 async def recall(
@@ -69,7 +78,7 @@ async def recall_relevant_memories_to_working_memory(cat: "StrayCat", query: str
 
     Examples
     --------
-    Recall memories from custom query
+    Recall memories from a custom query
     >> cat.recall_relevant_memories_to_working_memory(query="What was written on the bottle?")
 
     Notes
@@ -84,18 +93,21 @@ async def recall_relevant_memories_to_working_memory(cat: "StrayCat", query: str
     recall_query = plugin_manager.execute_hook("cat_recall_query", query, cat=cat)
     log.info(f"Agent id: {cat.agent_id}. Recall query: '{recall_query}'")
 
-    # Embed recall query
-    recall_query_embedding = cheshire_cat.embedder.embed_query(recall_query)
-
     # keep track of embedder model usage
     cat.working_memory.recall_query = recall_query
 
-    # hook to do something before recall begins
-    plugin_manager.execute_hook("before_cat_recalls_memories", cat=cat)
-
     # Setting default recall configs for each memory + hooks to change recall configs for each memory
-    metadata = cat.working_memory.user_message.get("metadata", {})
-    config = RecallSettings(embedding=recall_query_embedding, metadata=metadata)
+    config = RecallSettings(
+        embedding=cheshire_cat.embedder.embed_query(recall_query),
+        metadata=cat.working_memory.user_message.get("metadata", {}),
+    )
+
+    # hook to do something before recall begins
+    config = utils.restore_original_model(
+        plugin_manager.execute_hook("before_cat_recalls_memories", config, cat=cat),
+        RecallSettings
+    )
+    cat.latest_n_history = config.latest_n_history
 
     memories = await recall(
         cat=cat,

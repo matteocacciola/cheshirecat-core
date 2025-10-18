@@ -5,7 +5,12 @@ Here is a collection of methods to hook into the Cat execution pipeline.
 """
 from typing import Dict, List
 
+from cat.core_plugins.base_plugin.utils import recall_relevant_memories_to_working_memory
+from cat.exceptions import VectorMemoryError
+from cat.log import log
+from cat.looking_glass import HumptyDumpty
 from cat.mad_hatter.decorators import hook
+from cat.memory.messages import UserMessage
 
 
 # Called before cat bootstrap
@@ -49,7 +54,7 @@ def after_cat_bootstrap(cat) -> None:
 # Called when a user message arrives.
 # Useful to edit/enrich user input (e.g. translation)
 @hook(priority=0)
-def before_cat_reads_message(user_message_json: Dict, cat) -> Dict:
+def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
     """
     Hook the incoming user's JSON dictionary.
 
@@ -84,7 +89,23 @@ def before_cat_reads_message(user_message_json: Dict, cat) -> Dict:
 
     where "custom_key" is a newly added key to the dictionary to store any data.
     """
-    return user_message_json
+    # recall declarative memory from vector collections and store it in working_memory
+    try:
+        r = HumptyDumpty.run_sync_or_async(
+            recall_relevant_memories_to_working_memory,
+            cat=cat,
+            query=user_message.text,
+        )
+        if hasattr(r, "__await__"):
+            import asyncio
+
+            asyncio.get_event_loop().run_until_complete(r)
+    except Exception as e:
+        log.error(f"Agent id: {cat.agent_id}. Error during recall {e}")
+
+        raise VectorMemoryError("An error occurred while recalling relevant memories.")
+
+    return user_message
 
 
 # What is the input to recall memories?
@@ -126,28 +147,32 @@ def cat_recall_query(user_message: str, cat) -> str:
 
 # Called just before the cat recalls memories.
 @hook(priority=0)
-def before_cat_recalls_memories(cat) -> None:
+def before_cat_recalls_memories(config: Dict, cat) -> Dict:
     """
     Hook into semantic search in memories.
 
-    Allows to intercept when the Cat queries the memories using the embedded user's input.
+    Allows intercepting when the Cat queries the memories using the embedded user's input.
 
     The hook is executed just before the Cat searches for the meaningful context in both memories
     and stores it in the *Working Memory*.
 
     Args:
+        config: Dict
+            The configuration dictionary for retrieval of memories.
         cat: StrayCat
             Stray Cat instance.
 
+    Returns:
+        The configuration dictionary for retrieval of memories.
     """
-    pass
+    return config
 
 
 # Called just before the cat recalls memories.
 @hook(priority=0)
 def after_cat_recalls_memories(cat) -> None:
     """
-    Hook after semantic search in memories.
+    Hook after a semantic search in memories.
 
     The hook is executed just after the Cat searches for the meaningful context in memories
     and stores it in the *Working Memory*.

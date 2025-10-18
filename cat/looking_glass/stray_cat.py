@@ -104,6 +104,7 @@ class StrayCat:
         self.user: Final[AuthUserInfo] = user_data
 
         self.working_memory = WorkingMemory(agent_id=self.agent_id, user_id=self.user.id, chat_id=self.id)
+        self.latest_n_history = 1
 
         self._tools: List[StructuredTool] = [lp for p in self._get_procedures() for lp in p.langchainfy()]
 
@@ -298,9 +299,8 @@ class StrayCat:
         if agent_fast_reply and agent_fast_reply.output:
             return CatMessage(text=agent_fast_reply.output)
 
-        # usual flow
-        # prepare agent input with context, input and history
-        latest_n_history = kwargs.get("latest_n_history", 3) * 2  # each interaction has user + cat message
+        # usual flow: prepare agent input with context, input and history
+        latest_n_history = self.latest_n_history * 2  # each interaction has user + cat message
         agent_input = utils.restore_original_model(
             self.plugin_manager.execute_hook(
                 "before_agent_starts",

@@ -221,6 +221,20 @@ The current version introduces also the following additional hooks:
 ### Prompt:
 - `agent_prompt_variables`: to add custom variables to the prompt template
 
+### Memory:
+- `before_cat_recalls_memories` replaces the deprecated `before_cat_recalls_episodic_memories`,
+`before_cat_recalls_declarative_memories` and `before_cat_recalls_procedural_memories`
+
+## List of suppressed hooks
+
+### RabbitHole:
+- `before_rabbithole_splits_text`
+
+### Memory:
+- `before_cat_recalls_episodic_memories`
+- `before_cat_recalls_declarative_memories`
+- `before_cat_recalls_procedural_memories`
+
 # Best practices
 
 ## Custom endpoints and permissions
