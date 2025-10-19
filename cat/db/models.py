@@ -30,6 +30,7 @@ class SettingBody(BaseModel):
     category: str | None = None
 
     @field_validator("name")
+    @classmethod
     def non_empty_name(cls, v):
         if not v:
             raise ValueError("Setting name cannot be empty")

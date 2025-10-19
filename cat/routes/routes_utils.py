@@ -334,8 +334,6 @@ async def startup_app(app):
     bill_the_lizard = BillTheLizard()
     bill_the_lizard.fastapi_app = app
 
-    utils.subscribe_all_subscribers(bill_the_lizard)
-
     await bill_the_lizard.create_cheshire_cat(DEFAULT_AGENT_KEY)
 
     # load the Manager and the Job Handler

@@ -35,31 +35,19 @@ class MadHatter(ABC):
 
         self.active_plugins: List[str] = []
 
-    def _sync_decorated(self, dispatch_events: bool = True):
-        """
-        Load hooks and procedures from active plugins and external sources.
-        """
-        self.hooks = {}
-        self.procedures_registry = {}
-        self.endpoints = []
+    # discover all plugins
+    def discover_plugins(self):
+        # emptying the plugin dictionary, plugins will be discovered from the disk
+        # and stored in a dictionary plugin_id -> plugin_obj
+        self.plugins = {}
 
-        for plugin_id in self.active_plugins:
-            plugin = self.plugins[plugin_id]
-            # Load local tools, forms and mcp clients as procedures
-            self.procedures_registry |= {p.name: p for p in plugin.procedures}
-            self.endpoints += plugin.endpoints
+        # plugins are found in the plugins folder,
+        # plus the default core plugin (where default hooks and tools are defined)
+        # plugin folder is "cat/plugins/" in production, "tests/mocks/mock_plugin_folder/" during tests
+        self.active_plugins = self.load_active_plugins_ids_from_db()
 
-            # cache hooks (indexed by hook name)
-            for h in plugin.hooks:
-                self.hooks.setdefault(h.name, []).append(h)
-
-        # sort each hooks list by priority
-        for hook_name in self.hooks.keys():
-            self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
-
-        # notify sync has finished
-        if dispatch_events:
-            self.dispatcher.dispatch("on_finish_plugins_sync")
+        self._on_discovering_plugins()
+        self._on_finish_discovering_plugins()
 
     def load_active_plugins_ids_from_db(self) -> List[str]:
         active_plugins_from_db = crud_settings.get_setting_by_name(self.agent_key, "active_plugins")
@@ -135,8 +123,6 @@ class MadHatter(ABC):
         else:
             self.activate_plugin(plugin_id)
 
-        self._on_finish_discovering_plugins()
-
     def _on_finish_discovering_plugins(self):
         # store active plugins in db
         active_plugins = list(set(self.active_plugins))
@@ -146,7 +132,26 @@ class MadHatter(ABC):
         log.info(self.active_plugins)
 
         # update cache and embeddings
-        self._sync_decorated()
+        self.hooks = {}
+        self.procedures_registry = {}
+        self.endpoints = []
+
+        for plugin_id in self.active_plugins:
+            plugin = self.plugins[plugin_id]
+            # Load local tools, forms and mcp clients as procedures
+            self.procedures_registry |= {p.name: p for p in plugin.procedures}
+            self.endpoints += plugin.endpoints
+
+            # cache hooks (indexed by hook name)
+            for h in plugin.hooks:
+                self.hooks.setdefault(h.name, []).append(h)
+
+        # sort each hooks list by priority
+        for hook_name in self.hooks.keys():
+            self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
+
+        # notify sync has finished
+        self.dispatcher.dispatch("on_finish_plugins_sync")
 
     # execute requested hook
     def execute_hook(self, hook_name: str, *args, cat) -> Any:
@@ -233,7 +238,7 @@ class MadHatter(ABC):
         return core_plugins
 
     @abstractmethod
-    def discover_plugins(self):
+    def _on_discovering_plugins(self):
         pass
 
     @abstractmethod

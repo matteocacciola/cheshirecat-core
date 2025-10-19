@@ -3,8 +3,9 @@ from langchain_core.tools import StructuredTool
 from fastmcp.tools.tool import ParsedFunction
 from mcp.types import Tool
 from pydantic import ConfigDict
+from slugify import slugify
 
-from cat.mad_hatter.procedures import CatProcedure
+from cat.mad_hatter.procedures import CatProcedure, CatProcedureType
 
 
 class CatTool(CatProcedure):
@@ -19,7 +20,7 @@ class CatTool(CatProcedure):
         output_schema: Dict | None = None,
         examples: List[str] | None = None,
     ):
-        self.name = name
+        self.name = slugify(name.strip(), separator="_")
         self.func = func
         self.description = description if description else (func.__doc__.strip() if func.__doc__ else "")
         self.input_schema = input_schema
@@ -87,11 +88,15 @@ class CatTool(CatProcedure):
             func = func_with_cat
 
         return [StructuredTool.from_function(
-            name=self.name.strip().replace(" ", "_"),
+            name=self.name,
             description=description,
             func=func,
             args_schema=self.input_schema,
         )]
+
+    @property
+    def type(self) -> CatProcedureType:
+        return CatProcedureType.TOOL
 
 
 def tool(

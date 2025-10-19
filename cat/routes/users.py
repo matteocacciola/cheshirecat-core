@@ -16,6 +16,7 @@ class UserBase(BaseModel):
     permissions: Dict[str, List[str]] = Field(default_factory=get_base_permissions)
 
     @field_validator("permissions")
+    @classmethod
     def validate_permissions(cls, v):
         if not v:
             raise ValueError("Permissions cannot be empty")
@@ -46,6 +47,7 @@ class UserUpdate(UserBase):
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("permissions")
+    @classmethod
     def validate_permissions(cls, v):
         if v is None:
             return v

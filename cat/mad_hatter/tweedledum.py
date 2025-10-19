@@ -101,16 +101,7 @@ class Tweedledum(MadHatter):
         # notify uninstall has finished
         self.dispatcher.dispatch("on_end_plugin_uninstall", plugin_id=plugin_id, endpoints=endpoints)
 
-    # discover all plugins
-    def discover_plugins(self):
-        # emptying plugin dictionary, plugins will be discovered from disk
-        # and stored in a dictionary plugin_id -> plugin_obj
-        self.plugins = {}
-
-        # plugins are found in the plugins folder,
-        # plus the default core plugin (where default hooks and tools are defined)
-        # plugin folder is "cat/plugins/" in production, "tests/mocks/mock_plugin_folder/" during tests
-        self.active_plugins = self.load_active_plugins_ids_from_db()
+    def _on_discovering_plugins(self):
         if not self.active_plugins:
             self.active_plugins = self.load_active_plugins_ids_from_folders()
 
@@ -128,8 +119,6 @@ class Tweedledum(MadHatter):
                 self.deactivate_plugin(plugin_id)
                 self.active_plugins.remove(plugin_id)
                 raise e
-
-        self._on_finish_discovering_plugins()
 
     def on_plugin_activation(self, plugin_id: str) -> bool:
         plugin = self.load_plugin(plugin_id)

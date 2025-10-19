@@ -6,7 +6,6 @@ from uuid import uuid4
 from fastapi import FastAPI
 from langchain_core.embeddings import Embeddings
 
-from cat import utils
 from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
 from cat.auth.permissions import get_full_admin_permissions
 from cat.db import crud
@@ -25,10 +24,12 @@ from cat.rabbit_hole import RabbitHole
 from cat.services.websocket_manager import WebSocketManager
 from cat.utils import (
     singleton,
+    explicit_error_message,
     get_embedder_name,
     get_factory_object,
     get_updated_factory_object,
     pod_id,
+    run_sync_or_async,
 )
 
 
@@ -56,6 +57,9 @@ class BillTheLizard:
         Bootstrapping is the process of loading the plugins, the Embedder, the *Main Agent*, the *Rabbit Hole* and
         the *White Rabbit*.
         """
+        self.dispatcher = HumptyDumpty()
+        self.dispatcher.subscribe_from(self)
+
         self._key = DEFAULT_SYSTEM_KEY
         self._pod_id = pod_id()
 
@@ -91,7 +95,7 @@ class BillTheLizard:
         self._start_consumer_threads()
 
     def __del__(self):
-        HumptyDumpty.run_sync_or_async(self.shutdown)
+        run_sync_or_async(self.shutdown)
 
     def _start_consumer_threads(self):
         if not MarchHareConfig.is_enabled:
@@ -160,9 +164,7 @@ class BillTheLizard:
     @subscriber("on_start_plugin_uninstall")
     def on_start_plugin_uninstall(self, plugin_id: str) -> None:
         # deactivate plugins in the Cheshire Cats
-        for ccat_id in crud.get_agents_plugin_keys(plugin_id):
-            ccat = self.get_cheshire_cat(ccat_id)
-            ccat.plugin_manager.deactivate_plugin(plugin_id, dispatch_events=False)
+        self.on_start_plugin_deactivate(plugin_id)
 
     @subscriber("on_end_plugin_uninstall")
     def on_end_plugin_uninstall(self, plugin_id: str, endpoints: List[CustomEndpoint]) -> None:
@@ -194,6 +196,10 @@ class BillTheLizard:
         # migrate plugin settings in the Cheshire Cats
         for ccat_id in crud.get_agents_plugin_keys(plugin_id):
             ccat = self.get_cheshire_cat(ccat_id)
+            # if the plugin is not active for the Cheshire Cat, then skip it
+            if not ccat.plugin_manager.local_plugin_exists(plugin_id):
+                continue
+            # if the plugin is active for the Cheshire Cat, then re-activate to incrementally apply the new settings
             ccat.plugin_manager.activate_plugin(plugin_id, dispatch_events=False)
 
     @subscriber("on_start_plugin_deactivate")
@@ -269,7 +275,7 @@ class BillTheLizard:
             if updater.old_setting is not None:
                 await self.replace_embedder(updater.old_setting["name"], updater.old_setting["value"])
 
-            raise LoadMemoryException(f"Load memory exception: {utils.explicit_error_message(e)}")
+            raise LoadMemoryException(f"Load memory exception: {explicit_error_message(e)}")
 
         return {"name": language_embedder_name, "value": updater.new_setting["value"]}
 
@@ -335,6 +341,8 @@ class BillTheLizard:
         Returns:
             None
         """
+        self.dispatcher.unsubscribe_from(self)
+
         if self.websocket_manager:
             await self.websocket_manager.close_all_connections()
 

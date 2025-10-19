@@ -2,9 +2,9 @@ import pytest
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
 from cat.agent import run_agent
-from cat.core_plugins.memory.utils import recall
 from cat.looking_glass import StrayCat
 from cat.memory.messages import CatMessage, UserMessage, MessageWhy
+from cat.memory.utils import recall
 from cat.memory.working_memory import WorkingMemory
 
 from tests.utils import api_key, create_mock_plugin_zip, send_file

@@ -16,6 +16,7 @@ class AdminBase(BaseModel):
     permissions: Dict[str, List[str]] = Field(default_factory=get_full_admin_permissions)
 
     @field_validator("permissions")
+    @classmethod
     def validate_permissions(cls, v):
         if not v:
             raise ValueError("Permissions cannot be empty")
@@ -45,6 +46,7 @@ class AdminUpdate(AdminBase):
     model_config = ConfigDict(extra="forbid")
 
     @field_validator("permissions")
+    @classmethod
     def validate_permissions(cls, v):
         if v is None:
             return v

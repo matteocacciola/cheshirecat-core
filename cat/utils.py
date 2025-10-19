@@ -1,3 +1,5 @@
+import asyncio
+import concurrent.futures
 import sys
 import traceback
 import socket
@@ -9,7 +11,7 @@ import os
 from datetime import timedelta
 from enum import Enum as BaseEnum, EnumMeta
 from io import BytesIO
-from typing import Dict, List, Type, TypeVar, Any
+from typing import Dict, List, Type, TypeVar, Any, Callable
 import aiofiles
 import requests
 import tomli
@@ -532,15 +534,23 @@ def retrieve_image(content_image: str | None) -> str | None:
         return None
 
 
-def subscribe_all_subscribers(instance: "BillTheLizard"):
-    for name, method in vars(type(instance)).items():
-        if not callable(method) or not hasattr(method, "event_name"):
-            continue
+def run_sync_or_async(callback: Callable[..., Any], *args, **kwargs) -> Any:
+    def run_async_in_thread():
+        return asyncio.run(coro)
 
-        instance.plugin_manager.dispatcher.subscribe(
-            method.event_name,
-            method.__get__(instance),  # type: ignore
-        )
+    if not asyncio.iscoroutinefunction(callback) and not asyncio.iscoroutine(callback):
+        return callback(*args, **kwargs)
+
+    coro = callback(*args, **kwargs)
+
+    try:
+        asyncio.get_running_loop()
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(run_async_in_thread)
+            return future.result()
+    except RuntimeError:
+        return asyncio.run(coro)
+
 
 def colored_text(text: str, color: str):
     """Get colored text.

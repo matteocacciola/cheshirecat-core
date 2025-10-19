@@ -335,6 +335,7 @@ class StrayCat:
                 prompt_variables=prompt_variables,
                 callbacks=self.plugin_manager.execute_hook("llm_callbacks", [NewTokenHandler(self)], cat=self),
             )
+
             if agent_output.output == utils.default_llm_answer_prompt():
                 agent_output.with_llm_error = True
         except Exception as e:

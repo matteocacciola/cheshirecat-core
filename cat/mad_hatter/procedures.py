@@ -3,6 +3,14 @@ from typing import List, Dict
 from langchain_core.tools import StructuredTool
 from pydantic import Field
 
+from cat.utils import Enum
+
+
+class CatProcedureType(Enum):
+    FORM = "form"
+    TOOL = "tool"
+    MCP = "mcp"
+
 
 class CatProcedure(ABC):
     name: str
@@ -17,11 +25,16 @@ class CatProcedure(ABC):
     @abstractmethod
     def langchainfy(self) -> List[StructuredTool]:
         """
-        Convert CatProcedure to a langchain compatible StructuredTool object.
+        Convert CatProcedure into a langchain compatible StructuredTool object.
 
         Returns
         -------
         List[StructuredTool]
             The langchain compatible StructuredTool objects.
         """
+        pass
+
+    @property
+    @abstractmethod
+    def type(self) -> CatProcedureType:
         pass

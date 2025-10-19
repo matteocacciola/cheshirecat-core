@@ -40,11 +40,7 @@ class Tweedledee(MadHatter):
 
         return False
 
-    def discover_plugins(self):
-        self.plugins = {}
-
-        self.active_plugins = self.load_active_plugins_ids_from_db()
-
+    def _on_discovering_plugins(self):
         # plugins are already loaded when BillTheLizard is created; since its plugin manager scans the plugins folder
         # then, we just need to grab the plugins from there
         for plugin_id, plugin in self.available_plugins.items():
@@ -59,8 +55,6 @@ class Tweedledee(MadHatter):
                 # Couldn't activate the plugin -> Deactivate it
                 self.toggle_plugin(plugin_id)
                 raise e
-
-        self._on_finish_discovering_plugins()
 
     def local_plugin_exists(self, plugin_id: str):
         return plugin_id in self.plugins.keys()

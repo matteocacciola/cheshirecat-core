@@ -72,7 +72,7 @@ async def destroy_all_single_collection_points(
     vector_memory_handler = info.cheshire_cat.vector_memory_handler
     existing_collections = await vector_memory_handler.get_collection_names()
 
-    # check if collection exists
+    # check if the collection exists
     if collection_id not in existing_collections:
         raise CustomNotFoundException("Collection does not exist.")
 

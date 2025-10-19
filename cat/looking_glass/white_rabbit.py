@@ -8,8 +8,7 @@ from pydantic import BaseModel
 from pytz import utc
 
 from cat.log import log
-from cat.looking_glass.humpty_dumpty import HumptyDumpty
-from cat.utils import singleton
+from cat.utils import singleton, run_sync_or_async
 
 
 class Job(BaseModel):
@@ -68,7 +67,7 @@ class WhiteRabbit:
             self._is_running = False
 
     def __del__(self):
-        HumptyDumpty.run_sync_or_async(self.shutdown)
+        run_sync_or_async(self.shutdown)
 
     def _job_ended_listener(self, event):
         """

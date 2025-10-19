@@ -2,10 +2,12 @@ from abc import ABC, abstractmethod
 from typing import Any, List, Dict
 from langchain.tools import StructuredTool
 from fastmcp import Client
+from slugify import slugify
 
 from cat.log import log
-from cat.mad_hatter.procedures import CatProcedure
+from cat.mad_hatter.procedures import CatProcedure, CatProcedureType
 from cat.mad_hatter.decorators.tool import CatTool
+from cat.utils import run_sync_or_async
 
 
 class CatMcpClient(Client, CatProcedure, ABC):
@@ -26,7 +28,7 @@ class CatMcpClient(Client, CatProcedure, ABC):
             super().__init__(**init_args)
 
         # Initialize CatProcedure attributes
-        self.name = self.__class__.__name__
+        self.name = slugify(self.__class__.__name__.strip(), separator="_")
         self.description = self.__class__.__doc__ or "No description provided."
         self.input_schema = {}
         self.output_schema = {}
@@ -145,7 +147,7 @@ class CatMcpClient(Client, CatProcedure, ABC):
                             return await self.call_tool(tool_name, **kwargs)
 
                 try:
-                    return HumptyDumpty.run_sync_or_async(call_tool_async)
+                    return run_sync_or_async(call_tool_async)
                 except ElicitationRequiredException as elx:
                     # Generate a string representative of the tool call for the elicitation context and retry prompt
                     joined_kwargs = ", ".join(f'{k}=\"{v}\"' for k, v in kwargs.items())
@@ -179,9 +181,9 @@ class CatMcpClient(Client, CatProcedure, ABC):
             return tool_caller
 
         tools = []
-        try:
-            # Get tools with proper connection handling
-            for tool in self.mcp_tools:
+        # Get tools with proper connection handling
+        for tool in self.mcp_tools:
+            try:
                 cat_tool = CatTool.from_fastmcp(tool, self.call_tool)
 
                 # Create a StructuredTool for each discovered procedure
@@ -193,8 +195,8 @@ class CatMcpClient(Client, CatProcedure, ABC):
                         args_schema=cat_tool.input_schema,
                     )
                 )
-        except Exception as e:
-            log.error(f"{self.name} - Error creating LangChain tools: {e}")
+            except Exception as e:
+                log.error(f"{self.name} - Error creating LangChain tools: {e}")
 
         return tools
 
@@ -217,11 +219,15 @@ class CatMcpClient(Client, CatProcedure, ABC):
             return await self.list_resources()
 
     @property
+    def type(self) -> CatProcedureType:
+        return CatProcedureType.MCP
+
+    @property
     def mcp_tools(self):
         from cat.looking_glass import HumptyDumpty
 
         if self._cached_tools is None:
-            self._cached_tools = HumptyDumpty.run_sync_or_async(self._get_mcp_tools_async)
+            self._cached_tools = run_sync_or_async(self._get_mcp_tools_async)
         return self._cached_tools
 
     @property
@@ -229,7 +235,7 @@ class CatMcpClient(Client, CatProcedure, ABC):
         from cat.looking_glass import HumptyDumpty
 
         if self._cached_prompts is None:
-            self._cached_prompts = HumptyDumpty.run_sync_or_async(self._get_mcp_prompts_async)
+            self._cached_prompts = run_sync_or_async(self._get_mcp_prompts_async)
         return self._cached_prompts
 
     @property
@@ -237,7 +243,7 @@ class CatMcpClient(Client, CatProcedure, ABC):
         from cat.looking_glass import HumptyDumpty
 
         if self._cached_resources is None:
-            self._cached_resources = HumptyDumpty.run_sync_or_async(self._get_mcp_resources_async)
+            self._cached_resources = run_sync_or_async(self._get_mcp_resources_async)
         return self._cached_resources
 
     @property

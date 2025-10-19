@@ -5,12 +5,12 @@ Here is a collection of methods to hook into the Cat execution pipeline.
 """
 from typing import Dict, List
 
-from cat.core_plugins.base_plugin.utils import recall_relevant_memories_to_working_memory
 from cat.exceptions import VectorMemoryError
 from cat.log import log
-from cat.looking_glass import HumptyDumpty
 from cat.mad_hatter.decorators import hook
 from cat.memory.messages import UserMessage
+from cat.memory.utils import recall_relevant_memories_to_working_memory
+from cat.utils import run_sync_or_async
 
 
 # Called before cat bootstrap
@@ -91,15 +91,12 @@ def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
     """
     # recall declarative memory from vector collections and store it in working_memory
     try:
-        r = HumptyDumpty.run_sync_or_async(
+        cat.working_memory.declarative_memories = run_sync_or_async(
             recall_relevant_memories_to_working_memory,
             cat=cat,
+            collection="declarative",
             query=user_message.text,
         )
-        if hasattr(r, "__await__"):
-            import asyncio
-
-            asyncio.get_event_loop().run_until_complete(r)
     except Exception as e:
         log.error(f"Agent id: {cat.agent_id}. Error during recall {e}")
 
