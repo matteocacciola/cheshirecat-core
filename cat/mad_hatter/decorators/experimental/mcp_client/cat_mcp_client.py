@@ -127,8 +127,6 @@ class CatMcpClient(Client, CatProcedure, ABC):
         def create_tool_caller(tool_name: str):
             """Create a closure that properly calls the MCP tool with elicitation support."""
             def tool_caller(**kwargs):
-                from cat.looking_glass import HumptyDumpty
-
                 async def call_tool_async():
                     try:
                         async with self:
@@ -224,24 +222,18 @@ class CatMcpClient(Client, CatProcedure, ABC):
 
     @property
     def mcp_tools(self):
-        from cat.looking_glass import HumptyDumpty
-
         if self._cached_tools is None:
             self._cached_tools = run_sync_or_async(self._get_mcp_tools_async)
         return self._cached_tools
 
     @property
     def mcp_prompts(self):
-        from cat.looking_glass import HumptyDumpty
-
         if self._cached_prompts is None:
             self._cached_prompts = run_sync_or_async(self._get_mcp_prompts_async)
         return self._cached_prompts
 
     @property
     def mcp_resources(self):
-        from cat.looking_glass import HumptyDumpty
-
         if self._cached_resources is None:
             self._cached_resources = run_sync_or_async(self._get_mcp_resources_async)
         return self._cached_resources
