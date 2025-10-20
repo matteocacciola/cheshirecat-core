@@ -16,8 +16,8 @@ def test_memory_recall_default_success(secure_client, secure_client_headers):
     assert isinstance(json["query"]["vector"][0], float)
 
     # results are grouped by collection
-    assert len(json["vectors"]["collections"]) == 1
-    assert "declarative" == list(json["vectors"]["collections"].keys())[0]
+    assert len(json["vectors"]["collections"]) == 2
+    assert list(json["vectors"]["collections"].keys())[0] in ["declarative", "procedural"]
 
     # initial collections contents
     assert isinstance(json["vectors"]["collections"]["declarative"], list)

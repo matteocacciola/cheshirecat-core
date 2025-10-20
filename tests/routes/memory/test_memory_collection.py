@@ -8,7 +8,7 @@ def test_memory_collections_created(secure_client, secure_client_headers):
     assert response.status_code == 200
 
     # check default collections are created
-    assert len(json["collections"]) == 1
+    assert len(json["collections"]) == 2
 
     # check correct number of default points
     collections_n_points = {c["name"]: c["vectors_count"] for c in json["collections"]}
