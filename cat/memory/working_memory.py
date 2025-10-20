@@ -96,14 +96,10 @@ class WorkingMemory(BaseModelDict):
         The methods append to the history key the last three conversation turns.
 
         Args
-            who: str
-                Who said the message. Can either be "user" or "assistant".
-            message: str
-                The message said.
-            image: (Optional[str], default=None): image file URL or base64 data URI that represent image associated with
-                the message.
-            why: MessageWhy, optional
-                The reason why the message was said. Default is None.
+            who (str): Who said the message. Can either be "user" or "assistant".
+            message (str): The message said.
+            image (Optional[str], default=None): image file URL or base64 data URI that represent image associated with the message.
+            why (MessageWhy, optional): The reason why the message was said. Default is None.
         """
         message = CatMessage(text=message, why=why) if who == "assistant" else UserMessage(text=message, image=image)
 

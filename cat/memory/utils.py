@@ -7,6 +7,11 @@ from cat import utils
 from cat.log import log
 
 
+class VectorMemoryType(utils.Enum):
+    DECLARATIVE = "declarative"
+    PROCEDURAL = "procedural"
+
+
 class DocumentRecall(utils.BaseModelDict):
     """
     Langchain `Document` retrieved from a memory, with the similarity score, the list of embeddings and the
@@ -133,23 +138,14 @@ async def recall(
     This method is useful also to perform a manual search in hook and tools.
 
     Args:
-        cat: StrayCat
-            The StrayCat instance.
-        query: List[float]
-            The search query, passed as embedding vector.
-            Please first run cheshire_cat.embedder.embed_query(query) if you have a string query to pass here.
-        k: int | None
-            The number of memories to retrieve.
-            If `None` retrieves all the available memories.
-        threshold: float | None
-            The minimum similarity to retrieve a memory.
-            Memories with lower similarity are ignored.
-        metadata: Dict
-            Additional filter to retrieve memories with specific metadata.
+        cat (StrayCat): The StrayCat instance.
+        query (List[float]): The search query, passed as embedding vector. Please first run cheshire_cat.embedder.embed_query(query) if you have a string query to pass here.
+        k (int | None): The number of memories to retrieve. If `None` retrieves all the available memories.
+        threshold (float | None): The minimum similarity to retrieve a memory. Memories with lower similarity are ignored.
+        metadata (Dict): Additional filter to retrieve memories with specific metadata.
 
     Returns:
-        memories: List[DocumentRecall]
-            List of retrieved memories.
+        memories (List[DocumentRecall]): List of retrieved memories.
     """
     cheshire_cat = cat.cheshire_cat
 
@@ -163,19 +159,16 @@ async def recall(
     return memories
 
 
-async def recall_relevant_memories_to_working_memory(cat: "StrayCat", collection: str, query: str) -> List[DocumentRecall]:
+async def recall_relevant_memories_to_working_memory(cat: "StrayCat", collection: VectorMemoryType, query: str) -> List[DocumentRecall]:
     """
     Retrieve context from memory.
     The method retrieves the relevant memories from the vector collections that are given as context to the LLM.
     Recalled memories are stored in the working memory.
 
     Args:
-        cat: StrayCat
-            The StrayCat instance.
-        collection: str
-            The name of the vector memory collection to retrieve memories from.
-        query: str
-            The query used to make a similarity search in the Cat's vector memories.
+        cat (StrayCat): The StrayCat instance.
+        collection (VectorMemoryType): The name of the vector memory collection to retrieve memories from.
+        query (str): The query used to make a similarity search in the Cat's vector memories.
 
     See Also:
         cat_recall_query
@@ -234,7 +227,7 @@ def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
     Convert a Qdrant point to a DocumentRecall object
 
     Args:
-        m: The Qdrant point
+        m (Record | ScoredPoint): The Qdrant point
 
     Returns:
         DocumentRecall: The converted DocumentRecall object

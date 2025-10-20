@@ -10,6 +10,7 @@ from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException
 from cat.log import log
+from cat.memory.utils import VectorMemoryType
 from cat.routes.routes_utils import on_upload_single_file
 
 router = APIRouter(tags=["Rabbit Hole"], prefix="/rabbithole")
@@ -194,7 +195,9 @@ async def get_source_urls(
 ) -> List[str]:
     """Retrieve the list of source URLs that have been uploaded to the Rabbit Hole"""
     # Get all points
-    memory_points, _ = await info.cheshire_cat.vector_memory_handler.get_all_points_from_web("declarative")
+    memory_points, _ = await info.cheshire_cat.vector_memory_handler.get_all_points_from_web(
+        str(VectorMemoryType.DECLARATIVE)
+    )
 
     # retrieve all the memory points where the metadata["source"] is a URL
     return [

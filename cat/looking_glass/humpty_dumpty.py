@@ -27,7 +27,7 @@ class HumptyDumpty:
         self._subscribers[event_name].append(callback)
 
     def unsubscribe(self, event_name: str, callback: Callable[..., Any]) -> None:
-        if event_name in self._subscribers:
+        if event_name in self._subscribers and callback in self._subscribers[event_name]:
             self._subscribers[event_name].remove(callback)
 
     def subscribe_from(self, obj: Any):

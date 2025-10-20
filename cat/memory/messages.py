@@ -179,10 +179,8 @@ class ConversationHistoryItem(BaseModelDict):
         """
         Convert the internal ConversationHistoryItem to a LangChain BaseMessage.
 
-        Returns
-        -------
-        BaseLangChainMessage
-            The LangChain BaseMessage converted from the internal ConversationHistoryItem.
+        Returns:
+            BaseLangChainMessage: The LangChain BaseMessage converted from the internal ConversationHistoryItem.
         """
         if self.who == "assistant":
             return AIMessage(name=self.who, content=self.content.text)

@@ -124,12 +124,10 @@ def to_camel_case(text: str) -> str:
     Takes a string of words separated by either hyphens or underscores and returns a string of words in camel case.
 
     Args:
-        text: str
-            String of hyphens or underscores separated words.
+        text (str): String of hyphens or underscores separated words.
 
     Returns:
-        str
-            Camel case formatted string.
+        Camel case formatted string.
     """
     s = text.replace("-", " ").replace("_", " ").capitalize()
     s = s.split()
@@ -149,12 +147,10 @@ def verbal_timedelta(td: timedelta) -> str:
     The function takes a timedelta and converts it to a human-readable string format.
 
     Args:
-        td: timedelta
-            Difference between two dates.
+        td (timedelta): Difference between two dates.
 
     Returns:
-        str
-            Human-readable string of time difference.
+        Human-readable string of time difference.
 
     Notes
     -----
@@ -265,27 +261,17 @@ def get_caller_info(skip: int | None = 2, return_short: bool = True, return_stri
 
     Adapted from: https://gist.github.com/techtonik/2151727
 
-    Parameters
-    ----------
-    skip: int
-        Specifies how many levels of stack to skip while getting caller name.
-    return_short: bool
-        If True, returns only the caller class and method, otherwise the full path.
-    return_string: bool
-        If True, returns the caller info as a string, otherwise as a tuple.
+    Args:
+        skip (int): Specifies how many levels of stack to skip while getting caller name.
+        return_short (bool): If True, returns only the caller class and method, otherwise the full path.
+        return_string (bool): If True, returns the caller info as a string, otherwise as a tuple.
 
-    Returns
-    -------
-    package: str
-        Caller package.
-    module: str
-        Caller module.
-    klass: str
-        Caller class name if one otherwise None.
-    caller: str
-        Caller function or method (if a class exist).
-    line: int
-        The line of the call.
+    Returns:
+        package (str): Caller package.
+        module (str): Caller module.
+        klass (str): Caller class name if one otherwise None.
+        caller (str): Caller function or method (if a class exist).
+        line (int): The line of the call.
 
     Notes
     -----

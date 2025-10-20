@@ -140,7 +140,8 @@ class HealthCheckLocal(HealthCheckAbstract):
 
 
 async def auth_token(credentials: UserCredentials, agent_id: str):
-    """Endpoint called from client to get a JWT from local identity provider.
+    """
+    Endpoint called from client to get a JWT from local identity provider.
     This endpoint receives username and password as form-data, validates credentials and issues a JWT.
     """
     # use username and password to authenticate user from local identity provider and get token

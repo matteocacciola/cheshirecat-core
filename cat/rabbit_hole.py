@@ -42,10 +42,8 @@ class RabbitHole:
         """Upload memories to the declarative memory from a JSON file.
 
         Args:
-            cat: CheshireCat
-                Cheshire Cat instance.
-            file: UploadFile
-                File object sent via `rabbithole/memory` hook.
+            cat (CheshireCat): Cheshire Cat instance.
+            file (UploadFile): File object sent via `rabbithole/memory` hook.
 
         Notes
         -----
@@ -106,13 +104,9 @@ class RabbitHole:
         memory.
 
         Args:
-            cat: CheshireCat or StrayCat
-                Cheshire Cat or Stray Cat instance.
-            file: str, UploadFile
-                The file can be a path passed as a string or an `UploadFile` object if the document is ingested using the
-                `rabbithole` endpoint.
-            metadata: Dict
-                Metadata to be stored with each chunk.
+            cat (CheshireCat | StrayCat): Cheshire Cat or Stray Cat instance.
+            file (str | UploadFile): The file can be a path passed as a string or an `UploadFile` object if the document is ingested using the `rabbithole` endpoint.
+            metadata (Dict): Metadata to be stored with each chunk.
 
         See Also:
             before_rabbithole_stores_documents
@@ -142,13 +136,10 @@ class RabbitHole:
         Hence, it loads it in memory and splits it in chunks.
 
         Args:
-            file: str, UploadFile
-                The file can be either a string path if loaded programmatically, a FastAPI `UploadFile`
-                if coming from the `/rabbithole/` endpoint or a URL if coming from the `/rabbithole/web` endpoint.
+            file (str | UploadFile): The file can be either a string path if loaded programmatically, a FastAPI `UploadFile` if coming from the `/rabbithole/` endpoint or a URL if coming from the `/rabbithole/web` endpoint.
 
         Returns:
-            (bytes, content_type, docs): Tuple[bytes, List[Document]]
-                The file bytes, the content type and the list of chunked Langchain `Document`.
+            (bytes, content_type, docs): Tuple[bytes, List[Document]]. The file bytes, the content type and the list of chunked Langchain `Document`.
 
         Notes
         -----
@@ -236,16 +227,12 @@ class RabbitHole:
         timestamp of insertion. Once done, the method notifies the client via Websocket connection.
 
         Args:
-            docs: List[Document]
-                List of Langchain `Document` to be inserted in the Cat's declarative memory.
-            source: str
-                Source name to be added as a metadata. It can be a file name or an URL.
-            metadata: Dict
-                Metadata to be stored with each chunk.
+            docs (List[Document]): List of Langchain `Document` to be inserted in the Cat's declarative memory.
+            source (str): Source name to be added as a metadata. It can be a file name or an URL.
+            metadata (Dict): Metadata to be stored with each chunk.
 
         Returns:
-            stored_points: List[PointStruct]
-                List of points stored in the Cat's declarative memory.
+            stored_points (List[PointStruct]): List of points stored in the Cat's declarative memory.
 
         See Also:
             before_rabbithole_insert_memory
@@ -331,12 +318,10 @@ class RabbitHole:
         documents before and after the split step.
 
         Args:
-            docs: List[Document]
-                Content of the loaded file.
+            docs (List[Document]): Content of the loaded file.
 
         Returns:
-            docs: List[Document]
-                List of split Langchain `Document`.
+            docs (List[Document]): List of split Langchain `Document`.
 
         See Also:
             before_rabbithole_splits_documents
@@ -456,12 +441,9 @@ class RabbitHole:
         stored in the remote storage handled by the CheshireCat's file manager.
 
         Args:
-            file_bytes: bytes
-                The file bytes to be saved.
-            content_type: str
-                The content type of the file.
-            source: str
-                The source of the file, e.g. the file name or URL.
+            file_bytes (bytes): The file bytes to be saved.
+            content_type (str): The content type of the file.
+            source (str): The source of the file, e.g. the file name or URL.
         """
         # save a file in a temporary folder
         extension = mimetypes.guess_extension(content_type)

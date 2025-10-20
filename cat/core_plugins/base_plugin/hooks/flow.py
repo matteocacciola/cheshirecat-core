@@ -9,7 +9,7 @@ from cat.exceptions import VectorMemoryError
 from cat.log import log
 from cat.mad_hatter.decorators import hook
 from cat.memory.messages import UserMessage
-from cat.memory.utils import recall_relevant_memories_to_working_memory
+from cat.memory.utils import VectorMemoryType, recall_relevant_memories_to_working_memory
 from cat.utils import run_sync_or_async
 
 
@@ -26,8 +26,7 @@ def before_cat_bootstrap(cat) -> None:
     This hook can be used to set or store variables to be propagated to subsequent loaded objects.
 
     Args:
-        cat: CheshireCat
-            Cheshire Cat instance.
+        cat (CheshireCat): Cheshire Cat instance.
     """
     pass  # do nothing
 
@@ -45,8 +44,7 @@ def after_cat_bootstrap(cat) -> None:
     This can be used to set or store variables to be shared further in the pipeline.
 
     Args:
-        cat: CheshireCat
-            Cheshire Cat instance.
+        cat (CheshireCat): Cheshire Cat instance.
     """
     pass  # do nothing
 
@@ -69,14 +67,11 @@ def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
         }
 
     Args:
-        user_message_json: Dict
-            JSON dictionary with the message received from the chat.
-        cat: StrayCat
-            Stray Cat instance.
+        user_message (UserMessage): JSON dictionary with the message received from the chat.
+        cat (StrayCat): Stray Cat instance.
 
     Returns:
-        user_message_json: Dict
-            Edited JSON dictionary that will be fed to the Cat.
+        user_message (UserMessage): Edited JSON dictionary with the message to be processed by the Cat
 
     Notes
     -----
@@ -94,7 +89,7 @@ def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
         cat.working_memory.declarative_memories = run_sync_or_async(
             recall_relevant_memories_to_working_memory,
             cat=cat,
-            collection="declarative",
+            collection=VectorMemoryType.DECLARATIVE,
             query=user_message.text,
         )
     except Exception as e:
@@ -116,10 +111,8 @@ def cat_recall_query(user_message: str, cat) -> str:
     As a result, the retrieved context can be conditioned editing the user's message.
 
     Args:
-        user_message: str
-            String with the text received from the user.
-        cat: StrayCat
-            Stray Cat instance to exploit the Cat's methods.
+        user_message (str): String with the text received from the user.
+        cat (StrayCat): Stray Cat instance to exploit the Cat's methods.
 
     Returns:
         Edited string to be used for context retrieval in memory. The returned string is further stored in the
@@ -154,10 +147,8 @@ def before_cat_recalls_memories(config: Dict, cat) -> Dict:
     and stores it in the *Working Memory*.
 
     Args:
-        config: Dict
-            The configuration dictionary for retrieval of memories.
-        cat: StrayCat
-            Stray Cat instance.
+        config (Dict): The configuration dictionary for retrieval of memories.
+        cat (StrayCat): Stray Cat instance.
 
     Returns:
         The configuration dictionary for retrieval of memories.
@@ -175,9 +166,7 @@ def after_cat_recalls_memories(cat) -> None:
     and stores it in the *Working Memory*.
 
     Args:
-        cat: StrayCat
-            Stray Cat instance.
-
+        cat (StrayCat): Stray Cat instance.
     """
     pass
 
@@ -188,21 +177,17 @@ def before_cat_sends_message(message, agent_output, cat) -> Dict:
     """
     Hook the outgoing Cat's message.
 
-    Allows to edit the JSON dictionary that will be sent to the client via WebSocket connection.
+    Allows editing the JSON dictionary that will be sent to the client via WebSocket connection.
 
     This hook can be used to edit the message sent to the user or to add keys to the dictionary.
 
     Args:
-        message: Dict
-            JSON dictionary to be sent to the WebSocket client.
-        agent_output: AgentOutput | None
-            The output of the agent if an agent is used, None otherwise.
-        cat: StrayCat
-            Stray Cat instance.
+        message (Dict): JSON dictionary to be sent to the WebSocket client.
+        agent_output (AgentOutput | None): The output of the agent if an agent is used, None otherwise.
+        cat (StrayCat): Stray Cat instance.
 
     Returns:
-        message: Dict
-            Edited JSON dictionary with the Cat's answer.
+        message (Dict): Edited JSON dictionary with the Cat's answer.
 
     Notes
     -----
@@ -231,16 +216,13 @@ def fast_reply(reply: str | None, cat) -> str | None:
     It's useful for canned replies, custom LLM chains / agents, topic evaluation, direct LLM interaction and so on.
 
     Args:
-        reply: str | None
-            If you want to short-circuit the normal flow, return a string with the response to be sent to the user.
-            If you want to continue with the normal flow, reply is None.
-        cat : StrayCat
-            Stray Cat instance.
+        reply (str | None): If you want to short-circuit the normal flow, return a string with the response to be sent
+        to the user. If you want to continue with the normal flow, reply is None.
+        cat (StrayCat): Stray Cat instance.
 
     Returns:
-        response : str | None
-            If you want to short-circuit the normal flow, return a string with the response to be sent to the user.
-            If you want to continue with the normal flow, return None.
+        response (str | None): If you want to short-circuit the normal flow, return a string with the response to be
+        sent to the user. If you want to continue with the normal flow, return None.
 
     Examples
     --------
@@ -260,13 +242,10 @@ def llm_callbacks(callbacks: List, cat) -> List:
     Add custom callbacks to the LangChain LLM/ChatModel. Here we add a token counter.
 
     Args:
-        callbacks: List
-            List of existing callbacks to be passed to the LLM/ChatModel
-        cat:
-            Stray Cat instance.
+        callbacks (List): List of existing callbacks to be passed to the LLM/ChatModel
+        cat (StrayCat): Stray Cat instance.
 
     Returns:
-        callbacks: List
-            Edited list of callbacks to be passed to the LLM/ChatModel
+        callbacks (List): Edited list of callbacks to be passed to the LLM/ChatModel
     """
     return callbacks

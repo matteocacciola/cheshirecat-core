@@ -9,15 +9,15 @@ class ModelInteraction(BaseModel):
 
     Attributes
     ----------
-    model_type : Literal["llm", "embedder"]
+    model_type: Literal["llm", "embedder"]
         The type of model involved in the interaction, either a large language model (LLM) or an embedder.
-    source : str
+    source: str
         The source from which the interaction originates.
     prompt: List[str]
         The prompt or input provided to the model.
-    input_tokens : int
+    input_tokens: int
         The number of input tokens processed by the model.
-    started_at : float
+    started_at: float
         The timestamp when the interaction started. Defaults to the current time.
     """
     model_type: Literal["llm", "embedder"]
