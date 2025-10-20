@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Dict
+from typing import Any, List, Dict, Optional
 from langchain.tools import StructuredTool
 from fastmcp import Client
 from mcp.types import Prompt, Resource, Tool
@@ -146,7 +146,7 @@ class CatMcpClient(Client, CatProcedure, ABC):
         stray.working_memory[elicitation_key][field_name] = value
         log.info(f"{self.name} - Stored elicitation response for {field_name}")
 
-    def langchainfy(self) -> List[StructuredTool]:
+    def langchainfy(self) -> Optional[StructuredTool]:
         """
         Converts discovered MCP procedures into a list of LangChain StructuredTools.
         This allows the LLM to access each individual tool on the remote server.
@@ -211,25 +211,20 @@ class CatMcpClient(Client, CatProcedure, ABC):
 
             return tool_caller
 
-        tools = []
-        # Get tools with proper connection handling
+        # get the tool with the name from `self.picked_tool` among the self.mcp_tools
         for tool in self.mcp_tools:
-            try:
-                cat_tool = CatTool.from_fastmcp(tool, self.call_tool)
+            if tool.name == self.picked_tool:
+                cat_tool = CatTool.from_fastmcp(tool, self.call_tool, self.plugin_id)
 
-                # Create a StructuredTool for each discovered procedure
-                tools.append(
-                    StructuredTool.from_function(
-                        name=cat_tool.name,
-                        description=build_description(cat_tool),
-                        func=create_tool_caller(cat_tool.name),
-                        args_schema=cat_tool.input_schema,
-                    )
+                return StructuredTool.from_function(
+                    name=cat_tool.name,
+                    description=build_description(cat_tool),
+                    func=create_tool_caller(cat_tool.name),
+                    args_schema=cat_tool.input_schema,
                 )
-            except Exception as e:
-                log.error(f"{self.name} - Error creating LangChain tools: {e}")
 
-        return tools
+        log.warning(f"{self.name} - Tool {self.picked_tool} not found in MCP tools.")
+        return None
 
     def __repr__(self) -> str:
         return f"McpClient(name={self.name})"

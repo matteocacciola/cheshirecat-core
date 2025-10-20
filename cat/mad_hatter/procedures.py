@@ -1,6 +1,6 @@
 import importlib
 from abc import ABC, abstractmethod
-from typing import List, Dict, Callable
+from typing import List, Dict, Callable, Optional
 from langchain_core.documents import Document as LangChainDocument
 from langchain_core.tools import StructuredTool
 from pydantic import Field
@@ -27,7 +27,7 @@ class CatProcedure(ABC):
     stray = None
 
     @abstractmethod
-    def langchainfy(self) -> List[StructuredTool]:
+    def langchainfy(self) -> Optional[StructuredTool]:
         """
         Provides an abstract method interface to define the `langchainfy` method for
         generating a list of `StructuredTool` instances.

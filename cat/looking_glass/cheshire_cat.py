@@ -18,7 +18,9 @@ from cat.factory.file_manager import BaseFileManager, FileManagerFactory
 from cat.factory.llm import LLMFactory
 from cat.factory.vector_db import VectorDatabaseFactory, BaseVectorDatabaseHandler
 from cat.log import log
+from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.mad_hatter import Tweedledee
+from cat.mad_hatter.decorators import CatTool
 from cat.memory.utils import VectorMemoryType
 from cat.utils import get_factory_object, get_updated_factory_object
 
@@ -37,11 +39,17 @@ class CheshireCat:
         """
         Cat initialization. At init time, the Cat executes the bootstrap.
 
+        Args:
+            agent_id: The agent identifier
+
         Notes
         -----
         Bootstrapping is the process of loading the plugins, the LLM, the memories.
         """
         self.id = agent_id
+
+        self.dispatcher = HumptyDumpty()
+        self.dispatcher.subscribe_from(self)
 
         # instantiate plugin manager (loads all plugins' hooks and tools)
         self.plugin_manager = Tweedledee(self.id)
@@ -96,6 +104,8 @@ class CheshireCat:
         })
 
     def shutdown(self) -> None:
+        self.dispatcher.unsubscribe_from(self)
+
         self.custom_auth_handler = None
         self.plugin_manager = None
         self.large_language_model = None
@@ -242,11 +252,41 @@ class CheshireCat:
         updater = get_updated_factory_object(self.id, factory, vector_memory_name, settings)
 
         self.vector_memory_handler = get_factory_object(self.id, factory)
+        await self.embed_procedures()
+
+        return {"name":vector_memory_name, "value": updater.new_setting["value"]}
+
+    async def embed_procedures(self):
+        log.info(f"Agent id: {self.id}. Embedding procedures in vector memory")
 
         lizard = self.lizard
         await self.vector_memory_handler.initialize(lizard.embedder_name, lizard.embedder_size)
 
-        return {"name":vector_memory_name, "value": updater.new_setting["value"]}
+        # Destroy all procedural embeddings
+        collection_name = str(VectorMemoryType.PROCEDURAL)
+        await self.vector_memory_handler.destroy_all_points(collection_name)
+
+        # Easy access to active procedures in plugin_manager (source of truth!)
+        payloads = []
+        vectors = []
+        for ap in self.plugin_manager.procedures:
+            if not isinstance(ap, CatTool):
+                ap = ap()
+
+            for t in ap.to_document_recall():
+                payloads.append(t.document.model_dump())
+                vectors.append(self.embedder.embed_query(t.document.page_content))
+
+        await self.vector_memory_handler.add_points(collection_name=collection_name, payloads=payloads, vectors=vectors)
+        log.info(f"Agent id: {self.id}. Embedded {len(payloads)} triggers in {collection_name} vector memory")
+
+    @subscriber("on_end_plugin_activate")
+    async def on_end_plugin_activate(self) -> None:
+        await self.embed_procedures()
+
+    @subscriber("on_end_plugin_deactivate")
+    async def on_end_plugin_deactivate(self) -> None:
+        await self.embed_procedures()
 
     @property
     def lizard(self) -> "BillTheLizard":
@@ -290,8 +330,8 @@ class CheshireCat:
         Gives access to the `RabbitHole`, to upload documents and URLs into the vector DB.
 
         Returns:
-            rabbit_hole: RabbitHole
-            Module to ingest documents and URLs for RAG.
+            rabbit_hole (RabbitHole): Module to ingest documents and URLs for RAG.
+
         Examples
         --------
         >> cat.rabbit_hole.ingest_file(...)
@@ -304,8 +344,7 @@ class CheshireCat:
         Gives access to the `CoreAuthHandler` object. Use it to interact with the Cat's authentication handler.
 
         Returns:
-            core_auth_handler: CoreAuthHandler
-                Core authentication handler of the Cat
+            core_auth_handler (CoreAuthHandler): Core authentication handler of the Cat
         """
         return self.lizard.core_auth_handler
 
@@ -315,8 +354,7 @@ class CheshireCat:
         Gives access to the `Tweedledee` plugin manager.
 
         Returns:
-            mad_hatter: Tweedledee
-                Module to manage plugins.
+            mad_hatter (Tweedledee): Module to manage plugins.
 
         Examples
         --------
@@ -340,7 +378,6 @@ class CheshireCat:
         The unique identifier of the cat.
 
         Returns:
-            agent_id: str
-                The unique identifier of the cat.
+            agent_id (str): The unique identifier of the cat.
         """
         return self.id

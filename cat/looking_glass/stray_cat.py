@@ -16,8 +16,8 @@ from cat.log import log
 from cat.looking_glass import NewTokenHandler
 from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.mad_hatter import Tweedledee, CatProcedure
-from cat.mad_hatter.decorators import CatTool
 from cat.memory.messages import CatMessage, UserMessage
+from cat.memory.utils import recall_relevant_memories_to_working_memory, VectorMemoryType
 from cat.memory.working_memory import WorkingMemory
 from cat.services.websocket_manager import WebSocketManager
 from cat.templates import prompts
@@ -105,8 +105,6 @@ class StrayCat:
 
         self.working_memory = WorkingMemory(agent_id=self.agent_id, user_id=self.user.id, chat_id=self.id)
         self.latest_n_history = 1
-
-        self._tools: List[StructuredTool] = [lp for p in self._get_procedures() for lp in p.langchainfy()]
 
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""
@@ -232,24 +230,18 @@ class StrayCat:
 
         await self._send_ws_json(error_message)
 
-    def _get_procedures(self) -> List[CatProcedure]:
-        """
-        Get all procedures (tools and forms) available to the agent. If a procedure is a form, it is
-        instantiated with a reference to the current `StrayCat` instance.
+    async def get_procedures(self) -> List[StructuredTool]:
+        memories = await recall_relevant_memories_to_working_memory(
+            cat=self,
+            query=self.working_memory.user_message.text,
+            collection=VectorMemoryType.PROCEDURAL,
+        )
 
-        Returns:
-            procedures: List[CatProcedure]
-                List of procedures (tools and forms) available to the agent.
-        """
-        # get all procedures (tools and forms) from plugins
-        procedures = self.plugin_manager.procedures
-        for i in range(len(procedures)):
-            if not isinstance(procedures[i], CatTool):
-                procedures[i] = procedures[i]()
-
-            procedures[i].stray = self
-
-        return procedures
+        return [
+            lp
+            for m in memories
+            if (lp := CatProcedure.from_document_recall(document=m, stray=self).langchainfy())
+        ]
 
     async def __call__(self, user_message: UserMessage, **kwargs) -> CatMessage:
         """
@@ -321,13 +313,15 @@ class StrayCat:
 
         system_prompt = prompt_prefix + prompt_suffix
         try:
+            tools = await self.get_procedures()
+
             agent_output = await run_agent(
                 llm=self.large_language_model,
                 prompt=ChatPromptTemplate.from_messages([
                     SystemMessagePromptTemplate.from_template(template=system_prompt),
                     *agent_input.history,
                 ]),
-                tools=self._tools,
+                tools=tools,
                 prompt_variables=prompt_variables,
                 callbacks=self.plugin_manager.execute_hook("llm_callbacks", [NewTokenHandler(self)], cat=self),
             )

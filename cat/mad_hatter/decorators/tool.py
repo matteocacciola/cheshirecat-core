@@ -114,13 +114,11 @@ class CatTool(CatProcedure):
             examples=input_params.get("examples"),
         )
 
-    def langchainfy(self) -> List[StructuredTool]:
+    def langchainfy(self) -> StructuredTool:
         """
         Convert CatProcedure to a langchain compatible StructuredTool object.
 
-        Returns
-        -------
-        List[StructuredTool]
+        Returns:
             The langchain compatible StructuredTool objects.
         """
         description = self.description + ("\n\nE.g.:\n" if self.examples else "")
@@ -135,12 +133,12 @@ class CatTool(CatProcedure):
                 return func(*args, **kwargs, cat=self.stray)
             func = func_with_cat
 
-        return [StructuredTool.from_function(
+        return StructuredTool.from_function(
             name=self.name,
             description=description,
             func=func,
             args_schema=self.input_schema,
-        )]
+        )
 
     @property
     def type(self) -> CatProcedureType:

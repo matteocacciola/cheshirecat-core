@@ -314,7 +314,7 @@ class BillTheLizard:
             return self.get_cheshire_cat(agent_id)
 
         ccat = CheshireCat(agent_id)
-        await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
+        await ccat.embed_procedures()
 
         return ccat
 

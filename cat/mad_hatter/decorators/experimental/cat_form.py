@@ -67,7 +67,7 @@ class CatForm(CatProcedure, ABC):  # base model of forms
         # CatForm has no constructor params
         return cls()
 
-    def langchainfy(self) -> List[StructuredTool]:
+    def langchainfy(self) -> StructuredTool:
         """
         Convert CatProcedure to a langchain compatible StructuredTool object.
 
@@ -78,11 +78,11 @@ class CatForm(CatProcedure, ABC):  # base model of forms
         for example in self.examples:
             description += f"- {example}\n"
 
-        return [StructuredTool.from_function(
+        return StructuredTool.from_function(
             name=self.name,
             description=description,
             func=self.next,
-        )]
+        )
 
     @property
     def type(self) -> CatProcedureType:
