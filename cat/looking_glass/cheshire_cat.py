@@ -281,11 +281,11 @@ class CheshireCat:
         log.info(f"Agent id: {self.id}. Embedded {len(payloads)} triggers in {collection_name} vector memory")
 
     @subscriber("on_end_plugin_activate")
-    async def on_end_plugin_activate(self) -> None:
+    async def on_end_plugin_activate(self, plugin_id: str) -> None:
         await self.embed_procedures()
 
     @subscriber("on_end_plugin_deactivate")
-    async def on_end_plugin_deactivate(self) -> None:
+    async def on_end_plugin_deactivate(self, plugin_id: str) -> None:
         await self.embed_procedures()
 
     @property
