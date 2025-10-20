@@ -56,14 +56,23 @@ class CatForm(CatProcedure, ABC):  # base model of forms
     def autopilot(self) -> bool:
         return self._autopilot
 
+    def dictify_input_params(self) -> Dict:
+        return {}
+
+    def parsify_input_params(self, input_params: Dict) -> Dict:
+        return input_params
+
+    @classmethod
+    def reconstruct_from_params(cls, input_params: Dict) -> "CatForm":
+        # CatForm has no constructor params
+        return cls()
+
     def langchainfy(self) -> List[StructuredTool]:
         """
         Convert CatProcedure to a langchain compatible StructuredTool object.
 
-        Returns
-        -------
-        List[StructuredTool]
-            The langchain compatible StructuredTool objects.
+        Returns:
+            The langchain compatible StructuredTool object.
         """
         description = self.description + ("\n\nE.g.:\n" if self.examples else "")
         for example in self.examples:

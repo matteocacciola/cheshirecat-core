@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any, List, Dict
 from langchain.tools import StructuredTool
 from fastmcp import Client
+from mcp.types import Prompt, Resource, Tool
 from slugify import slugify
 
 from cat.log import log
@@ -38,6 +39,38 @@ class CatMcpClient(Client, CatProcedure, ABC):
         self._cached_tools = None
         self._cached_prompts = None
         self._cached_resources = None
+
+        self._picked_tool = None
+
+    @property
+    def picked_tool(self) -> str:
+        """
+        Fetches the currently selected tool.
+
+        Returns:
+            str: The name of the currently selected tool.
+        """
+        return self._picked_tool
+
+    @picked_tool.setter
+    def picked_tool(self, picked_tool: str):
+        self._picked_tool = picked_tool
+
+    def dictify_input_params(self) -> Dict:
+        return {
+            "picked_tool": self.picked_tool,
+        }
+
+    def parsify_input_params(self, input_params: Dict) -> Dict:
+        self.picked_tool = input_params["picked_tool"]
+
+        return input_params
+
+    @classmethod
+    def reconstruct_from_params(cls, input_params: Dict) -> "CatMcpClient":
+        obj = cls()
+        obj.picked_tool = input_params["picked_tool"]
+        return obj
 
     def handle_elicitation(self, elicitation_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -201,18 +234,18 @@ class CatMcpClient(Client, CatProcedure, ABC):
     def __repr__(self) -> str:
         return f"McpClient(name={self.name})"
 
-    async def _get_mcp_tools_async(self) -> List:
-        """Asynchronously fetch MCP tools using proper context manager."""
+    async def _get_mcp_tools_async(self) -> List[Tool]:
+        """Asynchronously fetch MCP tools using a proper context manager."""
         async with self:
             return await self.list_tools()
 
-    async def _get_mcp_prompts_async(self) -> List:
-        """Asynchronously fetch MCP prompts using proper context manager."""
+    async def _get_mcp_prompts_async(self) -> List[Prompt]:
+        """Asynchronously fetch MCP prompts using a proper context manager."""
         async with self:
             return await self.list_prompts()
 
-    async def _get_mcp_resources_async(self) -> List:
-        """Asynchronously fetch MCP resources using proper context manager."""
+    async def _get_mcp_resources_async(self) -> List[Resource]:
+        """Asynchronously fetch MCP resources using a proper context manager."""
         async with self:
             return await self.list_resources()
 
@@ -221,19 +254,19 @@ class CatMcpClient(Client, CatProcedure, ABC):
         return CatProcedureType.MCP
 
     @property
-    def mcp_tools(self):
+    def mcp_tools(self) -> List[Tool]:
         if self._cached_tools is None:
             self._cached_tools = run_sync_or_async(self._get_mcp_tools_async)
         return self._cached_tools
 
     @property
-    def mcp_prompts(self):
+    def mcp_prompts(self) -> List[Prompt]:
         if self._cached_prompts is None:
             self._cached_prompts = run_sync_or_async(self._get_mcp_prompts_async)
         return self._cached_prompts
 
     @property
-    def mcp_resources(self):
+    def mcp_resources(self) -> List[Resource]:
         if self._cached_resources is None:
             self._cached_resources = run_sync_or_async(self._get_mcp_resources_async)
         return self._cached_resources

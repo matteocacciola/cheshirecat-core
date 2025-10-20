@@ -19,6 +19,7 @@ from cat.factory.llm import LLMFactory
 from cat.factory.vector_db import VectorDatabaseFactory, BaseVectorDatabaseHandler
 from cat.log import log
 from cat.mad_hatter import Tweedledee
+from cat.memory.utils import VectorMemoryType
 from cat.utils import get_factory_object, get_updated_factory_object
 
 
@@ -106,7 +107,7 @@ class CheshireCat:
         log.info(f"Agent id: {self.id}. Destroying all data from the cat's memory")
 
         # destroy all memories
-        await self.vector_memory_handler.destroy_all_points("declarative")
+        await self.vector_memory_handler.destroy_all_points(str(VectorMemoryType.DECLARATIVE))
 
     async def destroy(self):
         """Destroy all data from the cat."""
@@ -131,6 +132,7 @@ class CheshireCat:
     def replace_llm(self, language_model_name: str, settings: Dict) -> Dict:
         """
         Replace the current LLM with a new one. This method is used to change the LLM of the cat.
+
         Args:
             language_model_name: name of the new LLM
             settings: settings of the new LLM
@@ -158,6 +160,7 @@ class CheshireCat:
     def replace_auth_handler(self, auth_handler_name: str, settings: Dict) -> Dict:
         """
         Replace the current Auth Handler with a new one.
+
         Args:
             auth_handler_name: name of the new Auth Handler
             settings: settings of the new Auth Handler
@@ -207,6 +210,7 @@ class CheshireCat:
     def replace_chunker(self, chunker_name: str, settings: Dict) -> Dict:
         """
         Replace the current Auth Handler with a new one.
+
         Args:
             chunker_name: name of the new chunker
             settings: settings of the new chunker
@@ -226,6 +230,7 @@ class CheshireCat:
     ) -> Dict:
         """
         Replace the current Vector Memory Handler with a new one.
+
         Args:
             vector_memory_name: name of the new Vector Memory Handler
             settings: settings of the new Vector Memory Handler
@@ -249,8 +254,7 @@ class CheshireCat:
         Instance of langchain `BillTheLizard`. Use it to access the main components of the Cat.
 
         Returns:
-            lizard: BillTheLizard
-                Instance of langchain `BillTheLizard`.
+            lizard (BillTheLizard): Instance of langchain `BillTheLizard`.
         """
         from cat.looking_glass import BillTheLizard
         return BillTheLizard()
@@ -261,8 +265,7 @@ class CheshireCat:
         Instance of `WebsocketManager`. Use it to access the manager of the Websocket connections.
 
         Returns:
-            websocket_manager: WebsocketManager
-                Instance of `WebsocketManager`.
+            websocket_manager (WebsocketManager): Instance of `WebsocketManager`.
         """
         return self.lizard.websocket_manager
 
@@ -270,9 +273,9 @@ class CheshireCat:
     def embedder(self) -> Embeddings:
         """
         Langchain `Embeddings` object.
+
         Returns:
-            embedder: Langchain `Embeddings`
-                Langchain embedder to turn text into a vector.
+            embedder: Langchain `Embeddings`. Langchain embedder to turn text into a vector.
 
         Examples
         --------
