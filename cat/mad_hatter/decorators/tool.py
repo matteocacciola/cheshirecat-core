@@ -84,7 +84,7 @@ class CatTool(CatProcedure):
         if "cat" in func.__code__.co_varnames and self.stray is not None:
             # create a closure to capture self.stray
             def func_with_cat(*args, **kwargs):
-                return func(*args, cat=self.stray, **kwargs)
+                return func(*args, **kwargs, cat=self.stray)
             func = func_with_cat
 
         return [StructuredTool.from_function(

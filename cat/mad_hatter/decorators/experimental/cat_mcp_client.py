@@ -261,3 +261,11 @@ class ElicitationRequiredException(Exception):
         field_names = [f.get("name", "unknown") for f in missing_fields]
         message = f"Elicitation required for fields: {', '.join(field_names)}"
         super().__init__(message)
+
+
+# mcp_client decorator
+def mcp_client(this_mcp_client: CatMcpClient) -> CatMcpClient:
+    if this_mcp_client.name is None:
+        this_mcp_client.name = this_mcp_client.__name__
+
+    return this_mcp_client

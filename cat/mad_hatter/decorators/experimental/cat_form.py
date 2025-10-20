@@ -320,3 +320,12 @@ Updated JSON:
         except Exception as e:
             log.error(f"Error while executing form: {e}")
             return ""
+
+
+# form decorator
+def form(this_form: CatForm) -> CatForm:
+    this_form._autopilot = True
+    if this_form.name is None:
+        this_form.name = this_form.__name__
+
+    return this_form
