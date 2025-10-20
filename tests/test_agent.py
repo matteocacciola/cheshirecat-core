@@ -47,7 +47,7 @@ async def test_execute_agent_with_form_submit(secure_client, secure_client_heade
         result = self.submit(self._model)
         self._state = CatFormState.CLOSED
         return result
-    monkeypatch.setattr("cat.mad_hatter.decorators.experimental.form.cat_form.CatForm.next", mock_func)
+    monkeypatch.setattr("cat.mad_hatter.decorators.experimental.cat_form.CatForm.next", mock_func)
 
     # empty agent execution with form
     tools = await stray.get_procedures()
