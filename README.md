@@ -228,6 +228,7 @@ The current version introduces also the following additional hooks:
 
 ### RabbitHole:
 - `before_rabbithole_splits_text`
+- `rabbithole_instantiates_splitter`
 
 ### Memory:
 - `before_cat_recalls_episodic_memories`
