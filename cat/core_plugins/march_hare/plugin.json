@@ -1,0 +1,9 @@
+{
+    "name": "March Hare",
+    "description": "Handling events via RabbitMQ.",
+    "author_name": "Matteo Cacciola",
+    "plugin_url": "https://github.com/matteocacciola/cheshirecat-core",
+    "tags": "core, default, cat, rabbitmq",
+    "thumb": "",
+    "version": "0.0.1"
+}

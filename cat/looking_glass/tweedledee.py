@@ -1,8 +1,7 @@
 from typing import Dict, List
 
-from cat.mad_hatter.mad_hatter import MadHatter
-from cat.mad_hatter.plugin import Plugin
-from cat.mad_hatter.tweedledum import Tweedledum
+from cat.mad_hatter import MadHatter, Plugin
+from cat.looking_glass.tweedledum import Tweedledum
 
 
 class Tweedledee(MadHatter):
@@ -88,3 +87,7 @@ class Tweedledee(MadHatter):
     def available_plugins(self) -> Dict[str, Plugin]:
         # the `plugins` property of the plugin manager of BillTheLizard contains only the globally active plugins
         return Tweedledum().plugins
+
+    @property
+    def context_execute_hook(self) -> str:
+        return "cat"

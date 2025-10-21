@@ -87,7 +87,7 @@ class RecursiveTextChunkerSettings(ChunkerSettings):
 class ChunkerFactory(BaseFactory):
     def get_allowed_classes(self) -> List[Type[ChunkerSettings]]:
         list_chunkers_default = self._hook_manager.execute_hook(
-            "factory_allowed_chunkers", [RecursiveTextChunkerSettings], cat=None
+            "factory_allowed_chunkers", [RecursiveTextChunkerSettings], obj=None
         )
         return list_chunkers_default
 

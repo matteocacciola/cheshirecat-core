@@ -14,6 +14,13 @@ triggered at specific points in the conversation, allowing you to modify the beh
 The list of available hooks is available in the [documentation](https://deepwiki.com/matteocacciola/cheshirecat-core).
 The current version introduces also the following additional hooks:
 
+## Bill The Lizard
+- `before_lizard_bootstrap`: to add custom logic before the Lizard bootsraps the conversation
+- `after_lizard_bootstrap`: to add custom logic after the Lizard bootsraps the conversation
+- `lizard_notify_plugin_installation`: to add custom logic when a plugin is installed
+- `lizard_notify_plugin_uninstallation`: to add custom logic when a plugin is uninstalled
+- `before_lizard_shutdown`: to add custom logic before the Lizard shuts down
+
 ### Factories:
 - `factory_allowed_file_managers`: to extend the list of allowed file managers
 - `factory_allowed_chunkers`: to extend the list of allowed chunkers

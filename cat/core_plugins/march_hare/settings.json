@@ -1,0 +1,7 @@
+{
+    "host": "cheshire_cat_rabbitmq",
+    "port": 5672,
+    "user": "guest",
+    "password": "guest",
+    "tls": false
+}

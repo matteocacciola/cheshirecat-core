@@ -6,9 +6,7 @@ from cat import utils
 from cat.db.cruds import plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.log import log
-from cat.mad_hatter.mad_hatter import MadHatter
-from cat.mad_hatter.plugin import Plugin
-from cat.mad_hatter.plugin_extractor import PluginExtractor
+from cat.mad_hatter import MadHatter, Plugin, PluginExtractor
 from cat.utils import singleton
 
 
@@ -157,3 +155,7 @@ class Tweedledum(MadHatter):
         return {
             plugin_id: self.load_plugin(plugin_id) for plugin_id in plugins_ids
         }
+
+    @property
+    def context_execute_hook(self):
+        return "lizard"

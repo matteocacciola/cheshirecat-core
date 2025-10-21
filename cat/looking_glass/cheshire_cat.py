@@ -19,7 +19,7 @@ from cat.factory.llm import LLMFactory
 from cat.factory.vector_db import VectorDatabaseFactory, BaseVectorDatabaseHandler
 from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
-from cat.mad_hatter import Tweedledee
+from cat.looking_glass.tweedledee import Tweedledee
 from cat.mad_hatter.decorators import CatTool
 from cat.memory.utils import VectorMemoryType
 from cat.utils import get_factory_object, get_updated_factory_object
@@ -56,7 +56,7 @@ class CheshireCat:
         self.plugin_manager.discover_plugins()
 
         # allows plugins to do something before cat components are loaded
-        self.plugin_manager.execute_hook("before_cat_bootstrap", cat=self)
+        self.plugin_manager.execute_hook("before_cat_bootstrap", obj=self)
 
         self.large_language_model: BaseLanguageModel = get_factory_object(self.id, LLMFactory(self.plugin_manager))
         self.custom_auth_handler: BaseAuthHandler = get_factory_object(self.id, AuthHandlerFactory(self.plugin_manager))
@@ -72,7 +72,7 @@ class CheshireCat:
             self.initialize_users()
 
         # allows plugins to do something after the cat bootstrap is complete
-        self.plugin_manager.execute_hook("after_cat_bootstrap", cat=self)
+        self.plugin_manager.execute_hook("after_cat_bootstrap", obj=self)
 
     def __eq__(self, other: "CheshireCat") -> bool:
         """Check if two cats are equal."""
@@ -339,16 +339,6 @@ class CheshireCat:
         return self.lizard.rabbit_hole
 
     @property
-    def core_auth_handler(self) -> "CoreAuthHandler":
-        """
-        Gives access to the `CoreAuthHandler` object. Use it to interact with the Cat's authentication handler.
-
-        Returns:
-            core_auth_handler (CoreAuthHandler): Core authentication handler of the Cat
-        """
-        return self.lizard.core_auth_handler
-
-    @property
     def mad_hatter(self) -> Tweedledee:
         """
         Gives access to the `Tweedledee` plugin manager.
@@ -370,7 +360,7 @@ class CheshireCat:
     # each time we access the file handlers, plugins can intervene
     @property
     def file_handlers(self) -> Dict:
-        return self.plugin_manager.execute_hook("rabbithole_instantiates_parsers",  {}, cat=self)
+        return self.plugin_manager.execute_hook("rabbithole_instantiates_parsers",  {}, obj=self)
 
     @property
     def agent_id(self) -> str:

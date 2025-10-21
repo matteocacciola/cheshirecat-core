@@ -22,10 +22,6 @@ services:
       - CCAT_REDIS_HOST=cheshire_cat_redis
       - CCAT_REDIS_PORT=6379
       - CCAT_HISTORY_EXPIRATION=60
-      - CCAT_RABBITMQ_HOST=cheshire_cat_rabbitmq
-      - CCAT_RABBITMQ_PORT=5672
-      - CCAT_RABBITMQ_USER=guest
-      - CCAT_RABBITMQ_PASSWORD=guest
       - CCAT_LOG_LEVEL=DEBUG
     volumes:
       - ./cat:/app/cat

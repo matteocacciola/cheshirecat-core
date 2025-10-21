@@ -16,5 +16,5 @@ def test_hook_priority_execution(stray):
     fake_message = CatMessage(text="Priorities:")
     agent_output = AgentOutput()
 
-    out = stray.plugin_manager.execute_hook("before_cat_sends_message", fake_message, agent_output, cat=None)
+    out = stray.plugin_manager.execute_hook("before_cat_sends_message", fake_message, agent_output, obj=None)
     assert out.content == "Priorities: priority 3 priority 2"

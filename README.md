@@ -49,13 +49,26 @@ docker run --rm -it -p 1865:80 ghcr.io/matteocacciola/cheshirecat-core:latest
   [widget](https://www.github.com/matteocacciola/cheshirecat-widget-vue).
 - Try out the REST API on [localhost:1865/docs](http://localhost:1865/docs).
 
-Since this version is intended as a microservice, the `admin` panel is no longer automatically installed with the package.
+This fork is intended as a microservice.
 
-As a first thing, set the **Embedder** for the Cheshire Cat. A favourite **LLM** must be set for each chatbot; each chatbot can have
-its own language model, with custom settings.
+As a first thing, set the **Embedder** for the Cheshire Cat. A favourite **LLM** must be set for each chatbot; each
+chatbot can have its own language model, with custom settings.
 Everything can be done via the [Admin Panel](https://www.github.com/matteocacciola/cheshirecat-admin) or via the REST API endpoints.
 
-Enjoy the Cheshire Cat!  
+> [!IMPORTANT]
+> The following `core plugins` are enabled by default:
+> - `Conversation History`: to store and retrieve the conversation history;
+> - `Factories`: extending objects like LLMs, Embedders, File Managers, Chunkers;
+> - `Interactions`: add the interaction handler to the language model;
+> - `March Hare`: handling events via RabbitMQ;
+> - `Memory`: interacting with Working Memory and adding a handler to trace the activities of the Embedder;
+> - `Multimodality`: a plugin that adds multimodal capabilities to the Cheshire Cat framework, enabling the processing of images;
+> - `White Rabbit`: cron and schedule tasks;
+> - `Why`: add the context and the reasoning behind the answers of the LLM.
+>
+> You can disable one or more (e.g., `March Hare` if you don't need to autoscale over cloud PODs) by using the Admin Toggle endpoint.
+
+Enjoy the Cheshire Cat!
 Follow instructions on how to run it with [docker compose and volumes](https://cheshire-cat-ai.github.io/docs/quickstart/installation-configuration/).
 
 # Admin panel and UI widget

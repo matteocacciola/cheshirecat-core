@@ -191,7 +191,7 @@ async def recall_relevant_memories_to_working_memory(cat: "StrayCat", collection
     plugin_manager = cat.plugin_manager
 
     # We may want to search in memory. If a query is not provided, use the user's message as the query
-    recall_query = plugin_manager.execute_hook("cat_recall_query", query, cat=cat)
+    recall_query = plugin_manager.execute_hook("cat_recall_query", query, obj=cat)
     log.info(f"Agent id: {cat.agent_id}. Recall query: '{recall_query}'")
 
     # keep track of embedder model usage
@@ -205,7 +205,7 @@ async def recall_relevant_memories_to_working_memory(cat: "StrayCat", collection
 
     # hook to do something before recall begins
     config = utils.restore_original_model(
-        plugin_manager.execute_hook("before_cat_recalls_memories", config, cat=cat),
+        plugin_manager.execute_hook("before_cat_recalls_memories", config, obj=cat),
         RecallSettings
     )
     cat.latest_n_history = config.latest_n_history
@@ -220,7 +220,7 @@ async def recall_relevant_memories_to_working_memory(cat: "StrayCat", collection
     )
 
     # hook to modify/enrich retrieved memories
-    plugin_manager.execute_hook("after_cat_recalls_memories", cat=cat)
+    plugin_manager.execute_hook("after_cat_recalls_memories", obj=cat)
 
     return memories
 

@@ -12,11 +12,12 @@ import time
 
 from cat.auth import auth_utils
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
+from cat.core_plugins.march_hare.march_hare import MarchHare
 from cat.db.database import Database
 from cat.env import get_env
 from cat.factory.vector_db import QdrantHandler
-from cat.looking_glass import BillTheLizard, StrayCat, WhiteRabbit
-from cat.mad_hatter import MarchHare, Plugin
+from cat.looking_glass import BillTheLizard, StrayCat
+from cat.mad_hatter import Plugin
 from cat.memory.messages import UserMessage
 from cat.startup import cheshire_cat_api
 import cat.utils as utils
@@ -139,12 +140,6 @@ async def lizard(encapsulate_each_test):
     l = BillTheLizard()
     l.fastapi_app = cheshire_cat_api
     yield l
-
-
-@pytest.fixture(scope="function")
-def white_rabbit(encapsulate_each_test):
-    wr = WhiteRabbit()
-    yield wr
 
 
 @pytest_asyncio.fixture(scope="function")

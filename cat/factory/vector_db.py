@@ -1066,7 +1066,7 @@ class VectorDatabaseFactory(BaseFactory):
         list_vector_db_default = [QdrantConfig]
 
         list_vector_dbs = self._hook_manager.execute_hook(
-            "factory_allowed_vector_databases", list_vector_db_default, cat=None
+            "factory_allowed_vector_databases", list_vector_db_default, obj=None
         )
         return list_vector_dbs
 

@@ -11,7 +11,6 @@ authors = [
 ]
 dependencies = [
     "aiofiles",
-    "APScheduler",
     "autopep8",
     "bcrypt",
     "cryptography",
@@ -24,7 +23,6 @@ dependencies = [
     "langchain-community",
     "loguru",
     "perflint",
-    "pika",
     "pillow",
     "pydantic",
     "PyJWT",

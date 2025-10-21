@@ -1,5 +1,3 @@
-import json
-import threading
 from copy import deepcopy
 from typing import Dict, List
 from uuid import uuid4
@@ -18,7 +16,8 @@ from cat.factory.embedder import EmbedderFactory
 from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.looking_glass.cheshire_cat import CheshireCat
-from cat.mad_hatter import MadHatter, MarchHare, MarchHareConfig, Tweedledum
+from cat.looking_glass.tweedledum import Tweedledum
+from cat.mad_hatter import MadHatter
 from cat.mad_hatter.decorators import CustomEndpoint
 from cat.rabbit_hole import RabbitHole
 from cat.services.websocket_manager import WebSocketManager
@@ -28,7 +27,6 @@ from cat.utils import (
     get_embedder_name,
     get_factory_object,
     get_updated_factory_object,
-    pod_id,
     run_sync_or_async,
 )
 
@@ -61,7 +59,6 @@ class BillTheLizard:
         self.dispatcher.subscribe_from(self)
 
         self._key = DEFAULT_SYSTEM_KEY
-        self._pod_id = pod_id()
 
         self._fastapi_app = None
         self._pending_endpoints = []
@@ -74,6 +71,9 @@ class BillTheLizard:
         self.plugin_manager = Tweedledum()
         self.plugin_manager.discover_plugins()
 
+        # allows plugins to do something before cat components are loaded
+        self.plugin_manager.execute_hook("before_lizard_bootstrap", obj=self)
+
         self.websocket_manager = WebSocketManager()
 
         # load embedder
@@ -84,63 +84,14 @@ class BillTheLizard:
 
         self.core_auth_handler = CoreAuthHandler()
 
-        # March Hare instance (for RabbitMQ management)
-        self.march_hare = MarchHare()
-
         # Initialize the default admin if not present
         if not crud_users.get_users(self._key):
             self.initialize_users()
 
-        self._consumer_threads: List[threading.Thread] = []
-        self._start_consumer_threads()
+        self.plugin_manager.execute_hook("after_lizard_bootstrap", obj=self)
 
     def __del__(self):
         run_sync_or_async(self.shutdown)
-
-    def _start_consumer_threads(self):
-        if not MarchHareConfig.is_enabled:
-            log.warning("RabbitMQ is not enabled. Skipping consumer thread initialization.")
-            return
-
-        self._consumer_threads = [
-            threading.Thread(target=self._consume_plugin_events, daemon=True)
-        ]
-        for thread in self._consumer_threads:
-            thread.start()
-
-    def _end_consumer_threads(self):
-        for thread in self._consumer_threads:
-            if thread.is_alive():
-                thread.join(timeout=1)
-        self._consumer_threads = []
-
-    def _consume_plugin_events(self):
-        """
-        Consumer thread that listens for activation events from RabbitMQ.
-        """
-        def callback(ch, method, properties, body):
-            """Handle the received message."""
-            try:
-                event = json.loads(body)
-
-                if event.get("source_pod") == self._pod_id:
-                    log.debug(f"Ignoring event with payload {event['payload']} from the same pod {self._pod_id}")
-                    return
-
-                if event["event_type"] == MarchHareConfig.events["PLUGIN_INSTALLATION"]:
-                    payload = event["payload"]
-                    self.plugin_manager.install_extracted_plugin(payload["plugin_id"], payload["plugin_path"])
-                elif event["event_type"] == MarchHareConfig.events["PLUGIN_UNINSTALLATION"]:
-                    payload = event["payload"]
-                    self.plugin_manager.uninstall_plugin(payload["plugin_id"])
-                else:
-                    log.warning(f"Unknown event type: {event['event_type']}. Message body: {body}")
-            except json.JSONDecodeError as e:
-                log.error(f"Failed to decode JSON message: {e}. Message body: {body}")
-            except Exception as e:
-                log.error(f"Error processing message: {e}. Message body: {body}")
-
-        self.march_hare.consume_event(callback, MarchHareConfig.channels["PLUGIN_EVENTS"])
 
     @subscriber("on_end_plugin_install")
     def on_end_plugin_install(self, plugin_id: str, plugin_path: str) -> None:
@@ -151,15 +102,7 @@ class BillTheLizard:
         if self.fastapi_app is not None:
             self._activate_pending_endpoints()
 
-        # notify the RabbitMQ about the new plugin installed
-        self.march_hare.notify_event(
-            event_type=MarchHareConfig.events["PLUGIN_INSTALLATION"],
-            payload={
-                "plugin_id": plugin_id,
-                "plugin_path": plugin_path
-            },
-            exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
-        )
+        self.plugin_manager.execute_hook("lizard_notify_plugin_installation", plugin_id, plugin_path, obj=self)
 
     @subscriber("on_start_plugin_uninstall")
     def on_start_plugin_uninstall(self, plugin_id: str) -> None:
@@ -175,12 +118,7 @@ class BillTheLizard:
         if self.fastapi_app is not None:
             self._deactivate_pending_endpoints(plugin_id)
 
-        # notify the RabbitMQ about the new uninstalled plugin
-        self.march_hare.notify_event(
-            event_type=MarchHareConfig.events["PLUGIN_UNINSTALLATION"],
-            payload={"plugin_id": plugin_id},
-            exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
-        )
+        self.plugin_manager.execute_hook("lizard_notify_plugin_uninstallation", plugin_id, obj=self)
 
     @subscriber("on_finish_plugins_sync")
     def on_finish_plugins_sync(self) -> None:
@@ -346,7 +284,7 @@ class BillTheLizard:
         if self.websocket_manager:
             await self.websocket_manager.close_all_connections()
 
-        self._end_consumer_threads()
+        self.plugin_manager.execute_hook("before_lizard_shutdown", obj=None)
 
         self.core_auth_handler = None
         self.plugin_manager = None

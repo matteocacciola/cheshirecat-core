@@ -13,6 +13,77 @@ from cat.memory.utils import VectorMemoryType, recall_relevant_memories_to_worki
 from cat.utils import run_sync_or_async
 
 
+@hook(priority=0)
+def before_lizard_bootstrap(lizard) -> None:
+    """
+    Executes actions that need to be performed before the lizard bootstrap process.
+
+    This hook function is called with a configurable priority and is used to execute any preparatory operations
+    required before the main bootstrap logic for the lizard application starts.
+
+    Args:
+        lizard: An object that provides context or data needed during the bootstrap preparation process. The exact usage and required attributes of the object depend on the implementation details of the bootstrap logic.
+    """
+    pass
+
+
+@hook(priority=0)
+def after_lizard_bootstrap(lizard) -> None:
+    """
+    Executes actions that need to be performed after the lizard bootstrap process.
+
+    This hook function is called with a configurable priority and is used to execute any preparatory operations
+    required after the main bootstrap logic for the lizard application starts.
+
+    Args:
+        lizard: An object that provides context or data needed during the bootstrap preparation process. The exact usage and required attributes of the object depend on the implementation details of the bootstrap logic.
+    """
+    pass
+
+
+@hook(priority=0)
+def before_lizard_shutdown(lizard) -> None:
+    """
+    This function is a hook that gets called before the Lizard system shuts down. Its purpose is to perform any necessary
+    operations or cleanup tasks related to the provided cat before the shutdown process begins.
+
+    Args:
+        lizard: The object or parameter related to a cat that might need specific operations to be performed before the shutdown.
+    """
+    pass
+
+
+@hook(priority=0)
+def lizard_notify_plugin_installation(plugin_id: str, plugin_path: str, lizard) -> None:
+    """
+    Handles the notification process when a plugin is installed.
+
+    This function is triggered when a plugin is installed and a hook is activated. The notification ensures that
+    relevant stakeholders, systems, or components are informed about the installation event.
+
+    Args:
+        plugin_id: The ID of the plugin that is being installed.
+        plugin_path: The path to the plugin's installation directory.
+        lizard: The specific category or context associated with the installed plugin.
+    """
+    pass
+
+
+@hook(priority=0)
+def lizard_notify_plugin_uninstallation(plugin_id: str, lizard) -> None:
+    """
+    Handles the notification process when a plugin is installed.
+
+    This function is triggered when a plugin is installed and a hook is de-activated. The notification ensures that
+    relevant stakeholders, systems, or components are informed about the uninstallation event.
+
+    Args:
+        plugin_id: The ID of the plugin that is being uninstalled.
+        lizard: The specific category or context associated with the uninstalled plugin.
+    """
+    pass
+
+
 # Called before cat bootstrap
 @hook(priority=0)
 def before_cat_bootstrap(cat) -> None:

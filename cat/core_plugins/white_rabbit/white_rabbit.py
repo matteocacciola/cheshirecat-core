@@ -8,7 +8,8 @@ from pydantic import BaseModel
 from pytz import utc
 
 from cat.log import log
-from cat.utils import singleton, run_sync_or_async
+from cat.mad_hatter.decorators import hook
+from cat.utils import singleton
 
 
 class Job(BaseModel):
@@ -67,7 +68,7 @@ class WhiteRabbit:
             self._is_running = False
 
     def __del__(self):
-        run_sync_or_async(self.shutdown)
+        self.shutdown()
 
     def _job_ended_listener(self, event):
         """
@@ -404,3 +405,16 @@ class WhiteRabbit:
         self.jobs.append(job_id)
 
         return job_id
+
+
+@hook
+def before_lizard_bootstrap(cat):
+    # Start scheduling system and attach it to the CheshireCat core class
+    cat.white_rabbit = WhiteRabbit()
+
+
+@hook(priority=0)
+def before_lizard_shutdown(cat) -> None:
+    if hasattr(cat, "white_rabbit"):
+        cat.white_rabbit.shutdown()
+        cat.white_rabbit = None
