@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
+from cat.memory.utils import VectorMemoryType
 
 agent_id = "agent_test"
 chat_id = "a1157e2d-ca3d-4f21-a4a5-b57a64dd01c9"
@@ -93,7 +94,7 @@ def get_declarative_memory_contents(client, headers=None):
     response = client.get("/memory/recall/", params=params, headers=headers)
     assert response.status_code == 200
     json = response.json()
-    declarative_memories = json["vectors"]["collections"]["declarative"]
+    declarative_memories = json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)]
     return declarative_memories
 
 
@@ -134,7 +135,7 @@ def get_fake_memory_export(embedder_name="DumbEmbedder", dim=2367):
     return {
         "embedder": embedder_name,
         "collections": {
-            "declarative": [
+            str(VectorMemoryType.DECLARATIVE): [
                 {
                     "page_content": "test_memory",
                     "metadata": {"source": user["id"], "when": time.time()},

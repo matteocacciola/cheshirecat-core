@@ -4,7 +4,7 @@ from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplat
 from cat.agent import run_agent
 from cat.looking_glass import StrayCat
 from cat.memory.messages import CatMessage, UserMessage, MessageWhy
-from cat.memory.utils import recall
+from cat.memory.utils import recall, VectorMemoryType
 from cat.memory.working_memory import WorkingMemory
 
 from tests.utils import api_key, create_mock_plugin_zip, send_file
@@ -57,7 +57,7 @@ async def test_stray_recall_all_memories(secure_client, secure_client_headers, s
     send_file("sample.pdf", "application/pdf", secure_client, secure_client_headers)
 
     query = lizard.embedder.embed_query("")
-    memories = await recall(stray, query, k=None)
+    memories = await recall(stray, query, VectorMemoryType.DECLARATIVE, k=None)
 
     assert len(memories) > 0
     for mem in memories:
@@ -73,7 +73,7 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
     file_name = "sample.pdf"
     _, file_path = send_file(file_name, content_type, secure_client, secure_client_headers)
 
-    memories = await recall(stray, query, metadata={"source": file_name})
+    memories = await recall(stray, query, VectorMemoryType.DECLARATIVE, metadata={"source": file_name})
     assert len(memories) > 0
     for mem in memories:
         assert mem.document.metadata["source"] == file_name
@@ -82,7 +82,7 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
         files = {"file": ("sample2.pdf", f, content_type)}
         _ = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
 
-    memories = await recall(stray, query, metadata={"source": file_name})
+    memories = await recall(stray, query, VectorMemoryType.DECLARATIVE, metadata={"source": file_name})
     assert len(memories) > 0
     for mem in memories:
         assert mem.document.metadata["source"] == file_name

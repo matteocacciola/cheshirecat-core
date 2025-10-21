@@ -6,7 +6,7 @@ from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException
 from cat.mad_hatter.decorators import endpoint
-from cat.memory.utils import DocumentRecall, UpdateResult, Record
+from cat.memory.utils import DocumentRecall, UpdateResult, Record, VectorMemoryType
 from cat.routes.routes_utils import (
     MemoryPointBase,
     MemoryPoint,
@@ -101,14 +101,19 @@ async def recall_memory_points_from_text(
     query_embedding = ccat.embedder.embed_query(text)
 
     dm = await ccat.vector_memory_handler.recall_memories_from_embedding(
-        "declarative", query_embedding, k=k, metadata={k: v for k, v in metadata.items() if k != "source"}
+        str(VectorMemoryType.DECLARATIVE),
+        query_embedding,
+        k=k,
+        metadata={k: v for k, v in metadata.items() if k != "source"},
     )
 
     return RecallResponse(
         query=RecallResponseQuery(text=text, vector=query_embedding),
         vectors=RecallResponseVectors(
             embedder=info.cheshire_cat.lizard.embedder_name,
-            collections={"declarative": [build_memory_dict(document_recall) for document_recall in dm]}
+            collections={
+                str(VectorMemoryType.DECLARATIVE): [build_memory_dict(document_recall) for document_recall in dm]
+            }
         )
     )
 
@@ -226,7 +231,7 @@ async def delete_memory_points_by_metadata(
         ret = await ccat.vector_memory_handler.delete_points_by_metadata_filter(collection_id, metadata)
 
         # delete the file with path `metadata["source"]` from the file storage
-        if collection_id == "declarative" and (source := metadata.get("source")):
+        if collection_id == VectorMemoryType.DECLARATIVE and (source := metadata.get("source")):
             ccat.file_manager.remove_file_from_storage(f"{ccat.id}/{source}")
 
         return DeleteMemoryPointsByMetadataResponse(deleted=ret)

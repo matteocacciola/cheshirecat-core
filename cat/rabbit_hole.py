@@ -13,7 +13,7 @@ from starlette.datastructures import UploadFile
 
 from cat.factory.chunker import BaseChunker
 from cat.log import log
-from cat.memory.utils import PointStruct
+from cat.memory.utils import PointStruct, VectorMemoryType
 from cat.utils import singleton
 
 
@@ -71,7 +71,7 @@ class RabbitHole:
             )
 
         # Get Declarative memories in file
-        declarative_memories = memories["collections"]["declarative"]
+        declarative_memories = memories["collections"][str(VectorMemoryType.DECLARATIVE)]
 
         # Store data to upload the memories in batch
         ids = [m["id"] for m in declarative_memories]
@@ -94,7 +94,7 @@ class RabbitHole:
 
         # Upsert memories in batch mode
         await cat.vector_memory_handler.add_points(
-            collection_name="declarative", ids=ids, payloads=payloads, vectors=vectors
+            collection_name=str(VectorMemoryType.DECLARATIVE), ids=ids, payloads=payloads, vectors=vectors
         )
 
     async def ingest_file(self, cat, file: str | UploadFile, metadata: Dict = None):
@@ -280,7 +280,7 @@ class RabbitHole:
             if doc.page_content != "":
                 doc_embedding = embedder.embed_documents([doc.page_content])
                 if (stored_point := await self.cat.vector_memory_handler.add_point(
-                    collection_name="declarative",
+                    collection_name=str(VectorMemoryType.DECLARATIVE),
                     content=doc.page_content,
                     vector=doc_embedding[0],
                     metadata=doc.metadata,

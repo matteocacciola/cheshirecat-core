@@ -2,11 +2,12 @@ from typing import Dict
 
 from cat.mad_hatter.decorators import hook
 from cat.memory.messages import MessageWhy
+from cat.memory.utils import VectorMemoryType
 
 
 @hook(priority=1)
 def before_cat_sends_message(message, agent_output, cat) -> Dict:
-    memory = {"declarative": [
+    memory = {str(VectorMemoryType.DECLARATIVE): [
         dict(d.document)
         | {
             "score": float(d.score) if d.score else None,

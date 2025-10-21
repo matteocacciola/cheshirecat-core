@@ -1,4 +1,5 @@
 from cat.db.cruds import users as crud_users
+from cat.memory.utils import VectorMemoryType
 
 from tests.utils import (
     get_declarative_memory_contents,
@@ -43,8 +44,8 @@ def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat,
     response = secure_client.get("/memory/recall/", params=params, headers=headers)
     json = response.json()
     assert response.status_code == 200
-    assert len(json["vectors"]["collections"]["declarative"]) == 1
-    memory = json["vectors"]["collections"]["declarative"][0]
+    assert len(json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)]) == 1
+    memory = json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)][0]
     assert memory["page_content"] == content
     assert memory["metadata"] == expected_metadata
 
@@ -62,8 +63,8 @@ def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_
     json = response.json()
     assert response.status_code == 200
 
-    num = len(json["vectors"]["collections"]["declarative"])
-    mem = json["vectors"]["collections"]["declarative"][0]
+    num = len(json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)])
+    mem = json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)][0]
 
     # delete point (wrong collection)
     res = secure_client.delete(f"/memory/collections/wrongcollection/points/{mem['id']}", headers=secure_client_headers)
@@ -85,7 +86,7 @@ def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_
     )
     json = response.json()
     assert response.status_code == 200
-    assert len(json["vectors"]["collections"]["declarative"]) == num - 1
+    assert len(json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)]) == num - 1
 
     # delete again the same point (should not be found)
     res = secure_client.delete(f"/memory/collections/declarative/points/{mem['id']}", headers=secure_client_headers)
@@ -320,7 +321,7 @@ def test_edit_memory_point(secure_client, secure_client_headers, cheshire_cat, p
     response = secure_client.get("/memory/recall/", params=params, headers=headers)
     json = response.json()
     assert response.status_code == 200
-    assert len(json["vectors"]["collections"]["declarative"]) == 1
-    memory = json["vectors"]["collections"]["declarative"][0]
+    assert len(json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)]) == 1
+    memory = json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)][0]
     assert memory["page_content"] == content
     assert memory["metadata"] == expected_metadata

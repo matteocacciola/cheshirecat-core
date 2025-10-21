@@ -1,3 +1,5 @@
+from cat.memory.utils import VectorMemoryType
+
 from tests.utils import send_websocket_message, get_collections_names_and_point_count, api_key, send_file
 
 
@@ -13,7 +15,7 @@ def test_memory_collections_created(secure_client, secure_client_headers):
     # check correct number of default points
     collections_n_points = {c["name"]: c["vectors_count"] for c in json["collections"]}
     # all other collections should be empty
-    assert collections_n_points["declarative"] == 0
+    assert collections_n_points[str(VectorMemoryType.DECLARATIVE)] == 0
 
 
 def test_memory_collection_non_existent_clear(secure_client, secure_client_headers):
@@ -34,14 +36,14 @@ def test_memory_collections_wipe(
     send_file("sample.txt", "text/plain", secure_client, secure_client_headers)
 
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
-    assert collections_n_points["declarative"] > 0  # several chunks
+    assert collections_n_points[str(VectorMemoryType.DECLARATIVE)] > 0  # several chunks
 
     # wipe out all memories
     response = secure_client.delete("/memory/collections", headers=secure_client_headers)
     assert response.status_code == 200
 
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
-    assert collections_n_points["declarative"] == 0
+    assert collections_n_points[str(VectorMemoryType.DECLARATIVE)] == 0
 
 
 def test_memory_collections_create(

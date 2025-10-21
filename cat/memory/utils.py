@@ -126,6 +126,7 @@ class RecallSettings(utils.BaseModelDict):
 async def recall(
     cat: "StrayCat",
     query: List[float],
+    collection: VectorMemoryType,
     k: int | None = 5,
     threshold: int | None = None,
     metadata: Dict | None = None,
@@ -140,6 +141,7 @@ async def recall(
     Args:
         cat (StrayCat): The StrayCat instance.
         query (List[float]): The search query, passed as embedding vector. Please first run cheshire_cat.embedder.embed_query(query) if you have a string query to pass here.
+        collection (VectorMemoryType): The name of the vector memory collection to retrieve memories from.
         k (int | None): The number of memories to retrieve. If `None` retrieves all the available memories.
         threshold (float | None): The minimum similarity to retrieve a memory. Memories with lower similarity are ignored.
         metadata (Dict): Additional filter to retrieve memories with specific metadata.
@@ -151,11 +153,11 @@ async def recall(
 
     if k:
         memories = await cheshire_cat.vector_memory_handler.recall_memories_from_embedding(
-            "declarative", query, metadata, k, threshold
+            str(collection), query, metadata, k, threshold
         )
         return memories
 
-    memories = await cheshire_cat.vector_memory_handler.recall_all_memories("declarative")
+    memories = await cheshire_cat.vector_memory_handler.recall_all_memories(str(VectorMemoryType.DECLARATIVE))
     return memories
 
 
@@ -214,6 +216,7 @@ async def recall_relevant_memories_to_working_memory(cat: "StrayCat", collection
         k=config.k,
         threshold=config.threshold,
         metadata=config.metadata,
+        collection=collection,
     )
 
     # hook to modify/enrich retrieved memories
