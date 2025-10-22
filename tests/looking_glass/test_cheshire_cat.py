@@ -1,17 +1,17 @@
 import pytest
-from langchain.base_language import BaseLanguageModel
-from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
+from langchain_core.language_models import BaseLanguageModel
 from langchain_core.embeddings import Embeddings
 from langchain_community.document_loaders import UnstructuredPDFLoader
+from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
 
 from cat.core_plugins.multimodality.unstructured_parser import UnstructuredParser
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.factory.chunker import BaseChunker
 from cat.factory.file_manager import BaseFileManager
 from cat.factory.vector_db import BaseVectorDatabaseHandler
-from cat.mad_hatter import Tweedledee
 from cat.factory.embedder import DumbEmbedder
 from cat.factory.llm import LLMDefault
+from cat.looking_glass import Tweedledee
 
 
 def test_main_modules_loaded(cheshire_cat):

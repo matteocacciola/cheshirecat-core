@@ -7,6 +7,11 @@ from cat import utils
 from cat.log import log
 
 
+class VectorMemoryType(utils.Enum):
+    DECLARATIVE = "declarative"
+    PROCEDURAL = "procedural"
+
+
 class DocumentRecall(utils.BaseModelDict):
     """
     Langchain `Document` retrieved from a memory, with the similarity score, the list of embeddings and the
@@ -28,7 +33,7 @@ class SparseVector(BaseModel, extra="forbid"):
 
 class Document(BaseModel, extra="forbid"):
     """
-    WARN: Work-in-progress, unimplemented  Text document for embedding. Requires inference infrastructure, unimplemented.
+    Text document for embedding.
     """
     text: str = Field(..., description="Text of the document This field will be used as input for the embedding model")
     model: str = Field(
@@ -121,6 +126,7 @@ class RecallSettings(utils.BaseModelDict):
 async def recall(
     cat: "StrayCat",
     query: List[float],
+    collection: VectorMemoryType,
     k: int | None = 5,
     threshold: int | None = None,
     metadata: Dict | None = None,
@@ -133,49 +139,38 @@ async def recall(
     This method is useful also to perform a manual search in hook and tools.
 
     Args:
-        cat: StrayCat
-            The StrayCat instance.
-        query: List[float]
-            The search query, passed as embedding vector.
-            Please first run cheshire_cat.embedder.embed_query(query) if you have a string query to pass here.
-        k: int | None
-            The number of memories to retrieve.
-            If `None` retrieves all the available memories.
-        threshold: float | None
-            The minimum similarity to retrieve a memory.
-            Memories with lower similarity are ignored.
-        metadata: Dict
-            Additional filter to retrieve memories with specific metadata.
+        cat (StrayCat): The StrayCat instance.
+        query (List[float]): The search query, passed as embedding vector. Please first run cheshire_cat.embedder.embed_query(query) if you have a string query to pass here.
+        collection (VectorMemoryType): The name of the vector memory collection to retrieve memories from.
+        k (int | None): The number of memories to retrieve. If `None` retrieves all the available memories.
+        threshold (float | None): The minimum similarity to retrieve a memory. Memories with lower similarity are ignored.
+        metadata (Dict): Additional filter to retrieve memories with specific metadata.
 
     Returns:
-        memories: List[DocumentRecall]
-            List of retrieved memories.
+        memories (List[DocumentRecall]): List of retrieved memories.
     """
     cheshire_cat = cat.cheshire_cat
 
     if k:
         memories = await cheshire_cat.vector_memory_handler.recall_memories_from_embedding(
-            "declarative", query, metadata, k, threshold
+            str(collection), query, metadata, k, threshold
         )
         return memories
 
-    memories = await cheshire_cat.vector_memory_handler.recall_all_memories("declarative")
+    memories = await cheshire_cat.vector_memory_handler.recall_all_memories(str(collection))
     return memories
 
 
-async def recall_relevant_memories_to_working_memory(cat: "StrayCat", collection: str, query: str) -> List[DocumentRecall]:
+async def recall_relevant_memories_to_working_memory(cat: "StrayCat", collection: VectorMemoryType, query: str) -> List[DocumentRecall]:
     """
     Retrieve context from memory.
     The method retrieves the relevant memories from the vector collections that are given as context to the LLM.
     Recalled memories are stored in the working memory.
 
     Args:
-        cat: StrayCat
-            The StrayCat instance.
-        collection: str
-            The name of the vector memory collection to retrieve memories from.
-        query: str
-            The query used to make a similarity search in the Cat's vector memories.
+        cat (StrayCat): The StrayCat instance.
+        collection (VectorMemoryType): The name of the vector memory collection to retrieve memories from.
+        query (str): The query used to make a similarity search in the Cat's vector memories.
 
     See Also:
         cat_recall_query
@@ -196,7 +191,7 @@ async def recall_relevant_memories_to_working_memory(cat: "StrayCat", collection
     plugin_manager = cat.plugin_manager
 
     # We may want to search in memory. If a query is not provided, use the user's message as the query
-    recall_query = plugin_manager.execute_hook("cat_recall_query", query, cat=cat)
+    recall_query = plugin_manager.execute_hook("cat_recall_query", query, obj=cat)
     log.info(f"Agent id: {cat.agent_id}. Recall query: '{recall_query}'")
 
     # keep track of embedder model usage
@@ -210,7 +205,7 @@ async def recall_relevant_memories_to_working_memory(cat: "StrayCat", collection
 
     # hook to do something before recall begins
     config = utils.restore_original_model(
-        plugin_manager.execute_hook("before_cat_recalls_memories", config, cat=cat),
+        plugin_manager.execute_hook("before_cat_recalls_memories", config, obj=cat),
         RecallSettings
     )
     cat.latest_n_history = config.latest_n_history
@@ -221,10 +216,11 @@ async def recall_relevant_memories_to_working_memory(cat: "StrayCat", collection
         k=config.k,
         threshold=config.threshold,
         metadata=config.metadata,
+        collection=collection,
     )
 
     # hook to modify/enrich retrieved memories
-    plugin_manager.execute_hook("after_cat_recalls_memories", cat=cat)
+    plugin_manager.execute_hook("after_cat_recalls_memories", obj=cat)
 
     return memories
 
@@ -234,7 +230,7 @@ def to_document_recall(m: Record | ScoredPoint) -> DocumentRecall:
     Convert a Qdrant point to a DocumentRecall object
 
     Args:
-        m: The Qdrant point
+        m (Record | ScoredPoint): The Qdrant point
 
     Returns:
         DocumentRecall: The converted DocumentRecall object

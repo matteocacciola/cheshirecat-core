@@ -73,7 +73,7 @@ def factory_allowed_llms(allowed: List[LLMSettings], cat) -> List:
 
 
 @hook(priority=1)
-def factory_allowed_embedders(allowed: List[EmbedderSettings], cat) -> List:
+def factory_allowed_embedders(allowed: List[EmbedderSettings], lizard) -> List:
     return allowed + [
         EmbedderQdrantFastEmbedConfig,
         EmbedderOpenAIConfig,

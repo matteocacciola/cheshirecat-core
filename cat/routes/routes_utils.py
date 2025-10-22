@@ -20,7 +20,7 @@ from cat.db.database import DEFAULT_AGENT_KEY
 from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
 from cat.factory.base_factory import BaseFactory
 from cat.log import log
-from cat.looking_glass import BillTheLizard, CheshireCat, WhiteRabbit
+from cat.looking_glass import BillTheLizard, CheshireCat
 from cat.mad_hatter import MadHatter, Plugin, registry_search_plugins, PluginManifest
 
 
@@ -140,7 +140,8 @@ class HealthCheckLocal(HealthCheckAbstract):
 
 
 async def auth_token(credentials: UserCredentials, agent_id: str):
-    """Endpoint called from client to get a JWT from local identity provider.
+    """
+    Endpoint called from client to get a JWT from local identity provider.
     This endpoint receives username and password as form-data, validates credentials and issues a JWT.
     """
     # use username and password to authenticate user from local identity provider and get token
@@ -338,18 +339,14 @@ async def startup_app(app):
 
     # load the Manager and the Job Handler
     app.state.lizard = bill_the_lizard
-    app.state.white_rabbit = WhiteRabbit()
 
 
 async def shutdown_app(app):
     utils.singleton.instances.clear()
 
     # shutdown Manager
-    app.state.white_rabbit.shutdown()
     await app.state.lizard.shutdown()
-
     del app.state.lizard
-    del app.state.white_rabbit
 
 
 def get_factory_settings(agent_id: str, factory: BaseFactory) -> GetSettingsResponse:

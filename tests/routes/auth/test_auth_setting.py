@@ -23,7 +23,7 @@ def test_get_all_auth_handler_settings(secure_client, secure_client_headers, age
         assert dumps(jsonable_encoder(expected_schema)) == dumps(setting["scheme"])
 
     # automatically selected auth_handler
-    assert json["selected_configuration"] == "CoreOnlyAuthConfig"
+    assert json["selected_configuration"] == "CoreAuthConfig"
 
 
 def test_get_auth_handler_settings_non_existent(secure_client, secure_client_headers):

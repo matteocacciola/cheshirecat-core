@@ -271,7 +271,7 @@ class DummyFileManagerConfig(FileManagerConfig):
 class FileManagerFactory(BaseFactory):
     def get_allowed_classes(self) -> List[Type[FileManagerConfig]]:
         list_file_managers_default = self._hook_manager.execute_hook(
-            "factory_allowed_file_managers", [DummyFileManagerConfig], cat=None
+            "factory_allowed_file_managers", [DummyFileManagerConfig], obj=None
         )
         return list_file_managers_default
 

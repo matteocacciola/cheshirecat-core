@@ -47,16 +47,17 @@ async def test_execute_agent_with_form_submit(secure_client, secure_client_heade
         result = self.submit(self._model)
         self._state = CatFormState.CLOSED
         return result
-    monkeypatch.setattr("cat.mad_hatter.decorators.experimental.form.cat_form.CatForm.next", mock_func)
+    monkeypatch.setattr("cat.mad_hatter.decorators.experimental.cat_form.CatForm.next", mock_func)
 
     # empty agent execution with form
+    tools = await stray.get_procedures()
     out = await agent.run_agent(
         llm=stray.large_language_model,
         prompt=ChatPromptTemplate.from_messages([
             HumanMessagePromptTemplate.from_template(template="{input}"),
         ]),
         prompt_variables={"input": "I want to order a pizza"},
-        tools=[p.langchainfy() for p in stray._get_procedures()]
+        tools=tools,
     )
     assert isinstance(out, AgentOutput)
     assert len(out.intermediate_steps) == 1
@@ -78,13 +79,14 @@ async def test_execute_main_agent_with_tool(stray, monkeypatch):
     monkeypatch.setattr("cat.agent.run_agent", mock_llm)
 
     # empty agent execution with tool
+    tools = await stray.get_procedures()
     out = await agent.run_agent(
         llm=stray.large_language_model,
         prompt=ChatPromptTemplate.from_messages([
             HumanMessagePromptTemplate.from_template(template="{input}"),
         ]),
         prompt_variables={"input": "What is the current time?"},
-        tools=[p.langchainfy for p in stray._get_procedures()]
+        tools=tools,
     )
     assert isinstance(out, AgentOutput)
     assert len(out.intermediate_steps) == 1
@@ -110,13 +112,14 @@ async def test_execute_main_agent_with_mcp_client_tool(stray, secure_client, sec
     monkeypatch.setattr("cat.agent.run_agent", mock_llm)
 
     # empty agent execution with tool
+    tools = await stray.get_procedures()
     out = await agent.run_agent(
         llm=stray.large_language_model,
         prompt=ChatPromptTemplate.from_messages([
             HumanMessagePromptTemplate.from_template(template="{input}"),
         ]),
         prompt_variables={"input": "Call mock_procedure with param1='test', param2=42"},
-        tools=[p.langchainfy() for p in stray._get_procedures()]
+        tools=tools,
     )
     assert isinstance(out, AgentOutput)
     assert len(out.intermediate_steps) == 1

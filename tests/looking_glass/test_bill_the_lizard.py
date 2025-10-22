@@ -1,7 +1,7 @@
 import pytest
 
 from cat.factory.auth_handler import CoreAuthHandler
-from cat.mad_hatter import Tweedledum
+from cat.looking_glass import Tweedledum
 from cat.rabbit_hole import RabbitHole
 from cat.services.websocket_manager import WebSocketManager
 
@@ -16,9 +16,8 @@ def test_main_modules_loaded(lizard):
 
 
 @pytest.mark.asyncio
-async def test_shutdown(lizard, white_rabbit):
+async def test_shutdown(lizard):
     await lizard.shutdown()
-    white_rabbit.shutdown()
 
     assert lizard.plugin_manager is None
     assert lizard.rabbit_hole is None

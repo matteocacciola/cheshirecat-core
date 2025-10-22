@@ -1,3 +1,4 @@
+import importlib
 from typing import Callable, List, Dict
 from langchain_core.tools import StructuredTool
 from fastmcp.tools.tool import ParsedFunction
@@ -56,23 +57,68 @@ class CatTool(CatProcedure):
     def from_fastmcp(
         cls,
         t: Tool,
-        mcp_client_func: Callable
+        mcp_client_func: Callable,
+        plugin_id: str,
     ) -> "CatTool":
-        return cls(
+        ct = cls(
             func=mcp_client_func,
             name=t.name,
             description=t.description or t.name,
             input_schema=t.inputSchema,
             output_schema=t.outputSchema,
         )
+        ct.plugin_id = plugin_id
+        return ct
 
-    def langchainfy(self) -> List[StructuredTool]:
+    def dictify_input_params(self) -> Dict:
+        return {
+            "name": self.name,
+            "func": {
+                "module": self.func.__module__,
+                "name": self.func.__name__,
+            },
+            "description": self.description,
+            "input_schema": self.input_schema,
+            "output_schema": self.output_schema,
+            "examples": self.examples,
+        }
+
+    def parsify_input_params(self, input_params: Dict) -> Dict:
+        func_module_path = input_params["func"]["module"]
+        func_name = input_params["func"]["name"]
+
+        # Import the module where the function is defined
+        func_module = importlib.import_module(func_module_path)
+
+        # Get the function from the module
+        func = getattr(func_module, func_name, None)
+        input_params["func"] = func
+
+        return input_params
+
+    @classmethod
+    def reconstruct_from_params(cls, input_params: Dict) -> "CatTool":
+        # Parse the function reference
+        func_module_path = input_params["func"]["module"]
+        func_name = input_params["func"]["name"]
+        func_module = importlib.import_module(func_module_path)
+        func = getattr(func_module, func_name, None)
+
+        # Create an instance with parsed params
+        return cls(
+            name=input_params["name"],
+            func=func,
+            description=input_params.get("description"),
+            input_schema=input_params.get("input_schema"),
+            output_schema=input_params.get("output_schema"),
+            examples=input_params.get("examples"),
+        )
+
+    def langchainfy(self) -> StructuredTool:
         """
         Convert CatProcedure to a langchain compatible StructuredTool object.
 
-        Returns
-        -------
-        List[StructuredTool]
+        Returns:
             The langchain compatible StructuredTool objects.
         """
         description = self.description + ("\n\nE.g.:\n" if self.examples else "")
@@ -87,12 +133,12 @@ class CatTool(CatProcedure):
                 return func(*args, **kwargs, cat=self.stray)
             func = func_with_cat
 
-        return [StructuredTool.from_function(
+        return StructuredTool.from_function(
             name=self.name,
             description=description,
             func=func,
             args_schema=self.input_schema,
-        )]
+        )
 
     @property
     def type(self) -> CatProcedureType:

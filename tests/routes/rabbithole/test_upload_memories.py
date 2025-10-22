@@ -1,6 +1,8 @@
 import json
 import pytest
 
+from cat.memory.utils import VectorMemoryType
+
 from tests.utils import get_collections_names_and_point_count, get_fake_memory_export
 
 
@@ -21,7 +23,7 @@ def test_upload_memory(secure_client, secure_client_headers):
 
     # new declarative memory was saved
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
-    assert collections_n_points["declarative"] == 1 # new declarative memory (just uploaded)
+    assert collections_n_points[str(VectorMemoryType.DECLARATIVE)] == 1 # new declarative memory (just uploaded)
 
 
 # upload a file different from a JSON
@@ -62,7 +64,7 @@ def test_upload_memory_check_embedder(secure_client, secure_client_headers, ches
     )
     # and did not update collection
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
-    assert collections_n_points["declarative"] == 0
+    assert collections_n_points[str(VectorMemoryType.DECLARATIVE)] == 0
 
 
 def test_upload_memory_check_dimensionality(secure_client, secure_client_headers, cheshire_cat):
@@ -84,7 +86,7 @@ def test_upload_memory_check_dimensionality(secure_client, secure_client_headers
     assert "Embedding size mismatch" in str(e.value)
     # and did not update collection
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
-    assert collections_n_points["declarative"] == 0
+    assert collections_n_points[str(VectorMemoryType.DECLARATIVE)] == 0
 
 
 

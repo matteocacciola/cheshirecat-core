@@ -11,34 +11,29 @@ from cat.mad_hatter.decorators import hook
 
 @hook(priority=0)
 def factory_allowed_llms(allowed: List[LLMSettings], cat) -> List:
-    """Hook to extend support of llms.
+    """
+    Hook to extend support of llms.
 
     Args:
         allowed: List of LLMSettings classes
-            list of allowed language models
-        cat: CheshireCat
-            Cheshire Cat instance
+        cat: CheshireCat instance
 
     Returns:
-        supported: List of LLMSettings classes
-            list of allowed language models
+        list of allowed LLMSettings classes for the allowed language models
     """
     return allowed
 
 
 @hook(priority=0)
-def factory_allowed_embedders(allowed: List[EmbedderSettings], cat) -> List:
+def factory_allowed_embedders(allowed: List[EmbedderSettings], lizard) -> List:
     """Hook to extend list of supported embedders.
 
     Args:
-        allowed: embedder of EmbedderSettings classes
-            list of allowed embedders
-        cat: CheshireCat
-            Cheshire Cat instance
+        allowed: List of EmbedderSettings classes
+        lizard: BillTheLizard instance
 
     Returns:
-        supported: List of EmbedderSettings classes
-            list of allowed embedders
+        list of allowed EmbedderSettings classes for the allowed embedders
     """
     return allowed
 
@@ -49,13 +44,10 @@ def factory_allowed_auth_handlers(allowed: List[AuthHandlerConfig], cat) -> List
 
     Args:
         allowed: List of AuthHandlerConfig classes
-            list of allowed auth_handlers
-        cat: CheshireCat
-            Cheshire Cat instance
+        cat: Cheshire Cat instance
 
     Returns:
-        supported: List of AuthHandlerConfig classes
-            list of allowed auth_handlers
+        supported: List of AuthHandlerConfig classes for the allowed auth_handlers
     """
     return allowed
 
@@ -66,13 +58,10 @@ def factory_allowed_file_managers(allowed: List[FileManagerConfig], cat) -> List
 
     Args:
         allowed: List of FileManagerConfig classes
-            list of allowed file managers
-        cat: CheshireCat
-            Cheshire Cat instance
+        cat: Cheshire Cat instance
 
     Returns:
-        supported: List of FileManagerConfig classes
-            list of allowed file managers
+        supported: List of FileManagerConfig classes for the allowed file managers
     """
     return allowed
 
@@ -83,13 +72,10 @@ def factory_allowed_chunkers(allowed: List[ChunkerSettings], cat) -> List:
 
     Args:
         allowed: List of ChunkerSettings classes
-            list of allowed chunkers
-        cat: CheshireCat
-            Cheshire Cat instance
+        cat: Cheshire Cat instance
 
     Returns:
-        supported: List of ChunkerSettings classes
-            list of allowed chunkers
+        supported: List of ChunkerSettings classes for the allowed chunkers
     """
     return allowed
 
@@ -100,12 +86,9 @@ def factory_allowed_vector_databases(allowed: List[VectorDatabaseSettings], cat)
 
     Args:
         allowed: List of VectorDatabaseSettings classes
-            list of allowed vector databases
-        cat: CheshireCat
-            Cheshire Cat instance
+        cat: Cheshire Cat instance
 
     Returns:
-        supported: List of VectorDatabaseSettings classes
-            list of allowed vector databases
+        supported: List of VectorDatabaseSettings classes for the allowed vector databases
     """
     return allowed

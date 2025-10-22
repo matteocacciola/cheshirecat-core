@@ -13,7 +13,7 @@ from starlette.datastructures import UploadFile
 
 from cat.factory.chunker import BaseChunker
 from cat.log import log
-from cat.memory.utils import PointStruct
+from cat.memory.utils import PointStruct, VectorMemoryType
 from cat.utils import singleton
 
 
@@ -42,10 +42,8 @@ class RabbitHole:
         """Upload memories to the declarative memory from a JSON file.
 
         Args:
-            cat: CheshireCat
-                Cheshire Cat instance.
-            file: UploadFile
-                File object sent via `rabbithole/memory` hook.
+            cat (CheshireCat): Cheshire Cat instance.
+            file (UploadFile): File object sent via `rabbithole/memory` hook.
 
         Notes
         -----
@@ -73,7 +71,7 @@ class RabbitHole:
             )
 
         # Get Declarative memories in file
-        declarative_memories = memories["collections"]["declarative"]
+        declarative_memories = memories["collections"][str(VectorMemoryType.DECLARATIVE)]
 
         # Store data to upload the memories in batch
         ids = [m["id"] for m in declarative_memories]
@@ -96,7 +94,7 @@ class RabbitHole:
 
         # Upsert memories in batch mode
         await cat.vector_memory_handler.add_points(
-            collection_name="declarative", ids=ids, payloads=payloads, vectors=vectors
+            collection_name=str(VectorMemoryType.DECLARATIVE), ids=ids, payloads=payloads, vectors=vectors
         )
 
     async def ingest_file(self, cat, file: str | UploadFile, metadata: Dict = None):
@@ -106,13 +104,9 @@ class RabbitHole:
         memory.
 
         Args:
-            cat: CheshireCat or StrayCat
-                Cheshire Cat or Stray Cat instance.
-            file: str, UploadFile
-                The file can be a path passed as a string or an `UploadFile` object if the document is ingested using the
-                `rabbithole` endpoint.
-            metadata: Dict
-                Metadata to be stored with each chunk.
+            cat (CheshireCat | StrayCat): Cheshire Cat or Stray Cat instance.
+            file (str | UploadFile): The file can be a path passed as a string or an `UploadFile` object if the document is ingested using the `rabbithole` endpoint.
+            metadata (Dict): Metadata to be stored with each chunk.
 
         See Also:
             before_rabbithole_stores_documents
@@ -142,13 +136,10 @@ class RabbitHole:
         Hence, it loads it in memory and splits it in chunks.
 
         Args:
-            file: str, UploadFile
-                The file can be either a string path if loaded programmatically, a FastAPI `UploadFile`
-                if coming from the `/rabbithole/` endpoint or a URL if coming from the `/rabbithole/web` endpoint.
+            file (str | UploadFile): The file can be either a string path if loaded programmatically, a FastAPI `UploadFile` if coming from the `/rabbithole/` endpoint or a URL if coming from the `/rabbithole/web` endpoint.
 
         Returns:
-            (bytes, content_type, docs): Tuple[bytes, List[Document]]
-                The file bytes, the content type and the list of chunked Langchain `Document`.
+            (bytes, content_type, docs): Tuple[bytes, List[Document]]. The file bytes, the content type and the list of chunked Langchain `Document`.
 
         Notes
         -----
@@ -236,16 +227,12 @@ class RabbitHole:
         timestamp of insertion. Once done, the method notifies the client via Websocket connection.
 
         Args:
-            docs: List[Document]
-                List of Langchain `Document` to be inserted in the Cat's declarative memory.
-            source: str
-                Source name to be added as a metadata. It can be a file name or an URL.
-            metadata: Dict
-                Metadata to be stored with each chunk.
+            docs (List[Document]): List of Langchain `Document` to be inserted in the Cat's declarative memory.
+            source (str): Source name to be added as a metadata. It can be a file name or an URL.
+            metadata (Dict): Metadata to be stored with each chunk.
 
         Returns:
-            stored_points: List[PointStruct]
-                List of points stored in the Cat's declarative memory.
+            stored_points (List[PointStruct]): List of points stored in the Cat's declarative memory.
 
         See Also:
             before_rabbithole_insert_memory
@@ -261,7 +248,7 @@ class RabbitHole:
         plugin_manager = self.cat.plugin_manager
 
         # hook the docs before they are stored in the vector memory
-        docs = plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, cat=self.stray or self.cat)
+        docs = plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, obj=self.stray or self.cat)
 
         metadata = metadata or {}
 
@@ -288,12 +275,12 @@ class RabbitHole:
                 "when": time.time(),
             }
 
-            doc = plugin_manager.execute_hook("before_rabbithole_insert_memory", doc, cat=self.stray or self.cat)
+            doc = plugin_manager.execute_hook("before_rabbithole_insert_memory", doc, obj=self.stray or self.cat)
             inserting_info = f"{d + 1}/{len(docs)}):    {doc.page_content}"
             if doc.page_content != "":
                 doc_embedding = embedder.embed_documents([doc.page_content])
                 if (stored_point := await self.cat.vector_memory_handler.add_point(
-                    collection_name="declarative",
+                    collection_name=str(VectorMemoryType.DECLARATIVE),
                     content=doc.page_content,
                     vector=doc_embedding[0],
                     metadata=doc.metadata,
@@ -309,7 +296,7 @@ class RabbitHole:
 
         # hook the points after they are stored in the vector memory
         plugin_manager.execute_hook(
-            "after_rabbithole_stored_documents", source, stored_points, cat=self.stray or self.cat
+            "after_rabbithole_stored_documents", source, stored_points, obj=self.stray or self.cat
         )
 
         # notify client
@@ -331,12 +318,10 @@ class RabbitHole:
         documents before and after the split step.
 
         Args:
-            docs: List[Document]
-                Content of the loaded file.
+            docs (List[Document]): Content of the loaded file.
 
         Returns:
-            docs: List[Document]
-                List of split Langchain `Document`.
+            docs (List[Document]): List of split Langchain `Document`.
 
         See Also:
             before_rabbithole_splits_documents
@@ -349,7 +334,7 @@ class RabbitHole:
         plugin_manager = self.cat.plugin_manager
 
         # do something on the docs before they are split
-        docs = plugin_manager.execute_hook("before_rabbithole_splits_documents", docs, cat=self.stray or self.cat)
+        docs = plugin_manager.execute_hook("before_rabbithole_splits_documents", docs, obj=self.stray or self.cat)
 
         # split docs
         chunker = self.cat.chunker
@@ -456,12 +441,9 @@ class RabbitHole:
         stored in the remote storage handled by the CheshireCat's file manager.
 
         Args:
-            file_bytes: bytes
-                The file bytes to be saved.
-            content_type: str
-                The content type of the file.
-            source: str
-                The source of the file, e.g. the file name or URL.
+            file_bytes (bytes): The file bytes to be saved.
+            content_type (str): The content type of the file.
+            source (str): The source of the file, e.g. the file name or URL.
         """
         # save a file in a temporary folder
         extension = mimetypes.guess_extension(content_type)

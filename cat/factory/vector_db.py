@@ -29,17 +29,23 @@ from qdrant_client.http.models import (
     SearchParams,
     QuantizationSearchParams,
     PointStruct as QdrantPointStruct,
+    SparseVectorParams,
+    FusionQuery,
+    Fusion,
+    Prefetch,
 )
 
 from cat.factory.base_factory import BaseFactoryConfigModel, BaseFactory
 from cat.log import log
 from cat.memory.utils import (
+    Document,
     DocumentRecall,
     Payload,
     PointStruct,
     Record,
     ScoredPoint,
     UpdateResult,
+    VectorMemoryType,
     to_document_recall,
 )
 
@@ -50,7 +56,10 @@ class BaseVectorDatabaseHandler(ABC):
     """
     _agent_id: str = None
 
-    def __init__(self):
+    def __init__(self, save_memory_snapshots: bool = False):
+        self.save_memory_snapshots = save_memory_snapshots
+        self._collection_names = [str(v) for v in VectorMemoryType]
+
         self._client = None  # Placeholder for the database client
 
     @property
@@ -70,7 +79,6 @@ class BaseVectorDatabaseHandler(ABC):
         """
         pass
 
-    @abstractmethod
     async def initialize(self, embedder_name: str, embedder_size: int):
         """
         Initializes the vector database with the specified embedder name and size.
@@ -78,7 +86,21 @@ class BaseVectorDatabaseHandler(ABC):
             embedder_name: str, the name of the embedder to use.
             embedder_size: int, the size of the vector embeddings.
         """
-        pass
+        for collection_name in self._collection_names:
+            is_collection_existing = await self.check_collection_existence(collection_name)
+            has_same_size = (
+                await self.check_embedding_size(embedder_name, embedder_size, collection_name)
+            ) if is_collection_existing else False
+            if is_collection_existing and has_same_size:
+                continue
+
+            # dump collection on disk before deleting
+            if self.save_memory_snapshots:
+                await self.save_dump(collection_name)
+
+            if is_collection_existing:
+                await self.delete_collection(collection_name=collection_name)
+            await self.create_collection(embedder_name, embedder_size, collection_name)
 
     @abstractmethod
     def is_db_remote(self) -> bool:
@@ -164,6 +186,7 @@ class BaseVectorDatabaseHandler(ABC):
     ) -> UpdateResult:
         """
         Upsert memories in batch mode
+
         Args:
             collection_name: the name of the collection to upsert points into
             payloads: the payloads of the points
@@ -259,6 +282,7 @@ class BaseVectorDatabaseHandler(ABC):
         limit: int | None = None,
         offset: str | None = None,
         metadata: Dict | None = None,
+        with_vectors: bool = True,
     ) -> Tuple[List[Record], int | str | None]:
         """
         Retrieve all the points in the collection with an optional offset and limit.
@@ -268,6 +292,7 @@ class BaseVectorDatabaseHandler(ABC):
             limit: The maximum number of points to retrieve.
             offset: The offset from which to start retrieving points.
             metadata: Optional metadata filter to apply to the points.
+            with_vectors: If True, returns the points with their vectors. If False, returns the points without their vectors.
 
         Returns:
             Tuple: A tuple containing the list of points and the next offset.
@@ -350,18 +375,6 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def get_embedder_size(self, embedder_name: str) -> int:
-        """
-        Get the size of the embedder.
-
-        Args:
-            embedder_name: The name of the embedder.
-
-        Returns:
-            int: The size of the embedder.
-        """
-
-    @abstractmethod
     async def create_collection(self, embedder_name: str, embedder_size: int, collection_name: str):
         """
         Create a new collection in the vector database.
@@ -374,6 +387,20 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
+    async def create_hybrid_collection(
+        self, collection_name: str, dense_vector_config_name: str, sparse_vector_config_name: str
+    ):
+        """
+        Creates a hybrid collection in the database with specified configurations.
+
+        Args:
+            collection_name (str): The name of the collection to be created.
+            dense_vector_config_name (str): The name of the dense vector configuration to be used for the collection.
+            sparse_vector_config_name (str): The name of the sparse vector configuration to be used for the collection.
+        """
+        pass
+
+    @abstractmethod
     async def get_collection_names(self) -> List[str]:
         """
         Get the list of collection names in the vector database.
@@ -382,6 +409,134 @@ class BaseVectorDatabaseHandler(ABC):
             List[str]: List of collection names
         """
         pass
+
+    @abstractmethod
+    async def check_embedding_size(self, embedder_name: str, embedder_size: int, collection_name: str) -> bool:
+        """
+        Checks if the embedding size for a specific embedder and collection matches the expected size.
+
+        This method examines whether the size of the embeddings generated by a specific embedder corresponds to the
+        provided expected size for a given collection. This is an abstract method and must be implemented by subclasses.
+
+        Args:
+            embedder_name (str): The name of the embedder to evaluate.
+            embedder_size (int): The expected size of the embeddings generated by the embedder.
+            collection_name (str): The name of the collection associated with the embedder.
+
+        Returns:
+            bool: True if the embedding size matches the expected size, otherwise False.
+        """
+
+    @abstractmethod
+    async def check_collection_existence(self, collection_name: str) -> bool:
+        """
+        Checks if a collection exists in the database.
+
+        This method verifies the existence of a specified collection within the database. It returns a boolean
+        indicating whether the collection is found or not.
+
+        Args:
+            collection_name (str): The name of the collection to check for existence.
+
+        Returns:
+            bool: True if the collection exists, False otherwise.
+        """
+        pass
+
+    @abstractmethod
+    async def search(
+        self,
+        collection_name: str,
+        query_vector: List[float],
+        query_filter: Any = None,
+        with_payload: bool = True,
+        with_vectors: bool = True,
+        limit: int = 10,
+        score_threshold: float | None = None,
+    ) -> List[ScoredPoint]:
+        """
+        Performs a search operation in the database and retrieves results based on the provided query parameters.
+
+        Args:
+            collection_name (str): Name of the collection to search in.
+            query_vector (List[float]): Vector representation of the query for similarity matching.
+            query_filter (Any, optional): Filter criteria to narrow down search results. Defaults to None.
+            with_payload (bool, optional): Determines whether to include payload data in the results. Defaults to True.
+            with_vectors (bool, optional): Determines whether to include vectors in the results. Defaults to True.
+            limit (int, optional): Maximum number of results to retrieve. Defaults to 10.
+            score_threshold (float | None, optional): Minimum score threshold for the results to be considered relevant. Defaults to None.
+
+        Returns:
+            List[ScoredPoint]: A list containing the search results, with each result being an instance of `ScoredPoint`.
+
+        Raises:
+            NotImplementedError: This method must be implemented by subclasses.
+        """
+        pass
+
+    @abstractmethod
+    async def search_prefetched(
+        self,
+        collection_name: str,
+        query: str,
+        query_vector: List[float],
+        query_filter: Any,
+        k: int,
+        k_prefetched: int,
+        threshold: float,
+    ) -> List[ScoredPoint]:
+        """
+        Search the prefetched items in the given collection based on query and filtering criteria.
+
+        This is an asynchronous method used to perform a search within a specified collection, applying a query and
+        additional filtering mechanisms. It retrieves a ranked list of items that match the provided criteria,
+        considering both the main query and prefetching parameters.
+
+        Args:
+            collection_name: The name of the collection in which the search will be executed.
+            query: The query string or identifier used to retrieve relevant items.
+            query_vector: A list of floats representing the vectorized form of the query for similarity search.
+            query_filter: Additional filtering criteria to narrow down the search results.
+            k: The number of top-ranked items to retrieve from the search results.
+            k_prefetched: The number of items to be prefetched before applying the ranking.
+            threshold: A score threshold above which a point is considered relevant.
+
+        Returns:
+            A list of `ScoredPoint` objects representing the ranked results matching the query and other criteria.
+        """
+
+    @abstractmethod
+    def build_condition(self, key: str, value: Any) -> List[FieldCondition]:
+        """
+        Builds a list of conditions based on the provided key and value.
+
+        This method should be implemented in subclasses to provide the specific logic for building conditions. A
+        key-value pair is used as input to produce a list of  `FieldCondition`, which represents conditions in a
+        structured format.
+
+        Args:
+            key: A string representing the field name or identifier.
+            value: A value of any type that represents the criteria or data for the condition.
+
+        Returns:
+            List[FieldCondition]: A list of `FieldCondition` objects, each representing  a specific condition derived from the key and value.
+        """
+        pass
+
+    @abstractmethod
+    def filter_from_dict(self, filter_dict: Dict) -> Any:
+        """
+        Filters data based on the given dictionary of filter conditions.
+
+        This method should be implemented by subclasses to provide specific filtering logic using the provided filter
+        dictionary. The `filter_dict` defines the criteria or conditions used to filter data objects.
+
+        Args:
+            filter_dict (Dict): A dictionary containing filter criteria.
+
+        Returns:
+            The filter to be applied to the data.
+        """
 
     @property
     @abstractmethod
@@ -404,9 +559,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         client_timeout: int | None = 100,
         save_memory_snapshots: bool = False,
     ):
-        super().__init__()
-
-        self.save_memory_snapshots = save_memory_snapshots
+        super().__init__(save_memory_snapshots)
 
         try:
             parsed_url = urlparse(host)
@@ -448,15 +601,15 @@ class QdrantHandler(BaseVectorDatabaseHandler):
 
     # adapted from https://github.com/langchain-ai/langchain/blob/bfc12a4a7644cfc4d832cc4023086a7a5374f46a/libs/langchain/langchain/vectorstores/qdrant.py#L1941
     # see also https://github.com/langchain-ai/langchain/blob/bfc12a4a7644cfc4d832cc4023086a7a5374f46a/libs/langchain/langchain/vectorstores/qdrant.py#L1965
-    def _build_condition(self, key: str, value: Any) -> List[FieldCondition]:
+    def build_condition(self, key: str, value: Any) -> List[FieldCondition]:
         out = []
 
         if isinstance(value, dict):
             for k, v in value.items():
-                out.extend(self._build_condition(f"{key}.{k}", v))
+                out.extend(self.build_condition(f"{key}.{k}", v))
         elif isinstance(value, list):
             for v in value:
-                out.extend(self._build_condition(f"{key}[]" if isinstance(v, dict) else f"{key}", v))
+                out.extend(self.build_condition(f"{key}[]" if isinstance(v, dict) else f"{key}", v))
         else:
             out.append(FieldCondition(key=f"metadata.{key}", match=MatchValue(value=value)))
 
@@ -466,35 +619,15 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         conditions = [self.tenant_field_condition()]
         if metadata:
             conditions.extend([
-                condition for key, value in metadata.items() for condition in self._build_condition(key, value)
+                condition for key, value in metadata.items() for condition in self.build_condition(key, value)
             ])
         return conditions
 
-    async def initialize(self, embedder_name: str, embedder_size: int):
-        collection_name = "declarative"
-        is_collection_existing = await self._check_collection_existence(collection_name)
-        has_same_size = (
-            await self._check_embedding_size(embedder_name, embedder_size, collection_name)
-        ) if is_collection_existing else False
-        if is_collection_existing and has_same_size:
-            return
-
-        # Memory snapshot saving can be turned off in the .env file with:
-        # SAVE_MEMORY_SNAPSHOTS=false
-        if self.save_memory_snapshots:
-            # dump collection on disk before deleting
-            await self.save_dump(collection_name)
-
-        if is_collection_existing:
-            await self._client.delete_collection(collection_name=collection_name)
-            log.warning(f"Collection `{collection_name}` for the agent `{self.agent_id}` deleted")
-        await self.create_collection(embedder_name, embedder_size, collection_name)
-
-    async def _check_collection_existence(self, collection_name: str) -> bool:
+    async def check_collection_existence(self, collection_name: str) -> bool:
         collection_names = await self.get_collection_names()
         if any(c == collection_name for c in collection_names):
             # collection exists. Do nothing
-            log.info(f"Collection `{collection_name}` for the agent `{self.agent_id}` already present in vector store")
+            log.debug(f"Collection `{collection_name}` for the agent `{self.agent_id}` already present in vector store")
             return True
 
         return False
@@ -502,12 +635,11 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     def _get_local_alias(self, embedder_name: str, collection_name: str) -> str:
         return f"{embedder_name}_{collection_name}"
 
-    async def _check_embedding_size(
-        self, embedder_name: str, embedder_size: int, collection_name: str
-    ) -> bool:
+    async def check_embedding_size(self, embedder_name: str, embedder_size: int, collection_name: str) -> bool:
         # having the same size does not necessarily imply being the same embedder
         # having vectors with the same size but from different embedder in the same vector space is wrong
-        same_size = (await self.get_embedder_size(embedder_name)) == embedder_size
+        collection_vector_size = (await self._client.get_collection(collection_name=collection_name)).config.params.vectors.size
+        same_size = collection_vector_size == embedder_size
         local_alias = self._get_local_alias(embedder_name, collection_name)
 
         existing_aliases = (await self._client.get_collection_aliases(collection_name=collection_name)).aliases
@@ -559,6 +691,45 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             await self._client.delete_collection(collection_name)
             log.error(f"Collection `{collection_name}` for the agent `{self.agent_id}` deleted")
             raise e
+
+        # if the client is remote, create an index on the tenant_id field
+        if self.is_db_remote():
+            log.warning(f"Creating payload index for collection `{collection_name}` and the agent `{self.agent_id}`...")
+            try:
+                await self._client.create_payload_index(
+                    collection_name=collection_name,
+                    field_name="tenant_id",
+                    field_schema=PayloadSchemaType.KEYWORD
+                )
+            except Exception as e:
+                log.error(f"Error when creating a schema index: {e}")
+
+    async def create_hybrid_collection(
+        self, collection_name: str, dense_vector_config_name: str, sparse_vector_config_name: str
+    ):
+        if self._client.collection_exists(collection_name):
+            return
+
+        embedding_size = (
+            await self._client.get_collection(collection_name=str(VectorMemoryType.DECLARATIVE))
+        ).config.params.vectors.size
+
+        try:
+            await self._client.create_collection(
+                collection_name=collection_name,
+                vectors_config={
+                    dense_vector_config_name: VectorParams(
+                        size=embedding_size,
+                        distance=Distance.COSINE,
+                    )
+                },
+                sparse_vectors_config={sparse_vector_config_name: SparseVectorParams()},
+            )
+        except Exception as e:
+            log.error(
+                f"Error creating collection `{collection_name}` for the agent `{self.agent_id}`. Try setting a higher timeout value: {e}"
+            )
+            raise
 
         # if the client is remote, create an index on the tenant_id field
         if self.is_db_remote():
@@ -695,17 +866,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     async def add_points(
         self, collection_name: str, payloads: List[Payload], vectors: List, ids: List | None = None
     ) -> UpdateResult:
-        """
-        Upsert memories in batch mode
-        Args:
-            collection_name: the name of the collection to upsert points into
-            payloads: the payloads of the points
-            vectors: the vectors of the points
-            ids: the ids of the points, if not provided, they will be generated automatically using uuid4 hex strings
-
-        Returns:
-            the response of the upsert operation
-        """
         if not ids:
             ids = [uuid.uuid4().hex for _ in range(len(payloads))]
 
@@ -747,26 +907,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         k: int | None = 5,
         threshold: float | None = None,
     ) -> List[DocumentRecall]:
-        """
-        Retrieve memories from the collection based on an embedding vector. The memories are sorted by similarity to the
-        embedding vector. The metadata filter is applied to the memories before retrieving them. The number of memories
-        to retrieve is limited by the k parameter. The threshold parameter is used to filter out memories with a score
-        below the threshold. The memories are returned as a list of tuples, where each tuple contains a Document, the
-        similarity score, and the embedding vector of the memory. The Document contains the page content and metadata of
-        the memory. The similarity score is a float between 0 and 1, where 1 is the highest similarity. The embedding
-        vector is a list of floats. The list of tuples is sorted by similarity score in descending order. If the k
-        parameter is None, all memories are retrieved. If the threshold parameter is None, no memories are filtered out.
-
-        Args:
-            collection_name: Name of the collection to search in.
-            embedding: Embedding vector.
-            metadata: Dictionary containing metadata filter.
-            k: Number of memories to retrieve.
-            threshold: Similarity threshold.
-
-        Returns:
-            List: List of DocumentRecall.
-        """
         conditions = self._build_metadata_conditions(metadata=metadata)
 
         # retrieve memories
@@ -851,22 +991,15 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         limit: int | None = None,
         offset: str | None = None,
         metadata: Dict | None = None,
+        with_vectors: bool = True,
     ) -> Tuple[List[Record], int | str | None]:
-        """
-        Retrieve all the points in the collection with an optional offset and limit.
-
-        Args:
-            collection_name: The name of the collection to retrieve points from.
-            limit: The maximum number of points to retrieve.
-            offset: The offset from which to start retrieving points.
-            metadata: Optional metadata filter to apply to the points.
-
-        Returns:
-            Tuple: A tuple containing the list of points and the next offset.
-        """
         conditions = self._build_metadata_conditions(metadata)
         return await self._get_all_points(
-            collection_name=collection_name, scroll_filter=Filter(must=conditions), limit=limit, offset=offset
+            collection_name=collection_name,
+            scroll_filter=Filter(must=conditions),
+            limit=limit,
+            offset=offset,
+            with_vectors=with_vectors,
         )
 
     async def get_all_points_from_web(
@@ -947,13 +1080,84 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     def is_db_remote(self) -> bool:
         return True
 
-    async def get_embedder_size(self, embedder_name: str) -> int:
-        embedder_size = (await self._client.get_collection(collection_name="declarative")).config.params.vectors.size
-        return embedder_size
-
     async def get_collection_names(self) -> List[str]:
         collections_response = await self._client.get_collections()
         return [c.name for c in collections_response.collections]
+
+    async def search(
+        self,
+        collection_name: str,
+        query_vector: List[float],
+        query_filter: Any = None,
+        with_payload: bool = True,
+        with_vectors: bool = True,
+        limit: int = 10,
+        score_threshold: float | None = None,
+    ) -> List[ScoredPoint]:
+        response = await self._client.query_points(
+            collection_name=collection_name,
+            query=query_vector,
+            query_filter=query_filter,
+            with_payload=with_payload,
+            with_vectors=with_vectors,
+            limit=limit,
+            score_threshold=score_threshold,
+            search_params=SearchParams(
+                quantization=QuantizationSearchParams(
+                    ignore=False,
+                    rescore=True,
+                    oversampling=2.0,  # Available as of v1.3.0
+                )
+            ),
+        )
+
+        return response.points
+
+    async def search_prefetched(
+        self,
+        collection_name: str,
+        query: str,
+        query_vector: List[float],
+        query_filter: Any,
+        k: int,
+        k_prefetched: int,
+        threshold: float,
+    ) -> List[ScoredPoint]:
+        response = await self._client.query_points(
+            collection_name=collection_name,
+            query=FusionQuery(fusion=Fusion.RRF),
+            query_filter=query_filter,
+            prefetch=[
+                Prefetch(
+                    query=query_vector,
+                    using="dense",
+                    limit=k_prefetched,
+                ),
+                Prefetch(
+                    query=Document(text=query, model="Qdrant/bm25"),
+                    using="sparse",
+                    limit=k_prefetched,
+                ),
+            ],
+            with_payload=True,
+            with_vectors=True,
+            limit=k,
+            score_threshold=threshold,
+        )
+
+        return response.points
+
+    def filter_from_dict(self, filter_dict: Dict) -> Filter | None:
+        if not filter_dict or len(filter_dict) < 1:
+            return None
+
+        return Filter(
+            should=[
+                condition
+                for key, value in filter_dict.items()
+                for condition in self.build_condition(key, value)
+            ]
+        )
 
 
 class VectorDatabaseSettings(BaseFactoryConfigModel, ABC):
@@ -992,7 +1196,7 @@ class VectorDatabaseFactory(BaseFactory):
         list_vector_db_default = [QdrantConfig]
 
         list_vector_dbs = self._hook_manager.execute_hook(
-            "factory_allowed_vector_databases", list_vector_db_default, cat=None
+            "factory_allowed_vector_databases", list_vector_db_default, obj=None
         )
         return list_vector_dbs
 

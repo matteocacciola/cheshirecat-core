@@ -13,11 +13,6 @@ def get_supported_env_variables():
         "CCAT_REDIS_PASSWORD": "",
         "CCAT_REDIS_DB": "0",
         "CCAT_REDIS_TLS": False,
-        "CCAT_RABBITMQ_HOST": None,
-        "CCAT_RABBITMQ_PORT": "5672",
-        "CCAT_RABBITMQ_USER": "guest",
-        "CCAT_RABBITMQ_PASSWORD": "guest",
-        "CCAT_RABBITMQ_TLS": False,
         "CCAT_JWT_SECRET": "secret",
         "CCAT_JWT_EXPIRE_MINUTES": str(60 * 24),  # JWT expires after 1 day
         "CCAT_HTTPS_PROXY_MODE": "false",

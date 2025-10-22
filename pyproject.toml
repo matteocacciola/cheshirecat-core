@@ -1,7 +1,7 @@
 [project]
 name = "Cheshire-Cat"
 description = "Production ready AI assistant framework"
-version = "3.0.2"
+version = "3.1.0"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
 authors = [
@@ -11,12 +11,11 @@ authors = [
 ]
 dependencies = [
     "aiofiles",
-    "APScheduler",
     "autopep8",
     "bcrypt",
     "cryptography",
     "fastapi",
-    "fastapi-healthz[redis,rabbitmq]",
+    "fastapi-healthz[redis]",
     "fastmcp",
     "gunicorn",
     "httpx",
@@ -24,7 +23,6 @@ dependencies = [
     "langchain-community",
     "loguru",
     "perflint",
-    "pika",
     "pillow",
     "pydantic",
     "PyJWT",

@@ -1,8 +1,7 @@
 {
     "name": "Factories",
-    "description": "Create and manage LLMs, Embedders, Chunkers, File and Vector Storage",
-    "author_name": "Cheshire Cat",
-    "author_url": "Matteo Cacciola",
+    "description": "Create and manage LLMs, Embedders, Chunkers, File Manager.",
+    "author_name": "Matteo Cacciola",
     "plugin_url": "https://github.com/matteocacciola/cheshirecat-core",
     "tags": "core, default, language model, embedder, chunker, file storage, vector storage, langchain",
     "thumb": "",

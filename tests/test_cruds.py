@@ -20,18 +20,18 @@ def test_get_settings(cheshire_cat):
     assert isinstance(values, list)
     assert len(values) == 0
 
-    values = crud_settings.get_settings(agent_id, "CoreOnlyAuthConfi")
+    values = crud_settings.get_settings(agent_id, "CoreAuthConfi")
     assert isinstance(values, list)
     assert len(values) == 1
 
     crud_settings.create_setting(agent_id, models.Setting(**{
-        "name": "CoreOnlyAuthConfig2",
+        "name": "CoreAuthConfig2",
         "value": {},
         "category": AuthHandlerFactory(cheshire_cat.plugin_manager).setting_category,
         "setting_id": "96f4c9d4-b58d-41c5-88e2-c87b94fe012c",
         "updated_at": 1729169367
     }))
-    values = crud_settings.get_settings(agent_id, "CoreOnlyAuthConfi")
+    values = crud_settings.get_settings(agent_id, "CoreAuthConfi")
     assert isinstance(values, list)
     assert len(values) == 2
 
@@ -49,13 +49,13 @@ def test_get_setting_by_category(cheshire_cat):
 def test_get_setting_by_name(cheshire_cat):
     value = crud_settings.get_settings_by_category(agent_id, AuthHandlerFactory(cheshire_cat.plugin_manager).setting_category)
     assert isinstance(value, dict)
-    assert value["name"] == "CoreOnlyAuthConfig"
+    assert value["name"] == "CoreAuthConfig"
 
 
 def test_get_setting_by_id(cheshire_cat):
     setting_id = "96f4c9d4-b58d-41c5-88e2-c87b94fe012c"
     expected = {
-        "name": "CoreOnlyAuthConfig2",
+        "name": "CoreAuthConfig2",
         "value": {},
         "category": AuthHandlerFactory(cheshire_cat.plugin_manager).setting_category,
         "setting_id": setting_id,
@@ -72,7 +72,7 @@ def test_get_setting_by_id(cheshire_cat):
 def test_delete_setting_by_id(cheshire_cat):
     setting_id = "96f4c9d4-b58d-41c5-88e2-c87b94fe012c"
     add = {
-        "name": "CoreOnlyAuthConfig2",
+        "name": "CoreAuthConfig2",
         "value": {},
         "category": AuthHandlerFactory(cheshire_cat.plugin_manager).setting_category,
         "setting_id": setting_id,
@@ -113,7 +113,7 @@ def test_create_setting_with_empty_name(cheshire_cat):
 def test_update_setting_by_id(cheshire_cat):
     setting_id = "96f4c9d4-b58d-41c5-88e2-c87b94fe012c"
     add = {
-        "name": "CoreOnlyAuthConfig2",
+        "name": "CoreAuthConfig2",
         "value": {},
         "category": AuthHandlerFactory(cheshire_cat.plugin_manager).setting_category,
         "setting_id": setting_id,
@@ -123,7 +123,7 @@ def test_update_setting_by_id(cheshire_cat):
     crud_settings.create_setting(agent_id, models.Setting(**add))
 
     expected = add.copy()
-    expected["name"] = "CoreOnlyAuthConfig3"
+    expected["name"] = "CoreAuthConfig3"
     crud_settings.upsert_setting_by_id(agent_id, models.Setting(**expected))
 
     value = crud_settings.get_setting_by_id(agent_id, setting_id)
@@ -131,7 +131,7 @@ def test_update_setting_by_id(cheshire_cat):
 
 
 def test_upsert_setting_by_name(cheshire_cat):
-    name = "CoreOnlyAuthConfig2"
+    name = "CoreAuthConfig2"
     add = {
         "name": name,
         "value": {},

@@ -114,10 +114,8 @@ class CatLogEngine:
         """Log a message and dispatch to registered plugin handlers.
 
         Args:
-            msg :
-                Message to be logged.
-            level: str
-                Logging level."""
+            msg: Message to be logged.
+            level (str): Logging level."""
         # prettify
         if isinstance(msg, str):
             pass

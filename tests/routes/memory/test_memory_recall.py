@@ -1,4 +1,5 @@
 from cat.db.cruds import users as crud_users
+from cat.memory.utils import VectorMemoryType
 
 from tests.utils import send_n_websocket_messages, agent_id
 
@@ -17,11 +18,11 @@ def test_memory_recall_default_success(secure_client, secure_client_headers):
 
     # results are grouped by collection
     assert len(json["vectors"]["collections"]) == 1
-    assert "declarative" == list(json["vectors"]["collections"].keys())[0]
+    assert str(VectorMemoryType.DECLARATIVE) == list(json["vectors"]["collections"].keys())[0]
 
     # initial collections contents
-    assert isinstance(json["vectors"]["collections"]["declarative"], list)
-    assert len(json["vectors"]["collections"]["declarative"]) == 0
+    assert isinstance(json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)], list)
+    assert len(json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)]) == 0
 
 
 # search without query should throw error
@@ -88,7 +89,7 @@ def test_memory_recall_with_metadata(secure_client, secure_client_headers, mocke
     response = secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
-    declarative_memories = json["vectors"]["collections"]["declarative"]
+    declarative_memories = json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)]
     assert len(declarative_memories) == 2
 
     # recall with metadata multiple keys in metadata
@@ -96,6 +97,6 @@ def test_memory_recall_with_metadata(secure_client, secure_client_headers, mocke
     response = secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
-    declarative_memories = json["vectors"]["collections"]["declarative"]
+    declarative_memories = json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)]
     assert len(declarative_memories) == 1
     assert declarative_memories[0]["page_content"] == "MEOW_ONE"

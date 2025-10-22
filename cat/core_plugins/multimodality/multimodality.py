@@ -15,7 +15,7 @@ from cat.mad_hatter.decorators import hook
 
 
 @hook(priority=0)
-def factory_allowed_embedders(allowed: List[EmbedderSettings], cat) -> List:
+def factory_allowed_embedders(allowed: List[EmbedderSettings], lizard) -> List:
     return allowed + [
         EmbedderJinaMultimodalConfig,
     ]

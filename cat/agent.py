@@ -97,16 +97,11 @@ async def run_agent(
     calls, and generates the final response. It also cleans the response from any tags.
 
     Args:
-        llm : BaseLanguageModel
-            The language model to use for generating responses.
-        prompt : ChatPromptTemplate
-            The prompt template to use for the LLM.
-        prompt_variables : Dict[str, Any], optional
-            Variables to fill in the prompt template, by default None.
-        tools : List[StructuredTool], optional
-            List of tools available to the agent, by default None.
-        callbacks : List[BaseCallbackHandler], optional
-            List of callback handlers for logging and monitoring, by default None.
+        llm (BaseLanguageModel): The language model to use for generating responses.
+        prompt (ChatPromptTemplate): The prompt template to use for the LLM.
+        prompt_variables (Dict[str, Any], optional): Variables to fill in the prompt template, by default None.
+        tools (List[StructuredTool], optional): List of tools available to the agent, by default None.
+        callbacks (List[BaseCallbackHandler], optional):  List of callback handlers for logging and monitoring, by default None.
 
     Returns:
         AgentOutput

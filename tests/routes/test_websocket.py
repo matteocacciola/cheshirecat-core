@@ -2,6 +2,7 @@ import time
 import uuid
 
 from cat.db.cruds import users as crud_users
+from cat.memory.utils import VectorMemoryType
 
 from tests.utils import send_websocket_message, send_n_websocket_messages, agent_id, api_key, create_new_user
 
@@ -21,7 +22,7 @@ def check_correct_websocket_reply(reply):
     assert isinstance(why["intermediate_steps"], list)
     assert isinstance(why["memory"], dict)
     assert len(why["memory"].keys()) == 1
-    assert "declarative" == list(why["memory"].keys())[0]
+    assert str(VectorMemoryType.DECLARATIVE) == list(why["memory"].keys())[0]
 
 
 def test_websocket(secure_client):

@@ -18,7 +18,10 @@ from cat.factory.file_manager import BaseFileManager, FileManagerFactory
 from cat.factory.llm import LLMFactory
 from cat.factory.vector_db import VectorDatabaseFactory, BaseVectorDatabaseHandler
 from cat.log import log
-from cat.mad_hatter import Tweedledee
+from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
+from cat.looking_glass.tweedledee import Tweedledee
+from cat.mad_hatter.decorators import CatTool
+from cat.memory.utils import VectorMemoryType
 from cat.utils import get_factory_object, get_updated_factory_object
 
 
@@ -36,18 +39,24 @@ class CheshireCat:
         """
         Cat initialization. At init time, the Cat executes the bootstrap.
 
+        Args:
+            agent_id: The agent identifier
+
         Notes
         -----
         Bootstrapping is the process of loading the plugins, the LLM, the memories.
         """
         self.id = agent_id
 
+        self.dispatcher = HumptyDumpty()
+        self.dispatcher.subscribe_from(self)
+
         # instantiate plugin manager (loads all plugins' hooks and tools)
         self.plugin_manager = Tweedledee(self.id)
         self.plugin_manager.discover_plugins()
 
         # allows plugins to do something before cat components are loaded
-        self.plugin_manager.execute_hook("before_cat_bootstrap", cat=self)
+        self.plugin_manager.execute_hook("before_cat_bootstrap", obj=self)
 
         self.large_language_model: BaseLanguageModel = get_factory_object(self.id, LLMFactory(self.plugin_manager))
         self.custom_auth_handler: BaseAuthHandler = get_factory_object(self.id, AuthHandlerFactory(self.plugin_manager))
@@ -63,7 +72,7 @@ class CheshireCat:
             self.initialize_users()
 
         # allows plugins to do something after the cat bootstrap is complete
-        self.plugin_manager.execute_hook("after_cat_bootstrap", cat=self)
+        self.plugin_manager.execute_hook("after_cat_bootstrap", obj=self)
 
     def __eq__(self, other: "CheshireCat") -> bool:
         """Check if two cats are equal."""
@@ -95,6 +104,8 @@ class CheshireCat:
         })
 
     def shutdown(self) -> None:
+        self.dispatcher.unsubscribe_from(self)
+
         self.custom_auth_handler = None
         self.plugin_manager = None
         self.large_language_model = None
@@ -106,7 +117,7 @@ class CheshireCat:
         log.info(f"Agent id: {self.id}. Destroying all data from the cat's memory")
 
         # destroy all memories
-        await self.vector_memory_handler.destroy_all_points("declarative")
+        await self.vector_memory_handler.destroy_all_points(str(VectorMemoryType.DECLARATIVE))
 
     async def destroy(self):
         """Destroy all data from the cat."""
@@ -131,6 +142,7 @@ class CheshireCat:
     def replace_llm(self, language_model_name: str, settings: Dict) -> Dict:
         """
         Replace the current LLM with a new one. This method is used to change the LLM of the cat.
+
         Args:
             language_model_name: name of the new LLM
             settings: settings of the new LLM
@@ -158,6 +170,7 @@ class CheshireCat:
     def replace_auth_handler(self, auth_handler_name: str, settings: Dict) -> Dict:
         """
         Replace the current Auth Handler with a new one.
+
         Args:
             auth_handler_name: name of the new Auth Handler
             settings: settings of the new Auth Handler
@@ -207,6 +220,7 @@ class CheshireCat:
     def replace_chunker(self, chunker_name: str, settings: Dict) -> Dict:
         """
         Replace the current Auth Handler with a new one.
+
         Args:
             chunker_name: name of the new chunker
             settings: settings of the new chunker
@@ -226,6 +240,7 @@ class CheshireCat:
     ) -> Dict:
         """
         Replace the current Vector Memory Handler with a new one.
+
         Args:
             vector_memory_name: name of the new Vector Memory Handler
             settings: settings of the new Vector Memory Handler
@@ -237,11 +252,41 @@ class CheshireCat:
         updater = get_updated_factory_object(self.id, factory, vector_memory_name, settings)
 
         self.vector_memory_handler = get_factory_object(self.id, factory)
+        await self.embed_procedures()
+
+        return {"name":vector_memory_name, "value": updater.new_setting["value"]}
+
+    async def embed_procedures(self):
+        log.info(f"Agent id: {self.id}. Embedding procedures in vector memory")
 
         lizard = self.lizard
         await self.vector_memory_handler.initialize(lizard.embedder_name, lizard.embedder_size)
 
-        return {"name":vector_memory_name, "value": updater.new_setting["value"]}
+        # Destroy all procedural embeddings
+        collection_name = str(VectorMemoryType.PROCEDURAL)
+        await self.vector_memory_handler.destroy_all_points(collection_name)
+
+        # Easy access to active procedures in plugin_manager (source of truth!)
+        payloads = []
+        vectors = []
+        for ap in self.plugin_manager.procedures:
+            if not isinstance(ap, CatTool):
+                ap = ap()
+
+            for t in ap.to_document_recall():
+                payloads.append(t.document.model_dump())
+                vectors.append(self.embedder.embed_query(t.document.page_content))
+
+        await self.vector_memory_handler.add_points(collection_name=collection_name, payloads=payloads, vectors=vectors)
+        log.info(f"Agent id: {self.id}. Embedded {len(payloads)} triggers in {collection_name} vector memory")
+
+    @subscriber("on_end_plugin_activate")
+    async def on_end_plugin_activate(self, plugin_id: str) -> None:
+        await self.embed_procedures()
+
+    @subscriber("on_end_plugin_deactivate")
+    async def on_end_plugin_deactivate(self, plugin_id: str) -> None:
+        await self.embed_procedures()
 
     @property
     def lizard(self) -> "BillTheLizard":
@@ -249,8 +294,7 @@ class CheshireCat:
         Instance of langchain `BillTheLizard`. Use it to access the main components of the Cat.
 
         Returns:
-            lizard: BillTheLizard
-                Instance of langchain `BillTheLizard`.
+            lizard (BillTheLizard): Instance of langchain `BillTheLizard`.
         """
         from cat.looking_glass import BillTheLizard
         return BillTheLizard()
@@ -261,8 +305,7 @@ class CheshireCat:
         Instance of `WebsocketManager`. Use it to access the manager of the Websocket connections.
 
         Returns:
-            websocket_manager: WebsocketManager
-                Instance of `WebsocketManager`.
+            websocket_manager (WebsocketManager): Instance of `WebsocketManager`.
         """
         return self.lizard.websocket_manager
 
@@ -270,9 +313,9 @@ class CheshireCat:
     def embedder(self) -> Embeddings:
         """
         Langchain `Embeddings` object.
+
         Returns:
-            embedder: Langchain `Embeddings`
-                Langchain embedder to turn text into a vector.
+            embedder: Langchain `Embeddings`. Langchain embedder to turn text into a vector.
 
         Examples
         --------
@@ -287,8 +330,8 @@ class CheshireCat:
         Gives access to the `RabbitHole`, to upload documents and URLs into the vector DB.
 
         Returns:
-            rabbit_hole: RabbitHole
-            Module to ingest documents and URLs for RAG.
+            rabbit_hole (RabbitHole): Module to ingest documents and URLs for RAG.
+
         Examples
         --------
         >> cat.rabbit_hole.ingest_file(...)
@@ -296,24 +339,12 @@ class CheshireCat:
         return self.lizard.rabbit_hole
 
     @property
-    def core_auth_handler(self) -> "CoreAuthHandler":
-        """
-        Gives access to the `CoreAuthHandler` object. Use it to interact with the Cat's authentication handler.
-
-        Returns:
-            core_auth_handler: CoreAuthHandler
-                Core authentication handler of the Cat
-        """
-        return self.lizard.core_auth_handler
-
-    @property
     def mad_hatter(self) -> Tweedledee:
         """
         Gives access to the `Tweedledee` plugin manager.
 
         Returns:
-            mad_hatter: Tweedledee
-                Module to manage plugins.
+            mad_hatter (Tweedledee): Module to manage plugins.
 
         Examples
         --------
@@ -329,7 +360,7 @@ class CheshireCat:
     # each time we access the file handlers, plugins can intervene
     @property
     def file_handlers(self) -> Dict:
-        return self.plugin_manager.execute_hook("rabbithole_instantiates_parsers",  {}, cat=self)
+        return self.plugin_manager.execute_hook("rabbithole_instantiates_parsers",  {}, obj=self)
 
     @property
     def agent_id(self) -> str:
@@ -337,7 +368,16 @@ class CheshireCat:
         The unique identifier of the cat.
 
         Returns:
-            agent_id: str
-                The unique identifier of the cat.
+            agent_id (str): The unique identifier of the cat.
+        """
+        return self.id
+
+    @property
+    def agent_key(self) -> str:
+        """
+        The unique identifier of the cat.
+
+        Returns:
+            agent_id (str): The unique identifier of the cat.
         """
         return self.id

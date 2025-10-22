@@ -10,6 +10,7 @@ from cat.db.cruds import (
 )
 from cat.db.database import get_db
 from cat.env import get_env
+from cat.memory.utils import VectorMemoryType
 
 from tests.utils import create_new_user, get_client_admin_headers, new_user_password
 
@@ -45,7 +46,7 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
 
     # check that the vector database is not empty
     c = await cheshire_cat.vector_memory_handler._client.get_collections()
-    assert len(c.collections) == 1
+    assert len(c.collections) == 2
 
     histories = get_db().get(crud_history.format_key(cheshire_cat.id, "*", "*"))
     assert histories is None
@@ -89,7 +90,7 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
 
     qdrant_filter = Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=cheshire_cat.id))])
     count_response = await cheshire_cat.vector_memory_handler._client.count(
-        collection_name="declarative", count_filter=qdrant_filter
+        collection_name=str(VectorMemoryType.DECLARATIVE), count_filter=qdrant_filter
     )
     assert count_response.count == 0
 
@@ -125,8 +126,8 @@ async def test_agent_reset_success(client, lizard, cheshire_cat):
     assert len(users) == 1
 
     ccat = lizard.get_cheshire_cat(cheshire_cat.id)
-    num_vectors = await ccat.vector_memory_handler.get_vectors_count("declarative")
-    points, _ = await ccat.vector_memory_handler.get_all_points("declarative")
+    num_vectors = await ccat.vector_memory_handler.get_vectors_count(str(VectorMemoryType.DECLARATIVE))
+    points, _ = await ccat.vector_memory_handler.get_all_points(str(VectorMemoryType.DECLARATIVE))
     assert num_vectors == 0
     assert len(points) == 0
 
@@ -155,8 +156,8 @@ async def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard
     collections = await cheshire_cat.vector_memory_handler._client.get_collections()
     assert len(collections.collections) > 0
 
-    num_vectors = await cheshire_cat.vector_memory_handler.get_vectors_count("declarative")
-    points, _ = await cheshire_cat.vector_memory_handler.get_all_points("declarative")
+    num_vectors = await cheshire_cat.vector_memory_handler.get_vectors_count(str(VectorMemoryType.DECLARATIVE))
+    points, _ = await cheshire_cat.vector_memory_handler.get_all_points(str(VectorMemoryType.DECLARATIVE))
     assert num_vectors == 0
     assert len(points) == 0
 
@@ -185,8 +186,8 @@ async def test_agent_destroy_error_because_of_not_existing_agent(client, lizard,
     collections = await cheshire_cat.vector_memory_handler._client.get_collections()
     assert len(collections.collections) > 0
 
-    num_vectors = await cheshire_cat.vector_memory_handler.get_vectors_count("declarative")
-    points, _ = await cheshire_cat.vector_memory_handler.get_all_points("declarative")
+    num_vectors = await cheshire_cat.vector_memory_handler.get_vectors_count(str(VectorMemoryType.DECLARATIVE))
+    points, _ = await cheshire_cat.vector_memory_handler.get_all_points(str(VectorMemoryType.DECLARATIVE))
     assert num_vectors == 0
     assert len(points) == 0
 
@@ -224,7 +225,7 @@ async def test_agent_create_success(client, lizard):
     assert len(users) == 1
 
     ccat = lizard.get_cheshire_cat(new_agent_id)
-    num_vectors = await ccat.vector_memory_handler.get_vectors_count("declarative")
-    points, _ = await ccat.vector_memory_handler.get_all_points("declarative")
+    num_vectors = await ccat.vector_memory_handler.get_vectors_count(str(VectorMemoryType.DECLARATIVE))
+    points, _ = await ccat.vector_memory_handler.get_all_points(str(VectorMemoryType.DECLARATIVE))
     assert num_vectors == 0
     assert len(points) == 0
