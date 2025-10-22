@@ -29,11 +29,16 @@ from qdrant_client.http.models import (
     SearchParams,
     QuantizationSearchParams,
     PointStruct as QdrantPointStruct,
+    SparseVectorParams,
+    FusionQuery,
+    Fusion,
+    Prefetch,
 )
 
 from cat.factory.base_factory import BaseFactoryConfigModel, BaseFactory
 from cat.log import log
 from cat.memory.utils import (
+    Document,
     DocumentRecall,
     Payload,
     PointStruct,
@@ -277,6 +282,7 @@ class BaseVectorDatabaseHandler(ABC):
         limit: int | None = None,
         offset: str | None = None,
         metadata: Dict | None = None,
+        with_vectors: bool = True,
     ) -> Tuple[List[Record], int | str | None]:
         """
         Retrieve all the points in the collection with an optional offset and limit.
@@ -286,6 +292,7 @@ class BaseVectorDatabaseHandler(ABC):
             limit: The maximum number of points to retrieve.
             offset: The offset from which to start retrieving points.
             metadata: Optional metadata filter to apply to the points.
+            with_vectors: If True, returns the points with their vectors. If False, returns the points without their vectors.
 
         Returns:
             Tuple: A tuple containing the list of points and the next offset.
@@ -380,6 +387,20 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
+    async def create_hybrid_collection(
+        self, collection_name: str, dense_vector_config_name: str, sparse_vector_config_name: str
+    ):
+        """
+        Creates a hybrid collection in the database with specified configurations.
+
+        Args:
+            collection_name (str): The name of the collection to be created.
+            dense_vector_config_name (str): The name of the dense vector configuration to be used for the collection.
+            sparse_vector_config_name (str): The name of the sparse vector configuration to be used for the collection.
+        """
+        pass
+
+    @abstractmethod
     async def get_collection_names(self) -> List[str]:
         """
         Get the list of collection names in the vector database.
@@ -452,6 +473,37 @@ class BaseVectorDatabaseHandler(ABC):
             NotImplementedError: This method must be implemented by subclasses.
         """
         pass
+
+    @abstractmethod
+    async def search_prefetched(
+        self,
+        collection_name: str,
+        query: str,
+        query_vector: List[float],
+        query_filter: Any,
+        k: int,
+        k_prefetched: int,
+        threshold: float,
+    ) -> List[ScoredPoint]:
+        """
+        Search the prefetched items in the given collection based on query and filtering criteria.
+
+        This is an asynchronous method used to perform a search within a specified collection, applying a query and
+        additional filtering mechanisms. It retrieves a ranked list of items that match the provided criteria,
+        considering both the main query and prefetching parameters.
+
+        Args:
+            collection_name: The name of the collection in which the search will be executed.
+            query: The query string or identifier used to retrieve relevant items.
+            query_vector: A list of floats representing the vectorized form of the query for similarity search.
+            query_filter: Additional filtering criteria to narrow down the search results.
+            k: The number of top-ranked items to retrieve from the search results.
+            k_prefetched: The number of items to be prefetched before applying the ranking.
+            threshold: A score threshold above which a point is considered relevant.
+
+        Returns:
+            A list of `ScoredPoint` objects representing the ranked results matching the query and other criteria.
+        """
 
     @abstractmethod
     def build_condition(self, key: str, value: Any) -> List[FieldCondition]:
@@ -639,6 +691,45 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             await self._client.delete_collection(collection_name)
             log.error(f"Collection `{collection_name}` for the agent `{self.agent_id}` deleted")
             raise e
+
+        # if the client is remote, create an index on the tenant_id field
+        if self.is_db_remote():
+            log.warning(f"Creating payload index for collection `{collection_name}` and the agent `{self.agent_id}`...")
+            try:
+                await self._client.create_payload_index(
+                    collection_name=collection_name,
+                    field_name="tenant_id",
+                    field_schema=PayloadSchemaType.KEYWORD
+                )
+            except Exception as e:
+                log.error(f"Error when creating a schema index: {e}")
+
+    async def create_hybrid_collection(
+        self, collection_name: str, dense_vector_config_name: str, sparse_vector_config_name: str
+    ):
+        if self._client.collection_exists(collection_name):
+            return
+
+        embedding_size = (
+            await self._client.get_collection(collection_name=str(VectorMemoryType.DECLARATIVE))
+        ).config.params.vectors.size
+
+        try:
+            await self._client.create_collection(
+                collection_name=collection_name,
+                vectors_config={
+                    dense_vector_config_name: VectorParams(
+                        size=embedding_size,
+                        distance=Distance.COSINE,
+                    )
+                },
+                sparse_vectors_config={sparse_vector_config_name: SparseVectorParams()},
+            )
+        except Exception as e:
+            log.error(
+                f"Error creating collection `{collection_name}` for the agent `{self.agent_id}`. Try setting a higher timeout value: {e}"
+            )
+            raise
 
         # if the client is remote, create an index on the tenant_id field
         if self.is_db_remote():
@@ -900,10 +991,15 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         limit: int | None = None,
         offset: str | None = None,
         metadata: Dict | None = None,
+        with_vectors: bool = True,
     ) -> Tuple[List[Record], int | str | None]:
         conditions = self._build_metadata_conditions(metadata)
         return await self._get_all_points(
-            collection_name=collection_name, scroll_filter=Filter(must=conditions), limit=limit, offset=offset
+            collection_name=collection_name,
+            scroll_filter=Filter(must=conditions),
+            limit=limit,
+            offset=offset,
+            with_vectors=with_vectors,
         )
 
     async def get_all_points_from_web(
@@ -1013,6 +1109,40 @@ class QdrantHandler(BaseVectorDatabaseHandler):
                     oversampling=2.0,  # Available as of v1.3.0
                 )
             ),
+        )
+
+        return response.points
+
+    async def search_prefetched(
+        self,
+        collection_name: str,
+        query: str,
+        query_vector: List[float],
+        query_filter: Any,
+        k: int,
+        k_prefetched: int,
+        threshold: float,
+    ) -> List[ScoredPoint]:
+        response = await self._client.query_points(
+            collection_name=collection_name,
+            query=FusionQuery(fusion=Fusion.RRF),
+            query_filter=query_filter,
+            prefetch=[
+                Prefetch(
+                    query=query_vector,
+                    using="dense",
+                    limit=k_prefetched,
+                ),
+                Prefetch(
+                    query=Document(text=query, model="Qdrant/bm25"),
+                    using="sparse",
+                    limit=k_prefetched,
+                ),
+            ],
+            with_payload=True,
+            with_vectors=True,
+            limit=k,
+            score_threshold=threshold,
         )
 
         return response.points

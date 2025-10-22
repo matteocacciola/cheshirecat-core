@@ -371,3 +371,13 @@ class CheshireCat:
             agent_id (str): The unique identifier of the cat.
         """
         return self.id
+
+    @property
+    def agent_key(self) -> str:
+        """
+        The unique identifier of the cat.
+
+        Returns:
+            agent_id (str): The unique identifier of the cat.
+        """
+        return self.id

@@ -91,3 +91,7 @@ class Tweedledee(MadHatter):
     @property
     def context_execute_hook(self) -> str:
         return "cat"
+
+    @property
+    def manage_endpoints(self) -> bool:
+        return False

@@ -268,68 +268,31 @@ class CoreAuthHandler(BaseAuthHandler):
         )
 
 
-# Default Auth, always deny auth by default (only core auth decides).
-class CoreOnlyAuthHandler(BaseAuthHandler):
-    def extract_token_http(self, request: HTTPConnection) -> str | None:
-        return None
-
-    def extract_token_websocket(self, request: HTTPConnection) -> str | None:
-        return None
-
-    def extract_user_id_http(self, request: HTTPConnection) -> str | None:
-        return None
-
-    def extract_user_id_websocket(self, request: HTTPConnection) -> str | None:
-        return None
-
-    def authorize_user_from_jwt(*args, **kwargs) -> AuthUserInfo | None:
-        return None
-
-    def authorize_user_from_key(*args, **kwargs) -> AuthUserInfo | None:
-        return None
-
-
 class AuthHandlerConfig(BaseFactoryConfigModel, ABC):
     @classmethod
     def base_class(cls) -> Type:
         return BaseAuthHandler
 
 
-class CoreOnlyAuthConfig(AuthHandlerConfig):
+class CoreAuthConfig(AuthHandlerConfig):
     model_config = ConfigDict(
         json_schema_extra={
             "humanReadableName": "Standalone Core Auth Handler",
             "description": "Delegate auth to Cat core, without any additional auth systems. "
             "Do not change this if you don't know what you are doing!",
-            "link": "",  # TODO link to auth docs
+            "link": "",
         }
     )
 
     @classmethod
     def pyclass(cls) -> Type:
-        return CoreOnlyAuthHandler
-
-
-# TODO AUTH: have at least another auth_handler class to test
-# class ApiKeyAuthConfig(AuthHandlerConfig):#
-#     model_config = ConfigDict(
-#         json_schema_extra={
-#             "humanReadableName": "Api Key Auth Handler",
-#             "description": "Yeeeeah.",
-#             "link": "",
-#         }
-#     )
-#
-#     @classmethod
-#     def pyclass(cls) -> Type:
-#         return ApiKeyAuthHandler
+        return CoreAuthHandler
 
 
 class AuthHandlerFactory(BaseFactory):
     def get_allowed_classes(self) -> list[Type[AuthHandlerConfig]]:
         list_auth_handler_default = [
-            CoreOnlyAuthConfig,
-            # ApiKeyAuthConfig,
+            CoreAuthConfig,
         ]
 
         list_auth_handler = self._hook_manager.execute_hook(
@@ -344,7 +307,7 @@ class AuthHandlerFactory(BaseFactory):
 
     @property
     def default_config_class(self) -> Type[BaseFactoryConfigModel]:
-        return CoreOnlyAuthConfig
+        return CoreAuthConfig
 
     @property
     def schema_name(self) -> str:

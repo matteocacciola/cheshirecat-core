@@ -11,7 +11,7 @@ import os
 from datetime import timedelta
 from enum import Enum as BaseEnum, EnumMeta
 from io import BytesIO
-from typing import Dict, List, Type, TypeVar, Any, Callable
+from typing import Dict, List, Type, TypeVar, Any, Callable, Union
 import aiofiles
 import requests
 import tomli
@@ -354,11 +354,15 @@ def inspect_calling_folder() -> str:
     )
 
     # throw exception if this method is called from outside the plugins folder
-    if not abs_path.startswith(get_plugins_path()):
+    if not abs_path.startswith(get_plugins_path()) and not abs_path.startswith(get_core_plugins_path()):
         raise Exception("get_plugin() can only be called from within a plugin")
 
     # Replace the root and get only the current plugin folder
-    plugin_suffix = abs_path.replace(get_plugins_path(), "")
+    plugin_suffix = (
+        abs_path.replace(get_plugins_path(), "")
+        if abs_path.startswith(get_plugins_path())
+        else abs_path.replace(get_core_plugins_path(), "")
+    )
     if plugin_suffix.startswith("/"):
         plugin_suffix = plugin_suffix[1:]
 
@@ -366,8 +370,8 @@ def inspect_calling_folder() -> str:
     return plugin_suffix.split("/")[0]
 
 
-def inspect_calling_agent() -> "CheshireCat":
-    cheshire_cat_instance = None
+def inspect_calling_agent() -> Union["CheshireCat", "BillTheLizard"]:
+    instance = None
 
     # get the stack of calls
     call_stack = inspect.stack()
@@ -375,21 +379,25 @@ def inspect_calling_agent() -> "CheshireCat":
     # surf the stack up to the calling to load_settings()
     for frame_info in call_stack:
         frame = frame_info.frame
-        if 'load_settings' not in frame.f_code.co_names:
+        if "load_settings" not in frame.f_code.co_names:
             continue
 
         # obtain the name of the calling Cheshire Cat class
         for k, v, in frame.f_locals.items():
-            if hasattr(v, 'large_language_model'):
-                cheshire_cat_instance = v.cheshire_cat if hasattr(v, 'cheshire_cat') else v
+            if hasattr(v, "large_language_model"):
+                instance = v.cheshire_cat if hasattr(v, "cheshire_cat") else v
                 break
 
-        if cheshire_cat_instance is not None:
-            break
-    if cheshire_cat_instance:
-        return cheshire_cat_instance
+            if hasattr(v, "_fastapi_app"):
+                instance = v
+                break
 
-    raise Exception("Unable to find the calling Cheshire Cat instance")
+        if instance is not None:
+            break
+    if instance:
+        return instance
+
+    raise Exception("Unable to find the calling instance")
 
 
 def restore_original_model(d: _T | Dict | None, model: Type[_T]) -> _T | None:

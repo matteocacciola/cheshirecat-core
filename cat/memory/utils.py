@@ -33,7 +33,7 @@ class SparseVector(BaseModel, extra="forbid"):
 
 class Document(BaseModel, extra="forbid"):
     """
-    WARN: Work-in-progress, unimplemented  Text document for embedding. Requires inference infrastructure, unimplemented.
+    Text document for embedding.
     """
     text: str = Field(..., description="Text of the document This field will be used as input for the embedding model")
     model: str = Field(
@@ -157,7 +157,7 @@ async def recall(
         )
         return memories
 
-    memories = await cheshire_cat.vector_memory_handler.recall_all_memories(str(VectorMemoryType.DECLARATIVE))
+    memories = await cheshire_cat.vector_memory_handler.recall_all_memories(str(collection))
     return memories
 
 

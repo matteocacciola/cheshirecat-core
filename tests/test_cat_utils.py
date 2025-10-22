@@ -97,7 +97,7 @@ def test_load_settings_no_agent_key_from_stray_cat(stray_no_memory):
 
     plugin = stray_no_memory.plugin_manager.get_plugin()
     plugin.load_settings()
-    assert utils.inspect_calling_agent().id == agent_id
+    assert utils.inspect_calling_agent().agent_key == agent_id
 
     utils.inspect_calling_folder = original_fnc
 
@@ -107,7 +107,7 @@ def test_load_settings_no_agent_key_from_stray_cat_long(stray_no_memory):
     utils.inspect_calling_folder = lambda: "base_plugin"
 
     stray_no_memory.plugin_manager.get_plugin().load_settings()
-    assert utils.inspect_calling_agent().id == agent_id
+    assert utils.inspect_calling_agent().agent_key == agent_id
 
     utils.inspect_calling_folder = original_fnc
 
@@ -119,7 +119,7 @@ def test_load_settings_no_agent_key_from_cheshire_cat(cheshire_cat):
     plugin = cheshire_cat.plugin_manager.get_plugin()
     plugin.load_settings()
 
-    assert utils.inspect_calling_agent().id == agent_id
+    assert utils.inspect_calling_agent().agent_key == agent_id
 
     utils.inspect_calling_folder = original_fnc
 
@@ -130,6 +130,6 @@ def test_load_settings_no_agent_key_from_cheshire_cat_long(cheshire_cat):
 
     cheshire_cat.plugin_manager.get_plugin().load_settings()
 
-    assert utils.inspect_calling_agent().id == agent_id
+    assert utils.inspect_calling_agent().agent_key == agent_id
 
     utils.inspect_calling_folder = original_fnc

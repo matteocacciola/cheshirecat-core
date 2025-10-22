@@ -151,7 +151,7 @@ class MadHatter(ABC):
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
 
         # notify sync has finished
-        self.dispatcher.dispatch("on_finish_plugins_sync")
+        self.dispatcher.dispatch("on_finish_plugins_sync", self.manage_endpoints)
 
     # execute requested hook
     def execute_hook(self, hook_name: str, *args, obj) -> Any:
@@ -175,7 +175,7 @@ class MadHatter(ABC):
         for hook in self.hooks[hook_name]:
             try:
                 log.debug(f"Executing {hook.plugin_id}::{hook.name} with priority {hook.priority}")
-                tea_spoon = hook.function(deepcopy(tea_cup), *deepcopy(args[1:]), {self.context_execute_hook: obj})
+                tea_spoon = hook.function(deepcopy(tea_cup), *deepcopy(args[1:]), **{self.context_execute_hook: obj})
                 if tea_spoon is not None:
                     tea_cup = tea_spoon
             except Exception as e:
@@ -262,4 +262,9 @@ class MadHatter(ABC):
     @property
     @abstractmethod
     def context_execute_hook(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def manage_endpoints(self) -> bool:
         pass

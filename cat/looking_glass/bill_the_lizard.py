@@ -27,7 +27,6 @@ from cat.utils import (
     get_embedder_name,
     get_factory_object,
     get_updated_factory_object,
-    run_sync_or_async,
 )
 
 
@@ -90,9 +89,6 @@ class BillTheLizard:
 
         self.plugin_manager.execute_hook("after_lizard_bootstrap", obj=self)
 
-    def __del__(self):
-        run_sync_or_async(self.shutdown)
-
     @subscriber("on_end_plugin_install")
     def on_end_plugin_install(self, plugin_id: str, plugin_path: str) -> None:
         # Store endpoints for later activation
@@ -121,7 +117,10 @@ class BillTheLizard:
         self.plugin_manager.execute_hook("lizard_notify_plugin_uninstallation", plugin_id, obj=self)
 
     @subscriber("on_finish_plugins_sync")
-    def on_finish_plugins_sync(self) -> None:
+    def on_finish_plugins_sync(self, with_endpoints: bool) -> None:
+        if not with_endpoints:
+            return
+
         # Store endpoints for later activation
         self._pending_endpoints = deepcopy(self.plugin_manager.endpoints)
 
@@ -279,12 +278,12 @@ class BillTheLizard:
         Returns:
             None
         """
+        self.plugin_manager.execute_hook("before_lizard_shutdown", obj=self)
+
         self.dispatcher.unsubscribe_from(self)
 
         if self.websocket_manager:
             await self.websocket_manager.close_all_connections()
-
-        self.plugin_manager.execute_hook("before_lizard_shutdown", obj=None)
 
         self.core_auth_handler = None
         self.plugin_manager = None
@@ -313,3 +312,11 @@ class BillTheLizard:
     @property
     def mad_hatter(self) -> MadHatter:
         return self.plugin_manager
+
+    @property
+    def agent_id(self):
+        return self._key
+
+    @property
+    def agent_key(self):
+        return self._key

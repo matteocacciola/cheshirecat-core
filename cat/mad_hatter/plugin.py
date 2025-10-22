@@ -190,7 +190,7 @@ class Plugin:
         if agent_id is None:
             try:
                 calling_agent = inspect_calling_agent()
-                agent_id = calling_agent.id
+                agent_id = calling_agent.agent_key
             except Exception as e:
                 log.error(f"Error loading plugin {self._id} settings. Getting default settings: {e}")
                 log.warning(self.plugin_specific_error_message())

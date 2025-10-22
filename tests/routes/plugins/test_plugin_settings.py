@@ -1,3 +1,5 @@
+from cat.core_plugins.march_hare.settings import PluginSettings
+
 from tests.utils import just_installed_plugin
 from tests.mocks.mock_plugin.mock_plugin_overrides import MockPluginSettings
 
@@ -18,9 +20,18 @@ def test_get_all_plugin_settings(lizard, secure_client, secure_client_headers):
     for setting in json["settings"]:
         assert setting["name"] in available_plugins
         if setting["name"] == "mock_plugin":
-            assert setting["name"] == "mock_plugin"
             assert setting["value"] == {"a": "a", "b": 0}
             assert setting["scheme"] == MockPluginSettings.model_json_schema()
+        elif setting["name"] == "march_hare":
+            assert setting["value"] == {
+                "host": "0.0.0.0",
+                "port": 5672,
+                "username": "guest",
+                "password": "guest",
+                "is_tls": False,
+                "is_disabled": True,
+            }
+            assert setting["scheme"] == PluginSettings.model_json_schema()
         else:
             assert setting["value"] == {}
             assert setting["scheme"] == {}

@@ -408,13 +408,13 @@ class WhiteRabbit:
 
 
 @hook
-def before_lizard_bootstrap(cat):
-    # Start scheduling system and attach it to the CheshireCat core class
-    cat.white_rabbit = WhiteRabbit()
+def before_lizard_bootstrap(lizard):
+    # Start scheduling system and attach it to the BillTheLizard core class
+    lizard.white_rabbit = WhiteRabbit()
 
 
 @hook(priority=0)
-def before_lizard_shutdown(cat) -> None:
-    if hasattr(cat, "white_rabbit"):
-        cat.white_rabbit.shutdown()
-        cat.white_rabbit = None
+def before_lizard_shutdown(lizard) -> None:
+    if hasattr(lizard, "white_rabbit"):
+        lizard.white_rabbit.shutdown()
+        lizard.white_rabbit = None

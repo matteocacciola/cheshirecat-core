@@ -533,3 +533,7 @@ Just output the class, nothing else."""
     @property
     def vector_memory_handler(self):
         return self.cheshire_cat.vector_memory_handler
+
+    @property
+    def agent_key(self):
+        return self.id

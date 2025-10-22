@@ -8,11 +8,11 @@ from pika.exceptions import AMQPConnectionError
 
 from cat.log import log
 from cat.mad_hatter.decorators import hook
-from cat.utils import singleton, pod_id
+from cat.utils import pod_id
 
 
-global _march_hare, _consumer_threads
-
+_march_hare = None
+_consumer_threads = []
 
 class MarchHareConfig:
     # List of channels for event management
@@ -27,9 +27,8 @@ class MarchHareConfig:
     }
 
 
-@singleton
 class MarchHare:
-    def __init__(self, host: str, port: int, user: str, password: str, is_tls: bool = False):
+    def __init__(self, host: str, port: int, username: str, password: str, is_tls: bool = False):
         self._connection_parameters = None
         self.pod_id = pod_id()
 
@@ -37,7 +36,7 @@ class MarchHare:
             host=host,
             port=port,
             credentials=pika.PlainCredentials(
-                username=user,
+                username=username,
                 password=password,
             )
         )
@@ -178,10 +177,13 @@ def before_lizard_bootstrap(lizard) -> None:
     global _march_hare, _consumer_threads
 
     settings = lizard.plugin_manager.get_plugin().load_settings()
+    if settings["is_disabled"]:
+        return
+
     _march_hare = MarchHare(
         host=settings["host"],
         port=settings["port"],
-        user=settings["user"],
+        username=settings["username"],
         password=settings["password"],
         is_tls=settings["is_tls"],
     )

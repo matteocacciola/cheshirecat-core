@@ -159,3 +159,7 @@ class Tweedledum(MadHatter):
     @property
     def context_execute_hook(self):
         return "lizard"
+
+    @property
+    def manage_endpoints(self) -> bool:
+        return True
