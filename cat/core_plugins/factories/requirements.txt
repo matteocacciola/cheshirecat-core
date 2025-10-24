@@ -3,14 +3,14 @@ boto3==1.40.57
 fastembed==0.7.3
 google-cloud-storage==3.4.1
 langchain-anthropic==1.0.0
-# langchain-cohere==0.4.6
+# langchain-cohere==0.4.6  # Disabled due to compatibility issues; re-enable when resolved
 langchain-google-genai==3.0.0
 langchain-groq==1.0.0
-# langchain-litellm==0.3.0
+# langchain-litellm==0.3.0  # Disabled due to compatibility issues; re-enable when resolved
 langchain-mistralai==1.0.0
 langchain-ollama==1.0.0
 langchain-openai==1.0.1
-# langchain-voyageai==0.1.7
+# langchain-voyageai==0.1.7  # Disabled due to compatibility issues; re-enable when resolved
 pymupdf==1.26.5
 sentence-transformers==5.1.2
 spacy==3.8.7

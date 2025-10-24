@@ -289,7 +289,7 @@ class Plugin:
 
                 # check if package is installed
                 if package_name not in installed_packages:
-                    filtered_requirements.append(req + '\n')
+                    filtered_requirements.append(req)
                     continue
         except Exception as e:
             log.error(f"Error during requirements check: {e}, for {self.id}")
