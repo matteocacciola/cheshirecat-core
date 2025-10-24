@@ -2,12 +2,6 @@ UID := $(shell id -u)
 GID := $(shell id -g)
 PWD = $(shell pwd)
 
-LOCAL_DIR = $(PWD)/venv/bin
-PYTHON = $(LOCAL_DIR)/python
-PYTHON3 = python3.10
-PIP_SYNC = $(PYTHON) -m piptools sync --python-executable $(PYTHON)
-PIP_COMPILE = $(PYTHON) -m piptools compile --strip-extras
-
 args=
 # if dockerfile is not defined
 ifndef dockerfile
@@ -38,19 +32,17 @@ restart:  ## Restart service(s) [args="<name_of_service>"].
 	@docker compose ${docker-compose-files} restart ${args}
 
 test:  ## Run tests.
-	@docker exec cheshire_cat_core python -m pytest --color=yes -vvv -W ignore --disable-warnings ${args}
+	@docker exec cheshire_cat_core uv run python -m pytest --color=yes -vvv -W ignore --disable-warnings ${args}
 
 install: ## Update the local virtual environment with the latest requirements.
-	@$(PYTHON) -m pip install --upgrade pip-tools pip wheel
-	@$(PIP_SYNC) requirements.txt
-	@$(PYTHON) -m pip install --no-cache-dir -r requirements.txt
-	# look for requirements.txt in subdirectories of core_plugins and install them
-	@find $(PWD)/cat/core_plugins -name requirements.txt -exec $(PYTHON) -m pip install -r {} \;
-
-compile: ## Compile requirements for the local virtual environment.
-	@$(PYTHON) -m pip install --upgrade pip-tools pip wheel
-	@$(PIP_COMPILE) --no-upgrade --output-file requirements.txt pyproject.toml
+	# install the requirements
+	@uv sync --link-mode=copy
+	@# look for requirements.txt in subdirectories of core_plugins and install them
+	@find $(PWD)/cat/core_plugins -name requirements.txt -exec uv pip install --link-mode=copy -r {} \;
 
 update: ## Update and compile requirements for the local virtual environment.
-	@$(PYTHON) -m pip install --upgrade pip-tools pip wheel
-	@$(PIP_COMPILE) --upgrade --output-file requirements.txt pyproject.toml
+	@# upgrade the requirements
+	@uv sync --upgrade --link-mode=copy
+
+check: ## Check requirements for the local virtual environment.
+	@uv sync --check

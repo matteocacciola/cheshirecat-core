@@ -13,10 +13,10 @@ from cat.core_plugins.factories.embedder.configs import (
     EmbedderAzureOpenAIConfig,
     EmbedderGeminiChatConfig,
     EmbedderOpenAICompatibleConfig,
-    EmbedderCohereConfig,
+    # EmbedderCohereConfig,
     EmbedderFakeConfig,
     EmbedderMistralAIChatConfig,
-    EmbedderVoyageAIChatConfig,
+    # EmbedderVoyageAIChatConfig,
     EmbedderOllamaConfig,
     EmbedderJinaConfig,
 )
@@ -33,16 +33,15 @@ from cat.core_plugins.factories.llm.configs import (
     LLMOpenAICompatibleConfig,
     LLMOllamaConfig,
     LLMGeminiChatConfig,
-    LLMCohereConfig,
+    # LLMCohereConfig,
     LLMAzureOpenAIConfig,
     LLMAzureChatOpenAIConfig,
     LLMHuggingFaceEndpointConfig,
     LLMHuggingFaceTextGenInferenceConfig,
-    LLMCustomConfig,
     LLMAnthropicChatConfig,
     LLMMistralAIChatConfig,
     LLMGroqChatConfig,
-    LLMLiteLLMChatConfig,
+    # LLMLiteLLMChatConfig,
 )
 from cat.factory.chunker import ChunkerSettings
 from cat.factory.embedder import EmbedderSettings
@@ -59,16 +58,15 @@ def factory_allowed_llms(allowed: List[LLMSettings], cat) -> List:
         LLMOpenAICompatibleConfig,
         LLMOllamaConfig,
         LLMGeminiChatConfig,
-        LLMCohereConfig,
+        # LLMCohereConfig,
         LLMAzureOpenAIConfig,
         LLMAzureChatOpenAIConfig,
         LLMHuggingFaceEndpointConfig,
         LLMHuggingFaceTextGenInferenceConfig,
-        LLMCustomConfig,
         LLMAnthropicChatConfig,
         LLMMistralAIChatConfig,
         LLMGroqChatConfig,
-        LLMLiteLLMChatConfig,
+        # LLMLiteLLMChatConfig,
     ]
 
 
@@ -80,10 +78,10 @@ def factory_allowed_embedders(allowed: List[EmbedderSettings], lizard) -> List:
         EmbedderAzureOpenAIConfig,
         EmbedderGeminiChatConfig,
         EmbedderOpenAICompatibleConfig,
-        EmbedderCohereConfig,
+        # EmbedderCohereConfig,
         EmbedderFakeConfig,
         EmbedderMistralAIChatConfig,
-        EmbedderVoyageAIChatConfig,
+        # EmbedderVoyageAIChatConfig,
         EmbedderOllamaConfig,
         EmbedderJinaConfig,
     ]

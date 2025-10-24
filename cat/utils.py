@@ -12,6 +12,7 @@ from datetime import timedelta
 from enum import Enum as BaseEnum, EnumMeta
 from io import BytesIO
 from typing import Dict, List, Type, TypeVar, Any, Callable, Union
+from typing_extensions import deprecated
 import aiofiles
 import requests
 import tomli
@@ -49,21 +50,13 @@ class BaseModelDict(BaseModel):
         protected_namespaces=() # avoid warning for `model_xxx` attributes
     )
 
+    @deprecated("Use dot notation instead of dictionary keys, example: `obj.key` instead of `obj['key']`")
     def __getitem__(self, key):
-        # deprecate dictionary usage
-        log.warning(
-            f"Deprecation Warning: to get '{key}' use dot notation instead of dictionary keys, example: `obj.{key}` instead of `obj['{key}']`"
-        )
-
         # return attribute
         return getattr(self, key)
 
+    @deprecated("Use dot notation instead of dictionary keys, example: `obj.key = x` instead of `obj['key'] = x`")
     def __setitem__(self, key, value):
-        # deprecate dictionary usage
-        log.warning(
-            f'Deprecation Warning: to set {key} use dot notation instead of dictionary keys, example: `obj.{key} = x` instead of `obj["{key}"] = x`'
-        )
-
         # set attribute
         setattr(self, key, value)
 
@@ -74,7 +67,6 @@ class BaseModelDict(BaseModel):
         delattr(self, key)
 
     def _get_all_attributes(self):
-        # return {**self.model_fields, **self.__pydantic_extra__}
         return self.model_dump()
 
     def keys(self):
@@ -402,7 +394,7 @@ def inspect_calling_agent() -> Union["CheshireCat", "BillTheLizard"]:
 
 def restore_original_model(d: _T | Dict | None, model: Type[_T]) -> _T | None:
     # if _T is not a BaseModeDict, return the original object
-    if not issubclass(model, BaseModelDict):
+    if not issubclass(model, BaseModel):
         return d
 
     # restore the original model

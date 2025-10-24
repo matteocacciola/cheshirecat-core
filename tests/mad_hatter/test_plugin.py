@@ -135,7 +135,7 @@ def test_install_plugin_dependencies():
     # manual cleanup
     clean_up()
     # Uninstall mock plugin requirements
-    os.system("pip uninstall -y pip-install-test")
+    os.system("uv pip uninstall -y pip-install-test")
 
     # Install mock plugin
     p = Plugin(mock_plugin_path)
@@ -144,11 +144,11 @@ def test_install_plugin_dependencies():
     p.activate(DEFAULT_SYSTEM_KEY)
 
     # pip-install-test should have been installed
-    result = subprocess.run(["pip", "list"], stdout=subprocess.PIPE)
+    result = subprocess.run(["uv", "pip", "list"], stdout=subprocess.PIPE)
     result = result.stdout.decode()
     assert fnmatch.fnmatch(result, "*pip-install-test*")
 
     # manual cleanup
     clean_up()
     # Uninstall mock plugin requirements
-    os.system("pip uninstall -y pip-install-test")
+    os.system("uv pip uninstall -y pip-install-test")

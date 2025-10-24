@@ -48,7 +48,7 @@ def test_get_llm_settings(secure_client, secure_client_headers):
 
 def test_upsert_llm_settings_success(secure_client, secure_client_headers):
     # set a different LLM
-    new_llm = "LLMCustomConfig"
+    new_llm = "LLMOpenAICompatibleConfig"
     invented_url = "https://example.com"
     payload = {"url": invented_url, "options": {}}
     response = secure_client.put(f"/llm/settings/{new_llm}", json=payload, headers=secure_client_headers)

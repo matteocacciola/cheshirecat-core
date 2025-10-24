@@ -1,50 +1,21 @@
-import json
 from typing import Type
 from langchain_anthropic import ChatAnthropic
-from langchain_cohere import ChatCohere
+# from langchain_cohere import ChatCohere
 from langchain_community.llms import (
     HuggingFaceTextGenInference,
     HuggingFaceEndpoint,
 )
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_groq import ChatGroq
-from langchain_litellm import ChatLiteLLM
+# from langchain_litellm import ChatLiteLLM
 from langchain_mistralai import ChatMistralAI
 from langchain_openai import AzureChatOpenAI
 from langchain_openai import AzureOpenAI
 from langchain_openai import ChatOpenAI, OpenAI
 from pydantic import ConfigDict
 
-from cat.core_plugins.factories.llm.custom import LLMCustom, CustomOpenAI, CustomOllama
+from cat.core_plugins.factories.llm.custom import CustomOpenAI, CustomOllama
 from cat.factory.llm import LLMSettings
-
-
-class LLMCustomConfig(LLMSettings):
-    url: str
-    auth_key: str = "optional_auth_key"
-    options: str = "{}"
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "humanReadableName": "Custom LLM (Deprecated)",
-            "description": "Legacy LLM adapter, you can now have it more custom in a plugin.",
-            "link": "https://cheshirecat.ai/custom-large-language-model/",
-        }
-    )
-
-    # instantiate Custom LLM from configuration
-    @classmethod
-    def get_from_config(cls, config):
-        options = config["options"]
-        # options are inserted as a string in the admin
-        if isinstance(options, str):
-            config["options"] = json.loads(options) if options != "" else {}
-
-        return cls.pyclass()(**cls._parse_config(config))
-
-    @classmethod
-    def pyclass(cls) -> Type:
-        return LLMCustom
 
 
 class LLMOpenAICompatibleConfig(LLMSettings):
@@ -157,23 +128,23 @@ class LLMAzureOpenAIConfig(LLMSettings):
         return AzureOpenAI
 
 
-class LLMCohereConfig(LLMSettings):
-    cohere_api_key: str
-    model: str = "command"
-    temperature: float = 0.7
-    streaming: bool = True
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "humanReadableName": "Cohere",
-            "description": "Configuration for Cohere language model",
-            "link": "https://docs.cohere.com/docs/models",
-        }
-    )
-
-    @classmethod
-    def pyclass(cls) -> Type:
-        return ChatCohere
+# class LLMCohereConfig(LLMSettings):
+#     cohere_api_key: str
+#     model: str = "command"
+#     temperature: float = 0.7
+#     streaming: bool = True
+#
+#     model_config = ConfigDict(
+#         json_schema_extra={
+#             "humanReadableName": "Cohere",
+#             "description": "Configuration for Cohere language model",
+#             "link": "https://docs.cohere.com/docs/models",
+#         }
+#     )
+#
+#     @classmethod
+#     def pyclass(cls) -> Type:
+#         return ChatCohere
 
 
 # https://python.langchain.com/en/latest/modules/models/llms/integrations/huggingface_textgen_inference.html
@@ -343,24 +314,24 @@ class LLMGroqChatConfig(LLMSettings):
         return ChatGroq
 
 
-class LLMLiteLLMChatConfig(LLMSettings):
-    api_key: str
-    model: str = "perplexity/sonar-pro"
-    temperature: float = 0.7
-    max_tokens: int | None = None
-    max_retries: int = 2
-    top_p: int | None = None
-    top_k: int | None = None
-
-    model_config = ConfigDict(
-        json_schema_extra={
-            "humanReadableName": "LiteLLM",
-            "description": "Configuration for LiteLLM",
-            "link": "https://www.litellm.ai/",
-        },
-        extra="allow",
-    )
-
-    @classmethod
-    def pyclass(cls) -> Type:
-        return ChatLiteLLM
+# class LLMLiteLLMChatConfig(LLMSettings):
+#     api_key: str
+#     model: str = "perplexity/sonar-pro"
+#     temperature: float = 0.7
+#     max_tokens: int | None = None
+#     max_retries: int = 2
+#     top_p: int | None = None
+#     top_k: int | None = None
+#
+#     model_config = ConfigDict(
+#         json_schema_extra={
+#             "humanReadableName": "LiteLLM",
+#             "description": "Configuration for LiteLLM",
+#             "link": "https://www.litellm.ai/",
+#         },
+#         extra="allow",
+#     )
+#
+#     @classmethod
+#     def pyclass(cls) -> Type:
+#         return ChatLiteLLM

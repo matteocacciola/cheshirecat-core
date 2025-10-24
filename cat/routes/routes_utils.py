@@ -7,8 +7,8 @@ from ast import literal_eval
 from copy import deepcopy
 from typing import Dict, List, Any
 from fastapi import Query, UploadFile, BackgroundTasks, Request
-from langchain.globals import set_llm_cache
 from langchain_core.caches import InMemoryCache
+from langchain_core.globals import set_llm_cache
 from pydantic import BaseModel, Field, model_serializer
 from fastapi_healthz import HealthCheckStatusEnum, HealthCheckAbstract
 

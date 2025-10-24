@@ -1,5 +1,5 @@
 from typing import Iterator
-from langchain.document_loaders.base import BaseBlobParser
+from langchain_core.document_loaders import BaseBlobParser
 from langchain_community.document_loaders import UnstructuredPowerPointLoader
 from langchain_core.documents.base import Document, Blob
 

@@ -27,10 +27,12 @@ services:
       - ./cat:/app/cat
       - ./data:/app/data
       - ./tests:/app/tests
-      - ./pyproject.toml:/app/pyproject.toml
-      - ./requirements.txt:/app/requirements.txt
+      - uv-cache:/app/.venv
     command:
-      - python
+      - "uv"
+      - "run"
+      - "--link-mode=copy"
+      - "python"
       - "-m"
       - "cat.main"
     restart: unless-stopped
@@ -106,4 +108,6 @@ volumes:
   rabbitmq-data:
     driver: local
   rabbitmq-log:
+    driver: local
+  uv-cache:
     driver: local

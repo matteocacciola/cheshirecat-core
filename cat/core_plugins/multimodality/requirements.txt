@@ -1,1 +1,1 @@
-unstructured[docx,image,pdf,pptx,xlsx]==0.18.14
+unstructured[docx,image,pdf,pptx,xlsx]==0.18.15
