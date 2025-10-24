@@ -1,12 +1,14 @@
 from typing import List
 
-from cat.factory.auth_handler import AuthHandlerConfig
-from cat.factory.chunker import ChunkerSettings
-from cat.factory.embedder import EmbedderSettings
-from cat.factory.file_manager import FileManagerConfig
-from cat.factory.llm import LLMSettings
-from cat.factory.vector_db import VectorDatabaseSettings
-from cat.mad_hatter.decorators import hook
+from cat import (
+    AuthHandlerConfig,
+    ChunkerSettings,
+    EmbedderSettings,
+    FileManagerConfig,
+    LLMSettings,
+    VectorDatabaseSettings,
+    hook,
+)
 
 
 @hook(priority=0)

@@ -6,8 +6,7 @@ from typing import Dict, Callable
 import pika
 from pika.exceptions import AMQPConnectionError
 
-from cat.log import log
-from cat.mad_hatter.decorators import hook
+from cat import log, hook
 from cat.utils import pod_id
 
 

@@ -62,8 +62,13 @@ class ChunkerSettings(BaseFactoryConfigModel, ABC):
     model_config = ConfigDict(protected_namespaces=())
 
     @classmethod
-    def base_class(cls) -> Type:
+    def base_class(cls) -> Type[BaseChunker]:
         return BaseChunker
+
+    @classmethod
+    @abstractmethod
+    def pyclass(cls) -> Type[BaseChunker]:
+        pass
 
 
 class RecursiveTextChunkerSettings(ChunkerSettings):
@@ -80,7 +85,7 @@ class RecursiveTextChunkerSettings(ChunkerSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[RecursiveTextChunker]:
         return RecursiveTextChunker
 
 

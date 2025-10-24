@@ -77,5 +77,5 @@ class EmbedderJinaMultimodalConfig(EmbedderMultimodalSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[CustomJinaMultimodalEmbedder]:
         return CustomJinaMultimodalEmbedder

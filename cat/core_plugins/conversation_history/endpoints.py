@@ -1,11 +1,18 @@
 from typing import List, Literal, Dict
 from pydantic import BaseModel
 
-from cat.auth.connection import AuthorizedInfo
-from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
+from cat import (
+    AuthorizedInfo,
+    AuthPermission,
+    AuthResource,
+    CatMessage,
+    ConversationHistoryItem,
+    MessageWhy,
+    check_permissions,
+    endpoint,
+    UserMessage,
+)
 from cat.db.cruds import history as crud_history
-from cat.mad_hatter.decorators import endpoint
-from cat.memory.messages import ConversationHistoryItem, CatMessage, UserMessage, MessageWhy
 
 
 class DeleteConversationHistoryResponse(BaseModel):

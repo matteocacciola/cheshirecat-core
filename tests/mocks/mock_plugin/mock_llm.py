@@ -1,4 +1,3 @@
-
 from typing import List, Type
 from pydantic import ConfigDict
 
@@ -20,7 +19,7 @@ class FakeLLMConfig(LLMSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[FakeListChatModel]:
         return FakeListChatModel
 
 @hook

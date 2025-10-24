@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, List, Dict, Optional
-from langchain.tools import StructuredTool
+from langchain_core.tools import StructuredTool
 from fastmcp import Client
 from mcp.types import Prompt, Resource, Tool
 from slugify import slugify

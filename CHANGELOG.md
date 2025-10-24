@@ -44,7 +44,7 @@ MCP clients can be added via plugins, by using the `@mcp_client` decorator, simi
 ```python
 from typing import List, Any
 
-from cat.mad_hatter.decorators import CatMcpClient, mcp_client
+from cat import CatMcpClient, mcp_client
 
 
 @mcp_client

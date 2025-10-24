@@ -280,6 +280,10 @@ class Plugin:
 
             log.info(f"Installing requirements for plugin {self.id}")
             for req in requirements:
+                req = req.strip()
+                if not req or req.startswith('#'):
+                    continue
+
                 # get package name
                 package_name = Requirement(req).name
 
@@ -300,14 +304,14 @@ class Plugin:
 
             try:
                 subprocess.run(
-                    ["pip", "install", "--no-cache-dir", "-r", tmp.name], check=True
+                    ["uv", "pip", "install", "--no-cache", "--link-mode=copy", "-r", tmp.name], check=True
                 )
             except subprocess.CalledProcessError as e:
                 log.error(f"Error while installing plugin {self.id} requirements: {e}")
 
                 # Uninstall the previously installed packages
                 log.info(f"Uninstalling requirements for: {self.id}")
-                subprocess.run(["pip", "uninstall", "-r", tmp.name], check=True)
+                subprocess.run(["uv", "pip", "uninstall", "-r", tmp.name], check=True)
 
                 raise Exception(f"Error during plugin {self.id} requirements installation")
 

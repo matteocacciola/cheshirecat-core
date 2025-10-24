@@ -118,7 +118,7 @@ When implementing custom endpoints, you can use the `@endpoint` decorator to cre
     </summary>
 
 ```python
-from cat.mad_hatter.decorators import hook
+from cat import hook
 
 
 # hooks are an event system to get fine-grained control over your assistant
@@ -137,7 +137,7 @@ You are an expert in socks, and you reply with exactly one rhyme.
     </summary>
 
 ```python
-from cat.mad_hatter.decorators import tool
+from cat import tool
 
 
 # langchain inspired tools (function calling)
@@ -164,7 +164,7 @@ def socks_prices(color, cat):
 from enum import Enum
 from pydantic import BaseModel, Field
 
-from cat.mad_hatter.decorators import CatForm, form
+from cat import CatForm, form
 
 
 class PizzaBorderEnum(Enum):
@@ -205,11 +205,7 @@ class PizzaForm(CatForm):
 ```python
 # my_mcp_plugin.py
 
-from cat.mad_hatter.decorators import hook, plugin
-from cat.log import log
-
-from cat.mad_hatter.decorators.experimental.mcp_client.mcp_client_decorator import mcp_client
-from cat.mad_hatter.decorators.experimental.mcp_client.cat_mcp_client import CatMcpClient
+from cat import hook, log, mcp_client, plugin, CatMcpClient
 
 
 # 1. Define your MCP client

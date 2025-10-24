@@ -2,8 +2,8 @@
 name = "Cheshire-Cat"
 description = "Production ready AI assistant framework"
 version = "3.1.0"
-requires-python = ">=3.10"
-license = { file = "LICENSE" }
+requires-python = ">=3.10,<=3.13"
+license-files = ["LICENSE"]
 authors = [
     { name = "Matteo Cacciola" },
     { name = "Piero Savastano" },
@@ -76,5 +76,11 @@ disable = [
 [tool.pylint.main]
 load-plugins = "pylint_actions, perflint"
 
+[tool.setuptools]
+packages = ["cat"]
+
 [tool.ruff]
 extend-ignore = ["E722", "F821", "E741"]
+
+[tool.uv]
+package = true

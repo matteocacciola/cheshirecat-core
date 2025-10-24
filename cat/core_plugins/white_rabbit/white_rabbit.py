@@ -7,8 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from pydantic import BaseModel
 from pytz import utc
 
-from cat.log import log
-from cat.mad_hatter.decorators import hook
+from cat import hook, log
 from cat.utils import singleton
 
 

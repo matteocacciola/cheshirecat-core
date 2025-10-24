@@ -1,15 +1,14 @@
 import asyncio
 import io
 import json
-import time
 import mimetypes
 from ast import literal_eval
 from copy import deepcopy
 from typing import Dict, List, Any
 from fastapi import Query, UploadFile, BackgroundTasks, Request
-from langchain.globals import set_llm_cache
 from langchain_core.caches import InMemoryCache
-from pydantic import BaseModel, Field, model_serializer
+from langchain_core.globals import set_llm_cache
+from pydantic import BaseModel, model_serializer
 from fastapi_healthz import HealthCheckStatusEnum, HealthCheckAbstract
 
 from cat import utils
@@ -17,10 +16,10 @@ from cat.auth.auth_utils import issue_jwt
 from cat.auth.connection import AuthorizedInfo
 from cat.db.cruds import settings as crud_settings
 from cat.db.database import DEFAULT_AGENT_KEY
-from cat.exceptions import CustomForbiddenException, CustomValidationException, CustomNotFoundException
+from cat.exceptions import CustomForbiddenException, CustomValidationException
 from cat.factory.base_factory import BaseFactory
 from cat.log import log
-from cat.looking_glass import BillTheLizard, CheshireCat
+from cat.looking_glass import BillTheLizard
 from cat.mad_hatter import MadHatter, Plugin, registry_search_plugins, PluginManifest
 
 
@@ -106,16 +105,6 @@ class GetPluginDetailsResponse(BaseModel):
 class DeletePluginResponse(BaseModel):
     deleted: str
 
-
-class MemoryPointBase(BaseModel):
-    content: str
-    metadata: Dict = Field(default_factory=dict)
-
-
-# TODO V2: annotate all endpoints and align internal usage (no qdrant PointStruct, no langchain Document)
-class MemoryPoint(MemoryPointBase):
-    id: str
-    vector: List[float]
 
 
 class HealthCheckLocal(HealthCheckAbstract):
@@ -264,46 +253,6 @@ def get_plugin_settings(plugin_manager: MadHatter, plugin_id: str, agent_id: str
         scheme = {}
 
     return GetSettingResponse(name=plugin_id, value=settings, scheme=scheme)
-
-
-async def verify_memory_point_existence(cheshire_cat: CheshireCat, collection_id: str, point_id: str) -> None:
-    # check if point exists
-    points = await cheshire_cat.vector_memory_handler.retrieve_points(collection_id, [point_id])
-    if not points:
-        raise CustomNotFoundException("Point does not exist.")
-
-
-async def upsert_memory_point(
-    collection_id: str, point: MemoryPointBase, info: AuthorizedInfo, point_id: str = None
-) -> MemoryPoint:
-    ccat = info.cheshire_cat
-
-    # embed content
-    embedding = ccat.embedder.embed_query(point.content)
-
-    # ensure source is set
-    if not point.metadata.get("source"):
-        point.metadata["source"] = info.user.id  # this will do also for declarative memory
-
-    # ensure when is set
-    if not point.metadata.get("when"):
-        point.metadata["when"] = time.time()  # if when is not in the metadata set the current time
-
-    # create point
-    qdrant_point = await ccat.vector_memory_handler.add_point(
-        collection_name=collection_id,
-        content=point.content,
-        vector=embedding,
-        metadata=point.metadata,
-        id_point=point_id,
-    )
-
-    return MemoryPoint(
-        metadata=qdrant_point.payload["metadata"],
-        content=qdrant_point.payload["page_content"],
-        vector=qdrant_point.vector,
-        id=qdrant_point.id
-    )
 
 
 def create_dict_parser(param_name: str, description: str | None = None):

@@ -1,7 +1,6 @@
 from typing import Dict
 
-from cat.mad_hatter.decorators import hook
-from cat.memory.messages import MessageWhy
+from cat import hook, MessageWhy
 from cat.memory.utils import VectorMemoryType
 
 

@@ -1,5 +1,5 @@
 from typing import Iterator
-from langchain.document_loaders.base import BaseBlobParser
+from langchain_core.document_loaders import BaseBlobParser
 from langchain_core.documents.base import Document, Blob
 from pytube import extract
 from youtube_transcript_api import YouTubeTranscriptApi

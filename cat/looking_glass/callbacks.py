@@ -1,4 +1,4 @@
-from langchain.callbacks.base import BaseCallbackHandler
+from langchain_core.callbacks import BaseCallbackHandler
 
 from cat.env import get_env_bool
 from cat.utils import colored_text

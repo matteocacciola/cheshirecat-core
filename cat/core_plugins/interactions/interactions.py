@@ -1,8 +1,7 @@
 from typing import List
 
+from cat import hook, get_caller_info
 from cat.core_plugins.interactions.handlers import ModelInteractionHandler
-from cat.mad_hatter.decorators import hook
-from cat.utils import get_caller_info
 
 
 @hook(priority=1)

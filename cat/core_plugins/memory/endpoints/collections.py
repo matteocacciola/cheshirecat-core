@@ -1,10 +1,8 @@
 from typing import Dict, List
 from pydantic import BaseModel
 
-from cat.auth.connection import AuthorizedInfo
-from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
+from cat import AuthorizedInfo, AuthPermission, AuthResource, check_permissions, endpoint
 from cat.exceptions import CustomNotFoundException
-from cat.mad_hatter.decorators import endpoint
 
 
 class GetCollectionsItem(BaseModel):

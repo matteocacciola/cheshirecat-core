@@ -2,9 +2,8 @@ from typing import Literal
 from pydantic import Field
 import tiktoken
 
-from cat.mad_hatter.decorators import hook
+from cat import hook, get_caller_info
 from cat.memory.interactions import ModelInteraction
-from cat.utils import get_caller_info
 
 
 class EmbedderModelInteraction(ModelInteraction):

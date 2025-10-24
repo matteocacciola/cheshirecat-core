@@ -2,8 +2,8 @@ import tempfile
 import os
 from typing import Iterator, Type
 from langchain_community.document_loaders import UnstructuredFileLoader
+from langchain_core.document_loaders import BaseBlobParser
 from langchain_core.documents.base import Document, Blob
-from langchain.document_loaders.base import BaseBlobParser
 
 
 class UnstructuredParser(BaseBlobParser):

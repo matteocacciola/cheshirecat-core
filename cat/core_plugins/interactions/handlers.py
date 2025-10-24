@@ -5,8 +5,8 @@ from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import BaseMessage
 from langchain_core.outputs.llm_result import LLMResult
 
+from cat import log
 from cat.core_plugins.interactions.models import LLMModelInteraction
-from cat.log import log
 
 
 class ModelInteractionHandler(BaseCallbackHandler):
