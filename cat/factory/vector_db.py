@@ -1168,8 +1168,13 @@ class VectorDatabaseSettings(BaseFactoryConfigModel, ABC):
     model_config = ConfigDict(protected_namespaces=())
 
     @classmethod
-    def base_class(cls) -> Type:
+    def base_class(cls) -> Type[BaseVectorDatabaseHandler]:
         return BaseVectorDatabaseHandler
+
+    @classmethod
+    @abstractmethod
+    def pyclass(cls) -> Type[BaseVectorDatabaseHandler]:
+        pass
 
 
 class QdrantConfig(VectorDatabaseSettings):
@@ -1187,7 +1192,7 @@ class QdrantConfig(VectorDatabaseSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[QdrantHandler]:
         return QdrantHandler
 
 

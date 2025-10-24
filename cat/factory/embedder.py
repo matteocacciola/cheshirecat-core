@@ -64,8 +64,13 @@ class EmbedderSettings(BaseFactoryConfigModel, ABC):
     model_config = ConfigDict(protected_namespaces=())
 
     @classmethod
-    def base_class(cls) -> Type:
+    def base_class(cls) -> Type[Embeddings]:
         return Embeddings
+
+    @classmethod
+    @abstractmethod
+    def pyclass(cls) -> Type[Embeddings]:
+        pass
 
     @property
     def is_multimodal(self) -> bool:

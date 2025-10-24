@@ -26,7 +26,7 @@ class SemanticChunkerSettings(ChunkerSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[SemanticChunker]:
         return SemanticChunker
 
 
@@ -46,7 +46,7 @@ class HTMLSemanticChunkerSettings(ChunkerSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[HTMLSemanticChunker]:
         return HTMLSemanticChunker
 
 
@@ -63,7 +63,7 @@ class JSONChunkerSettings(ChunkerSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[JSONChunker]:
         return JSONChunker
 
 
@@ -81,7 +81,7 @@ class TokenSpacyChunkerSettings(ChunkerSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[TokenSpacyChunker]:
         return TokenSpacyChunker
 
 
@@ -99,5 +99,5 @@ class TokenNLTKChunkerSettings(ChunkerSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[TokenNLTKChunker]:
         return TokenNLTKChunker

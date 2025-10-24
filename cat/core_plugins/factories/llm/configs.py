@@ -34,7 +34,7 @@ class LLMOpenAICompatibleConfig(LLMSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[CustomOpenAI]:
         return CustomOpenAI
 
 
@@ -53,7 +53,7 @@ class LLMOpenAIChatConfig(LLMSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[ChatOpenAI]:
         return ChatOpenAI
 
 
@@ -72,7 +72,7 @@ class LLMOpenAIConfig(LLMSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[OpenAI]:
         return OpenAI
 
 
@@ -97,7 +97,7 @@ class LLMAzureChatOpenAIConfig(LLMSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[AzureChatOpenAI]:
         return AzureChatOpenAI
 
 
@@ -124,7 +124,7 @@ class LLMAzureOpenAIConfig(LLMSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[AzureOpenAI]:
         return AzureOpenAI
 
 
@@ -143,7 +143,7 @@ class LLMAzureOpenAIConfig(LLMSettings):
 #     )
 #
 #     @classmethod
-#     def pyclass(cls) -> Type:
+#     def pyclass(cls) -> Type[ChatCohere]:
 #         return ChatCohere
 
 
@@ -166,7 +166,7 @@ class LLMHuggingFaceTextGenInferenceConfig(LLMSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[HuggingFaceTextGenInference]:
         return HuggingFaceTextGenInference
 
 
@@ -190,7 +190,7 @@ class LLMHuggingFaceEndpointConfig(LLMSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[HuggingFaceEndpoint]:
         return HuggingFaceEndpoint
 
 
@@ -211,7 +211,7 @@ class LLMOllamaConfig(LLMSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[CustomOllama]:
         return CustomOllama
 
 
@@ -246,7 +246,7 @@ class LLMGeminiChatConfig(LLMSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[ChatGoogleGenerativeAI]:
         return ChatGoogleGenerativeAI
 
 
@@ -268,7 +268,7 @@ class LLMAnthropicChatConfig(LLMSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[ChatAnthropic]:
         return ChatAnthropic
 
 
@@ -289,7 +289,7 @@ class LLMMistralAIChatConfig(LLMSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[ChatMistralAI]:
         return ChatMistralAI
 
 
@@ -310,7 +310,7 @@ class LLMGroqChatConfig(LLMSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[ChatGroq]:
         return ChatGroq
 
 
@@ -333,5 +333,5 @@ class LLMGroqChatConfig(LLMSettings):
 #     )
 #
 #     @classmethod
-#     def pyclass(cls) -> Type:
+#     def pyclass(cls) -> Type[ChatLiteLLM]:
 #         return ChatLiteLLM

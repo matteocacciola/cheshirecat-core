@@ -1,4 +1,4 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import Type, List, Any
 from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
 from langchain_core.language_models import BaseLanguageModel, LLM
@@ -38,8 +38,13 @@ class LLMSettings(BaseFactoryConfigModel, ABC):
     model_config = ConfigDict(protected_namespaces=())
 
     @classmethod
-    def base_class(cls) -> Type:
+    def base_class(cls) -> Type[BaseLanguageModel]:
         return BaseLanguageModel
+
+    @classmethod
+    @abstractmethod
+    def pyclass(cls) -> Type[BaseLanguageModel]:
+        pass
 
 
 class LLMDefaultConfig(LLMSettings):
@@ -53,7 +58,7 @@ class LLMDefaultConfig(LLMSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[LLMDefault]:
         return LLMDefault
 
 

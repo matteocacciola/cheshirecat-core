@@ -256,15 +256,20 @@ class DummyFileManager(BaseFileManager):
 
 class FileManagerConfig(BaseFactoryConfigModel, ABC):
     @classmethod
-    def base_class(cls) -> Type:
+    def base_class(cls) -> Type[BaseFileManager]:
         return BaseFileManager
+
+    @classmethod
+    @abstractmethod
+    def pyclass(cls) -> Type[BaseFileManager]:
+        pass
 
 
 class DummyFileManagerConfig(FileManagerConfig):
     model_config = ConfigDict(extra="forbid")
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[DummyFileManager]:
         return DummyFileManager
 
 

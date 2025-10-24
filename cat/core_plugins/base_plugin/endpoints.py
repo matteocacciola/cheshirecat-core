@@ -1,8 +1,6 @@
 from typing import List
 
-from cat.auth.permissions import check_admin_permissions, AdminAuthResource, AuthPermission
-from cat.looking_glass import BillTheLizard
-from cat.mad_hatter.decorators import endpoint
+from cat import AdminAuthResource, AuthPermission, BillTheLizard, check_admin_permissions, endpoint
 
 
 @endpoint.get("/", prefix="/admins/core_plugins", tags=["Admins - Plugins"])

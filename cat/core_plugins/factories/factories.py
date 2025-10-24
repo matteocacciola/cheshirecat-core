@@ -1,5 +1,6 @@
 from typing import List
 
+from cat import hook
 from cat.core_plugins.factories.chunker.configs import (
     SemanticChunkerSettings,
     HTMLSemanticChunkerSettings,
@@ -47,7 +48,6 @@ from cat.factory.chunker import ChunkerSettings
 from cat.factory.embedder import EmbedderSettings
 from cat.factory.file_manager import FileManagerConfig
 from cat.factory.llm import LLMSettings
-from cat.mad_hatter.decorators import hook
 
 
 @hook(priority=1)

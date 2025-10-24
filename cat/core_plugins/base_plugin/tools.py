@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from cat.mad_hatter.decorators import tool
+from cat import tool
 
 
 @tool(examples=["what time is it", "get the time"])

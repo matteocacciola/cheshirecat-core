@@ -1,7 +1,6 @@
 from typing import Dict
 
-from cat.mad_hatter.decorators import hook
-from cat.memory.messages import UserMessage
+from cat import hook, UserMessage
 
 
 @hook(priority=2)

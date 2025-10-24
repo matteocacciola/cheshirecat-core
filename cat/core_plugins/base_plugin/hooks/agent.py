@@ -5,7 +5,7 @@ Here is a collection of methods to hook into the *Agent* execution pipeline.
 """
 from typing import List, Dict
 
-from cat.mad_hatter.decorators import hook
+from cat import hook
 
 
 @hook(priority=0)

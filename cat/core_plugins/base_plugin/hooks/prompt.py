@@ -5,7 +5,7 @@ Here is a collection of methods to hook the prompts components that instruct the
 """
 from typing import Dict, Any
 
-from cat.mad_hatter.decorators import hook
+from cat import hook
 
 
 @hook(priority=0)

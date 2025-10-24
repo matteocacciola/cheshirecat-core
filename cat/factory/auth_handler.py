@@ -270,8 +270,13 @@ class CoreAuthHandler(BaseAuthHandler):
 
 class AuthHandlerConfig(BaseFactoryConfigModel, ABC):
     @classmethod
-    def base_class(cls) -> Type:
+    def base_class(cls) -> Type[BaseAuthHandler]:
         return BaseAuthHandler
+
+    @classmethod
+    @abstractmethod
+    def pyclass(cls) -> Type[BaseAuthHandler]:
+        pass
 
 
 class CoreAuthConfig(AuthHandlerConfig):
@@ -285,7 +290,7 @@ class CoreAuthConfig(AuthHandlerConfig):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[CoreAuthHandler]:
         return CoreAuthHandler
 
 

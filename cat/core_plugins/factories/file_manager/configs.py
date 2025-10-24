@@ -21,7 +21,7 @@ class LocalFileManagerConfig(FileManagerConfig):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[LocalFileManager]:
         return LocalFileManager
 
 
@@ -39,7 +39,7 @@ class AWSFileManagerConfig(FileManagerConfig):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[AWSFileManager]:
         return AWSFileManager
 
 
@@ -56,7 +56,7 @@ class AzureFileManagerConfig(FileManagerConfig):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[AzureFileManager]:
         return AzureFileManager
 
 
@@ -73,7 +73,7 @@ class GoogleFileManagerConfig(FileManagerConfig):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[GoogleCloudFileManager]:
         return GoogleCloudFileManager
 
 
@@ -87,5 +87,5 @@ class DigitalOceanFileManagerConfig(AWSFileManagerConfig):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[DigitalOceanFileManager]:
         return DigitalOceanFileManager

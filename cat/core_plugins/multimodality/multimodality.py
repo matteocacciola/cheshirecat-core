@@ -1,5 +1,4 @@
 from typing import List, Dict
-
 from langchain_community.document_loaders import (
     UnstructuredWordDocumentLoader,
     UnstructuredPowerPointLoader,
@@ -8,10 +7,9 @@ from langchain_community.document_loaders import (
     UnstructuredPDFLoader,
 )
 
+from cat import EmbedderSettings, hook
 from cat.core_plugins.multimodality.embedder import EmbedderJinaMultimodalConfig
 from cat.core_plugins.multimodality.unstructured_parser import UnstructuredParser
-from cat.factory.embedder import EmbedderSettings
-from cat.mad_hatter.decorators import hook
 
 
 @hook(priority=0)

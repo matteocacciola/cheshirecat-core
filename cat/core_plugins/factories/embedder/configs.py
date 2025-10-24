@@ -29,7 +29,7 @@ class EmbedderFakeConfig(EmbedderSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[FakeEmbeddings]:
         return FakeEmbeddings
 
 
@@ -47,7 +47,7 @@ class EmbedderOpenAICompatibleConfig(EmbedderSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[CustomOpenAIEmbeddings]:
         return CustomOpenAIEmbeddings
 
 
@@ -64,7 +64,7 @@ class EmbedderOpenAIConfig(EmbedderSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[OpenAIEmbeddings]:
         return OpenAIEmbeddings
 
 
@@ -86,7 +86,7 @@ class EmbedderAzureOpenAIConfig(EmbedderSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[AzureOpenAIEmbeddings]:
         return AzureOpenAIEmbeddings
 
 
@@ -103,7 +103,7 @@ class EmbedderAzureOpenAIConfig(EmbedderSettings):
 #     )
 #
 #     @classmethod
-#     def pyclass(cls) -> Type:
+#     def pyclass(cls) -> Type[CohereEmbeddings]:
 #         return CohereEmbeddings
 
 
@@ -134,7 +134,7 @@ class EmbedderQdrantFastEmbedConfig(EmbedderSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[FastEmbedEmbeddings]:
         return FastEmbedEmbeddings
 
 
@@ -156,7 +156,7 @@ class EmbedderGeminiChatConfig(EmbedderSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[GoogleGenerativeAIEmbeddings]:
         return GoogleGenerativeAIEmbeddings
 
 
@@ -180,7 +180,7 @@ class EmbedderMistralAIChatConfig(EmbedderSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[MistralAIEmbeddings]:
         return MistralAIEmbeddings
 
 
@@ -203,7 +203,7 @@ class EmbedderMistralAIChatConfig(EmbedderSettings):
 #     )
 #
 #     @classmethod
-#     def pyclass(cls) -> Type:
+#     def pyclass(cls) -> Type[VoyageAIEmbeddings]:
 #         return VoyageAIEmbeddings
 
 
@@ -220,7 +220,7 @@ class EmbedderOllamaConfig(EmbedderSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[CustomOllamaEmbeddings]:
         return CustomOllamaEmbeddings
 
 
@@ -239,5 +239,5 @@ class EmbedderJinaConfig(EmbedderSettings):
     )
 
     @classmethod
-    def pyclass(cls) -> Type:
+    def pyclass(cls) -> Type[CustomJinaEmbedder]:
         return CustomJinaEmbedder
