@@ -1,30 +1,21 @@
 import asyncio
 import concurrent.futures
-import sys
-import traceback
 import socket
 import base64
 import hashlib
 import inspect
-import mimetypes
 import os
-from datetime import timedelta
 from enum import Enum as BaseEnum, EnumMeta
 from io import BytesIO
 from typing import Dict, List, Type, TypeVar, Any, Callable, Union
 from typing_extensions import deprecated
-import aiofiles
 import requests
-import tomli
 from PIL import Image
-from fastapi import UploadFile
-from langchain_core.embeddings import Embeddings
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, ConfigDict
 from rapidfuzz.distance import Levenshtein
 
 from cat.db import models
-from cat.exceptions import CustomValidationException
 from cat.log import log
 
 _T = TypeVar("_T")
@@ -131,40 +122,6 @@ def to_camel_case(text: str) -> str:
 class UpdaterFactory(BaseModel):
     old_setting: Dict | None = None
     new_setting: Dict | None = None
-
-
-def verbal_timedelta(td: timedelta) -> str:
-    """Convert a timedelta in human form.
-
-    The function takes a timedelta and converts it to a human-readable string format.
-
-    Args:
-        td (timedelta): Difference between two dates.
-
-    Returns:
-        Human-readable string of time difference.
-
-    Notes
-    -----
-    This method is used to give the Language Model information time information about the memories retrieved from
-    the vector database.
-
-    Examples
-    --------
-    >> print(verbal_timedelta(timedelta(days=2, weeks=1))
-    'One week and two days ago'
-    """
-    if td.days != 0:
-        abs_days = abs(td.days)
-        abs_delta = "{} weeks".format(td.days // 7) if abs_days > 7 else "{} days".format(td.days)
-    else:
-        abs_minutes = abs(td.seconds) // 60
-        abs_delta = "{} hours".format(abs_minutes // 60) if abs_minutes > 60 else "{} minutes".format(abs_minutes)
-
-    if td < timedelta(0):
-        return "{} ago".format(abs_delta)
-
-    return "{} ago".format(abs_delta)
 
 
 def get_base_url() -> str:
@@ -310,28 +267,6 @@ def get_caller_info(skip: int | None = 2, return_short: bool = True, return_stri
     return package, module, klass, caller, line
 
 
-async def load_uploaded_file(file: UploadFile, allowed_mime_types: List[str]) -> str:
-    content_type, _ = mimetypes.guess_type(file.filename)
-    if content_type not in allowed_mime_types:
-        raise CustomValidationException(
-            f'MIME type `{file.content_type}` not supported. Admitted types: {", ".join(allowed_mime_types)}'
-        )
-
-    log.info(f"Uploading {content_type} plugin {file.filename}")
-    local_file_path = f"/tmp/{file.filename}"
-    async with aiofiles.open(local_file_path, "wb+") as f:
-        content = await file.read()
-        await f.write(content)
-
-    return local_file_path
-
-
-def get_cat_version() -> str:
-    with open("pyproject.toml", "rb") as f:
-        project_toml = tomli.load(f)["project"]
-        return project_toml["version"]
-
-
 def get_allowed_plugins_mime_types() -> List:
     return ["application/zip", "application/x-tar"]
 
@@ -408,22 +343,6 @@ def default_llm_answer_prompt() -> str:
     return "AI: You did not configure a Language Model. Do it in the settings!"
 
 
-def get_embedder_name(embedder: Embeddings) -> str:
-    embedder_name = "default_embedder"
-    if hasattr(embedder, "model"):
-        embedder_name = embedder.model
-    if hasattr(embedder, "model_name"):
-        embedder_name = embedder.model_name
-    if hasattr(embedder, "repo_id"):
-        embedder_name = embedder.repo_id
-
-    replaces = ["/", "-", "."]
-    for v in replaces:
-        embedder_name = embedder_name.replace(v, "_")
-
-    return embedder_name.lower()
-
-
 def get_factory_object(agent_id: str, factory: "BaseFactory") -> Any:
     from cat.db.cruds import settings as crud_settings
 
@@ -467,14 +386,6 @@ def get_updated_factory_object(
     ))
 
     return UpdaterFactory(old_setting=current_setting, new_setting=final_setting)
-
-
-def get_file_hash(file_path: str, chunk_size: int = 8192) -> str:
-    sha256 = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        while chunk := f.read(chunk_size):
-            sha256.update(chunk)
-    return sha256.hexdigest()
 
 
 def pod_id() -> str:
@@ -560,12 +471,19 @@ def colored_text(text: str, color: str):
     return f"\u001b[{color_str}m\033[1;3m{text}\u001b[0m"
 
 
-def print_short_traceback():
-    """Print a short traceback of the last exception."""
-    if sys.exc_info()[0] is not None:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-        formatted_traceback = traceback.format_exception(exc_type, exc_value, exc_traceback)
-        if len(formatted_traceback) > 10:
-            formatted_traceback = formatted_traceback[-10:]
-        for err in formatted_traceback:
-            print(colored_text(err, "red"))
+def get_nlp_object_name(nlp_object: Any, default: str) -> str:
+    name = default
+    if hasattr(nlp_object, "model"):
+        name = nlp_object.model
+    if hasattr(nlp_object, "model_name"):
+        name = nlp_object.model_name
+    if hasattr(nlp_object, "model_path"):
+        name = nlp_object.model_path
+    if hasattr(nlp_object, "repo_id"):
+        name = nlp_object.repo_id
+
+    replaces = ["/", "-", "."]
+    for v in replaces:
+        name = name.replace(v, "_")
+
+    return name.lower()

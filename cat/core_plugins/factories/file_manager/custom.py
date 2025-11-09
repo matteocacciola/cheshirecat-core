@@ -1,3 +1,4 @@
+import hashlib
 import os
 import shutil
 from typing import List
@@ -52,12 +53,19 @@ class LocalFileManager(BaseFileManager):
         return True
 
     def _list_files(self, remote_root_dir: str) -> List[FileResponse]:
+        def get_file_hash(file_path: str, chunk_size: int = 8192) -> str:
+            sha256 = hashlib.sha256()
+            with open(file_path, "rb") as f:
+                while chunk := f.read(chunk_size):
+                    sha256.update(chunk)
+            return sha256.hexdigest()
+
         # list all the files in the directory: retrieve the full path, the size and the last modified date
         return [
             FileResponse(
                 path=os.path.join(root, file),
                 name=file,
-                hash=utils.get_file_hash(os.path.join(root, file)),
+                hash=get_file_hash(os.path.join(root, file)),
                 size=int(os.path.getsize(os.path.join(root, file))),
                 last_modified=datetime.fromtimestamp(
                     os.path.getmtime(os.path.join(root, file))

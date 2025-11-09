@@ -79,9 +79,11 @@ def clean_up():
     to_be_removed = [
         "tests/mocks/mock_plugin.zip",
         "tests/mocks/mock_plugin_fast_reply.zip",
+        "tests/mocks/mock_plugin_with_dependencies.zip",
         "tests/mocks/mock_plugin/settings.json",
         "tests/mocks/mock_plugin_folder/mock_plugin",
         "tests/mocks/mock_plugin_folder/mock_plugin_fast_reply",
+        "tests/mocks/mock_plugin_folder/mock_plugin_with_dependencies",
         "tests/mocks/empty_folder",
         "tests/data",
     ]

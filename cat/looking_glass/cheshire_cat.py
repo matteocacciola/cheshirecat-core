@@ -22,7 +22,7 @@ from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.looking_glass.tweedledee import Tweedledee
 from cat.mad_hatter.decorators import CatTool
 from cat.memory.utils import VectorMemoryType
-from cat.utils import get_factory_object, get_updated_factory_object
+from cat.utils import get_factory_object, get_nlp_object_name, get_updated_factory_object
 
 
 # main class
@@ -381,3 +381,9 @@ class CheshireCat:
             agent_id (str): The unique identifier of the cat.
         """
         return self.id
+
+    @property
+    def large_language_model_name(self) -> str | None:
+        if self.large_language_model is None:
+            return None
+        return get_nlp_object_name(self.large_language_model, "default_llm")

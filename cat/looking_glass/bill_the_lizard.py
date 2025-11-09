@@ -24,8 +24,8 @@ from cat.services.websocket_manager import WebSocketManager
 from cat.utils import (
     singleton,
     explicit_error_message,
-    get_embedder_name,
     get_factory_object,
+    get_nlp_object_name,
     get_updated_factory_object,
 )
 
@@ -63,7 +63,6 @@ class BillTheLizard:
         self._pending_endpoints = []
 
         self.embedder: Embeddings | None = None
-        self.embedder_name: str | None = None
         self.embedder_size: int | None = None
 
         # load active plugins
@@ -176,10 +175,8 @@ class BillTheLizard:
         """
         factory = EmbedderFactory(self.plugin_manager)
 
-        self.embedder = get_factory_object(self._key, factory)
-        self.embedder_name = get_embedder_name(self.embedder)
-
         # Get embedder size (langchain classes do not store it)
+        self.embedder = get_factory_object(self._key, factory)
         self.embedder_size = len(self.embedder.embed_query("hello world"))
 
     async def replace_embedder(self, language_embedder_name: str, settings: Dict) -> Dict:
@@ -289,7 +286,6 @@ class BillTheLizard:
         self.plugin_manager = None
         self.rabbit_hole = None
         self.embedder = None
-        self.embedder_name = None
         self.embedder_size = None
         self.websocket_manager = None
         self.fastapi_app = None
@@ -320,3 +316,9 @@ class BillTheLizard:
     @property
     def agent_key(self):
         return self._key
+
+    @property
+    def embedder_name(self) -> str | None:
+        if self.embedder is None:
+            return None
+        return get_nlp_object_name(self.embedder, "default_embedder")
