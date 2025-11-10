@@ -326,11 +326,7 @@ def settings_schema():
 </details>
 
 > [!IMPORTANT]
-> A new feature has been added to the plugins of the Cheshire Cat: the possibility to **list the dependencies on other plugins**.
-This feature allows specifying that a plugin requires other plugins to be installed to work properly.
-This feature is optional, but it is recommended to use it to avoid issues with missing dependencies.
-To specify the dependencies of a plugin, you can use the `dependencies` attribute in the `plugin.json` file, listing the
-names of the plugins that the current plugin requires.
+> A new feature has been added to the plugins of the Cheshire Cat: the possibility to **list the dependencies on other plugins**. This feature allows specifying that a plugin requires other plugins to be installed to work properly. This feature is optional, but it is recommended to use it to avoid issues with missing dependencies. To specify the dependencies of a plugin, you can use the `dependencies` attribute in the `plugin.json` file, listing the names of the plugins that the current plugin requires.
 
 # Docs and Resources
 
