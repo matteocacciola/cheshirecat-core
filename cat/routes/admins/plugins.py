@@ -1,6 +1,6 @@
+import mimetypes
 import aiofiles
 from fastapi import Body, APIRouter, UploadFile
-import mimetypes
 from slugify import slugify
 from typing import Dict
 

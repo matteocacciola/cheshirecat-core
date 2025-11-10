@@ -180,6 +180,8 @@ def just_installed_plugin(client, headers, activate=False, plugin_id="mock_plugi
 
         if activate:
             # mock_plugin is installed but not enabled yet
-            response = client.put("/plugins/toggle/mock_plugin", headers=headers)
+            response = client.put(f"/plugins/toggle/{plugin_id}", headers=headers)
             # request was processed
             assert response.status_code == 200
+
+    return response

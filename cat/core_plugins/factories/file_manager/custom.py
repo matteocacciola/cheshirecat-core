@@ -4,7 +4,6 @@ import shutil
 from typing import List
 from datetime import datetime
 
-from cat import utils
 from cat.factory.file_manager import BaseFileManager, FileResponse
 from cat.log import log
 

@@ -473,14 +473,14 @@ def colored_text(text: str, color: str):
 
 def get_nlp_object_name(nlp_object: Any, default: str) -> str:
     name = default
-    if hasattr(nlp_object, "model"):
-        name = nlp_object.model
-    if hasattr(nlp_object, "model_name"):
-        name = nlp_object.model_name
-    if hasattr(nlp_object, "model_path"):
-        name = nlp_object.model_path
     if hasattr(nlp_object, "repo_id"):
         name = nlp_object.repo_id
+    elif hasattr(nlp_object, "model_path"):
+        name = nlp_object.model_path
+    elif hasattr(nlp_object, "model_name"):
+        name = nlp_object.model_name
+    elif hasattr(nlp_object, "model"):
+        name = nlp_object.model
 
     replaces = ["/", "-", "."]
     for v in replaces:
