@@ -19,7 +19,7 @@ The Cheshire Cat is a framework to build custom AI agents:
 - ⚡️ API first, to easily add a conversational layer to your app
 - ☁️ Cloud Ready, working even with horizontal autoscaling
 - 🔐 Secure by design, with API Key and granular permissions
-- 🏗 Production ready, cloud native and scalable
+- 🏗 Production ready, cloud native, and scalable
 - 🐋 100% dockerized, to run anywhere
 - 🛠 Easily extendable with plugins
 - 🧩 Built-in plugins
@@ -65,6 +65,7 @@ Everything can be done via the [Admin Panel](https://www.github.com/matteocaccio
 > - `Multimodality`: a plugin that adds multimodal capabilities to the Cheshire Cat framework, enabling the processing of images;
 > - `White Rabbit`: cron and schedule tasks;
 > - `Why`: add the context and the reasoning behind the answers of the LLM.
+> - `Analytics`: recover the analytics data about the usage of the Cheshire Cat, which depends on the `Interactions` and `Memory` plugins.
 >
 > You can disable one or more (e.g., `March Hare` if you don't need to autoscale over cloud PODs) by using the Admin Toggle endpoint.
 
