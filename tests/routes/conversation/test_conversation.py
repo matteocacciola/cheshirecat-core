@@ -176,7 +176,7 @@ def test_add_items_to_convo_history(secure_client, secure_client_headers, cheshi
         json={
             "who": "assistant",
             "text": "Hello, how are you?",
-            "why": {"input": "This is an input", "intermediate_steps": [], "model_interactions": [], "memory": {}}
+            "why": {"input": "This is an input", "intermediate_steps": [], "memory": {}}
         }
     )
     assert response.status_code == 200
@@ -200,7 +200,6 @@ def test_add_items_to_convo_history(secure_client, secure_client_headers, cheshi
     assert json["history"][1]["content"]["text"] == "Hello, how are you?"
     assert json["history"][1]["why"]["input"] == "This is an input"
     assert json["history"][1]["why"]["intermediate_steps"] == []
-    assert json["history"][1]["why"]["model_interactions"] == []
     assert json["history"][1]["why"]["memory"] == {}
 
 
