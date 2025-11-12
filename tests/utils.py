@@ -160,9 +160,9 @@ def get_client_admin_headers(client):
     return {"Authorization": f"Bearer {token}"}
 
 
-def just_installed_plugin(client, headers, activate=False):
+def just_installed_plugin(client, headers, activate=False, plugin_id="mock_plugin", expected_status_code=200):
     # create zip file with a plugin
-    zip_path = create_mock_plugin_zip(flat=True)
+    zip_path = create_mock_plugin_zip(flat=True, plugin_id=plugin_id)
     zip_file_name = zip_path.split("/")[-1]  # mock_plugin.zip in tests/mocks folder
 
     # upload plugin via endpoint
@@ -174,11 +174,14 @@ def just_installed_plugin(client, headers, activate=False):
         )
 
     # request was processed
-    assert response.status_code == 200
-    assert response.json()["filename"] == zip_file_name
+    assert response.status_code == expected_status_code
+    if expected_status_code == 200:
+        assert response.json()["filename"] == zip_file_name
 
-    if activate:
-        # mock_plugin is installed but not enabled yet
-        response = client.put("/plugins/toggle/mock_plugin", headers=headers)
-        # request was processed
-        assert response.status_code == 200
+        if activate:
+            # mock_plugin is installed but not enabled yet
+            response = client.put(f"/plugins/toggle/{plugin_id}", headers=headers)
+            # request was processed
+            assert response.status_code == 200
+
+    return response

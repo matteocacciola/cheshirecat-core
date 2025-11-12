@@ -1,7 +1,10 @@
-from typing import Dict
+import mimetypes
+import aiofiles
 from fastapi import Body, APIRouter, UploadFile
 from slugify import slugify
+from typing import Dict
 
+from cat import log
 from cat.auth.permissions import AuthPermission, AdminAuthResource, check_admin_permissions
 from cat.exceptions import CustomValidationException, CustomNotFoundException
 from cat.looking_glass import BillTheLizard
@@ -20,7 +23,7 @@ from cat.routes.routes_utils import (
     get_plugin_settings,
     create_plugin_manifest,
 )
-from cat.utils import get_allowed_plugins_mime_types, load_uploaded_file
+from cat.utils import get_allowed_plugins_mime_types
 
 router = APIRouter()
 
@@ -47,7 +50,19 @@ async def install_plugin(
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGIN, AuthPermission.WRITE),
 ) -> InstallPluginResponse:
     """Install a new plugin from a zip file"""
-    plugin_archive_path = await load_uploaded_file(file, get_allowed_plugins_mime_types())
+    allowed_mime_types = get_allowed_plugins_mime_types()
+
+    content_type, _ = mimetypes.guess_type(file.filename)
+    if content_type not in allowed_mime_types:
+        raise CustomValidationException(
+            f'MIME type `{file.content_type}` not supported. Admitted types: {", ".join(allowed_mime_types)}'
+        )
+
+    log.info(f"Uploading {content_type} plugin {file.filename}")
+    plugin_archive_path = f"/tmp/{file.filename}"
+    async with aiofiles.open(plugin_archive_path, "wb+") as f:
+        content = await file.read()
+        await f.write(content)
 
     try:
         lizard.plugin_manager.install_plugin(plugin_archive_path)

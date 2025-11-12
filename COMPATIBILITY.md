@@ -8,6 +8,13 @@ However, **most of the plugins developed for the original version should work wi
 Few plugins may require minor changes to work with this version.
 In this case, please feel free to contact me for support.
 
+## Dependencies in Plugins:
+A new feature has been added to the plugins of the Cheshire Cat: the possibility to list the dependencies on other plugins.
+This feature allows specifying that a plugin requires other plugins to be installed to work properly.
+This feature is optional, but it is recommended to use it to avoid issues with missing dependencies.
+To specify the dependencies of a plugin, you can use the `dependencies` attribute in the `plugin.json` file, listing the
+names of the plugins that the current plugin requires.
+
 ## List of available hooks
 The Cheshire Cat provides a set of hooks that can be used to customize the behavior of the AI agent. Hooks are events that can be
 triggered at specific points in the conversation, allowing you to modify the behavior of the AI agent or to add custom functionality.

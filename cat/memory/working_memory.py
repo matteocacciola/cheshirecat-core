@@ -1,8 +1,9 @@
 from typing import List, Any, Literal, Dict
-from pydantic import Field
+from pydantic import Field, field_validator
 from typing_extensions import deprecated
 
 from cat.db.cruds import history as crud_history
+from cat.memory.interactions import ModelInteraction
 from cat.memory.messages import BaseMessage, CatMessage, UserMessage, ConversationHistoryItem, MessageWhy
 from cat.memory.utils import DocumentRecall
 from cat.utils import BaseModelDict
@@ -45,7 +46,15 @@ class WorkingMemory(BaseModelDict):
     declarative_memories: List[DocumentRecall] = Field(default_factory=list)
 
     # track models usage
-    model_interactions: List = Field(default_factory=list)
+    model_interactions: List[ModelInteraction] = Field(default_factory=list)
+
+    @field_validator("model_interactions")
+    @classmethod
+    def validate_model_interactions(cls, v):
+        for item in v:
+            if not isinstance(item, ModelInteraction):
+                raise ValueError("model_interactions must be a list of ModelInteraction")
+        return v
 
     def __init__(self, **data: Any):
         super().__init__(**data)

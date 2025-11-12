@@ -5,6 +5,7 @@ import mimetypes
 from ast import literal_eval
 from copy import deepcopy
 from typing import Dict, List, Any
+import tomli
 from fastapi import Query, UploadFile, BackgroundTasks, Request
 from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
@@ -122,7 +123,9 @@ class HealthCheckLocal(HealthCheckAbstract):
 
     @property
     def comments(self) -> list[str]:
-        return [f"version: {utils.get_cat_version()}"]
+        with open("pyproject.toml", "rb") as f:
+            project_toml = tomli.load(f)["project"]
+            return [f"version: {project_toml['version']}"]
 
     def check_health(self) -> HealthCheckStatusEnum:
         return HealthCheckStatusEnum.HEALTHY

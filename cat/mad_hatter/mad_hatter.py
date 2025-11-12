@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from pathlib import Path
 from typing import List, Dict, Any
+from pydantic import BaseModel, Field, ConfigDict
 
 from cat import utils
 from cat.db.cruds import settings as crud_settings
@@ -12,6 +13,13 @@ from cat.log import log
 from cat.mad_hatter.decorators import CustomEndpoint, CatHook
 from cat.mad_hatter.plugin import Plugin
 from cat.mad_hatter.procedures import CatProcedure
+
+
+class LoadedPlugin(BaseModel):
+    plugin: Plugin | None = None
+    missing_dependencies: List[str] = Field(default_factory=list)
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class MadHatter(ABC):
@@ -193,13 +201,20 @@ class MadHatter(ABC):
             plugin_id
         )
 
-    def load_plugin(self, plugin_id: str) -> Plugin | None:
+    def load_plugin(self, plugin_id: str, with_deactivation: bool = True) -> LoadedPlugin:
         try:
             folder = self._get_plugin_folder_path(plugin_id)
-            return Plugin(folder)
+            plugin = Plugin(folder)
+
+            if deps := plugin.missing_dependencies(self.load_active_plugins_ids_from_folders()):
+                if with_deactivation:
+                    self.deactivate_plugin(plugin_id)
+                return LoadedPlugin(plugin=None, missing_dependencies=deps)
+
+            return LoadedPlugin(plugin=plugin)
         except Exception as e:
             log.error(str(e))
-            return None
+            return LoadedPlugin()
 
     def load_active_plugins_ids_from_folders(self):
         all_plugin_folders = list(set(
