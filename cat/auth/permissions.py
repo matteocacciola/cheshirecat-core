@@ -19,6 +19,7 @@ class AuthResource(Enum):
     USERS = "USERS"
     UPLOAD = "UPLOAD"
     PLUGIN = "PLUGIN"
+    ANALYTICS = "ANALYTICS"
 
 
 class AdminAuthResource(Enum):
@@ -26,6 +27,7 @@ class AdminAuthResource(Enum):
     EMBEDDER = "EMBEDDER"
     CHESHIRE_CAT = "CHESHIRE_CAT"
     PLUGIN = "PLUGIN"
+    ANALYTICS = "ANALYTICS"
 
 
 class AuthPermission(Enum):

@@ -22,7 +22,7 @@ from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.looking_glass.tweedledee import Tweedledee
 from cat.mad_hatter.decorators import CatTool
 from cat.memory.utils import VectorMemoryType
-from cat.utils import get_factory_object, get_updated_factory_object
+from cat.utils import get_factory_object, get_nlp_object_name, get_updated_factory_object
 
 
 # main class
@@ -161,11 +161,11 @@ class CheshireCat:
 
             # something went wrong: rollback
             if updater.old_setting is not None:
-                self.replace_llm(updater.old_setting["name"], updater.old_setting["value"])
+                self.replace_llm(updater.old_setting["name"], updater.old_setting["value"])  # type: ignore
 
             raise e
 
-        return {"name": language_model_name, "value": updater.new_setting["value"]}
+        return {"name": language_model_name, "value": updater.new_setting["value"]}  # type: ignore
 
     def replace_auth_handler(self, auth_handler_name: str, settings: Dict) -> Dict:
         """
@@ -183,7 +183,7 @@ class CheshireCat:
 
         self.custom_auth_handler = get_factory_object(self.id, factory)
 
-        return {"name": auth_handler_name, "value": updater.new_setting["value"]}
+        return {"name": auth_handler_name, "value": updater.new_setting["value"]}  # type: ignore
 
     def replace_file_manager(self, file_manager_name: str, settings: Dict) -> Dict:
         """
@@ -211,11 +211,11 @@ class CheshireCat:
 
             # something went wrong: rollback
             if updater.old_setting is not None:
-                self.replace_file_manager(updater.old_setting["name"], updater.old_setting["value"])
+                self.replace_file_manager(updater.old_setting["name"], updater.old_setting["value"])  # type: ignore
 
             raise e
 
-        return {"name": file_manager_name, "value": updater.new_setting["value"]}
+        return {"name": file_manager_name, "value": updater.new_setting["value"]}  # type: ignore
 
     def replace_chunker(self, chunker_name: str, settings: Dict) -> Dict:
         """
@@ -233,7 +233,7 @@ class CheshireCat:
 
         self.chunker = get_factory_object(self.id, ChunkerFactory(self.plugin_manager))
 
-        return {"name": chunker_name, "value": updater.new_setting["value"]}
+        return {"name": chunker_name, "value": updater.new_setting["value"]}  # type: ignore
 
     async def replace_vector_memory_handler(
         self, vector_memory_name: str, settings: Dict
@@ -254,7 +254,7 @@ class CheshireCat:
         self.vector_memory_handler = get_factory_object(self.id, factory)
         await self.embed_procedures()
 
-        return {"name":vector_memory_name, "value": updater.new_setting["value"]}
+        return {"name":vector_memory_name, "value": updater.new_setting["value"]}  # type: ignore
 
     async def embed_procedures(self):
         log.info(f"Agent id: {self.id}. Embedding procedures in vector memory")
@@ -325,6 +325,10 @@ class CheshireCat:
         return self.lizard.embedder
 
     @property
+    def embedder_name(self) -> str | None:
+        return self.lizard.embedder_name
+
+    @property
     def rabbit_hole(self) -> "RabbitHole":
         """
         Gives access to the `RabbitHole`, to upload documents and URLs into the vector DB.
@@ -381,3 +385,9 @@ class CheshireCat:
             agent_id (str): The unique identifier of the cat.
         """
         return self.id
+
+    @property
+    def large_language_model_name(self) -> str | None:
+        if self.large_language_model is None:
+            return None
+        return get_nlp_object_name(self.large_language_model, "default_llm")

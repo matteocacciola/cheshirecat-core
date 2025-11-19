@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 import time
+import traceback
 from abc import abstractmethod, ABC
 from pprint import pformat
 from typing import Callable
@@ -84,6 +85,18 @@ class CatLogEngine:
         """Alias of self.log()"""
         self.log(msg, level)
 
+    def _print_short_traceback(self):
+        """Print a short traceback of the last exception."""
+        from cat.utils import colored_text
+
+        if sys.exc_info()[0] is not None:
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            formatted_traceback = traceback.format_exception(exc_type, exc_value, exc_traceback)
+            if len(formatted_traceback) > 10:
+                formatted_traceback = formatted_traceback[-10:]
+            for err in formatted_traceback:
+                print(colored_text(err, "red"))
+
     def debug(self, msg):
         """Logs a DEBUG message"""
         self.log(msg, level="DEBUG")
@@ -98,17 +111,13 @@ class CatLogEngine:
 
     def error(self, msg):
         """Logs an ERROR message"""
-        from cat.utils import print_short_traceback
-
         self.log(msg, level="ERROR")
-        print_short_traceback()
+        self._print_short_traceback()
 
     def critical(self, msg):
         """Logs a CRITICAL message"""
-        from cat.utils import print_short_traceback
-
         self.log(msg, level="CRITICAL")
-        print_short_traceback()
+        self._print_short_traceback()
 
     def log(self, msg, level="DEBUG"):
         """Log a message and dispatch to registered plugin handlers.

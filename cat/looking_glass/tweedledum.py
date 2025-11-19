@@ -1,4 +1,3 @@
-
 import shutil
 from typing import List, Dict
 
@@ -60,6 +59,11 @@ class Tweedledum(MadHatter):
         plugin_path = extractor.extract(utils.get_plugins_path())
         plugin_id = extractor.id
 
+        if missing_deps := self.load_plugin(plugin_id, with_deactivation=False).missing_dependencies:
+            # remove plugin folder
+            shutil.rmtree(plugin_path)
+            raise Exception(f"Cannot install plugin {plugin_id} because of missing dependencies: {missing_deps}")
+
         # install the extracted plugin
         return self.install_extracted_plugin(plugin_id, plugin_path)
 
@@ -104,7 +108,7 @@ class Tweedledum(MadHatter):
             self.active_plugins = self.load_active_plugins_ids_from_folders()
 
         for plugin_id in self.active_plugins:
-            plugin = self.load_plugin(plugin_id)
+            plugin = self.load_plugin(plugin_id).plugin
             if not plugin:
                 log.error(f"Plugin {plugin_id} could not be loaded")
                 continue
@@ -119,7 +123,7 @@ class Tweedledum(MadHatter):
                 raise e
 
     def on_plugin_activation(self, plugin_id: str) -> bool:
-        plugin = self.load_plugin(plugin_id)
+        plugin = self.load_plugin(plugin_id).plugin
         if not plugin:
             return False
 
@@ -152,9 +156,13 @@ class Tweedledum(MadHatter):
     def available_plugins(self) -> Dict[str, Plugin]:
         plugins_ids = self.load_active_plugins_ids_from_folders()
 
-        return {
-            plugin_id: self.load_plugin(plugin_id) for plugin_id in plugins_ids
-        }
+        result = {}
+        for plugin_id in plugins_ids:
+            plugin = self.load_plugin(plugin_id).plugin
+            if plugin:
+                result[plugin.id] = plugin
+
+        return result
 
     @property
     def context_execute_hook(self):

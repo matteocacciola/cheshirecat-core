@@ -25,12 +25,41 @@ def check_correct_websocket_reply(reply):
     assert str(VectorMemoryType.DECLARATIVE) == list(why["memory"].keys())[0]
 
 
-def test_websocket(secure_client):
+def test_websocket(secure_client, secure_client_headers):
     msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
     # send websocket message
     res = send_websocket_message(msg, secure_client, {"apikey": api_key})
 
     check_correct_websocket_reply(res)
+
+    # check analytics
+    response = secure_client.get("/analytics/llm", headers=secure_client_headers)
+    analytics = response.json()
+    assert agent_id in analytics.keys()
+    assert analytics[agent_id] is not None
+    assert len(analytics[agent_id].keys()) == 1
+
+    user_id = list(analytics[agent_id].keys())[0]
+    assert user_id is not None
+    assert isinstance(analytics[agent_id][user_id], dict)
+
+    chat_id = list(analytics[agent_id][user_id].keys())[0]
+    assert chat_id is not None
+    assert isinstance(analytics[agent_id][user_id][chat_id], dict)
+
+    llm_id = list(analytics[agent_id][user_id][chat_id].keys())[0]
+    assert llm_id == "default_llm"
+    assert isinstance(analytics[agent_id][user_id][chat_id][llm_id], dict)
+
+    info = analytics[agent_id][user_id][chat_id][llm_id]
+    assert "input_tokens" in info.keys()
+    assert info["input_tokens"] >= 0
+    assert "output_tokens" in info.keys()
+    assert info["output_tokens"] >= 0
+    assert "total_tokens" in info.keys()
+    assert info["total_tokens"] >= 0
+    assert "total_calls" in info.keys()
+    assert info["total_calls"] == 1
 
 
 def test_websocket_with_additional_items_in_message(secure_client):

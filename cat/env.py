@@ -7,7 +7,9 @@ def get_supported_env_variables():
         "CCAT_API_KEY": None,
         "CCAT_DEBUG": "true",
         "CCAT_LOG_LEVEL": "INFO",
+        "CCAT_CORS_ENABLED": "true",
         "CCAT_CORS_ALLOWED_ORIGINS": None,
+        "CCAT_CORS_FORWARDED_ALLOW_IPS": "*",
         "CCAT_REDIS_HOST": None,
         "CCAT_REDIS_PORT": "6379",
         "CCAT_REDIS_PASSWORD": "",
@@ -16,9 +18,7 @@ def get_supported_env_variables():
         "CCAT_JWT_SECRET": "secret",
         "CCAT_JWT_EXPIRE_MINUTES": str(60 * 24),  # JWT expires after 1 day
         "CCAT_HTTPS_PROXY_MODE": "false",
-        "CCAT_CORS_FORWARDED_ALLOW_IPS": "*",
         "CCAT_HISTORY_EXPIRATION": None,  # in minutes
-        "CCAT_CORS_ENABLED": "true",
         "CCAT_CRYPTO_KEY": "cheshirecat",
         "CCAT_CRYPTO_SALT": "cheshirecat_salt",
     }

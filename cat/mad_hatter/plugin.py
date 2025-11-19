@@ -19,17 +19,13 @@ from cat.mad_hatter.procedures import CatProcedure
 from cat.utils import inspect_calling_agent, get_base_path, to_camel_case
 
 
-# Empty class to represent basic plugin Settings model
+# Empty class to represent the basic plugin Settings model
 class PluginSettingsModel(BaseModel):
     pass
 
 
-# this class represents a plugin in memory
-# the plugin itself is managed as much as possible unix style
-#      (i.e. by saving information in the folder itself)
 class Plugin:
     def __init__(self, plugin_path: str):
-        # does folder exist?
         if not os.path.exists(plugin_path) or not os.path.isdir(plugin_path):
             raise Exception(
                 f"{plugin_path} does not exist or is not a folder. Cannot create Plugin."
@@ -235,6 +231,18 @@ class Plugin:
             log.error(f"Unable to save plugin {self._id} settings: {e}")
             log.warning(self.plugin_specific_error_message())
             return {}
+
+    def missing_dependencies(self, available_plugins: List[str]) -> List[str]:
+        if not self.manifest.dependencies:
+            return []
+
+        missing_dependencies = [
+            dependency for dependency in self.manifest.dependencies if dependency not in available_plugins
+        ]
+        if missing_dependencies:
+            log.error(f"Plugin {self.id} is missing dependencies: {missing_dependencies}")
+
+        return missing_dependencies
 
     def _get_settings_from_model(self) -> Dict | None:
         try:

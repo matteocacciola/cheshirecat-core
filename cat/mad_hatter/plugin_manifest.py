@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 from pydantic import BaseModel, Field
 
 
@@ -19,3 +19,4 @@ class PluginManifest(BaseModel):
     min_cat_version: str = None
     max_cat_version: str = "Unknown"
     local_info: Dict = Field(default_factory=dict)
+    dependencies: List[str] = Field(default_factory=list)

@@ -1,4 +1,5 @@
 from typing import List, Dict
+import nltk
 from langchain_community.document_loaders import (
     UnstructuredWordDocumentLoader,
     UnstructuredPowerPointLoader,
@@ -10,6 +11,10 @@ from langchain_community.document_loaders import (
 from cat import EmbedderSettings, hook
 from cat.core_plugins.multimodality.embedder import EmbedderJinaMultimodalConfig
 from cat.core_plugins.multimodality.unstructured_parser import UnstructuredParser
+
+
+nltk.download("punkt")
+nltk.download("averaged_perceptron_tagger")
 
 
 @hook(priority=0)

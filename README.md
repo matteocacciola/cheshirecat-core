@@ -19,7 +19,7 @@ The Cheshire Cat is a framework to build custom AI agents:
 - ⚡️ API first, to easily add a conversational layer to your app
 - ☁️ Cloud Ready, working even with horizontal autoscaling
 - 🔐 Secure by design, with API Key and granular permissions
-- 🏗 Production ready, cloud native and scalable
+- 🏗 Production ready, cloud native, and scalable
 - 🐋 100% dockerized, to run anywhere
 - 🛠 Easily extendable with plugins
 - 🧩 Built-in plugins
@@ -65,6 +65,7 @@ Everything can be done via the [Admin Panel](https://www.github.com/matteocaccio
 > - `Multimodality`: a plugin that adds multimodal capabilities to the Cheshire Cat framework, enabling the processing of images;
 > - `White Rabbit`: cron and schedule tasks;
 > - `Why`: add the context and the reasoning behind the answers of the LLM.
+> - `Analytics`: recover the analytics data about the usage of the Cheshire Cat, which depends on the `Interactions` and `Memory` plugins.
 >
 > You can disable one or more (e.g., `March Hare` if you don't need to autoscale over cloud PODs) by using the Admin Toggle endpoint.
 
@@ -323,6 +324,9 @@ def settings_schema():
     }
 ```
 </details>
+
+> [!IMPORTANT]
+> A new feature has been added to the plugins of the Cheshire Cat: the possibility to **list the dependencies on other plugins**. This feature allows specifying that a plugin requires other plugins to be installed to work properly. This feature is optional, but it is recommended to use it to avoid issues with missing dependencies. To specify the dependencies of a plugin, you can use the `dependencies` attribute in the `plugin.json` file, listing the names of the plugins that the current plugin requires.
 
 # Docs and Resources
 
