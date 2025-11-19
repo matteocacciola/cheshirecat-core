@@ -99,7 +99,7 @@ def _parse_key_parts(key: bytes | str, expected_parts: int) -> Tuple[str, ...] |
     parts = key_str.split(":", expected_parts - 1)
 
     if len(parts) == expected_parts:
-        return tuple(parts[1:])  # Exclude prefix
+        return tuple(parts[:1] + parts[2:])  # Exclude prefix at index 1
 
     return None
 

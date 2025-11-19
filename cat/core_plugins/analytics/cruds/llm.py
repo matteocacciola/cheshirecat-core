@@ -29,7 +29,7 @@ def format_key(agent_id: str, user_id: str, chat_id: str, llm_id: str) -> str:
     Returns:
         Formatted key.
     """
-    return f"{KEY_PREFIX}:{agent_id}:{user_id}:{chat_id}:{llm_id}"
+    return f"{agent_id}:{KEY_PREFIX}:{user_id}:{chat_id}:{llm_id}"
 
 
 def get_analytics(

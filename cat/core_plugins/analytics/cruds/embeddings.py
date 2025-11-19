@@ -21,7 +21,7 @@ def format_key(agent_id: str, embedder_id: str) -> str:
     Returns:
         Formatted key.
     """
-    return f"{KEY_PREFIX}:{agent_id}:{embedder_id}"
+    return f"{agent_id}:{KEY_PREFIX}:{embedder_id}"
 
 
 def get_analytics(agent_id: str = "*", embedder_id: str = "*") -> Dict[str, Dict[str, Any]]:
