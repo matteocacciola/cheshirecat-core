@@ -41,15 +41,15 @@ def test_websocket(secure_client, secure_client_headers):
 
     user_id = list(analytics[agent_id].keys())[0]
     assert user_id is not None
-    assert type(analytics[agent_id][user_id]) == dict
+    assert isinstance(analytics[agent_id][user_id], dict)
 
     chat_id = list(analytics[agent_id][user_id].keys())[0]
     assert chat_id is not None
-    assert type(analytics[agent_id][user_id][chat_id]) == dict
+    assert isinstance(analytics[agent_id][user_id][chat_id], dict)
 
     llm_id = list(analytics[agent_id][user_id][chat_id].keys())[0]
     assert llm_id == "default_llm"
-    assert type(analytics[agent_id][user_id][chat_id][llm_id]) == dict
+    assert isinstance(analytics[agent_id][user_id][chat_id][llm_id], dict)
 
     info = analytics[agent_id][user_id][chat_id][llm_id]
     assert "input_tokens" in info.keys()
