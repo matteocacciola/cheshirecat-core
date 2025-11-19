@@ -1,7 +1,51 @@
 import json
 import pytest
 
-from tests.utils import get_declarative_memory_contents, api_key, send_file, chat_id
+import cat.core_plugins.analytics.cruds.embeddings as crud_embeddings
+
+from tests.utils import agent_id, api_key, chat_id, get_declarative_memory_contents, send_file
+
+
+def _check_analytics_not_empty(analytics):
+    assert len(analytics) > 0
+    embedders = analytics.get(agent_id, {}).keys()
+    assert len(embedders) == 1
+    embedder = list(embedders)[0]
+
+    return analytics[agent_id][embedder]
+
+
+def _check_analytics(analytics, file_name, num_files = 1):
+    analytics_ = _check_analytics_not_empty(analytics)
+    assert "files" in analytics_.keys()
+    assert len(analytics_["files"].keys()) == num_files
+    assert file_name in analytics_["files"].keys()
+    assert analytics_["files"][file_name] > 0
+    assert "total_embeddings" in analytics_.keys()
+    assert analytics_["total_embeddings"] > 0
+
+
+def _check_on_file_upload(response, file_name, content_type, secure_client, secure_client_headers) -> dict:
+    # check response
+    assert response.status_code == 200
+    json_res = response.json()
+    assert json_res["filename"] == file_name
+    assert json_res["content_type"] == content_type
+    assert "File is being ingested" in json_res["info"]
+
+    # check memory contents
+    # check declarative memory is empty
+    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    assert len(declarative_memories) > 0
+
+    _check_analytics(crud_embeddings.get_analytics(agent_id), file_name)
+    return json_res
+
+
+def _check_upon_request(secure_client, secure_client_headers, file_name):
+    response = secure_client.get("/analytics/embedder", headers=secure_client_headers)
+    analytics = response.json()
+    _check_analytics(analytics, file_name)
 
 
 def test_rabbithole_upload_txt(secure_client, secure_client_headers):
@@ -9,19 +53,8 @@ def test_rabbithole_upload_txt(secure_client, secure_client_headers):
     file_name = "sample.txt"
     response, _ = send_file(file_name, content_type, secure_client, secure_client_headers)
 
-    # check response
-    assert response.status_code == 200
-    json_res = response.json()
-    assert json_res["filename"] == file_name
-    assert json_res["content_type"] == content_type
-    assert "File is being ingested" in json_res["info"]
-
-    # check memory contents
-    # check declarative memory is empty
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
-    assert (
-        len(declarative_memories) > 0
-    )
+    _check_on_file_upload(response, file_name, content_type, secure_client, secure_client_headers)
+    _check_upon_request(secure_client, secure_client_headers, file_name)
 
 
 def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_headers):
@@ -29,19 +62,8 @@ def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_headers):
     file_name = "sample.txt"
     response, _ = send_file(file_name, content_type, secure_client, secure_client_headers, ch_id=chat_id)
 
-    # check response
-    assert response.status_code == 200
-    json_res = response.json()
-    assert json_res["filename"] == file_name
-    assert json_res["content_type"] == content_type
-    assert "File is being ingested" in json_res["info"]
-
-    # check memory contents
-    # check declarative memory is empty
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
-    assert (
-        len(declarative_memories) > 0
-    )
+    _check_on_file_upload(response, file_name, content_type, secure_client, secure_client_headers)
+    _check_upon_request(secure_client, secure_client_headers, file_name)
 
 
 @pytest.mark.asyncio
@@ -52,16 +74,8 @@ async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_header
     file_name = "sample.pdf"
     response, _ = send_file(file_name, content_type, secure_client, secure_client_headers)
 
-    # check response
-    assert response.status_code == 200
-    json_res = response.json()
-    assert json_res["filename"] == file_name
-    assert json_res["content_type"] == content_type
-    assert "File is being ingested" in json_res["info"]
-
-    # check memory contents: declarative memory is not empty
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
-    assert len(declarative_memories) > 0
+    _check_on_file_upload(response, file_name, content_type, secure_client, secure_client_headers)
+    _check_upon_request(secure_client, secure_client_headers, file_name)
 
     # declarative memory should be empty for another agent
     declarative_memories = get_declarative_memory_contents(
@@ -92,6 +106,8 @@ def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers):
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
 
+    _check_analytics(crud_embeddings.get_analytics(agent_id), file_name)
+
 
 def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_headers):
     files = []
@@ -115,6 +131,11 @@ def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_hea
 
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
+
+    analytics = crud_embeddings.get_analytics(agent_id)
+    _check_analytics_not_empty(analytics)
+    for file_name in files_to_upload:
+        _check_analytics(analytics, file_name, num_files=len(files_to_upload))
 
 
 def test_rabbithole_upload_doc_with_metadata(secure_client, secure_client_headers):

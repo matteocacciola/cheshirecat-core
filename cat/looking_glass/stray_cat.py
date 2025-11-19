@@ -473,6 +473,10 @@ Just output the class, nothing else."""
         return self.cheshire_cat.large_language_model
 
     @property
+    def large_language_model_name(self) -> str | None:
+        return self.cheshire_cat.large_language_model_name
+
+    @property
     def embedder(self) -> Embeddings:
         """
         Langchain `Embeddings` object.
@@ -486,6 +490,10 @@ Just output the class, nothing else."""
         [0.2, 0.02, 0.4, ...]
         """
         return self.lizard.embedder
+
+    @property
+    def embedder_name(self) -> str | None:
+        return self.lizard.embedder_name
 
     @property
     def plugin_manager(self) -> Tweedledee:
@@ -536,4 +544,4 @@ Just output the class, nothing else."""
 
     @property
     def agent_key(self):
-        return self.id
+        return self.agent_id

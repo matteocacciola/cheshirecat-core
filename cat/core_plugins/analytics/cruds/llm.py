@@ -5,7 +5,8 @@ from redis.exceptions import RedisError
 from cat.core_plugins.analytics.constants import KEY_PREFIX
 from cat.core_plugins.analytics.cruds.base import (
     get_analytics as base_get_analytics,
-    set_analytics as base_set_analytics
+    get_nested_analytics,
+    set_analytics as base_set_analytics,
 )
 from cat.log import log
 
@@ -31,14 +32,28 @@ def format_key(agent_id: str, user_id: str, chat_id: str, llm_id: str) -> str:
     return f"{KEY_PREFIX}:{agent_id}:{user_id}:{chat_id}:{llm_id}"
 
 
-def get_analytics(agent_id: str, user_id: str, chat_id: str, llm_id: str) -> Dict[str, Any] | None:
-    key = format_key(agent_id, user_id, chat_id, llm_id)
-    return base_get_analytics(key)
+def get_analytics(
+    agent_id: str = "*", user_id: str = "*", chat_id: str = "*", llm_id: str = "*"
+) -> Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]:
+    """
+    Retrieve analytics data from Redis based on agent, user, chat and llm patterns.
 
+    Args:
+        agent_id: Agent ID or "*" for all agents
+        user_id: User ID or "*" for all users
+        chat_id: Chat ID or "*" for all chats
+        llm_id: LLM ID or "*" for all LLMs
 
-def set_analytics(agent_id: str, user_id: str, chat_id: str, llm_id: str, analytics: Dict[str, Any]) -> Dict[str, Any]:
-    key = format_key(agent_id, user_id, chat_id, llm_id)
-    return base_set_analytics(key, analytics)
+    Returns:
+        Nested dictionary: {agent_id: {user_id: {chat_id: {llm_id: content}}}}
+    """
+    try:
+        pattern = format_key(agent_id, user_id, chat_id, llm_id)
+
+        return get_nested_analytics(pattern, expected_parts=5)
+    except RedisError as e:
+        log.error(f"Redis error while fetching analytics for the LLMs: {e}")
+        raise
 
 
 def update_analytics(agent_id: str, user_id: str, chat_id: str, llm_id: str, tokens: LLMUsedTokens) -> Dict[str, Any]:
@@ -59,14 +74,16 @@ def update_analytics(agent_id: str, user_id: str, chat_id: str, llm_id: str, tok
         RedisError: If Redis connection fails.
         ValueError: If serialization fails.
     """
+    key = format_key(agent_id, user_id, chat_id, llm_id)
+
     try:
-        analytics = get_analytics(agent_id, user_id, chat_id, llm_id) or {}
+        analytics = base_get_analytics(key) or {}
         analytics["input_tokens"] = analytics.get("input_tokens", 0) + tokens.input
         analytics["output_tokens"] = analytics.get("output_tokens", 0) + tokens.output
         analytics["total_tokens"] = analytics.get("total_tokens", 0) + tokens.input + tokens.output
         analytics["total_calls"] = analytics.get("total_calls", 0) + 1
 
-        return set_analytics(agent_id, user_id, chat_id, llm_id, analytics)
+        return base_set_analytics(key, analytics)
     except (RedisError, ValueError) as e:
         log.error(f"Error updating settings for key.replace(KEY_PREFIX + ':', ''): {e}")
         raise
