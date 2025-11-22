@@ -100,6 +100,14 @@ class MadHatter(ABC):
         if plugin_id not in self.active_plugins or plugin_id == self.get_base_core_plugin_id:
             return
 
+        # if the plugin is within the dependencies of other plugins, it cannot be deactivated (raise an exception)
+        dependent_plugins = self._get_plugins_depending_on(plugin_id)
+        if dependent_plugins:
+            raise Exception(
+                f"Cannot deactivate plugin {plugin_id} because it is a dependency of the following plugins: "
+                f"{', '.join(dependent_plugins)}"
+            )
+
         if dispatch_events:
             self.dispatcher.dispatch("on_start_plugin_deactivate", plugin_id=plugin_id)
 
@@ -237,6 +245,13 @@ class MadHatter(ABC):
     # check if plugin exists
     def plugin_exists(self, plugin_id: str):
         return plugin_id in self.load_active_plugins_ids_from_folders()
+
+    def _get_plugins_depending_on(self, plugin_id: str) -> List[str]:
+        dependent_plugins = []
+        for p_id, plugin in self.plugins.items():
+            if plugin_id in plugin.manifest.dependencies:
+                dependent_plugins.append(p_id)
+        return dependent_plugins
 
     @property
     def procedures(self) -> List[CatProcedure]:

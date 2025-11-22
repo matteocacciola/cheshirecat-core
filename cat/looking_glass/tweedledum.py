@@ -86,6 +86,14 @@ class Tweedledum(MadHatter):
         if not self.plugin_exists(plugin_id) or plugin_id in self.get_core_plugins_ids:
             return
 
+        # if the plugin is within the dependencies of other plugins, raise an exception
+        dependent_plugins = self._get_plugins_depending_on(plugin_id)
+        if dependent_plugins:
+            raise Exception(
+                f"Cannot uninstall plugin {plugin_id} because it is a dependency of the following plugins: "
+                f"{', '.join(dependent_plugins)}"
+            )
+
         self.dispatcher.dispatch("on_start_plugin_uninstall", plugin_id=plugin_id)
 
         endpoints = self.plugins[plugin_id].endpoints
