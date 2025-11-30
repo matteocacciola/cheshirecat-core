@@ -81,11 +81,21 @@ class ConnectionAuth(ABC):
 
         return AuthorizedInfo(cheshire_cat=ccat, user=user, stray_cat=stray_cat)
 
-    @abstractmethod
     def get_user_from_auth_handlers(
         self, connection: HTTPConnection, lizard: BillTheLizard, ccat: CheshireCat
     ) -> AuthUserInfo | None:
-        pass
+        auth_handlers = [
+            ccat.custom_auth_handler,  # try to get user from auth_handler
+            lizard.core_auth_handler,  # try to get user from local id
+        ]
+
+        user = None
+        counter = 0
+        while not user and counter < len(auth_handlers):
+            user = self.get_agent_user_info(connection, auth_handlers[counter], ccat.id)
+            counter += 1
+
+        return user
 
     @abstractmethod
     def get_agent_user_info(
@@ -96,9 +106,25 @@ class ConnectionAuth(ABC):
     @abstractmethod
     def not_allowed(self, connection: HTTPConnection, **kwargs):
         pass
-        
 
-class HTTPAuth(ConnectionAuth):
+
+class HTTPAuthMessage(ConnectionAuth):
+    def get_agent_user_info(
+        self, connection: Request, auth_handler: BaseAuthHandler, agent_id: str
+    ) -> AuthUserInfo | None:
+        user = auth_handler.authorize(
+            connection,
+            self.resource,
+            self.permission,
+            key_id=agent_id,
+        )
+        return user
+
+    def not_allowed(self, connection: Request, **kwargs):
+        raise CustomForbiddenException("Invalid Credentials")
+
+
+class HTTPAuth(HTTPAuthMessage):
     def get_user_from_auth_handlers(
         self, connection: Request, lizard: BillTheLizard, ccat: CheshireCat
     ) -> AuthUserInfo | None:
@@ -124,56 +150,8 @@ class HTTPAuth(ConnectionAuth):
 
         return user
 
-    def get_agent_user_info(
-        self, connection: Request, auth_handler: BaseAuthHandler, agent_id: str
-    ) -> AuthUserInfo | None:
-        user = auth_handler.authorize(
-            connection,
-            self.resource,
-            self.permission,
-            key_id=agent_id,
-        )
-        return user
-
-    def not_allowed(self, connection: Request, **kwargs):
-        raise CustomForbiddenException("Invalid Credentials")
-
-
-class HTTPAuthMessage(HTTPAuth):
-    def get_user_from_auth_handlers(
-        self, connection: Request, lizard: BillTheLizard, ccat: CheshireCat
-    ) -> AuthUserInfo | None:
-        auth_handlers = [
-            ccat.custom_auth_handler,  # try to get user from auth_handler
-            lizard.core_auth_handler,  # try to get user from local id
-        ]
-
-        user = None
-        counter = 0
-        while not user and counter < len(auth_handlers):
-            user = self.get_agent_user_info(connection, auth_handlers[counter], ccat.id)
-            counter += 1
-
-        return user
-
 
 class WebSocketAuth(ConnectionAuth):
-    def get_user_from_auth_handlers(
-        self, connection: WebSocket, lizard: BillTheLizard, ccat: CheshireCat
-    ) -> AuthUserInfo | None:
-        auth_handlers = [
-            ccat.custom_auth_handler,  # try to get user from auth_handler
-            lizard.core_auth_handler,  # try to get user from local id
-        ]
-
-        user = None
-        counter = 0
-        while not user and counter < len(auth_handlers):
-            user = self.get_agent_user_info(connection, auth_handlers[counter], ccat.id)
-            counter += 1
-
-        return user
-
     def get_agent_user_info(
         self, connection: WebSocket, auth_handler: BaseAuthHandler, agent_id: str
     ) -> AuthUserInfo | None:

@@ -161,7 +161,7 @@ def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
             query=user_message.text,
         )
     except Exception as e:
-        log.error(f"Agent id: {cat.agent_id}. Error during recall {e}")
+        log.error(f"Agent id: {cat.agent_key}. Error during recall {e}")
 
         raise VectorMemoryError("An error occurred while recalling relevant memories.")
 

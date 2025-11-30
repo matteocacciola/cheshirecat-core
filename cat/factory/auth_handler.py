@@ -4,7 +4,7 @@ import jwt
 from fastapi.requests import HTTPConnection
 from pydantic import ConfigDict
 
-from cat.auth.auth_utils import is_jwt, extract_token, extract_user_info_on_api_key, DEFAULT_JWT_ALGORITHM
+from cat.auth.auth_utils import is_jwt, extract_user_info_on_api_key, DEFAULT_JWT_ALGORITHM
 from cat.auth.permissions import AuthResource, AdminAuthResource, AuthPermission, AuthUserInfo
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
@@ -46,11 +46,10 @@ class BaseAuthHandler(ABC):
         protocol = request.scope.get("type")
 
         # extract token from request
+        token = self.extract_token(request)
         if protocol == "http":
-            token = self.extract_token_http(request)
             user_id = self.extract_user_id_http(request)
         elif protocol == "websocket":
-            token = self.extract_token_websocket(request)
             user_id = self.extract_user_id_websocket(request)
         else:
             log.error(f"Unknown protocol: {protocol}")
@@ -66,35 +65,26 @@ class BaseAuthHandler(ABC):
         # API_KEY auth
         return self.authorize_user_from_key(protocol, token, auth_resource, auth_permission, user_id, **kwargs)
 
-    @abstractmethod
-    def extract_token_http(self, request: HTTPConnection) -> str | None:
+    def extract_token(self, request: HTTPConnection) -> str | None:
         """
-        Extract the token from an HTTP request. This method is used to extract the token from the request when the user
-        is using an HTTP protocol. It should return the token if it is found, otherwise it should return None.
+        Extract the token from a request. This method is used to extract the token from the request by inspecting either
+        the `Authorization: Bearer <token>` or the `Cookie: jwt=<token>` header. It should return the token if it is
+        found, otherwise it should return None.
 
         Args:
-            request: the Starlette request to extract the token from (HTTP)
+            request: the Starlette request to extract the token from (HTTP or Websocket)
 
         Returns:
             The token if it is found, None otherwise.
         """
-        # will raise: NotImplementedError
-        pass
-
-    @abstractmethod
-    def extract_token_websocket(self, request: HTTPConnection) -> str | None:
-        """
-        Extract the token from a WebSocket request. This method is used to extract the token from the request when the
-        user is using a WebSocket protocol. It should return the token if it is found, otherwise it should return None.
-
-        Args:
-            request: the Starlette request to extract the token from (WebSocket)
-
-        Returns:
-            The token if it is found, None otherwise.
-        """
-        # will raise: NotImplementedError
-        pass
+        token = request.headers.get("Authorization", request.headers.get("Cookie"))
+        if not token:
+            return None
+        if token.startswith("Bearer "):
+            return token[len("Bearer "):]
+        if token.startswith("jwt="):
+            return token[len("jwt="):]
+        return None
 
     @abstractmethod
     def extract_user_id_http(self, request: HTTPConnection) -> str | None:
@@ -180,16 +170,6 @@ class BaseAuthHandler(ABC):
 
 # Core auth handler, verify token on local idp
 class CoreAuthHandler(BaseAuthHandler):
-    def extract_token_http(self, request: HTTPConnection) -> str | None:
-        # Proper Authorization header
-        token = extract_token(request)
-        return token
-
-    def extract_token_websocket(self, request: HTTPConnection) -> str | None:
-        # Token passed as query parameter
-        token = request.query_params.get("token", request.query_params.get("apikey"))
-        return token
-
     def extract_user_id_http(self, request: HTTPConnection) -> str | None:
         return request.headers.get("user_id")
 

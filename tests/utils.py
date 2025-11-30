@@ -34,10 +34,12 @@ def send_file(file_name, content_type, client, headers, payload=None, ch_id=None
 
 
 # utility function to communicate with the cat via websocket
-def send_websocket_message(msg, client, query_params, ch_id=None):
-    url = (f"/ws/{agent_id}?" if not ch_id else f"/ws/{agent_id}/{ch_id}?") + urlencode(query_params)
+def send_websocket_message(msg, client, token, query_params = None, ch_id = None):
+    url = f"/ws/{agent_id}" if not ch_id else f"/ws/{agent_id}/{ch_id}"
+    if query_params:
+        url += "?" + urlencode(query_params)
 
-    with client.websocket_connect(url) as websocket:
+    with client.websocket_connect(url, headers={"Authorization": f"Bearer {token}"}) as websocket:
         # Send ws message
         websocket.send_json(msg)
         # get reply
@@ -48,9 +50,9 @@ def send_websocket_message(msg, client, query_params, ch_id=None):
 def send_n_websocket_messages(num_messages, client, image=None, ch_id=None):
     responses = []
 
-    url = (f"/ws/{agent_id}?" if not ch_id else f"/ws/{agent_id}/{ch_id}?") + urlencode({"token": api_key})
+    url = f"/ws/{agent_id}" if not ch_id else f"/ws/{agent_id}/{ch_id}"
 
-    with client.websocket_connect(url) as websocket:
+    with client.websocket_connect(url, headers={"Authorization": f"Bearer {api_key}"}) as websocket:
         for m in range(num_messages):
             message = {"text": f"Red Queen {m}"}
             if image:

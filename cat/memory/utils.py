@@ -12,7 +12,7 @@ class VectorMemoryType(utils.Enum):
     PROCEDURAL = "procedural"
 
 
-class DocumentRecall(utils.BaseModelDict):
+class DocumentRecall(BaseModel):
     """
     Langchain `Document` retrieved from a memory, with the similarity score, the list of embeddings and the
     id of the memory.
@@ -115,7 +115,7 @@ class UpdateResult(BaseModel):
     status: str = Field(..., description="")
 
 
-class RecallSettings(utils.BaseModelDict):
+class RecallSettings(BaseModel):
     embedding: List[float] = Field(default_factory=list)
     k: int | None = 3
     latest_n_history: int | None = 3
@@ -192,7 +192,7 @@ async def recall_relevant_memories_to_working_memory(cat: "StrayCat", collection
 
     # We may want to search in memory. If a query is not provided, use the user's message as the query
     recall_query = plugin_manager.execute_hook("cat_recall_query", query, obj=cat)
-    log.info(f"Agent id: {cat.agent_id}. Recall query: '{recall_query}'")
+    log.info(f"Agent id: {cat.agent_key}. Recall query: '{recall_query}'")
 
     # keep track of embedder model usage
     cat.working_memory.recall_query = recall_query

@@ -1,6 +1,8 @@
 import asyncio
+from datetime import datetime, timedelta
 import io
 import json
+import jwt
 import mimetypes
 from ast import literal_eval
 from copy import deepcopy
@@ -11,12 +13,14 @@ from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
 from pydantic import BaseModel, model_serializer
 from fastapi_healthz import HealthCheckStatusEnum, HealthCheckAbstract
+from pytz import utc
 
 from cat import utils
-from cat.auth.auth_utils import issue_jwt
+from cat.auth.auth_utils import DEFAULT_JWT_ALGORITHM
 from cat.auth.connection import AuthorizedInfo
 from cat.db.cruds import settings as crud_settings
 from cat.db.database import DEFAULT_AGENT_KEY
+from cat.env import get_env
 from cat.exceptions import CustomForbiddenException, CustomValidationException
 from cat.factory.base_factory import BaseFactory
 from cat.log import log
@@ -137,15 +141,31 @@ async def auth_token(credentials: UserCredentials, agent_id: str):
     This endpoint receives username and password as form-data, validates credentials and issues a JWT.
     """
     # use username and password to authenticate user from local identity provider and get token
-    access_token = issue_jwt(credentials.username, credentials.password, key_id=agent_id)
+    from cat.db.cruds import users as crud_users
 
-    if access_token:
-        return JWTResponse(access_token=access_token)
+    key_id = agent_id
 
-    # Invalid username or password
-    # wait a little to avoid brute force attacks
-    await asyncio.sleep(1)
-    raise CustomForbiddenException("Invalid Credentials")
+    # brutal search over users, which are stored in a simple dictionary.
+    # waiting to have graph in core to store them properly
+    user = crud_users.get_user_by_credentials(key_id, credentials.username, credentials.password)
+    if not user:
+        # Invalid username or password
+        # wait a little to avoid brute force attacks
+        await asyncio.sleep(1)
+        raise CustomForbiddenException("Invalid Credentials")
+
+    # using seconds for easier testing
+    expire_delta_in_seconds = float(get_env("CCAT_JWT_EXPIRE_MINUTES")) * 60
+    expires = datetime.now(utc) + timedelta(seconds=expire_delta_in_seconds)
+
+    jwt_content = {
+        "sub": user["id"],  # Subject (the user ID)
+        "username": credentials.username,  # Username
+        "permissions": user["permissions"],  # User permissions
+        "exp": expires  # Expiry date as a Unix timestamp
+    }
+    access_token = jwt.encode(jwt_content, get_env("CCAT_JWT_SECRET"), algorithm=DEFAULT_JWT_ALGORITHM)
+    return JWTResponse(access_token=access_token)
 
 
 def create_plugin_manifest(

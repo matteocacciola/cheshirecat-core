@@ -1,12 +1,11 @@
 import uuid
 from typing import Literal, List, Dict, Any, get_args, Final, Tuple
 from langchain_core.documents import Document
-from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
 from langchain_core.tools import StructuredTool
-from pydantic import Field
+from pydantic import Field, BaseModel
 from websockets.exceptions import ConnectionClosedOK
 
 from cat import utils
@@ -14,19 +13,18 @@ from cat.agent import run_agent
 from cat.auth.permissions import AuthUserInfo
 from cat.log import log
 from cat.looking_glass import NewTokenHandler
-from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.looking_glass.tweedledee import Tweedledee
 from cat.mad_hatter import CatProcedure
 from cat.memory.messages import CatMessage, UserMessage
 from cat.memory.utils import recall_relevant_memories_to_working_memory, VectorMemoryType
 from cat.memory.working_memory import WorkingMemory
-from cat.services.websocket_manager import WebSocketManager
+from cat.mixin.runtime import CatMixin
 from cat.templates import prompts
 
 MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
 
 
-class AgentInput(utils.BaseModelDict):
+class AgentInput(BaseModel):
     """
     Represents the input to an agent including context documents, user input, and chat history.
 
@@ -44,7 +42,7 @@ class AgentInput(utils.BaseModelDict):
     history: List[BaseMessage] = Field(default_factory=list)
 
 
-class AgentOutput(utils.BaseModelDict):
+class AgentOutput(BaseModel):
     """
     Represents the output from an agent execution including text and actions.
 
@@ -63,7 +61,7 @@ class AgentOutput(utils.BaseModelDict):
 
 
 # The Stray cat goes around tools and hook, making troubles
-class StrayCat:
+class StrayCat(CatMixin):
     """Session object containing user data, conversation state and many utility pointers.
     The framework creates an instance for every http request and websocket connection, making it available for plugins.
 
@@ -433,27 +431,6 @@ Just output the class, nothing else."""
         return best_label if score < score_threshold else None
 
     @property
-    def lizard(self) -> BillTheLizard:
-        """
-        Instance of `BillTheLizard`. Use it to access the main components of the Cat.
-
-        Returns:
-            lizard: BillTheLizard
-                Instance of langchain `BillTheLizard`.
-        """
-        return BillTheLizard()
-
-    @property
-    def websocket_manager(self) -> WebSocketManager:
-        """
-        Instance of `WebsocketManager`. Use it to access the manager of the Websocket connections.
-
-        Returns:
-            websocket_manager (WebsocketManager): Instance of `WebsocketManager`.
-        """
-        return self.lizard.websocket_manager
-
-    @property
     def cheshire_cat(self) -> "CheshireCat":
         """
         Instance of langchain `CheshireCat`. Use it to access the main components of the chatbot.
@@ -473,29 +450,6 @@ Just output the class, nothing else."""
         return self.cheshire_cat.large_language_model
 
     @property
-    def large_language_model_name(self) -> str | None:
-        return self.cheshire_cat.large_language_model_name
-
-    @property
-    def embedder(self) -> Embeddings:
-        """
-        Langchain `Embeddings` object.
-
-        Returns:
-            embedder: Langchain `Embeddings`. Langchain embedder to turn text into a vector.
-
-        Examples
-        --------
-        >> cat.embedder.embed_query("Oh dear!")
-        [0.2, 0.02, 0.4, ...]
-        """
-        return self.lizard.embedder
-
-    @property
-    def embedder_name(self) -> str | None:
-        return self.lizard.embedder_name
-
-    @property
     def plugin_manager(self) -> Tweedledee:
         """
         Gives access to the `Tweedledee` plugin manager. Use it to manage plugins and hooks.
@@ -504,25 +458,6 @@ Just output the class, nothing else."""
             plugin_manager (Tweedledee): Plugin manager of the Cat.
         """
         return self.cheshire_cat.plugin_manager
-
-    @property
-    def mad_hatter(self) -> Tweedledee:
-        """
-        Gives access to the `Tweedledee` plugin manager.
-
-        Returns:
-            mad_hatter (Tweedledee): Module to manage plugins.
-
-        Examples
-        --------
-        Obtain the path in which your plugin is located
-        >> cat.mad_hatter.get_plugin().path
-        /app/cat/plugins/my_plugin
-        Obtain plugin settings
-        >> cat.mad_hatter.get_plugin().load_settings()
-        {"num_cats": 44, "rows": 6, "remainder": 0}
-        """
-        return self.plugin_manager
 
     # each time we access the file handlers, plugins can intervene
     @property

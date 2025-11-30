@@ -2,13 +2,13 @@ import time
 from abc import ABC
 from typing import Literal, List, Dict
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage as BaseLangChainMessage
-from pydantic import computed_field
+from pydantic import computed_field, BaseModel
 from typing_extensions import deprecated
 
 from cat.utils import BaseModelDict, retrieve_image
 
 
-class MessageWhy(BaseModelDict):
+class MessageWhy(BaseModel):
     """
     Class for wrapping message why. This is used to explain why the agent replied with the message.
 
@@ -85,7 +85,7 @@ class UserMessage(BaseMessage):
     image: str | None = None
 
 
-class ConversationHistoryItem(BaseModelDict):
+class ConversationHistoryItem(BaseModel):
     """
     Class for wrapping conversation history items. This is used to store the conversation history. It can be either
     assistant or user. The conversation history is then persisted in the database.

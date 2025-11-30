@@ -18,7 +18,7 @@ def test_convo_history_no_update_invalid_llm(secure_client, secure_client_header
     message = "It's late! It's late!"
 
     # send websocket messages
-    send_websocket_message({"text": message}, secure_client, {"apikey": api_key}, ch_id=chat_id)
+    send_websocket_message({"text": message}, secure_client, api_key, ch_id=chat_id)
 
     # check conversation history update
     response = secure_client.get(f"/conversation/{chat_id}", headers=secure_client_headers)
@@ -32,7 +32,7 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
     message = "It's late! It's late!"
 
     # send websocket messages
-    send_websocket_message({"text": message}, secure_client, {"apikey": api_key}, ch_id=chat_id)
+    send_websocket_message({"text": message}, secure_client, api_key, ch_id=chat_id)
     user = crud_users.get_user_by_username(agent_id, "user")
 
     # check conversation history update
@@ -56,7 +56,7 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
 def test_convo_history_reset(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     # send websocket messages
     send_websocket_message(
-        {"text": "It's late! It's late!"}, secure_client, {"apikey": api_key}, ch_id=chat_id
+        {"text": "It's late! It's late!"}, secure_client, api_key, ch_id=chat_id
     )
     user = crud_users.get_user_by_username(agent_id, "user")
 
@@ -102,7 +102,7 @@ def test_convo_history_by_user(secure_client, secure_client_headers, client, moc
             send_websocket_message(
                 {"text": f"Mex n.{m} from {username}"},
                 client,
-                query_params={"token": received_token},
+                received_token,
                 ch_id=chat_id,
             )
 
@@ -225,7 +225,7 @@ def test_get_convo_histories(secure_client, secure_client_headers, mocked_defaul
     for _ in range(3):
         # send websocket messages
         send_websocket_message(
-            {"text": message}, secure_client, {"apikey": api_key, "user_id": user["id"]}
+            {"text": message}, secure_client, api_key, {"user_id": user["id"]}
         )
 
     # check all the conversation histories
@@ -242,7 +242,7 @@ def test_get_convo_histories(secure_client, secure_client_headers, mocked_defaul
     for _ in range(2):
         # send websocket messages
         send_websocket_message(
-            {"text": message}, secure_client, {"apikey": api_key, "user_id": user["id"]}, ch_id=chat_id
+            {"text": message}, secure_client, api_key, {"user_id": user["id"]}, ch_id=chat_id
         )
 
     # check again all the conversation histories

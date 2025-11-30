@@ -30,18 +30,15 @@ def reset_api_key(key, value: str | None) -> None:
         del os.environ[key]
 
 
-@pytest.mark.parametrize("header_name", ["Authorization", "access_token"])
-def test_api_key_http(secure_client, header_name):
+def test_api_key_http(secure_client):
     old_api_key = set_api_key("CCAT_API_KEY", api_key)
 
-    # add "Bearer: " when using `Authorization` header
-    key_prefix = ""
-    if header_name == "Authorization":
-        key_prefix = "Bearer "
+    header_name = "Authorization"
+    key_prefix = "Bearer"
 
     wrong_headers = [
         {}, # no key
-        {header_name: f"{key_prefix}wrong"}, # wrong key
+        {header_name: f"{key_prefix} wrong"}, # wrong key
     ]
 
     # all the previous headers result in a 403
@@ -51,7 +48,7 @@ def test_api_key_http(secure_client, header_name):
         assert json["detail"] == "Invalid Credentials"
 
     # allow access if CCAT_API_KEY is right
-    headers = {header_name: f"{key_prefix}{api_key}"}
+    headers = {header_name: f"{key_prefix} {api_key}"}
     status_code, json = http_message(secure_client, headers)
     assert status_code == 200
     assert "You did not configure" in json["text"]
@@ -65,19 +62,17 @@ def test_api_key_ws(secure_client, secure_client_headers):
 
     mex = {"text": "Where do I go?"}
 
-    wrong_query_params = [
+    wrong_tokens = [
         {}, # no key
-        {"apikey": "wrong"}, # wrong apikey
-        {"token": "wrong"}, # wrong token
+        "wrong", # wrong token
     ]
 
-    for params in wrong_query_params:
+    for token in wrong_tokens:
         with pytest.raises(WebSocketDisconnect):
-            send_websocket_message(mex, secure_client, query_params=params)
+            send_websocket_message(mex, secure_client, token)
 
     # allow access if CCAT_API_KEY is right
-    query_params = {"apikey": api_key}
-    res = send_websocket_message(mex, secure_client, query_params=query_params)
+    res = send_websocket_message(mex, secure_client, api_key)
     assert "You did not configure" in res["content"]
 
     reset_api_key("CCAT_API_KEY", old_api_key)

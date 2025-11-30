@@ -22,7 +22,7 @@ def test_session_creation_from_websocket(
 
     # send websocket message
     mex = {"text": "Where do I go?"}
-    res = send_websocket_message(mex, client, query_params={"token": received_token, "user_id": user_id}, ch_id=chat_id)
+    res = send_websocket_message(mex, client, received_token, query_params={"user_id": user_id}, ch_id=chat_id)
 
     # check response
     assert "You did not configure" in res["content"]

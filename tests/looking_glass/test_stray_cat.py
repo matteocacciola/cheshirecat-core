@@ -106,7 +106,7 @@ async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray
     # activate for the new agent
     secure_client.put("/plugins/toggle/mock_plugin_fast_reply", headers=ccat_headers)
 
-    msg = {"text": "hello", "user_id": stray.user.id, "agent_id": stray.agent_id}
+    msg = {"text": "hello", "user_id": stray.user.id, "agent_id": stray.agent_key}
 
     # send message
     res = await stray(msg)

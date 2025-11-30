@@ -30,7 +30,7 @@ def test_memory_collections_wipe(
     secure_client, secure_client_headers, mocked_default_llm_answer_prompt
 ):
     message = {"text": "Meow"}
-    send_websocket_message(message, secure_client, {"apikey": api_key})
+    send_websocket_message(message, secure_client, api_key)
 
     # create declarative memories
     send_file("sample.txt", "text/plain", secure_client, secure_client_headers)

@@ -1,6 +1,5 @@
 from typing import Dict
 from uuid import uuid4
-from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
 
 from cat.auth.auth_utils import hash_password, DEFAULT_USER_USERNAME
@@ -22,11 +21,12 @@ from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.looking_glass.tweedledee import Tweedledee
 from cat.mad_hatter.decorators import CatTool
 from cat.memory.utils import VectorMemoryType
-from cat.utils import get_factory_object, get_nlp_object_name, get_updated_factory_object
+from cat.mixin.runtime import CatMixin
+from cat.utils import get_factory_object, get_updated_factory_object
 
 
 # main class
-class CheshireCat:
+class CheshireCat(CatMixin):
     """
     The Cheshire Cat.
 
@@ -288,93 +288,10 @@ class CheshireCat:
     async def on_end_plugin_deactivate(self, plugin_id: str) -> None:
         await self.embed_procedures()
 
-    @property
-    def lizard(self) -> "BillTheLizard":
-        """
-        Instance of langchain `BillTheLizard`. Use it to access the main components of the Cat.
-
-        Returns:
-            lizard (BillTheLizard): Instance of langchain `BillTheLizard`.
-        """
-        from cat.looking_glass import BillTheLizard
-        return BillTheLizard()
-
-    @property
-    def websocket_manager(self) -> "BillTheLizard":
-        """
-        Instance of `WebsocketManager`. Use it to access the manager of the Websocket connections.
-
-        Returns:
-            websocket_manager (WebsocketManager): Instance of `WebsocketManager`.
-        """
-        return self.lizard.websocket_manager
-
-    @property
-    def embedder(self) -> Embeddings:
-        """
-        Langchain `Embeddings` object.
-
-        Returns:
-            embedder: Langchain `Embeddings`. Langchain embedder to turn text into a vector.
-
-        Examples
-        --------
-        >> cat.embedder.embed_query("Oh dear!")
-        [0.2, 0.02, 0.4, ...]
-        """
-        return self.lizard.embedder
-
-    @property
-    def embedder_name(self) -> str | None:
-        return self.lizard.embedder_name
-
-    @property
-    def rabbit_hole(self) -> "RabbitHole":
-        """
-        Gives access to the `RabbitHole`, to upload documents and URLs into the vector DB.
-
-        Returns:
-            rabbit_hole (RabbitHole): Module to ingest documents and URLs for RAG.
-
-        Examples
-        --------
-        >> cat.rabbit_hole.ingest_file(...)
-        """
-        return self.lizard.rabbit_hole
-
-    @property
-    def mad_hatter(self) -> Tweedledee:
-        """
-        Gives access to the `Tweedledee` plugin manager.
-
-        Returns:
-            mad_hatter (Tweedledee): Module to manage plugins.
-
-        Examples
-        --------
-        Obtain the path in which your plugin is located
-        >> cat.mad_hatter.get_plugin().path
-        /app/plugins/my_plugin
-        Obtain plugin settings
-        >> cat.mad_hatter.get_plugin().load_settings()
-        {"num_cats": 44, "rows": 6, "remainder": 0}
-        """
-        return self.plugin_manager
-
     # each time we access the file handlers, plugins can intervene
     @property
     def file_handlers(self) -> Dict:
         return self.plugin_manager.execute_hook("rabbithole_instantiates_parsers",  {}, obj=self)
-
-    @property
-    def agent_id(self) -> str:
-        """
-        The unique identifier of the cat.
-
-        Returns:
-            agent_id (str): The unique identifier of the cat.
-        """
-        return self.id
 
     @property
     def agent_key(self) -> str:
@@ -385,9 +302,3 @@ class CheshireCat:
             agent_id (str): The unique identifier of the cat.
         """
         return self.id
-
-    @property
-    def large_language_model_name(self) -> str | None:
-        if self.large_language_model is None:
-            return None
-        return get_nlp_object_name(self.large_language_model, "default_llm")

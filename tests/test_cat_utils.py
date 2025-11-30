@@ -49,42 +49,6 @@ def test_parse_json():
     assert "substring not found" in str(e.value)
 
 
-# BaseModelDict to be deprecated in v2
-def test_base_dict_model():
-    class Origin(utils.BaseModelDict):
-        location: str
-
-    class Cat(utils.BaseModelDict):
-        color: str
-        origin: Origin
-
-    origin = Origin(location="Cheshire")
-
-    cat = Cat(color="pink", origin=origin)
-    assert cat["color"] == cat.color == "pink"
-
-    accesses = {"Cheshire", cat.origin.location, cat.origin["location"], cat["origin"].location,
-                cat["origin"]["location"], cat.get("origin").get("location")}
-    assert len(accesses) == 1
-
-    # edit custom attributes
-    cat.something = "meow"
-    cat.origin.something = "meow"
-    accesses = {"meow", cat.something, cat["something"], cat.origin.something, cat["origin"]["something"],
-                cat["origin"].something, cat.get("origin").get("something"), cat.get("missing", "meow"),
-                cat.origin.get("missing", "meow")}
-    assert len(accesses) == 1
-
-    # .keys()
-    assert set(cat.keys()) == {"color", "origin", "something"}
-    assert set(cat.origin.keys()) == {"location", "something"}
-    assert set(cat.origin.values()) == {"Cheshire", "meow"}
-
-    # in
-    assert "color" in cat
-    assert "location" in cat.origin
-
-
 def test_load_settings_raise_exception(stray_no_memory):
     with pytest.raises(Exception) as e:
         stray_no_memory.plugin_manager.get_plugin()
@@ -92,17 +56,6 @@ def test_load_settings_raise_exception(stray_no_memory):
 
 
 def test_load_settings_no_agent_key_from_stray_cat(stray_no_memory):
-    original_fnc = utils.inspect_calling_folder
-    utils.inspect_calling_folder = lambda: "base_plugin"
-
-    plugin = stray_no_memory.plugin_manager.get_plugin()
-    plugin.load_settings()
-    assert utils.inspect_calling_agent().agent_key == agent_id
-
-    utils.inspect_calling_folder = original_fnc
-
-
-def test_load_settings_no_agent_key_from_stray_cat_long(stray_no_memory):
     original_fnc = utils.inspect_calling_folder
     utils.inspect_calling_folder = lambda: "base_plugin"
 
@@ -116,20 +69,7 @@ def test_load_settings_no_agent_key_from_cheshire_cat(cheshire_cat):
     original_fnc = utils.inspect_calling_folder
     utils.inspect_calling_folder = lambda: "base_plugin"
 
-    plugin = cheshire_cat.plugin_manager.get_plugin()
-    plugin.load_settings()
-
-    assert utils.inspect_calling_agent().agent_key == agent_id
-
-    utils.inspect_calling_folder = original_fnc
-
-
-def test_load_settings_no_agent_key_from_cheshire_cat_long(cheshire_cat):
-    original_fnc = utils.inspect_calling_folder
-    utils.inspect_calling_folder = lambda: "base_plugin"
-
     cheshire_cat.plugin_manager.get_plugin().load_settings()
-
     assert utils.inspect_calling_agent().agent_key == agent_id
 
     utils.inspect_calling_folder = original_fnc

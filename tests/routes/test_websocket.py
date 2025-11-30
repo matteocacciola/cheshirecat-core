@@ -28,7 +28,7 @@ def check_correct_websocket_reply(reply):
 def test_websocket(secure_client, secure_client_headers):
     msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
     # send websocket message
-    res = send_websocket_message(msg, secure_client, {"apikey": api_key})
+    res = send_websocket_message(msg, secure_client, api_key)
 
     check_correct_websocket_reply(res)
 
@@ -69,7 +69,7 @@ def test_websocket_with_additional_items_in_message(secure_client):
         "prompt_settings": {"temperature": 0.5}
     }
     # send websocket message
-    res = send_websocket_message(msg, secure_client, {"apikey": api_key})
+    res = send_websocket_message(msg, secure_client, api_key)
 
     check_correct_websocket_reply(res)
 
@@ -81,7 +81,7 @@ def test_websocket_with_new_user(secure_client):
     assert user is None
 
     msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
-    res = send_websocket_message(msg, secure_client, {"apikey": api_key, "user_id": mocked_user_id})
+    res = send_websocket_message(msg, secure_client, api_key, {"user_id": mocked_user_id})
 
     check_correct_websocket_reply(res)
 
@@ -103,11 +103,11 @@ def test_websocket_multiple_connections(secure_client, secure_client_headers, li
     data = create_new_user(secure_client, "/users", username="Alice", headers=secure_client_headers)
     data2 = create_new_user(secure_client, "/users", username="Caterpillar", headers=secure_client_headers)
 
-    with secure_client.websocket_connect(f"/ws/{agent_id}?apikey={api_key}&user_id={data['id']}") as websocket:
+    with secure_client.websocket_connect(f"/ws/{agent_id}?user_id={data['id']}", headers={"Authorization": f"Bearer {api_key}"}) as websocket:
         # send ws message
         websocket.send_json(mex)
 
-        with secure_client.websocket_connect(f"/ws/{agent_id}?apikey={api_key}&user_id={data2['id']}") as websocket2:
+        with secure_client.websocket_connect(f"/ws/{agent_id}?user_id={data2['id']}", headers={"Authorization": f"Bearer {api_key}"}) as websocket2:
             # send ws message
             websocket2.send_json(mex)
             # get reply

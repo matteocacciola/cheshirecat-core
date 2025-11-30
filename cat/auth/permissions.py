@@ -1,8 +1,8 @@
 from typing import Dict, List
 from fastapi import Depends
-from pydantic import Field
+from pydantic import Field, BaseModel
 
-from cat.utils import BaseModelDict, Enum
+from cat.utils import Enum
 
 
 class AuthResource(Enum):
@@ -129,7 +129,7 @@ def check_websocket_permissions(resource: AuthResource, permission: AuthPermissi
     return Depends(WebSocketAuth(resource=resource, permission=permission))
 
 
-class AuthUserInfo(BaseModelDict):
+class AuthUserInfo(BaseModel):
     """
     Class to represent token content after the token has been decoded.
     Will be created by AuthHandler(s) to standardize their output.

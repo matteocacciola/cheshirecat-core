@@ -176,7 +176,7 @@ class RabbitHole:
                     # Get binary content of url
                     file_bytes = request.content
                 except HTTPError as e:
-                    log.error(f"Agent id: {self.cat.agent_id}. Error: {e}")
+                    log.error(f"Agent id: {self.cat.agent_key}. Error: {e}")
             else:
                 # Get mime type from file extension and source
                 content_type = mimetypes.guess_type(file)[0]
@@ -242,7 +242,7 @@ class RabbitHole:
         At this point, it is possible to customize the Cat's behavior using the `before_rabbithole_insert_memory` hook
         to edit the memories before they are inserted in the vector database.
         """
-        log.info(f"Agent id: {self.cat.agent_id}. Preparing to memorize {len(docs)} vectors")
+        log.info(f"Agent id: {self.cat.agent_key}. Preparing to memorize {len(docs)} vectors")
 
         embedder = self.cat.embedder
         plugin_manager = self.cat.plugin_manager
@@ -287,9 +287,9 @@ class RabbitHole:
                 )) is not None:
                     stored_points.append(stored_point)
 
-                log.info(f"Agent id: {self.cat.agent_id}. Inserted into memory ({inserting_info})")
+                log.info(f"Agent id: {self.cat.agent_key}. Inserted into memory ({inserting_info})")
             else:
-                log.info(f"Agent id: {self.cat.agent_id}. Skipped memory insertion of empty doc ({inserting_info})")
+                log.info(f"Agent id: {self.cat.agent_key}. Skipped memory insertion of empty doc ({inserting_info})")
 
             # wait a little to avoid APIs rate limit errors
             time.sleep(0.05)
@@ -307,7 +307,7 @@ class RabbitHole:
         if self.stray:
             await self.stray.send_ws_message(finished_reading_message)
 
-        log.warning(f"Agent id: {self.cat.agent_id}. Done uploading {source}")
+        log.warning(f"Agent id: {self.cat.agent_key}. Done uploading {source}")
 
         return stored_points
 
@@ -453,7 +453,7 @@ class RabbitHole:
 
         # upload a file to CheshireCat's file manager
         try:
-            self.cat.file_manager.upload_file_to_storage(file_path, self.cat.agent_id, source)
+            self.cat.file_manager.upload_file_to_storage(file_path, self.cat.agent_key, source)
         except Exception as e:
             log.error(f"Error while uploading file {file_path}: {e}")
         finally:

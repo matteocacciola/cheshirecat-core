@@ -17,7 +17,6 @@ from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.tweedledum import Tweedledum
-from cat.mad_hatter import MadHatter
 from cat.mad_hatter.decorators import CustomEndpoint
 from cat.rabbit_hole import RabbitHole
 from cat.services.websocket_manager import WebSocketManager
@@ -303,14 +302,6 @@ class BillTheLizard:
 
     @property
     def config_key(self):
-        return self._key
-
-    @property
-    def mad_hatter(self) -> MadHatter:
-        return self.plugin_manager
-
-    @property
-    def agent_id(self):
         return self._key
 
     @property
