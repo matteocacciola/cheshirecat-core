@@ -149,7 +149,7 @@ async def uninstall_plugin(
 
 
 @router.put("/toggle/{plugin_id}", status_code=200, response_model=TogglePluginResponse)
-async def toggle_plugin(
+async def toggle_plugin_admin(
     plugin_id: str,
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGIN, AuthPermission.DELETE),
 ) -> TogglePluginResponse:

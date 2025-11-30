@@ -305,23 +305,27 @@ class Plugin:
         if len(filtered_requirements) == 0:
             return
 
-        with tempfile.NamedTemporaryFile(mode="w") as tmp:
-            tmp.write("".join(filtered_requirements))
-            # If flush is not performed, when pip reads the file it is empty
-            tmp.flush()
+        # Use delete=False and close the file before subprocess reads it
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as tmp:
+            tmp.write("\n".join(filtered_requirements))
+            tmp_name = tmp.name
 
-            try:
-                subprocess.run(
-                    ["uv", "pip", "install", "--no-cache", "--link-mode=copy", "-r", tmp.name], check=True
-                )
-            except subprocess.CalledProcessError as e:
-                log.error(f"Error while installing plugin {self.id} requirements: {e}")
+        try:
+            subprocess.run(
+                ["uv", "pip", "install", "--no-cache", "--link-mode=copy", "-r", tmp_name], check=True
+            )
+        except subprocess.CalledProcessError as e:
+            log.error(f"Error while installing plugin {self.id} requirements: {e}")
 
-                # Uninstall the previously installed packages
-                log.info(f"Uninstalling requirements for: {self.id}")
-                subprocess.run(["uv", "pip", "uninstall", "-r", tmp.name], check=True)
+            # Uninstall the previously installed packages
+            log.info(f"Uninstalling requirements for: {self.id}")
+            subprocess.run(["uv", "pip", "uninstall", "-r", tmp_name], check=True)
 
-                raise Exception(f"Error during plugin {self.id} requirements installation")
+            raise Exception(f"Error during plugin {self.id} requirements installation")
+        finally:
+            # Clean up the temporary file
+            if os.path.exists(tmp_name):
+                os.unlink(tmp_name)
 
     # lists of hooks and tools
     def _load_decorated_functions(self):
