@@ -8,7 +8,7 @@ from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException
 from cat.looking_glass import BillTheLizard
 
-router = APIRouter()
+router = APIRouter(tags=["Admins"], prefix="/users")
 
 
 class AdminBase(BaseModel):

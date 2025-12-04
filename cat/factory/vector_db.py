@@ -143,7 +143,7 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def retrieve_points(self, collection_name:str, points: List) -> List[Record]:
+    async def retrieve_tenant_points(self, collection_name:str, points: List) -> List[Record]:
         """
         Retrieve points from the collection by their ids
 
@@ -157,7 +157,7 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def add_point(
+    async def add_point_to_tenant(
         self,
         collection_name: str,
         content: str,
@@ -181,7 +181,7 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def add_points(
+    async def add_points_to_tenant(
         self, collection_name: str, payloads: List[Payload], vectors: List, ids: List | None = None
     ) -> UpdateResult:
         """
@@ -199,7 +199,9 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def delete_points_by_metadata_filter(self, collection_name: str, metadata: Dict | None = None) -> UpdateResult:
+    async def delete_tenant_points_by_metadata_filter(
+        self, collection_name: str, metadata: Dict | None = None
+    ) -> UpdateResult:
         """
         Delete points from the collection by metadata filter.
 
@@ -213,7 +215,7 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def delete_points(self, collection_name: str, points_ids: List) -> UpdateResult:
+    async def delete_tenant_points(self, collection_name: str, points_ids: List) -> UpdateResult:
         """
         Delete points from the collection by their ids.
 
@@ -227,7 +229,7 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def recall_memories_from_embedding(
+    async def recall_tenant_memory_from_embedding(
         self,
         collection_name: str,
         embedding: List[float],
@@ -258,7 +260,7 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def recall_all_memories(self, collection_name: str) -> List[DocumentRecall]:
+    async def recall_tenant_memory(self, collection_name: str) -> List[DocumentRecall]:
         """
         Retrieve the entire memories. It is similar to `recall_memories_from_embedding`, but without the embedding
         vector. Like `get_all_points`, it retrieves all the memories in the collection. The memories are returned in the
@@ -275,8 +277,9 @@ class BaseVectorDatabaseHandler(ABC):
             VectorMemoryCollection.recall_memories_from_embedding
             VectorMemoryCollection.get_all_points
         """
+
     @abstractmethod
-    async def get_all_points(
+    async def get_all_tenant_points(
         self,
         collection_name: str,
         limit: int | None = None,
@@ -300,7 +303,7 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def get_all_points_from_web(
+    async def get_all_tenant_points_from_web(
         self, collection_name: str, limit: int | None = None, offset: str | None = None
     ) -> Tuple[List[Record], int | str | None]:
         """
@@ -317,7 +320,7 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def get_all_points_from_files(
+    async def get_all_tenant_points_from_files(
         self, collection_name: str, limit: int | None = None, offset: str | None = None
     ) -> Tuple[List[Record], int | str | None]:
         """
@@ -334,7 +337,7 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def get_vectors_count(self, collection_name: str) -> int:
+    async def get_tenant_vectors_count(self, collection_name: str) -> int:
         """
         Get the count of vectors in the specified collection.
 
@@ -347,7 +350,7 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def destroy_all_points(self, collection_name: str) -> bool:
+    async def destroy_all_tenant_points(self, collection_name: str) -> bool:
         """
         Destroy all points in the specified collection.
 
@@ -360,7 +363,9 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def update_metadata(self, collection_name: str, points: List[PointStruct], metadata: Dict) -> UpdateResult:
+    async def update_metadata_to_tenant_points(
+        self, collection_name: str, points: List[PointStruct], metadata: Dict
+    ) -> UpdateResult:
         """
         Update the metadata of a point in the collection.
 
@@ -444,7 +449,7 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def search(
+    async def search_in_tenant(
         self,
         collection_name: str,
         query_vector: List[float],
@@ -475,7 +480,7 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def search_prefetched(
+    async def search_prefetched_in_tenant(
         self,
         collection_name: str,
         query: str,
@@ -800,7 +805,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             await self._client.delete_snapshot(collection_name=collection_name, snapshot_name=s.name)
         log.warning(f"Dump `{new_name}` for the agent `{self.agent_id}` completed")
 
-    async def retrieve_points(self, collection_name:str, points: List) -> List[Record]:
+    async def retrieve_tenant_points(self, collection_name:str, points: List) -> List[Record]:
         """
         Retrieve points from the collection by their ids
 
@@ -823,7 +828,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
 
         return [Record(**point.model_dump()) for point in points_found]
 
-    async def add_point(
+    async def add_point_to_tenant(
         self,
         collection_name: str,
         content: str,
@@ -863,7 +868,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         return None
 
     # add points in collection
-    async def add_points(
+    async def add_points_to_tenant(
         self, collection_name: str, payloads: List[Payload], vectors: List, ids: List | None = None
     ) -> UpdateResult:
         if not ids:
@@ -881,7 +886,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             operation_id=res.operation_id,
         )
 
-    async def delete_points_by_metadata_filter(self, collection_name: str, metadata: Dict | None = None) -> UpdateResult:
+    async def delete_tenant_points_by_metadata_filter(self, collection_name: str, metadata: Dict | None = None) -> UpdateResult:
         conditions = self._build_metadata_conditions(metadata=metadata)
 
         res = await self._client.delete(collection_name=collection_name, points_selector=Filter(must=conditions))
@@ -891,7 +896,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         )
 
     # delete point in collection
-    async def delete_points(self, collection_name: str, points_ids: List) -> UpdateResult:
+    async def delete_tenant_points(self, collection_name: str, points_ids: List) -> UpdateResult:
         res = await self._client.delete(collection_name=collection_name, points_selector=points_ids)
         return UpdateResult(
             status=res.status,
@@ -899,7 +904,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         )
 
     # retrieve similar memories from embedding
-    async def recall_memories_from_embedding(
+    async def recall_tenant_memory_from_embedding(
         self,
         collection_name: str,
         embedding: List[float],
@@ -931,8 +936,8 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         retrieved_points = [ScoredPoint(**point.model_dump()) for point in query_response.points]
         return [to_document_recall(m) for m in retrieved_points]
 
-    async def recall_all_memories(self, collection_name: str) -> List[DocumentRecall]:
-        all_points, _ = await self.get_all_points(collection_name)
+    async def recall_tenant_memory(self, collection_name: str) -> List[DocumentRecall]:
+        all_points, _ = await self.get_all_tenant_points(collection_name)
         memories = [to_document_recall(p) for p in all_points]
 
         return memories
@@ -985,7 +990,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         return memory_points, None
 
     # retrieve all the points in the collection
-    async def get_all_points(
+    async def get_all_tenant_points(
         self,
         collection_name: str,
         limit: int | None = None,
@@ -1002,7 +1007,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             with_vectors=with_vectors,
         )
 
-    async def get_all_points_from_web(
+    async def get_all_tenant_points_from_web(
         self, collection_name: str, limit: int | None = None, offset: str | None = None
     ) -> Tuple[List[Record], int | str | None]:
         conditions = [
@@ -1021,7 +1026,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             with_vectors=False,
         )
 
-    async def get_all_points_from_files(
+    async def get_all_tenant_points_from_files(
         self, collection_name: str, limit: int | None = None, offset: str | None = None
     ) -> Tuple[List[Record], int | str | None]:
         filter_condition = Filter(
@@ -1048,13 +1053,13 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             with_vectors=False
         )
 
-    async def get_vectors_count(self, collection_name: str) -> int:
+    async def get_tenant_vectors_count(self, collection_name: str) -> int:
         return (await self._client.count(
             collection_name=collection_name,
             count_filter=Filter(must=[self.tenant_field_condition()]),
         )).count
 
-    async def destroy_all_points(self, collection_name: str) -> bool:
+    async def destroy_all_tenant_points(self, collection_name: str) -> bool:
         try:
             await self._client.delete(
                 collection_name=collection_name,
@@ -1065,7 +1070,9 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             log.error(f"Error deleting collection `{collection_name}`, agent `{self.agent_id}`: {e}")
             return False
 
-    async def update_metadata(self, collection_name: str, points: List[PointStruct], metadata: Dict) -> UpdateResult:
+    async def update_metadata_to_tenant_points(
+        self, collection_name: str, points: List[PointStruct], metadata: Dict
+    ) -> UpdateResult:
         qdrant_points = []
         for point in points:
             point.payload["metadata"] = {**point.payload["metadata"], **metadata}
@@ -1084,7 +1091,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         collections_response = await self._client.get_collections()
         return [c.name for c in collections_response.collections]
 
-    async def search(
+    async def search_in_tenant(
         self,
         collection_name: str,
         query_vector: List[float],
@@ -1113,7 +1120,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
 
         return response.points
 
-    async def search_prefetched(
+    async def search_prefetched_in_tenant(
         self,
         collection_name: str,
         query: str,

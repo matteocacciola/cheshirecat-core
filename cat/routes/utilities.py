@@ -5,15 +5,23 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from cat.auth.auth_utils import extract_agent_id_from_request
-from cat.auth.permissions import AdminAuthResource, AuthPermission, check_admin_permissions
+from cat.auth.connection import AuthorizedInfo
+from cat.auth.permissions import (
+    AdminAuthResource,
+    AuthPermission,
+    AuthResource,
+    check_admin_permissions,
+    check_permissions,
+)
 from cat.db import crud
 from cat.db.database import get_db
 from cat.log import log
 from cat.looking_glass import BillTheLizard
+from cat.memory.utils import VectorMemoryType
 from cat.routes.routes_utils import startup_app, shutdown_app
 from cat.utils import get_plugins_path
 
-router = APIRouter()
+router = APIRouter(tags=["Utilities"], prefix="/utils")
 
 class ResetResponse(BaseModel):
     deleted_settings: bool
@@ -23,6 +31,14 @@ class ResetResponse(BaseModel):
 
 class CreatedResponse(BaseModel):
     created: bool
+
+
+class AgentCloneRequest(BaseModel):
+    agent_id: str
+
+
+class AgentClonedResponse(BaseModel):
+    cloned: bool = False
 
 
 @router.post("/factory/reset", response_model=ResetResponse)
@@ -92,7 +108,7 @@ async def get_agents() -> List[str]:
         return []
 
 
-@router.post("/agent/create", response_model=CreatedResponse)
+@router.post("/agents/create", response_model=CreatedResponse)
 async def agent_create(
     request: Request,
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CAT, AuthPermission.DELETE),
@@ -110,7 +126,7 @@ async def agent_create(
         return CreatedResponse(created=False)
 
 
-@router.post("/agent/destroy", response_model=ResetResponse)
+@router.post("/agents/destroy", response_model=ResetResponse)
 async def agent_destroy(
     request: Request,
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CAT, AuthPermission.DELETE),
@@ -140,17 +156,83 @@ async def agent_destroy(
     )
 
 
-@router.post("/agent/reset", response_model=ResetResponse)
+@router.post("/agents/reset", response_model=ResetResponse)
 async def agent_reset(
-    request: Request,
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CAT, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.SETTING, AuthPermission.WRITE),
 ) -> ResetResponse:
     """
     Reset a single agent. This will delete all settings, memories, and metadata, for the agent.
     """
-    result = await agent_destroy(request, lizard)
+    ccat = info.cheshire_cat
+    agent_id = ccat.agent_key
 
-    agent_id = extract_agent_id_from_request(request)
-    await lizard.create_cheshire_cat(agent_id)
+    lizard = ccat.lizard
+    try:
+        await ccat.destroy()
+        await lizard.create_cheshire_cat(agent_id)
 
-    return result
+        deleted_settings = True
+        deleted_memories = True
+    except Exception as e:
+        log.error(f"Error deleting settings: {e}")
+        deleted_settings = False
+        deleted_memories = False
+
+    return ResetResponse(
+        deleted_settings=deleted_settings,
+        deleted_memories=deleted_memories,
+        deleted_plugin_folders=False,
+    )
+
+
+@router.post("/agents/clone", response_model=AgentClonedResponse)
+async def agent_clone(
+    request: AgentCloneRequest,
+    info: AuthorizedInfo = check_permissions(AuthResource.SETTING, AuthPermission.WRITE),
+) -> AgentClonedResponse:
+    """
+    Clone a single agent. This will clone all settings, memories, and metadata, for the agent.
+    """
+    agent_id = request.agent_id
+    if agent_id in crud.get_agents_main_keys():
+        log.warning(f"Agent {agent_id} already exists. Cannot clone.")
+        return AgentClonedResponse(cloned=False)
+
+    ccat = info.cheshire_cat
+
+    cloned_ccat = None
+    try:
+        # clone the settings from the provided agent
+        log.info(f"Cloning settings from agent {ccat.agent_key} to agent {agent_id}")
+        crud.clone_agent(ccat.agent_key, agent_id, ["analytics"])
+
+        # clone the vector points from the ccat to the provided agent
+        cloned_ccat = ccat.lizard.get_cheshire_cat_from_db(agent_id)
+        await cloned_ccat.embed_procedures()
+
+        log.info(f"Cloning vector memory from agent {ccat.agent_key} to agent {agent_id}")
+        points, _ = await ccat.vector_memory_handler.get_all_tenant_points(
+            str(VectorMemoryType.DECLARATIVE), with_vectors=True
+        )
+        if points:
+            await cloned_ccat.vector_memory_handler.add_points_to_tenant(
+                collection_name=str(VectorMemoryType.DECLARATIVE),
+                payloads=[p.payload for p in points],
+                vectors=[p.vector for p in points],
+            )
+
+        # clone the files from the ccat to the provided agent
+        log.info(f"Cloning files from agent {ccat.agent_key} to agent {agent_id}")
+        ccat.file_manager.clone_folder(ccat.agent_key, agent_id)
+
+        return AgentClonedResponse(cloned=True)
+    except Exception as e:
+        log.error(f"Error cloning agent {ccat.agent_key}: {e}")
+
+        # rollback
+        if cloned_ccat:
+            await cloned_ccat.destroy()
+        else:
+            crud.delete(agent_id)
+
+        return AgentClonedResponse(cloned=False)

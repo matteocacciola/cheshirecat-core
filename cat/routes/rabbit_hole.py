@@ -195,7 +195,7 @@ async def get_source_urls(
 ) -> List[str]:
     """Retrieve the list of source URLs that have been uploaded to the Rabbit Hole"""
     # Get all points
-    memory_points, _ = await info.cheshire_cat.vector_memory_handler.get_all_points_from_web(
+    memory_points, _ = await info.cheshire_cat.vector_memory_handler.get_all_tenant_points_from_web(
         str(VectorMemoryType.DECLARATIVE)
     )
 

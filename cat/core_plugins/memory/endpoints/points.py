@@ -104,7 +104,7 @@ async def recall_memory_points_from_text(
     # Embed the query to plot it in the Memory page
     query_embedding = ccat.embedder.embed_query(text)
 
-    dm = await ccat.vector_memory_handler.recall_memories_from_embedding(
+    dm = await ccat.vector_memory_handler.recall_tenant_memory_from_embedding(
         str(VectorMemoryType.DECLARATIVE),
         query_embedding,
         k=k,
@@ -208,7 +208,7 @@ async def delete_memory_point(
         await verify_memory_point_existence(info.cheshire_cat, collection_id, point_id)
 
         # delete point
-        await info.cheshire_cat.vector_memory_handler.delete_points(collection_id, [point_id])
+        await info.cheshire_cat.vector_memory_handler.delete_tenant_points(collection_id, [point_id])
 
         return DeleteMemoryPointResponse(deleted=point_id)
     except Exception as e:
@@ -232,7 +232,7 @@ async def delete_memory_points_by_metadata(
         metadata = metadata or {}
 
         # delete points
-        ret = await ccat.vector_memory_handler.delete_points_by_metadata_filter(collection_id, metadata)
+        ret = await ccat.vector_memory_handler.delete_tenant_points_by_metadata_filter(collection_id, metadata)
 
         # delete the file with path `metadata["source"]` from the file storage
         if collection_id == VectorMemoryType.DECLARATIVE and (source := metadata.get("source")):
@@ -317,7 +317,7 @@ async def get_points_in_collection(
         if offset == "":
             offset = None
 
-        points, next_offset = await info.cheshire_cat.vector_memory_handler.get_all_points(
+        points, next_offset = await info.cheshire_cat.vector_memory_handler.get_all_tenant_points(
             collection_name=collection_id, limit=limit, offset=offset, metadata=metadata
         )
 

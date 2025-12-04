@@ -31,7 +31,7 @@ async def get_collections(
 
     collections_metadata = [GetCollectionsItem(
         name=collection,
-        vectors_count=await vector_memory_handler.get_vectors_count(collection)
+        vectors_count=await vector_memory_handler.get_tenant_vectors_count(collection)
     ) for collection in existing_collections]
 
     return GetCollectionsResponse(collections=collections_metadata)
@@ -48,7 +48,7 @@ async def destroy_all_collection_points(
     vector_memory_handler = info.cheshire_cat.vector_memory_handler
 
     to_return = {
-        collection: await vector_memory_handler.destroy_all_points(collection)
+        collection: await vector_memory_handler.destroy_all_tenant_points(collection)
         for collection in await vector_memory_handler.get_collection_names()
     }
 
@@ -74,7 +74,7 @@ async def destroy_all_single_collection_points(
     if collection_id not in existing_collections:
         raise CustomNotFoundException("Collection does not exist.")
 
-    ret = await vector_memory_handler.destroy_all_points(collection_id)
+    ret = await vector_memory_handler.destroy_all_tenant_points(collection_id)
     return WipeCollectionsResponse(deleted={collection_id: ret})
 
 
@@ -97,7 +97,7 @@ async def create_single_collection(
     if collection_id in existing_collections:
         return GetCollectionsItem(
             name=collection_id,
-            vectors_count=await vector_memory_handler.get_vectors_count(collection_id)
+            vectors_count=await vector_memory_handler.get_tenant_vectors_count(collection_id)
         )
 
     lizard = info.cheshire_cat.lizard

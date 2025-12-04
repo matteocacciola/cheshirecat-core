@@ -75,6 +75,12 @@ def mock_classes(monkeypatch):
 
 
 def clean_up():
+    # delete all the collections in Qdrant
+    async def flush_vector_db():
+        collections = await memory_client.get_collections()
+        for collection in collections.collections:
+            await memory_client.delete_collection(collection.name)
+
     # clean up service files and mocks
     to_be_removed = [
         "tests/mocks/mock_plugin.zip",
@@ -95,6 +101,7 @@ def clean_up():
                 os.remove(tbr)
 
     redis_client.flushdb()
+    utils.run_sync_or_async(flush_vector_db)
 
     # wait for the flushdb to be completed
     time.sleep(0.1)

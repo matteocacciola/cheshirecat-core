@@ -184,6 +184,62 @@ def get_agents_plugin_keys(plugin_name: str) -> List[str]:
         raise
 
 
+def clone_agent(source_prefix: str, target_prefix: str, skip_keys: List[str] | None = None) -> int:
+    """
+    Clone all keys with source_prefix to target_prefix.
+
+    Args:
+        source_prefix: Source key prefix (e.g., "agent_test")
+        target_prefix: Target key prefix (e.g., "test_clone_agent_2")
+        skip_keys: List of specific keys to skip during cloning (e.g., ["analytics"]). Optional.
+
+    Returns:
+        Number of keys cloned
+    """
+    skip_keys = skip_keys or []
+
+    try:
+        db = get_db()
+
+        # Find all keys with the source prefix
+        pattern = f"{source_prefix}:*"
+        keys = list(db.scan_iter(match=pattern))
+        # Filter out keys to skip
+        keys = [
+            kd
+            for k in keys
+            for skip_key in skip_keys
+            if skip_key not in (kd := (k.decode() if isinstance(k, bytes) else k))
+        ]
+
+        if not keys:
+            log.warning(f"No keys found with prefix '{source_prefix}'")
+            return 0
+
+        cloned_count = 0
+        for source_key in keys:
+            # Determine the target key by replacing the prefix
+            target_key = source_key.replace(source_prefix, target_prefix, 1)
+
+            # Read the source data
+            source_data = db.json().get(source_key, "$")
+
+            if source_data:
+                # Handle JSONPath list wrapper
+                if isinstance(source_data, list) and len(source_data) > 0:
+                    source_data = source_data[0]
+
+                # Write to target
+                db.json().set(target_key, "$", source_data)
+                cloned_count += 1
+                log.info(f"Cloned '{source_key}' to '{target_key}'")
+
+        return cloned_count
+    except RedisError as e:
+        log.error(f"Redis error in clone_agent: {e}")
+        raise
+
+
 def get_db():
     """
     Get the Redis database connection.

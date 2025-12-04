@@ -157,6 +157,29 @@ class BaseFileManager(ABC):
     def _list_files(self, remote_root_dir: str) -> List[FileResponse]:
         pass
 
+    def clone_folder(self, remote_root_dir_from: str, remote_root_dir_to: str) -> List[str]:
+        """
+        Clone the entire `remote_root_dir_from` directory on the storage to the `remote_root_dir_to`.
+
+        Args:
+            remote_root_dir_from: The directory on the storage where the files are contained
+            remote_root_dir_to: The directory on the storage where the files will be cloned
+
+        Returns:
+            List of the paths of the files on the storage
+        """
+        remote_root_dir_from = (
+            os.path.join(self._root_dir, remote_root_dir_from) if remote_root_dir_from else self._root_dir
+        )
+        remote_root_dir_to = (
+            os.path.join(self._root_dir, remote_root_dir_to) if remote_root_dir_to else self._root_dir
+        )
+        return self._clone_folder(remote_root_dir_from, remote_root_dir_to)
+
+    @abstractmethod
+    def _clone_folder(self, remote_root_dir_from: str, remote_root_dir_to: str) -> List[str]:
+        pass
+
     def upload_folder_to_storage(self, local_dir: str, remote_root_dir: str) -> List[str]:
         """
         Upload a directory with all the contained files on the storage, within the directory specified by
@@ -249,6 +272,9 @@ class DummyFileManager(BaseFileManager):
 
     def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
         return False
+
+    def _clone_folder(self, remote_root_dir_from: str, remote_root_dir_to: str) -> List[str]:
+        return []
 
     def _list_files(self, remote_root_dir: str) -> List[FileResponse]:
         return []

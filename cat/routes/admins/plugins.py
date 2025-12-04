@@ -25,7 +25,7 @@ from cat.routes.routes_utils import (
 )
 from cat.utils import get_allowed_plugins_mime_types
 
-router = APIRouter()
+router = APIRouter(tags=["Admins - Plugins"], prefix="/plugins")
 
 
 # GET plugins

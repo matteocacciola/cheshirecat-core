@@ -3,12 +3,10 @@ from fastapi import APIRouter
 from cat.routes.admins.auth import router as auth_router
 from cat.routes.admins.crud import router as crud_router
 from cat.routes.admins.plugins import router as plugins_router
-from cat.routes.admins.utilities import router as crud_utilities
 
 router = APIRouter(prefix="/admins")
 
 
-router.include_router(crud_router, tags=["Admins"], prefix="/users")
-router.include_router(auth_router, tags=["Admins - Auth"], prefix="/auth")
-router.include_router(plugins_router, tags=["Admins - Plugins"], prefix="/plugins")
-router.include_router(crud_utilities, tags=["Admins - Utilities"], prefix="/utils")
+router.include_router(crud_router)
+router.include_router(auth_router)
+router.include_router(plugins_router)

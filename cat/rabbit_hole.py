@@ -93,7 +93,7 @@ class RabbitHole:
             )
 
         # Upsert memories in batch mode
-        await cat.vector_memory_handler.add_points(
+        await cat.vector_memory_handler.add_points_to_tenant(
             collection_name=str(VectorMemoryType.DECLARATIVE), ids=ids, payloads=payloads, vectors=vectors
         )
 
@@ -279,7 +279,7 @@ class RabbitHole:
             inserting_info = f"{d + 1}/{len(docs)}):    {doc.page_content}"
             if doc.page_content != "":
                 doc_embedding = embedder.embed_documents([doc.page_content])
-                if (stored_point := await self.cat.vector_memory_handler.add_point(
+                if (stored_point := await self.cat.vector_memory_handler.add_point_to_tenant(
                     collection_name=str(VectorMemoryType.DECLARATIVE),
                     content=doc.page_content,
                     vector=doc_embedding[0],

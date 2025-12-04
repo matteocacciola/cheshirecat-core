@@ -1,0 +1,312 @@
+import uuid
+from qdrant_client.http.models import Filter, FieldCondition, MatchValue
+import pytest
+
+from cat.db.cruds import (
+    settings as crud_settings,
+    history as crud_history,
+    plugins as crud_plugins,
+    users as crud_users,
+)
+from cat.db.database import get_db
+from cat.env import get_env
+from cat.memory.utils import VectorMemoryType
+
+from tests.utils import create_new_user, get_client_admin_headers, new_user_password
+
+
+async def checks_on_agent_create(lizard, new_agent_id):
+    settings = crud_settings.get_settings(new_agent_id)
+    assert len(settings) > 0
+
+    histories = get_db().get(crud_history.format_key(new_agent_id, "*", "*"))
+    assert histories is None
+
+    plugins = get_db().get(crud_plugins.format_key(new_agent_id, "*"))
+    assert plugins is None
+
+    users = crud_users.get_users(new_agent_id)
+    assert len(users) == 1
+
+    ccat = lizard.get_cheshire_cat(new_agent_id)
+    num_vectors = await ccat.vector_memory_handler.get_tenant_vectors_count(str(VectorMemoryType.DECLARATIVE))
+    points, _ = await ccat.vector_memory_handler.get_all_tenant_points(str(VectorMemoryType.DECLARATIVE))
+    assert num_vectors == 0
+    assert len(points) == 0
+
+
+async def checks_on_agent_reset(res, client, ccat_id, lizard):
+    assert res.status_code == 200
+
+    received_token = res.json()["access_token"]
+    response = client.post(
+        "/utils/agents/reset", headers={"Authorization": f"Bearer {received_token}", "agent_id": ccat_id}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"deleted_settings": True, "deleted_memories": True, "deleted_plugin_folders": False}
+
+    await checks_on_agent_create(lizard, ccat_id)
+
+
+def check_settings_on_agent_destroy(ccat_id):
+    histories = get_db().get(crud_history.format_key(ccat_id, "*", "*"))
+    assert histories is None
+
+    plugins = get_db().get(crud_plugins.format_key(ccat_id, "*"))
+    assert plugins is None
+
+    users = get_db().get(crud_users.format_key(ccat_id))
+    assert users is None
+
+
+async def checks_on_agent_destroy(cheshire_cat):
+    settings = crud_settings.get_settings(cheshire_cat.id)
+    assert len(settings) > 0
+
+    collections = await cheshire_cat.vector_memory_handler._client.get_collections()
+    assert len(collections.collections) > 0
+
+    num_vectors = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(str(VectorMemoryType.DECLARATIVE))
+    points, _ = await cheshire_cat.vector_memory_handler.get_all_tenant_points(str(VectorMemoryType.DECLARATIVE))
+    assert num_vectors == 0
+    assert len(points) == 0
+
+
+@pytest.mark.asyncio
+async def test_factory_reset_success(client, lizard, cheshire_cat):
+    # check that the vector database is not empty
+    c = await cheshire_cat.vector_memory_handler._client.get_collections()
+    assert len(c.collections) > 0
+
+    creds = {
+        "username": "admin",
+        "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
+    }
+
+    res = client.post("/admins/auth/token", json=creds)
+    assert res.status_code == 200
+
+    received_token = res.json()["access_token"]
+    response = client.post(
+        "/utils/factory/reset", headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"deleted_settings": True, "deleted_memories": True, "deleted_plugin_folders": True}
+
+    settings = crud_settings.get_settings(cheshire_cat.id)
+    assert len(settings) == 0
+
+    # check that the Lizard has been correctly recreated from scratch
+    settings = crud_settings.get_settings(lizard.config_key)
+    assert len(settings) > 0
+
+    # check that the vector database is not empty
+    c = await cheshire_cat.vector_memory_handler._client.get_collections()
+    assert len(c.collections) == 2
+
+    check_settings_on_agent_destroy(cheshire_cat.id)
+
+
+@pytest.mark.asyncio
+async def test_agent_destroy_success(client, lizard, cheshire_cat):
+    creds = {
+        "username": "admin",
+        "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
+    }
+
+    res = client.post("/admins/auth/token", json=creds)
+    assert res.status_code == 200
+
+    received_token = res.json()["access_token"]
+    response = client.post(
+        "/utils/agents/destroy", headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"deleted_settings": True, "deleted_memories": True, "deleted_plugin_folders": False}
+
+    settings = crud_settings.get_settings(cheshire_cat.id)
+    assert len(settings) == 0
+
+    check_settings_on_agent_destroy(cheshire_cat.id)
+
+    qdrant_filter = Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=cheshire_cat.id))])
+    count_response = await cheshire_cat.vector_memory_handler._client.count(
+        collection_name=str(VectorMemoryType.DECLARATIVE), count_filter=qdrant_filter
+    )
+    assert count_response.count == 0
+
+
+@pytest.mark.asyncio
+async def test_agent_reset_success(client, lizard, cheshire_cat):
+    creds = {
+        "username": "admin",
+        "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
+    }
+
+    res = client.post("/admins/auth/token", json=creds)
+    assert res.status_code == 200
+
+    await checks_on_agent_reset(res, client, cheshire_cat.id, lizard)
+
+
+@pytest.mark.asyncio
+async def test_agent_reset_by_agent_admin_success(secure_client, secure_client_headers, client, lizard, cheshire_cat):
+    data = create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"SETTING": ["WRITE"]})
+    creds = {"username": data["username"], "password": new_user_password}
+    res = client.post("/auth/token", json=creds, headers={"agent_id": cheshire_cat.agent_key})
+
+    await checks_on_agent_reset(res, client, cheshire_cat.id, lizard)
+
+
+@pytest.mark.asyncio
+async def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard, cheshire_cat):
+    # create new admin with wrong permissions
+    data = create_new_user(
+        client, "/admins/users", headers=get_client_admin_headers(client), permissions={"EMBEDDER": ["READ"]}
+    )
+
+    creds = {"username": data["username"], "password": new_user_password}
+    res = client.post("/admins/auth/token", json=creds)
+    received_token = res.json()["access_token"]
+
+    response = client.post(
+        "/utils/agents/destroy",
+        headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
+    )
+
+    assert response.status_code == 403
+
+    await checks_on_agent_destroy(cheshire_cat)
+
+
+@pytest.mark.asyncio
+async def test_agent_destroy_error_because_of_not_existing_agent(client, lizard, cheshire_cat):
+    creds = {
+        "username": "admin",
+        "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
+    }
+
+    res = client.post("/admins/auth/token", json=creds)
+    assert res.status_code == 200
+
+    received_token = res.json()["access_token"]
+    response = client.post(
+        "/utils/agents/destroy", headers={"Authorization": f"Bearer {received_token}", "agent_id": "wrong_id"}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"deleted_settings": False, "deleted_memories": False, "deleted_plugin_folders": False}
+
+    await checks_on_agent_destroy(cheshire_cat)
+
+
+@pytest.mark.asyncio
+async def test_agent_create_success(client, lizard):
+    creds = {
+        "username": "admin",
+        "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
+    }
+
+    new_agent_id = str(uuid.uuid4())
+
+    res = client.post("/admins/auth/token", json=creds)
+    assert res.status_code == 200
+
+    received_token = res.json()["access_token"]
+    response = client.post(
+        "/utils/agents/create", headers={"Authorization": f"Bearer {received_token}", "agent_id": new_agent_id}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"created": True}
+
+    await checks_on_agent_create(lizard, new_agent_id)
+
+
+@pytest.mark.asyncio
+async def test_clone_agent(secure_client, secure_client_headers, lizard, cheshire_cat):
+    # First, create a new agent to clone into
+    new_agent_id = "test_clone_agent_2"
+
+    # Prepare the request payload
+    payload = {"agent_id": new_agent_id}
+
+    # Make the POST request to clone the agent
+    response = secure_client.post(
+        "/utils/agents/clone",
+        json=payload,
+        headers=secure_client_headers,
+    )
+
+    # Assert the response status code
+    assert response.status_code == 200
+
+    # Assert the response content
+    response_data = response.json()
+    assert response_data["cloned"] is True
+
+    # check that settings were cloned (settings_id excluded)
+    settings = crud_settings.get_settings(cheshire_cat.agent_key)
+    cloned_settings = crud_settings.get_settings(new_agent_id)
+    assert len(cloned_settings) == len(settings)
+    for s, cs in zip(settings, cloned_settings):
+        s.pop("setting_id", None)
+        s.pop("updated_at", None)
+        cs.pop("setting_id", None)
+        cs.pop("updated_at", None)
+    assert settings == cloned_settings
+    # check that the users were cloned
+    users = crud_users.get_users(cheshire_cat.agent_key)
+    cloned_users = crud_users.get_users(new_agent_id)
+    assert len(cloned_users) == len(users)
+    assert users == cloned_users
+    # check that the plugins were cloned
+    plugins = crud_plugins.get_settings(cheshire_cat.agent_key)
+    cloned_plugins = crud_plugins.get_settings(new_agent_id)
+    assert len(cloned_plugins) == len(plugins)
+    assert set(plugins) == set(cloned_plugins)
+
+    # check that the vector memory points were cloned
+    cloned_ccat = lizard.get_cheshire_cat_from_db(new_agent_id)
+    original_points, _ = await cheshire_cat.vector_memory_handler.get_all_tenant_points(
+        str(VectorMemoryType.DECLARATIVE), with_vectors=True
+    )
+    cloned_points, _ = await cloned_ccat.vector_memory_handler.get_all_tenant_points(
+        str(VectorMemoryType.DECLARATIVE), with_vectors=True
+    )
+    assert len(original_points) == len(cloned_points)
+    original_payloads = sorted([p.payload for p in original_points], key=lambda x: x["id"])
+    cloned_payloads = sorted([p.payload for p in cloned_points], key=lambda x: x["id"])
+    assert original_payloads == cloned_payloads
+    # assert the vectors are the same
+    original_vectors = sorted([p.vector for p in original_points], key=lambda x: x[0])
+    cloned_vectors = sorted([p.vector for p in cloned_points], key=lambda x: x[0])
+    assert original_vectors == cloned_vectors
+
+
+@pytest.mark.asyncio
+async def test_reclone_agent(secure_client, secure_client_headers, lizard, cheshire_cat):
+    await test_clone_agent(secure_client, secure_client_headers, lizard, cheshire_cat)
+
+    # First, create a new agent to clone into
+    new_agent_id = "test_clone_agent_2"
+
+    # Prepare the request payload
+    payload = {"agent_id": new_agent_id}
+
+    # Make the POST request to clone the agent
+    response = secure_client.post(
+        "/utils/agents/clone",
+        json=payload,
+        headers=secure_client_headers,
+    )
+
+    # Assert the response status code
+    assert response.status_code == 200
+
+    # Assert the response content
+    response_data = response.json()
+    assert response_data["cloned"] is False

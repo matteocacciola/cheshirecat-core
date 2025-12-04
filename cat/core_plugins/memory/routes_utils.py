@@ -18,7 +18,7 @@ class MemoryPoint(MemoryPointBase):
 
 async def verify_memory_point_existence(cheshire_cat: CheshireCat, collection_id: str, point_id: str) -> None:
     # check if point exists
-    points = await cheshire_cat.vector_memory_handler.retrieve_points(collection_id, [point_id])
+    points = await cheshire_cat.vector_memory_handler.retrieve_tenant_points(collection_id, [point_id])
     if not points:
         raise CustomNotFoundException("Point does not exist.")
 
@@ -40,7 +40,7 @@ async def upsert_memory_point(
         point.metadata["when"] = time.time()  # if when is not in the metadata set the current time
 
     # create point
-    qdrant_point = await ccat.vector_memory_handler.add_point(
+    qdrant_point = await ccat.vector_memory_handler.add_point_to_tenant(
         collection_name=collection_id,
         content=point.content,
         vector=embedding,

@@ -74,6 +74,19 @@ class LocalFileManager(BaseFileManager):
             for file in files
         ]
 
+    def _clone_folder(self, remote_root_dir_from: str, remote_root_dir_to: str) -> List[str]:
+        cloned_files = []
+        for root, _, files in os.walk(remote_root_dir_from):
+            for file in files:
+                relative_path = os.path.relpath(root, remote_root_dir_from)
+                destination_dir = os.path.join(remote_root_dir_to, relative_path)
+                os.makedirs(destination_dir, exist_ok=True)
+                source_file = os.path.join(root, file)
+                destination_file = os.path.join(destination_dir, file)
+                shutil.copy2(source_file, destination_file)
+                cloned_files.append(destination_file)
+        return cloned_files
+
 
 class AWSFileManager(BaseFileManager):
     def __init__(self, bucket_name: str, aws_access_key: str, aws_secret_key: str):
@@ -139,6 +152,27 @@ class AWSFileManager(BaseFileManager):
                 ) for obj in page["Contents"] if obj["Key"] != remote_root_dir])
         return files
 
+    def _clone_folder(self, remote_root_dir_from: str, remote_root_dir_to: str) -> List[str]:
+        cloned_files = []
+        paginator = self.s3.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=self.bucket_name, Prefix=remote_root_dir_from):
+            if "Contents" in page:
+                for obj in page["Contents"]:
+                    source_key = obj["Key"]
+                    relative_path = os.path.relpath(source_key, remote_root_dir_from)
+                    destination_key = os.path.join(remote_root_dir_to, relative_path)
+                    copy_source = {
+                        "Bucket": self.bucket_name,
+                        "Key": source_key
+                    }
+                    self.s3.copy_object(
+                        CopySource=copy_source,
+                        Bucket=self.bucket_name,
+                        Key=destination_key
+                    )
+                    cloned_files.append(destination_key)
+        return cloned_files
+
 
 class AzureFileManager(BaseFileManager):
     def __init__(self, connection_string: str, container_name: str):
@@ -198,6 +232,18 @@ class AzureFileManager(BaseFileManager):
             last_modified=blob.last_modified.strftime("%Y-%m-%d"),
         ) for blob in self.container.list_blobs(name_starts_with=remote_root_dir) if blob.name != remote_root_dir]
 
+    def _clone_folder(self, remote_root_dir_from: str, remote_root_dir_to: str) -> List[str]:
+        cloned_files = []
+        for blob in self.container.list_blobs(name_starts_with=remote_root_dir_from):
+            source_blob = blob.name
+            relative_path = os.path.relpath(source_blob, remote_root_dir_from)
+            destination_blob = os.path.join(remote_root_dir_to, relative_path)
+            source_blob_client = self.container.get_blob_client(source_blob)
+            destination_blob_client = self.container.get_blob_client(destination_blob)
+            destination_blob_client.start_copy_from_url(source_blob_client.url)
+            cloned_files.append(destination_blob)
+        return cloned_files
+
 
 class GoogleCloudFileManager(BaseFileManager):
     def __init__(self, bucket_name: str, credentials_path: str):
@@ -254,6 +300,17 @@ class GoogleCloudFileManager(BaseFileManager):
             size=int(blob.size),
             last_modified=blob.updated.strftime("%Y-%m-%d"),
         ) for blob in self.bucket.list_blobs(prefix=remote_root_dir) if blob.name != remote_root_dir]
+
+    def _clone_folder(self, remote_root_dir_from: str, remote_root_dir_to: str) -> List[str]:
+        cloned_files = []
+        for blob in self.bucket.list_blobs(prefix=remote_root_dir_from):
+            source_blob = blob.name
+            relative_path = os.path.relpath(source_blob, remote_root_dir_from)
+            destination_blob = os.path.join(remote_root_dir_to, relative_path)
+            new_blob = self.bucket.blob(destination_blob)
+            new_blob.rewrite(blob)
+            cloned_files.append(destination_blob)
+        return cloned_files
 
 
 class DigitalOceanFileManager(AWSFileManager):

@@ -152,12 +152,12 @@ async def recall(
     cheshire_cat = cat.cheshire_cat
 
     if k:
-        memories = await cheshire_cat.vector_memory_handler.recall_memories_from_embedding(
+        memories = await cheshire_cat.vector_memory_handler.recall_tenant_memory_from_embedding(
             str(collection), query, metadata, k, threshold
         )
         return memories
 
-    memories = await cheshire_cat.vector_memory_handler.recall_all_memories(str(collection))
+    memories = await cheshire_cat.vector_memory_handler.recall_tenant_memory(str(collection))
     return memories
 
 

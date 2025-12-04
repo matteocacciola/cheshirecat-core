@@ -27,6 +27,7 @@ from cat.routes import (
     plugins,
     rabbit_hole,
     users,
+    utilities,
     vector_database,
     websocket,
 )
@@ -95,6 +96,7 @@ cheshire_cat_api.include_router(plugins.router)
 cheshire_cat_api.include_router(rabbit_hole.router)
 cheshire_cat_api.include_router(auth.router)
 cheshire_cat_api.include_router(users.router)
+cheshire_cat_api.include_router(utilities.router)
 cheshire_cat_api.include_router(vector_database.router)
 cheshire_cat_api.include_router(websocket.router)
 

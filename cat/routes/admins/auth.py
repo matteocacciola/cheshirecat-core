@@ -5,7 +5,7 @@ from cat.auth.permissions import get_full_admin_permissions
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.routes.routes_utils import UserCredentials, JWTResponse, auth_token as fnc_auth_token
 
-router = APIRouter()
+router = APIRouter(tags=["Admins - Auth"], prefix="/auth")
 
 
 @router.get("/available-permissions", response_model=Dict[str, List[str]])

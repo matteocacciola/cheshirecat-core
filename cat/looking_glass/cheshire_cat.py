@@ -117,7 +117,7 @@ class CheshireCat(CatMixin):
         log.info(f"Agent id: {self.id}. Destroying all data from the cat's memory")
 
         # destroy all memories
-        await self.vector_memory_handler.destroy_all_points(str(VectorMemoryType.DECLARATIVE))
+        await self.vector_memory_handler.destroy_all_tenant_points(str(VectorMemoryType.DECLARATIVE))
 
     async def destroy(self):
         """Destroy all data from the cat."""
@@ -264,7 +264,7 @@ class CheshireCat(CatMixin):
 
         # Destroy all procedural embeddings
         collection_name = str(VectorMemoryType.PROCEDURAL)
-        await self.vector_memory_handler.destroy_all_points(collection_name)
+        await self.vector_memory_handler.destroy_all_tenant_points(collection_name)
 
         # Easy access to active procedures in plugin_manager (source of truth!)
         payloads = []
@@ -277,7 +277,7 @@ class CheshireCat(CatMixin):
                 payloads.append(t.document.model_dump())
                 vectors.append(self.embedder.embed_query(t.document.page_content))
 
-        await self.vector_memory_handler.add_points(collection_name=collection_name, payloads=payloads, vectors=vectors)
+        await self.vector_memory_handler.add_points_to_tenant(collection_name=collection_name, payloads=payloads, vectors=vectors)
         log.info(f"Agent id: {self.id}. Embedded {len(payloads)} triggers in {collection_name} vector memory")
 
     @subscriber("on_end_plugin_activate")

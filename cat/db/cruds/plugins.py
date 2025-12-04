@@ -19,6 +19,32 @@ def format_key(agent_id: str, plugin_id: str) -> str:
     return f"{agent_id}:plugin:{plugin_id}"
 
 
+def get_settings(agent_id: str) -> Dict[str, Dict[str, Any]]:
+    """
+    Retrieve all plugin settings for a specific agent from Redis.
+
+    Args:
+        agent_id: ID of the chatbot.
+    Returns:
+        Dictionary of plugin settings, or empty dict if none found.
+    Raises:
+        RedisError: If Redis connection fails.
+    """
+    try:
+        all_settings = crud.read(format_key(agent_id, "*"))
+        if not all_settings:
+            log.debug(f"No plugin settings found for agent {agent_id}")
+            return {}
+
+        if isinstance(all_settings, list):
+            all_settings = all_settings[0]
+
+        return all_settings
+    except RedisError as e:
+        log.error(f"Redis error getting all settings for agent {agent_id}: {e}")
+        raise
+
+
 def get_setting(agent_id: str, plugin_id: str) -> Dict[str, Any] | None:
     """
     Retrieve plugin settings from Redis.
