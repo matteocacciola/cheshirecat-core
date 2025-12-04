@@ -20,6 +20,7 @@ class AuthResource(Enum):
     UPLOAD = "UPLOAD"
     PLUGIN = "PLUGIN"
     ANALYTICS = "ANALYTICS"
+    ME = "ME"
 
 
 class AdminAuthResource(Enum):
@@ -28,6 +29,7 @@ class AdminAuthResource(Enum):
     CHESHIRE_CAT = "CHESHIRE_CAT"
     PLUGIN = "PLUGIN"
     ANALYTICS = "ANALYTICS"
+    ME = "ME"
 
 
 class AuthPermission(Enum):
@@ -66,6 +68,7 @@ def get_base_permissions() -> Dict[str, List[str]]:
             str(AuthPermission.READ),
         ],
         str(AuthResource.CHAT): [str(p) for p in AuthPermission],
+        str(AuthResource.ME): [str(p) for p in AuthPermission],
     }
 
 

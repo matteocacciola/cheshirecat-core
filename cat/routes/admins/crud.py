@@ -7,41 +7,38 @@ from cat.auth.permissions import AdminAuthResource, AuthPermission, get_full_adm
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException
 from cat.looking_glass import BillTheLizard
+from cat.routes.routes_utils import validate_permissions as fnc_validate_permissions
 
 router = APIRouter(tags=["Admins"], prefix="/users")
 
 
 class AdminBase(BaseModel):
-    username: str = Field(min_length=2)
+    username: str = Field(min_length=5)
     permissions: Dict[str, List[str]] = Field(default_factory=get_full_admin_permissions)
 
     @field_validator("permissions")
     @classmethod
     def validate_permissions(cls, v):
-        if not v:
-            raise ValueError("Permissions cannot be empty")
-        # Check if all permissions are empty
-        all_items_empty = all([not p for p in v.values()])
-        if all_items_empty:
-            raise ValueError("At least one permission must be set")
-        # Validate each resource and its permissions
-        for k_, v_ in v.items():
-            if k_ not in AdminAuthResource:
-                raise ValueError(f"Invalid resource: {k_}")
-            if any([p not in AuthPermission for p in v_]):
-                raise ValueError(f"Invalid permissions for {k_}")
-        return v
+        return fnc_validate_permissions(v, AdminAuthResource)
 
 
-class AdminCreate(AdminBase):
+class AdminBaseRequest(AdminBase):
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Ensure to attach all permissions for 'me'
+        if not self.permissions:
+            self.permissions = {}
+        self.permissions[str(AdminAuthResource.ME)] = [str(p) for p in AuthPermission]
+
+
+class AdminCreate(AdminBaseRequest):
     password: str = Field(min_length=5)
     # no additional fields allowed
     model_config = ConfigDict(extra="forbid")
 
 
-class AdminUpdate(AdminBase):
-    username: str = Field(default=None, min_length=2)
-    password: str = Field(default=None, min_length=4)
+class AdminUpdate(AdminBaseRequest):
+    password: str = Field(default=None, min_length=5)
     permissions: Dict[str, List[str]] = None
     model_config = ConfigDict(extra="forbid")
 
@@ -55,6 +52,10 @@ class AdminUpdate(AdminBase):
 
 class AdminResponse(AdminBase):
     id: str
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.permissions.pop(str(AdminAuthResource.ME), None)
 
 
 @router.post("/", response_model=AdminResponse)
@@ -99,7 +100,7 @@ async def update_admin(
     user: AdminUpdate,
     lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.ADMINS, AuthPermission.EDIT),
 ):
-    stored_user = crud_users.get_user(lizard.config_key, user_id)
+    stored_user = crud_users.get_user(lizard.config_key, user_id, full=True)
     if not stored_user:
         raise CustomNotFoundException("User not found")
     

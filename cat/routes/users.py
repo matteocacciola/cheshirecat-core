@@ -7,41 +7,38 @@ from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions, check_permissions
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException
+from cat.routes.routes_utils import validate_permissions as fnc_validate_permissions
 
 router = APIRouter(tags=["Users"], prefix="/users")
 
 
 class UserBase(BaseModel):
-    username: str = Field(min_length=3)
+    username: str = Field(min_length=4)
     permissions: Dict[str, List[str]] = Field(default_factory=get_base_permissions)
 
     @field_validator("permissions")
     @classmethod
     def validate_permissions(cls, v):
-        if not v:
-            raise ValueError("Permissions cannot be empty")
-        # Check if all permissions are empty
-        all_items_empty = all([not p for p in v.values()])
-        if all_items_empty:
-            raise ValueError("At least one permission must be set")
-        # Validate each resource and its permissions
-        for k_, v_ in v.items():
-            if k_ not in AuthResource:
-                raise ValueError(f"Invalid resource: {k_}")
-            if any([p not in AuthPermission for p in v_]):
-                raise ValueError(f"Invalid permissions for {k_}")
-        return v
+        return fnc_validate_permissions(v, AuthResource)
 
 
-class UserCreate(UserBase):
+class UserBaseRequest(UserBase):
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Ensure to attach all permissions for 'me'
+        if not self.permissions:
+            self.permissions = {}
+        self.permissions[str(AuthResource.ME)] = [str(p) for p in AuthPermission]
+
+
+class UserCreate(UserBaseRequest):
     id: str | None = None
     password: str = Field(min_length=5)
     # no additional fields allowed
     model_config = ConfigDict(extra="forbid")
 
 
-class UserUpdate(UserBase):
-    username: str = Field(default=None, min_length=3)
+class UserUpdate(UserBaseRequest):
     password: str = Field(default=None, min_length=5)
     permissions: Dict[str, List[str]] = None
     model_config = ConfigDict(extra="forbid")
@@ -56,6 +53,10 @@ class UserUpdate(UserBase):
 
 class UserResponse(UserBase):
     id: str
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.permissions.pop(str(AuthResource.ME), None)
 
 
 @router.post("/", response_model=UserResponse)
@@ -102,7 +103,7 @@ async def update_user(
     info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.EDIT),
 ) -> UserResponse:
     agent_id = info.cheshire_cat.id
-    stored_user = crud_users.get_user(agent_id, user_id)
+    stored_user = crud_users.get_user(agent_id, user_id, full=True)
     if not stored_user:
         raise CustomNotFoundException("User not found")
     
@@ -125,3 +126,12 @@ async def delete_user(
         raise CustomNotFoundException("User not found")
 
     return UserResponse(**deleted_user)
+
+
+@router.get("/me", response_model=UserBase)
+async def me(
+    info: AuthorizedInfo = check_permissions(AuthResource.ME, AuthPermission.READ),
+) -> UserBase:
+    user = info.user
+
+    return UserBase(username=user.name, permissions=user.permissions)

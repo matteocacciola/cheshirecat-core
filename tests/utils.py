@@ -4,6 +4,12 @@ import uuid
 import random
 from urllib.parse import urlencode
 
+from cat.auth.permissions import (
+    AdminAuthResource,
+    get_full_admin_permissions as get_full_admin_permissions_base,
+    get_full_permissions as get_full_permissions_base,
+    get_base_permissions as get_base_permissions_base,
+)
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
 from cat.memory.utils import VectorMemoryType
@@ -187,3 +193,18 @@ def just_installed_plugin(client, headers, activate=False, plugin_id="mock_plugi
             assert response.status_code == 200
 
     return response
+
+
+def get_full_admin_permissions():
+    permissions = get_full_admin_permissions_base()
+    return {k: v for k, v in permissions.items() if k != str(AdminAuthResource.ME)}
+
+
+def get_full_permissions():
+    permissions = get_full_permissions_base()
+    return {k: v for k, v in permissions.items() if k != str(AdminAuthResource.ME)}
+
+
+def get_base_permissions():
+    permissions = get_base_permissions_base()
+    return {k: v for k, v in permissions.items() if k != str(AdminAuthResource.ME)}

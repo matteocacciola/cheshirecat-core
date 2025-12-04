@@ -35,7 +35,7 @@ test:  ## Run tests.
 	@docker exec cheshire_cat_core uv run python -m pytest --color=yes -vvv -W ignore --disable-warnings ${args}
 
 install: ## Update the local virtual environment with the latest requirements.
-	# install the requirements
+	@# install the requirements
 	@uv sync --link-mode=copy
 	@# look for requirements.txt in subdirectories of core_plugins and install them
 	@find $(PWD)/cat/core_plugins -name requirements.txt -exec uv pip install --link-mode=copy -r {} \;

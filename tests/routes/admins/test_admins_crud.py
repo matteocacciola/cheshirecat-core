@@ -1,11 +1,16 @@
 import pytest
 from pydantic import ValidationError
 
-from cat.auth.permissions import get_full_admin_permissions
 from cat.env import get_env
 from cat.routes.admins.crud import AdminBase, AdminUpdate
 
-from tests.utils import create_new_user, check_user_fields, get_client_admin_headers, new_user_password
+from tests.utils import (
+    create_new_user,
+    check_user_fields,
+    get_client_admin_headers,
+    get_full_admin_permissions,
+    new_user_password,
+)
 
 
 def test_validation_errors():
@@ -110,18 +115,15 @@ def test_update_admin(client):
     response = client.put(f"/admins/users/{admin_id}", json=updated_admin, headers=get_client_admin_headers(client))
     assert response.status_code == 400
 
-    # change nothing
-    response = client.put(f"/admins/users/{admin_id}", json={}, headers=get_client_admin_headers(client))
+    response = client.get(f"/admins/users/{admin_id}", headers=get_client_admin_headers(client))
     assert response.status_code == 200
     data = response.json()
-
-    # nothing changed so far
     check_user_fields(data)
     assert data["username"] == "Alice"
     assert data["permissions"] == get_full_admin_permissions()
 
     # update password
-    updated_admin = {"password": "12345"}
+    updated_admin = {"username": data["username"], "password": "12345", "permissions": data["permissions"]}
     response = client.put(f"/admins/users/{admin_id}", json=updated_admin, headers=get_client_admin_headers(client))
     assert response.status_code == 200
     data = response.json()
@@ -131,7 +133,7 @@ def test_update_admin(client):
     assert "password" not in data # api will not send passwords around
 
     # change username
-    updated_admin = {"username": "Alice2"}
+    updated_admin = {"username": "Alice2", "permissions": data["permissions"]}
     response = client.put(f"/admins/users/{admin_id}", json=updated_admin, headers=get_client_admin_headers(client))
     assert response.status_code == 200
     data = response.json()
@@ -140,7 +142,7 @@ def test_update_admin(client):
     assert data["permissions"] == get_full_admin_permissions()
 
     # change permissions
-    updated_admin = {"permissions": {"EMBEDDER": ["READ"]}}
+    updated_admin = {"username": data["username"], "permissions": {"EMBEDDER": ["READ"]}}
     response = client.put(f"/admins/users/{admin_id}", json=updated_admin, headers=get_client_admin_headers(client))
     assert response.status_code == 200
     data = response.json()

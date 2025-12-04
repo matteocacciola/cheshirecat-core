@@ -6,7 +6,7 @@ import jwt
 import mimetypes
 from ast import literal_eval
 from copy import deepcopy
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Type
 import tomli
 from fastapi import Query, UploadFile, BackgroundTasks, Request
 from langchain_core.caches import InMemoryCache
@@ -18,6 +18,7 @@ from pytz import utc
 from cat import utils
 from cat.auth.auth_utils import DEFAULT_JWT_ALGORITHM
 from cat.auth.connection import AuthorizedInfo
+from cat.auth.permissions import AuthPermission
 from cat.db.cruds import settings as crud_settings
 from cat.db.database import DEFAULT_AGENT_KEY
 from cat.env import get_env
@@ -391,3 +392,22 @@ def on_upload_single_file(
         file=uploaded_file,
         metadata=json.loads(metadata)
     )
+
+
+def validate_permissions(permissions: Dict[str, List[str]], resources: Type[utils.Enum]):
+    if not permissions:
+        raise ValueError("Permissions cannot be empty")
+
+    # Check if all permissions are empty
+    all_items_empty = all([not p for p in permissions.values()])
+    if all_items_empty:
+        raise ValueError("At least one permission must be set")
+
+    # Validate each resource and its permissions
+    for k_, v_ in permissions.items():
+        if k_ not in resources:
+            raise ValueError(f"Invalid resource: {k_}")
+        if any([p not in AuthPermission for p in v_]):
+            raise ValueError(f"Invalid permissions for {k_}")
+
+    return permissions

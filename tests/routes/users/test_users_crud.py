@@ -1,10 +1,9 @@
 import pytest
 from pydantic import ValidationError
 
-from cat.auth.permissions import get_base_permissions
 from cat.routes.users import UserBase, UserUpdate
 
-from tests.utils import agent_id, api_key, create_new_user, check_user_fields, new_user_password
+from tests.utils import agent_id, api_key, create_new_user, check_user_fields, new_user_password, get_base_permissions
 
 
 def test_validation_errors():
@@ -119,18 +118,15 @@ def test_update_user(secure_client, secure_client_headers):
     response = secure_client.put(f"/users/{user_id}", json=updated_user, headers=secure_client_headers)
     assert response.status_code == 400
 
-    # change nothing
-    response = secure_client.put(f"/users/{user_id}", json={}, headers=secure_client_headers)
+    response = secure_client.get(f"/users/{user_id}", headers=secure_client_headers)
     assert response.status_code == 200
     data = response.json()
-
-    # nothing changed so far
     check_user_fields(data)
     assert data["username"] == "Alice"
     assert data["permissions"] == get_base_permissions()
     
     # update password
-    updated_user = {"password": "12345"}
+    updated_user = {"username": data["username"], "password": "12345", "permissions": data["permissions"]}
     response = secure_client.put(f"/users/{user_id}", json=updated_user, headers=secure_client_headers)
     assert response.status_code == 200
     data = response.json()
@@ -140,7 +136,7 @@ def test_update_user(secure_client, secure_client_headers):
     assert "password" not in data # api will not send passwords around
     
     # change username
-    updated_user = {"username": "Alice2"}
+    updated_user = {"username": "Alice2", "permissions": data["permissions"]}
     response = secure_client.put(f"/users/{user_id}", json=updated_user, headers=secure_client_headers)
     assert response.status_code == 200
     data = response.json()
@@ -149,7 +145,7 @@ def test_update_user(secure_client, secure_client_headers):
     assert data["permissions"] == get_base_permissions()
 
     # change permissions
-    updated_user = {"permissions": {"MEMORY": ["READ"]}}
+    updated_user = {"username": data["username"], "permissions": {"MEMORY": ["READ"]}}
     response = secure_client.put(f"/users/{user_id}", json=updated_user, headers=secure_client_headers)
     assert response.status_code == 200
     data = response.json()

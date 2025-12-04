@@ -2,13 +2,12 @@ import uuid
 import pytest
 
 from cat.auth.auth_utils import hash_password
-from cat.auth.permissions import get_full_admin_permissions
 from cat.db import models
 from cat.db.cruds import settings as crud_settings, users as crud_users
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.factory.auth_handler import AuthHandlerFactory
 
-from tests.utils import agent_id
+from tests.utils import agent_id, get_full_admin_permissions
 
 
 def test_get_settings(cheshire_cat):

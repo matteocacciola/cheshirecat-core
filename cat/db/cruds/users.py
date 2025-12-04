@@ -124,13 +124,14 @@ def create_user(key_id: str, new_user: Dict) -> Dict | None:
         raise
 
 
-def get_user(key_id: str, user_id: str) -> Dict | None:
+def get_user(key_id: str, user_id: str, full: bool = False) -> Dict | None:
     """
     Retrieve a single user by ID from Redis.
 
     Args:
         key_id: Agent ID.
         user_id: ID of the user.
+        full: Include password and timestamps if True.
 
     Returns:
         User dictionary (without password or timestamps), or None if not found.
@@ -146,6 +147,9 @@ def get_user(key_id: str, user_id: str) -> Dict | None:
             return None
 
         log.debug(f"Retrieved user {user_id} for {key_id}")
+        if full:
+            return result[0]
+
         return _extract_user_data(result[0])
     except RedisError as e:
         log.error(f"Redis error getting user {user_id} for {key_id}: {e}")
