@@ -14,7 +14,7 @@ def format_key(key_id: str) -> str:
         key_id: Settings key identifier.
 
     Returns:
-        Formatted key (e.g., "key_id:default_agent").
+        Formatted key (e.g., "<key_id>:<default_agent_key>").
     """
     return f"{key_id}:{DEFAULT_AGENT_KEY}"
 

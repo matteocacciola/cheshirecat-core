@@ -1,6 +1,5 @@
-from cat.looking_glass import AgentOutput
+from cat import AgentOutput, CatMessage
 from cat.mad_hatter.decorators import CatHook
-from cat.memory.working_memory import CatMessage
 
 
 def test_hook_discovery(plugin_manager):

@@ -19,7 +19,7 @@ from .looking_glass import AgentOutput, BillTheLizard, CheshireCat, StrayCat
 from .mad_hatter.decorators import hook, tool, plugin, endpoint
 from .mad_hatter.decorators.experimental.cat_form import form, CatForm
 from .mad_hatter.decorators.experimental.cat_mcp_client import mcp_client, CatMcpClient
-from .memory.messages import CatMessage, ConversationHistoryItem, MessageWhy, UserMessage
+from .memory.messages import CatMessage, ConversationMessage, MessageWhy, UserMessage
 from .utils import get_caller_info, run_sync_or_async
 
 
@@ -60,7 +60,7 @@ __all__ = [
     "get_caller_info",
     "run_sync_or_async",
     "CatMessage",
-    "ConversationHistoryItem",
+    "ConversationMessage",
     "MessageWhy",
     "UserMessage",
 ]

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Dict
+from typing import List, Dict, Any
 from redis.exceptions import RedisError
 
 from cat.db.database import (
@@ -33,7 +33,7 @@ def serialize_to_redis_json(data_dict: List | Dict) -> List | Dict:
         raise ValueError(f"Failed to serialize data: {e}")
 
 
-def read(key: str, path: str | None = "$") -> List[Dict] | Dict | None:
+def read(key: str, path: str | None = "$") -> List | Dict | None:
     """
     Read a JSON value from Redis.
 
@@ -62,14 +62,14 @@ def read(key: str, path: str | None = "$") -> List[Dict] | Dict | None:
 
 
 def store(
-    key: str, value: List | Dict, path: str | None = "$", nx: bool = False, xx: bool = False, expire: int | None = None
+    key: str, value: Any, path: str | None = "$", nx: bool = False, xx: bool = False, expire: int | None = None
 ) -> List[Dict] | Dict | None:
     """
     Store a value in Redis as JSON, with optional TTL.
 
     Args:
         key: Redis key to store.
-        value: List or dict to store.
+        value: Value to store.
         path: JSON path (default: "$").
         nx: Set only if key does not exist.
         xx: Set only if key exists.
@@ -87,7 +87,7 @@ def store(
         expire = None
 
     try:
-        formatted = serialize_to_redis_json(value)
+        formatted = serialize_to_redis_json(value) if isinstance(value, (dict, list)) else value
         pipeline = get_db().pipeline()
         pipeline.json().set(key, path, formatted, nx=nx, xx=xx)
         if expire:

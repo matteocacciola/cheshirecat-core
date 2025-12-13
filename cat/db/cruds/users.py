@@ -32,7 +32,7 @@ def format_key(agent_id: str) -> str:
         agent_id: ID of the chatbot.
 
     Returns:
-        Formatted key (e.g., "agent_id:users").
+        Formatted key (e.g., "<agent_id>:users").
     """
     return f"{agent_id}:users"
 

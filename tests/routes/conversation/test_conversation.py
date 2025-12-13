@@ -1,6 +1,6 @@
 import time
 
-from cat.db.cruds import users as crud_users
+from cat.db.cruds import users as crud_users, conversations as crud_conversations
 
 from tests.utils import send_websocket_message, agent_id, api_key, create_new_user, new_user_password, chat_id
 
@@ -53,7 +53,7 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
     assert isinstance(picked_history["when"], float)  # timestamp
 
 
-def test_convo_history_reset(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+def test_convo_delete(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     # send websocket messages
     send_websocket_message(
         {"text": "It's late! It's late!"}, secure_client, api_key, ch_id=chat_id
@@ -65,8 +65,9 @@ def test_convo_history_reset(secure_client, secure_client_headers, mocked_defaul
         f"/conversation/{chat_id}", headers={**secure_client_headers, **{"user_id": user["id"]}}
     )
     assert response.status_code == 200
+    assert response.json()["deleted"] is True
 
-    # check conversation history update
+    # check conversation history is empty
     response = secure_client.get(
         f"/conversation/{chat_id}", headers={**secure_client_headers, **{"user_id": user["id"]}}
     )
@@ -74,6 +75,10 @@ def test_convo_history_reset(secure_client, secure_client_headers, mocked_defaul
     assert response.status_code == 200
     assert "history" in json
     assert len(json["history"]) == 0
+
+    # check there is not conversation with name = chat_id
+    conversation = crud_conversations.get_conversation(agent_id, user["id"], chat_id)
+    assert conversation is None
 
 
 def test_convo_history_by_user(secure_client, secure_client_headers, client, mocked_default_llm_answer_prompt):
@@ -158,52 +163,38 @@ def test_convo_history_by_user(secure_client, secure_client_headers, client, moc
     assert len(json["history"]) == convos["Alice"] * 2
 
 
-def test_add_items_to_convo_history(secure_client, secure_client_headers, cheshire_cat):
-    user = crud_users.get_user_by_username(agent_id, "user")
+def test_change_name_to_conversation(secure_client, secure_client_headers, client, cheshire_cat):
+    user = create_new_user(secure_client, "/users", username="Alice", headers=secure_client_headers)
+    res = client.post(
+        "/auth/token",
+        json={"username": user["username"], "password": new_user_password},
+        headers={"agent_id": agent_id}
+    )
+    received_token = res.json()["access_token"]
 
-    # add user item to convo history
+    send_websocket_message(
+        {"text": "Hello, Alice!"},
+        client,
+        received_token,
+        ch_id=chat_id,
+    )
+
+    current_name = crud_conversations.get_name(agent_id, user["id"], chat_id)  # should be None at first
+    assert current_name == chat_id
+
+    # change the name of the conversation
     response = secure_client.post(
         f"/conversation/{chat_id}",
         headers={**secure_client_headers, **{"user_id": user["id"]}},
-        json={"who": "user", "text": "Hello, Alice!"}
+        json={"name": "this_is_a_new_name"}
     )
     assert response.status_code == 200
 
-    # add cat item to convo history
-    response = secure_client.post(
-        f"/conversation/{chat_id}",
-        headers={**secure_client_headers, **{"user_id": user["id"]}},
-        json={
-            "who": "assistant",
-            "text": "Hello, how are you?",
-            "why": {"input": "This is an input", "intermediate_steps": [], "memory": {}}
-        }
-    )
-    assert response.status_code == 200
-
-    # check conversation history update
-    response = secure_client.get(
-        f"/conversation/{chat_id}", headers={**secure_client_headers, **{"user_id": user["id"]}}
-    )
-    json = response.json()
-    assert response.status_code == 200
-    assert "history" in json
-    assert len(json["history"]) == 2
-
-    # check items
-    assert json["history"][0]["who"] == "user"
-    assert json["history"][0]["message"] == "Hello, Alice!"
-    assert json["history"][0]["content"]["text"] == "Hello, Alice!"
-    assert json["history"][0]["why"] is None
-    assert json["history"][1]["who"] == "assistant"
-    assert json["history"][1]["message"] == "Hello, how are you?"
-    assert json["history"][1]["content"]["text"] == "Hello, how are you?"
-    assert json["history"][1]["why"]["input"] == "This is an input"
-    assert json["history"][1]["why"]["intermediate_steps"] == []
-    assert json["history"][1]["why"]["memory"] == {}
+    current_name = crud_conversations.get_name(agent_id, user["id"], chat_id)  # should be None at first
+    assert current_name == "this_is_a_new_name"
 
 
-def test_get_empty_convo_histories(secure_client, secure_client_headers):
+def test_get_empty_conversations(secure_client, secure_client_headers):
     user = crud_users.get_user_by_username(agent_id, "user")
 
     # check conversation history update
@@ -213,11 +204,11 @@ def test_get_empty_convo_histories(secure_client, secure_client_headers):
     assert response.status_code == 200
 
     json_response = response.json()
-    assert isinstance(json_response, dict)
+    assert isinstance(json_response, list)
     assert len(json_response) == 0  # no chats for this user
 
 
-def test_get_convo_histories(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+def test_get_conversations(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     user = crud_users.get_user_by_username(agent_id, "user")
 
     message = "It's late! It's late!"
@@ -235,8 +226,8 @@ def test_get_convo_histories(secure_client, secure_client_headers, mocked_defaul
     assert response.status_code == 200
 
     json_response = response.json()
-    assert isinstance(json_response, dict)
-    assert len(json_response.values()) == 3
+    assert isinstance(json_response, list)
+    assert len(json_response) == 3
 
     # sending two more messages to the `chat_id` chat
     for _ in range(2):
@@ -252,12 +243,14 @@ def test_get_convo_histories(secure_client, secure_client_headers, mocked_defaul
     assert response.status_code == 200
 
     json_response = response.json()
-    assert len(json_response.values()) == 4
+    assert len(json_response) == 4
 
     # check that the `chat_id` chat has 4 messages (2 mex + 2 replies)
-    assert chat_id in json_response.keys()
-    for ch_id, ch_history in json_response.items():
+    for item in json_response:
+        assert item["chat_id"] == item["name"]  # chat_id and name are the same
+        ch_id = item["chat_id"]
+
         if ch_id != chat_id:
-            assert len(ch_history["history"]) == 2  # 1 mex + 1 reply
+            assert item["num_messages"] == 2  # 1 mex + 1 reply
         else:
-            assert len(ch_history["history"]) == 4  # 2 mex + 2 replies
+            assert item["num_messages"] == 4  # 2 mex + 2 replies

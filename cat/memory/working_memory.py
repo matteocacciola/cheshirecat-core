@@ -1,10 +1,9 @@
 from typing import List, Any, Literal, Dict
 from pydantic import Field, field_validator
-from typing_extensions import deprecated
 
-from cat.db.cruds import history as crud_history
+from cat.db.cruds import conversations as crud_conversations
 from cat.memory.interactions import ModelInteraction
-from cat.memory.messages import BaseMessage, CatMessage, UserMessage, ConversationHistoryItem, MessageWhy
+from cat.memory.messages import BaseMessage, UserMessage, ConversationMessage
 from cat.memory.utils import DocumentRecall
 from cat.utils import BaseModelDict
 
@@ -37,7 +36,7 @@ class WorkingMemory(BaseModelDict):
     chat_id: str
 
     # stores conversation history
-    history: List[ConversationHistoryItem] | None = Field(default_factory=list)
+    history: List[ConversationMessage] | None = Field(default_factory=list)
     user_message: UserMessage | None = None
 
     # recalled memories attributes
@@ -60,24 +59,9 @@ class WorkingMemory(BaseModelDict):
         super().__init__(**data)
 
         self.history = [
-            ConversationHistoryItem(**info, chat_id=self.chat_id)
-            for info in crud_history.get_history(self.agent_id, self.user_id, self.chat_id)
+            ConversationMessage(**info)
+            for info in crud_conversations.get_messages(self.agent_id, self.user_id, self.chat_id)
         ]
-
-    def set_history(self, conversation_history: List[ConversationHistoryItem]) -> "WorkingMemory":
-        """
-        Set the conversation history.
-
-        Args:
-            conversation_history: The conversation history to save
-
-        Returns:
-            The current instance of the WorkingMemory class.
-        """
-        crud_history.set_history(self.agent_id, self.user_id, self.chat_id, conversation_history)
-        self.history = conversation_history
-
-        return self
 
     def reset_history(self) -> "WorkingMemory":
         """
@@ -86,33 +70,10 @@ class WorkingMemory(BaseModelDict):
         Returns:
             The current instance of the WorkingMemory class.
         """
-        crud_history.set_history(self.agent_id, self.user_id, self.chat_id, [])
+        crud_conversations.set_messages(self.agent_id, self.user_id, self.chat_id, [])
         self.history = []
 
         return self
-
-    @deprecated("use `update_history` instead.")
-    def update_conversation_history(
-        self,
-        who: Literal["user", "assistant"],
-        message: str,
-        image: str | None = None,
-        why: MessageWhy | None = None,
-    ):
-        """
-        Update the conversation history.
-
-        The methods append to the history key the last three conversation turns.
-
-        Args
-            who (str): Who said the message. Can either be "user" or "assistant".
-            message (str): The message said.
-            image (Optional[str], default=None): image file URL or base64 data URI that represent image associated with the message.
-            why (MessageWhy, optional): The reason why the message was said. Default is None.
-        """
-        message = CatMessage(text=message, why=why) if who == "assistant" else UserMessage(text=message, image=image)
-
-        return self.update_history(who, message)
 
     def update_history(self, who: Literal["user", "assistant"], content: BaseMessage):
         """
@@ -123,12 +84,14 @@ class WorkingMemory(BaseModelDict):
             content: BaseMessage, the message said.
         """
         # we are sure that who is not change in the current call
-        conversation_history_item = ConversationHistoryItem(who=who, content=content, chat_id=self.chat_id)
+        conversation_history_item = ConversationMessage(who=who, content=content)
 
         # append the latest message in conversation
         self.history = [
-            ConversationHistoryItem(**info, chat_id=self.chat_id)
-            for info in crud_history.update_history(self.agent_id, self.user_id, self.chat_id, conversation_history_item)
+            ConversationMessage(**info)
+            for info in crud_conversations.update_messages(
+                self.agent_id, self.user_id, self.chat_id, conversation_history_item
+            )
         ]
 
     def pop_last_message_if_human(self) -> None:
@@ -139,7 +102,7 @@ class WorkingMemory(BaseModelDict):
             return
 
         self.history.pop()
-        crud_history.set_history(self.agent_id, self.user_id, self.chat_id, self.history)
+        crud_conversations.set_messages(self.agent_id, self.user_id, self.chat_id, self.history)
 
     @property
     def user_message_json(self) -> Dict | None:

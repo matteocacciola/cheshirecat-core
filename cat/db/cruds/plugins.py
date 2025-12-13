@@ -14,7 +14,7 @@ def format_key(agent_id: str, plugin_id: str) -> str:
         plugin_id: ID of the plugin.
 
     Returns:
-        Formatted key (e.g., "agent_id:plugin:plugin_id").
+        Formatted key (e.g., "<agent_id>:plugin:<plugin_id>").
     """
     return f"{agent_id}:plugin:{plugin_id}"
 

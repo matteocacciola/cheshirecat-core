@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Dict
 from pydantic import Field
 import tiktoken
 
@@ -24,7 +24,7 @@ class EmbedderModelInteraction(ModelInteraction):
 
 
 @hook(priority=1)
-def before_cat_recalls_memories(cat) -> None:
+def before_cat_recalls_memories(config: Dict, cat) -> None:
     message = cat.working_memory.recall_query
     cat.working_memory.model_interactions.append(
         EmbedderModelInteraction(

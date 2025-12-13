@@ -1,18 +1,16 @@
-from typing import List, Literal, Dict
+from typing import List
 from pydantic import BaseModel
 
 from cat import (
     AuthorizedInfo,
     AuthPermission,
     AuthResource,
-    CatMessage,
-    ConversationHistoryItem,
-    MessageWhy,
+    ConversationMessage,
     check_permissions,
     endpoint,
-    UserMessage,
+    log,
 )
-from cat.db.cruds import history as crud_history
+from cat.db.cruds import conversations as crud_conversations
 
 
 class DeleteConversationHistoryResponse(BaseModel):
@@ -20,29 +18,40 @@ class DeleteConversationHistoryResponse(BaseModel):
 
 
 class GetConversationHistoryResponse(BaseModel):
-    history: List[ConversationHistoryItem]
+    history: List[ConversationMessage]
 
 
-class PostConversationHistoryPayload(BaseModel):
-    who: Literal["user", "assistant"]
-    text: str
-    image: str | None = None
-    why: MessageWhy | None = None
+class PostConversationPayload(BaseModel):
+    name: str
 
 
-# DELETE conversation history from working memory
+class PostConversationResponse(BaseModel):
+    changed: bool
+
+
+class GetConversationsResponse(BaseModel):
+    chat_id: str
+    name: str
+    num_messages: int
+
+
+# DELETE conversation
 @endpoint.delete(
     "/{chat_id}",
     response_model=DeleteConversationHistoryResponse,
-    tags=["Conversation History"],
+    tags=["Conversation"],
     prefix="/conversation",
 )
-async def destroy_conversation_history(
+async def delete_conversation(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteConversationHistoryResponse:
-    """Delete the specified user's conversation history from working memory"""
-    info.stray_cat.working_memory.reset_history()
+    """Delete the specified user's conversation"""
+    if not info.stray_cat:
+        log.warning("Trying to change conversation name but no StrayCat found in AuthorizedInfo")
+        return DeleteConversationHistoryResponse(deleted=False)
 
+    cat = info.stray_cat
+    crud_conversations.delete_conversation(cat.agent_key, cat.user.id, cat.id)
     return DeleteConversationHistoryResponse(deleted=True)
 
 
@@ -50,7 +59,7 @@ async def destroy_conversation_history(
 @endpoint.get(
     "/{chat_id}",
     response_model=GetConversationHistoryResponse,
-    tags=["Conversation History"],
+    tags=["Conversation"],
     prefix="/conversation",
 )
 async def get_conversation_history(
@@ -60,44 +69,41 @@ async def get_conversation_history(
     return GetConversationHistoryResponse(history=info.stray_cat.working_memory.history)
 
 
-# PUT conversation history into working memory
+# POST conversation name change
 @endpoint.post(
     "/{chat_id}",
-    response_model=GetConversationHistoryResponse,
-    tags=["Conversation History"],
+    response_model=PostConversationResponse,
+    tags=["Conversation"],
     prefix="/conversation",
 )
-async def add_conversation_history(
-    payload: PostConversationHistoryPayload,
+async def change_name_conversation(
+    payload: PostConversationPayload,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
-) -> GetConversationHistoryResponse:
+) -> PostConversationResponse:
     """Insert the specified conversation item into the working memory"""
-    payload_dict = payload.model_dump()
-    content = UserMessage(**payload_dict) if payload.who == "user" else CatMessage(**payload_dict)
+    if not info.stray_cat:
+        log.warning("Trying to change conversation name but no StrayCat found in AuthorizedInfo")
+        return PostConversationResponse(changed=False)
 
-    info.stray_cat.working_memory.update_history(payload.who, content)
+    cat = info.stray_cat
 
-    return GetConversationHistoryResponse(history=info.stray_cat.working_memory.history)
+    crud_conversations.set_name(cat.agent_key, cat.user.id, cat.id, payload.name)
+    return PostConversationResponse(changed=True)
 
 
-# GET all conversation history from working memory
+# GET all conversations, in the format of IDs and names
 @endpoint.get(
     "/",
-    response_model=Dict[str, GetConversationHistoryResponse],
-    tags=["Conversation History"],
+    response_model=List[GetConversationsResponse],
+    tags=["Conversation"],
     prefix="/conversation",
 )
-async def get_conversation_histories(
+async def get_conversations_ids(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
-) -> Dict[str, GetConversationHistoryResponse]:
+) -> List[GetConversationsResponse]:
     """Get the specified user's conversation history from working memory"""
-    histories = crud_history.get_histories(info.cheshire_cat.id, info.user.id)
+    agent_id = info.cheshire_cat.id
+    user_id = info.user.id
+    attributes_list = crud_conversations.get_conversations_attributes(agent_id, user_id)
 
-    response = {
-        chat_id: GetConversationHistoryResponse(
-            history=[ConversationHistoryItem(**item, chat_id=chat_id) for item in history]
-        )
-        for chat_id, history in histories.items()
-    }
-
-    return response
+    return [GetConversationsResponse(**attributes_item) for attributes_item in attributes_list]

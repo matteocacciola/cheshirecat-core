@@ -21,9 +21,14 @@ from cat.memory.utils import PointStruct
 
 @hook(priority=1)
 def before_cat_sends_message(message, agent_output, cat) -> Dict:
-    model_interactions = cat.working_memory.model_interactions
-    input_tokens = sum(interaction.input_tokens for interaction in model_interactions)
-    output_tokens = sum(interaction.output_tokens for interaction in model_interactions)
+    input_tokens = 0
+    output_tokens = 0
+    for interaction in cat.working_memory.model_interactions:
+        if not hasattr(interaction, "output_tokens"):
+            continue
+
+        input_tokens += interaction.input_tokens
+        output_tokens += interaction.output_tokens
 
     agent_id = cat.agent_key
     user_id = cat.user.id

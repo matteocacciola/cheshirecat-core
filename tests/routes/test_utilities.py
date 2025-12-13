@@ -4,7 +4,7 @@ import pytest
 
 from cat.db.cruds import (
     settings as crud_settings,
-    history as crud_history,
+    conversations as crud_conversations,
     plugins as crud_plugins,
     users as crud_users,
 )
@@ -19,7 +19,7 @@ async def checks_on_agent_create(lizard, new_agent_id):
     settings = crud_settings.get_settings(new_agent_id)
     assert len(settings) > 0
 
-    histories = get_db().get(crud_history.format_key(new_agent_id, "*", "*"))
+    histories = get_db().get(crud_conversations.format_key(new_agent_id, "*", "*"))
     assert histories is None
 
     plugins = get_db().get(crud_plugins.format_key(new_agent_id, "*"))
@@ -50,8 +50,8 @@ async def checks_on_agent_reset(res, client, ccat_id, lizard):
 
 
 def check_settings_on_agent_destroy(ccat_id):
-    histories = get_db().get(crud_history.format_key(ccat_id, "*", "*"))
-    assert histories is None
+    conversations = get_db().get(crud_conversations.format_key(ccat_id, "*", "*"))
+    assert conversations is None
 
     plugins = get_db().get(crud_plugins.format_key(ccat_id, "*"))
     assert plugins is None

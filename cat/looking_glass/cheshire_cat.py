@@ -6,7 +6,7 @@ from cat.auth.auth_utils import hash_password, DEFAULT_USER_USERNAME
 from cat.auth.permissions import get_base_permissions
 from cat.db.cruds import (
     settings as crud_settings,
-    history as crud_history,
+    conversations as crud_conversations,
     plugins as crud_plugins,
     users as crud_users,
 )
@@ -128,7 +128,7 @@ class CheshireCat(CatMixin):
         self.shutdown()
 
         crud_settings.destroy_all(self.id)
-        crud_history.destroy_all(self.id)
+        crud_conversations.destroy_all(self.id)
         crud_plugins.destroy_all(self.id)
         crud_users.destroy_all(self.id)
 

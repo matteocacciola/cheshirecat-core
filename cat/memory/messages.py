@@ -85,9 +85,9 @@ class UserMessage(BaseMessage):
     image: str | None = None
 
 
-class ConversationHistoryItem(BaseModel):
+class ConversationMessage(BaseModel):
     """
-    Class for wrapping conversation history items. This is used to store the conversation history. It can be either
+    Class for wrapping conversation messages. This is used to store the conversation history. It can be either
     assistant or user. The conversation history is then persisted in the database.
 
     Variables:
@@ -95,7 +95,6 @@ class ConversationHistoryItem(BaseModel):
         when (float): when the message was sent in seconds since epoch (default: time.time())
         content (BaseMessage): content of the message
     """
-    chat_id: str
     who: Literal["user", "assistant"]
     when: float | None = time.time()
     content: CatMessage | UserMessage
@@ -106,7 +105,7 @@ class ConversationHistoryItem(BaseModel):
         self.content = CatMessage(**content_dict) if self.who == "assistant" else UserMessage(**content_dict)
 
     def __str__(self):
-        return f"{self.chat_id} - {str(self.who)}: {self.content.text}"
+        return f"{str(self.who)}: {self.content.text}"
 
     @computed_field
     @property

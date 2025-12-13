@@ -1,7 +1,7 @@
 from langchain_core.messages import AIMessage, HumanMessage
 
 from cat.db.models import generate_uuid
-from cat.memory.messages import UserMessage, CatMessage, ConversationHistoryItem
+from cat.memory.messages import UserMessage, CatMessage, ConversationMessage
 from cat.memory.working_memory import WorkingMemory
 
 from tests.utils import agent_id, chat_id
@@ -31,7 +31,7 @@ def test_update_history():
 
     assert len(wm.history) == 2
     for message in wm.history:
-        assert isinstance(message, ConversationHistoryItem)
+        assert isinstance(message, ConversationMessage)
         assert isinstance(message.content, (UserMessage, CatMessage))
 
     assert wm.history[0].who == "user"

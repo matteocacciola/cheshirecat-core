@@ -30,11 +30,11 @@ class AgentInput(BaseModel):
 
     Attributes
     ----------
-    context : List[Document]
+    context: List[Document]
         List of context documents relevant to the agent's task.
-    input : str
+    input: str
         The user's input message to the agent.
-    history : List[BaseMessage], optional
+    history: List[BaseMessage], optional
         The chat history as a list of messages, by default [].
     """
     context: List[Document]
