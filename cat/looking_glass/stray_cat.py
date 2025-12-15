@@ -60,6 +60,13 @@ class AgentOutput(BaseModel):
     with_llm_error: bool = False
 
 
+class ChatResponse(BaseModel):
+    agent_id: str
+    user_id: str
+    chat_id: str
+    message: CatMessage
+
+
 # The Stray cat goes around tools and hook, making troubles
 class StrayCat(CatMixin):
     """Session object containing user data, conversation state and many utility pointers.
@@ -182,7 +189,14 @@ class StrayCat(CatMixin):
         if isinstance(message, str):
             message = CatMessage(text=message)
 
-        await self._send_ws_json(message.model_dump())
+        response = ChatResponse(
+            agent_id=self.agent_key,
+            user_id=self.user.id,
+            chat_id=self.id,
+            message=message,
+        )
+
+        await self._send_ws_json(response.model_dump())
 
     async def send_notification(self, content: str):
         """
@@ -346,13 +360,20 @@ class StrayCat(CatMixin):
 
         return final_output
 
-    async def run_http(self, user_message: UserMessage) -> CatMessage:
+    async def run_http(self, user_message: UserMessage) -> ChatResponse:
         try:
-            return await self(user_message)
+            message = await self(user_message)
         except Exception as e:
             # Log any unexpected errors
             log.error(f"Agent id: {self.agent_id}. Error {e}")
-            return CatMessage(text="", error=str(e))
+            message = CatMessage(text="", error=str(e))
+
+        return ChatResponse(
+            agent_id=self.agent_key,
+            user_id=self.user.id,
+            chat_id=self.id,
+            message=message,
+        )
 
     async def run_websocket(self, user_message: UserMessage) -> None:
         try:

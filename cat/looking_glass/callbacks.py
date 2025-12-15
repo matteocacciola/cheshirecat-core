@@ -13,7 +13,8 @@ class NewTokenHandler(BaseCallbackHandler):
         self.stray = stray
 
     async def on_llm_new_token(self, token: str, **kwargs) -> None:
-        await self.stray.send_ws_message(token, msg_type="chat_token")
+        if self.stray.websocket_manager.get_connection(self.stray.user.id):
+            await self.stray.send_ws_message(token, msg_type="chat_token")
 
 
 class LoggingCallbackHandler(BaseCallbackHandler):

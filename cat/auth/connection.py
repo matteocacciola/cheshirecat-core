@@ -19,6 +19,7 @@ from cat.looking_glass import BillTheLizard, CheshireCat, StrayCat
 
 
 class AuthorizedInfo(BaseModel):
+    lizard: BillTheLizard
     cheshire_cat: CheshireCat
     user: AuthUserInfo
     stray_cat: StrayCat | None = None
@@ -79,7 +80,7 @@ class ConnectionAuth(ABC):
         if chat_id:
             stray_cat = StrayCat(user_data=user, agent_id=ccat.id, stray_id=chat_id)
 
-        return AuthorizedInfo(cheshire_cat=ccat, user=user, stray_cat=stray_cat)
+        return AuthorizedInfo(lizard=lizard, cheshire_cat=ccat, user=user, stray_cat=stray_cat)
 
     def get_user_from_auth_handlers(
         self, connection: HTTPConnection, lizard: BillTheLizard, ccat: CheshireCat

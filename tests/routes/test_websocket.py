@@ -30,7 +30,10 @@ def test_websocket(secure_client, secure_client_headers):
     # send websocket message
     res = send_websocket_message(msg, secure_client, api_key)
 
-    check_correct_websocket_reply(res)
+    assert res["agent_id"] == agent_id
+    assert res["user_id"] is not None
+    assert res["chat_id"] is not None
+    check_correct_websocket_reply(res["message"])
 
     # check analytics
     response = secure_client.get("/analytics/llm", headers=secure_client_headers)
@@ -71,7 +74,10 @@ def test_websocket_with_additional_items_in_message(secure_client):
     # send websocket message
     res = send_websocket_message(msg, secure_client, api_key)
 
-    check_correct_websocket_reply(res)
+    assert res["agent_id"] == agent_id
+    assert res["user_id"] is not None
+    assert res["chat_id"] is not None
+    check_correct_websocket_reply(res["message"])
 
 
 def test_websocket_with_new_user(secure_client):
@@ -83,7 +89,10 @@ def test_websocket_with_new_user(secure_client):
     msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
     res = send_websocket_message(msg, secure_client, api_key, {"user_id": mocked_user_id})
 
-    check_correct_websocket_reply(res)
+    assert res["agent_id"] == agent_id
+    assert res["user_id"] == str(mocked_user_id)
+    assert res["chat_id"] is not None
+    check_correct_websocket_reply(res["message"])
 
     user = crud_users.get_user(agent_id, str(mocked_user_id))
     assert user is not None
@@ -94,7 +103,7 @@ def test_websocket_multiple_messages(secure_client):
     replies = send_n_websocket_messages(3, secure_client)
 
     for res in replies:
-        check_correct_websocket_reply(res)
+        check_correct_websocket_reply(res["message"])
 
 
 def test_websocket_multiple_connections(secure_client, secure_client_headers, lizard):
@@ -125,8 +134,8 @@ def test_websocket_multiple_connections(secure_client, secure_client_headers, li
         # get reply
         reply = websocket.receive_json()
 
-    check_correct_websocket_reply(reply)
-    check_correct_websocket_reply(reply2)
+    check_correct_websocket_reply(reply["message"])
+    check_correct_websocket_reply(reply2["message"])
 
     # websocket connection is closed
     time.sleep(0.5)

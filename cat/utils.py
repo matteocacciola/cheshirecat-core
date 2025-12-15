@@ -7,7 +7,7 @@ import inspect
 import os
 from enum import Enum as BaseEnum, EnumMeta
 from io import BytesIO
-from typing import Dict, List, Type, TypeVar, Any, Callable, Union
+from typing import Dict, List, Type, TypeVar, Any, Callable, Union, Generic
 from typing_extensions import deprecated
 import requests
 from PIL import Image
@@ -21,16 +21,17 @@ from cat.log import log
 _T = TypeVar("_T")
 
 
-class singleton:
+class singleton(Generic[_T]):
     instances = {}
 
-    def __new__(cls, class_):
-        def getinstance(*args, **kwargs):
-            if class_ not in cls.instances:
-                cls.instances[class_] = class_(*args, **kwargs)
-            return cls.instances[class_]
+    def __init__(self, class_: type[_T]):
+        self._class = class_
+        self.__wrapped__ = class_  # This helps with type checking
 
-        return getinstance
+    def __call__(self, *args, **kwargs) -> _T:
+        if self._class not in self.instances:
+            self.instances[self._class] = self._class(*args, **kwargs)
+        return self.instances[self._class]
 
 
 class BaseModelDict(BaseModel):

@@ -51,7 +51,8 @@ def test_api_key_http(secure_client):
     headers = {header_name: f"{key_prefix} {api_key}"}
     status_code, json = http_message(secure_client, headers)
     assert status_code == 200
-    assert "You did not configure" in json["text"]
+    assert json["chat_id"] is not None
+    assert "You did not configure" in json["message"]["text"]
 
     reset_api_key("CCAT_API_KEY", old_api_key)
 
@@ -73,6 +74,7 @@ def test_api_key_ws(secure_client, secure_client_headers):
 
     # allow access if CCAT_API_KEY is right
     res = send_websocket_message(mex, secure_client, api_key)
-    assert "You did not configure" in res["content"]
+    assert res["chat_id"] is not None
+    assert "You did not configure" in res["message"]["content"]
 
     reset_api_key("CCAT_API_KEY", old_api_key)
