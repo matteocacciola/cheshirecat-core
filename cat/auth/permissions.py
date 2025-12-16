@@ -6,8 +6,6 @@ from cat.utils import Enum
 
 
 class AuthResource(Enum):
-    CRUD = "CRUD"
-    STATUS = "STATUS"
     MEMORY = "MEMORY"
     CHAT = "CHAT"
     SETTING = "SETTING"
@@ -59,10 +57,6 @@ def get_base_permissions() -> Dict[str, List[str]]:
     Returns the default permissions for new users (chat only!).
     """
     return {
-        str(AuthResource.STATUS): [
-            str(AuthPermission.LIST),
-            str(AuthPermission.READ),
-        ],
         str(AuthResource.MEMORY): [
             str(AuthPermission.LIST),
             str(AuthPermission.READ),
@@ -72,19 +66,20 @@ def get_base_permissions() -> Dict[str, List[str]]:
     }
 
 
-def check_permissions(resource: AuthResource, permission: AuthPermission) -> "AuthorizedInfo":
+def check_permissions(resource: AuthResource, permission: AuthPermission, is_chat: bool = False) -> "AuthorizedInfo":
     """
     Helper function to inject cat and stray into endpoints after checking for required permissions.
 
     Args:
         resource (AuthResource): The resource that the user must have permission for.
         permission (AuthPermission): The permission that the user must have for the resource.
+        is_chat (bool): Whether to treat the request as a chat request.
 
     Returns:
         AuthorizedInfo: an instance of CheshireCat and the identified user
     """
     from cat.auth.connection import HTTPAuth
-    return Depends(HTTPAuth(resource=resource, permission=permission))
+    return Depends(HTTPAuth(resource=resource, permission=permission, is_chat=is_chat))
 
 
 def check_admin_permissions(resource: AdminAuthResource, permission: AuthPermission) -> "BillTheLizard":
@@ -102,21 +97,6 @@ def check_admin_permissions(resource: AdminAuthResource, permission: AuthPermiss
     return Depends(AdminConnectionAuth(resource=resource, permission=permission))
 
 
-def check_message_permissions(resource: AuthResource, permission: AuthPermission) -> "AuthorizedInfo":
-    """
-    Helper function to inject cat and stray into endpoints after checking for required permissions.
-
-    Args:
-        resource (AuthResource): The resource that the user must have permission for.
-        permission (AuthPermission): The permission that the user must have for the resource.
-
-    Returns:
-        AuthorizedInfo: an instance of CheshireCat and the identified user
-    """
-    from cat.auth.connection import HTTPAuthMessage
-    return Depends(HTTPAuthMessage(resource=resource, permission=permission))
-
-
 def check_websocket_permissions(resource: AuthResource, permission: AuthPermission) -> "AuthorizedInfo":
     """
     Helper function to inject cat and stray into endpoints after checking for required permissions.
@@ -129,7 +109,7 @@ def check_websocket_permissions(resource: AuthResource, permission: AuthPermissi
         AuthorizedInfo: an instance of CheshireCat and the identified user
     """
     from cat.auth.connection import WebSocketAuth
-    return Depends(WebSocketAuth(resource=resource, permission=permission))
+    return Depends(WebSocketAuth(resource=resource, permission=permission, is_chat=True))
 
 
 class AuthUserInfo(BaseModel):

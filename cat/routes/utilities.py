@@ -118,8 +118,10 @@ async def agent_create(
     """
     try:
         agent_id = extract_agent_id_from_request(request)
-        await lizard.create_cheshire_cat(agent_id)
+        if agent_id is None:
+            raise ValueError("agent_id is required in headers, path params or query params")
 
+        await lizard.create_cheshire_cat(agent_id)
         return CreatedResponse(created=True)
     except Exception as e:
         log.error(f"Error creating agent: {e}")
@@ -135,19 +137,20 @@ async def agent_destroy(
     Destroy a single agent. This will completely delete all settings, memories, and metadata, for the agent.
     This is a permanent action and cannot be undone.
     """
-    agent_id = extract_agent_id_from_request(request)
-    ccat = lizard.get_cheshire_cat_from_db(agent_id)
-    if not ccat:
-        return ResetResponse(deleted_settings=False, deleted_memories=False, deleted_plugin_folders=False)
+    deleted_settings = False
+    deleted_memories = False
 
     try:
-        await ccat.destroy()
-        deleted_settings = True
-        deleted_memories = True
+        agent_id = extract_agent_id_from_request(request)
+        if agent_id is None:
+            raise ValueError("agent_id is required in headers, path params or query params")
+
+        if ccat := lizard.get_cheshire_cat_from_db(agent_id):
+            await ccat.destroy()
+            deleted_settings = True
+            deleted_memories = True
     except Exception as e:
         log.error(f"Error deleting settings: {e}")
-        deleted_settings = False
-        deleted_memories = False
 
     return ResetResponse(
         deleted_settings=deleted_settings,

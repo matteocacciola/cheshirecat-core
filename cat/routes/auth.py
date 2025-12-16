@@ -21,5 +21,7 @@ async def agent_auth_token(request: Request, credentials: UserCredentials) -> JW
     This endpoint receives username and password as form-data, validates credentials and issues a JWT.
     """
     agent_id = extract_agent_id_from_request(request)
+    if agent_id is None:
+        raise ValueError("agent_id is required in headers, path params or query params")
 
     return await fnc_auth_token(credentials, agent_id)

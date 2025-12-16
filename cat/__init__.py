@@ -1,7 +1,6 @@
 from .auth.connection import AuthorizedInfo
 from .auth.permissions import (
     check_admin_permissions,
-    check_message_permissions,
     check_permissions,
     check_websocket_permissions,
     AdminAuthResource,
@@ -28,7 +27,6 @@ __all__ = [
     "AgentOutput",
     "AuthorizedInfo",
     "check_admin_permissions",
-    "check_message_permissions",
     "check_permissions",
     "check_websocket_permissions",
     "AdminAuthResource",
