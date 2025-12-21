@@ -5,8 +5,11 @@ import subprocess
 from inspect import isfunction
 
 from cat.db.database import DEFAULT_SYSTEM_KEY
-from cat.mad_hatter import Plugin, PluginManifest
-from cat.mad_hatter.decorators import CatHook, CatTool, CatForm, CatMcpClient
+from cat.looking_glass.mad_hatter.decorators.experimental.form import CatForm
+from cat.looking_glass.mad_hatter.decorators.experimental.mcp_client import CatMcpClient
+from cat.looking_glass.mad_hatter.decorators.hook import CatHook
+from cat.looking_glass.mad_hatter.decorators.tool import CatTool
+from cat.looking_glass.mad_hatter.plugin import Plugin, PluginManifest
 
 from tests.conftest import clean_up
 from tests.utils import mock_plugin_path

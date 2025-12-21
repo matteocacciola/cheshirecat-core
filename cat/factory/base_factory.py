@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from cat.db.cruds import settings as crud_settings
 from cat.log import log
-from cat.mad_hatter import MadHatter
+from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.services.string_crypto import StringCrypto
 
 
@@ -45,12 +45,6 @@ class BaseFactory(ABC):
     def __init__(self, hook_manager: MadHatter):
         self._hook_manager = hook_manager
 
-    def get_config_class_from_adapter(self, cls: Type) -> Type[BaseModel] | None:
-        return next(
-            (config_class for config_class in self.get_allowed_classes() if config_class.pyclass() == cls),
-            None
-        )
-
     def get_schemas(self) -> Dict:
         # schemas contains metadata to let any client know which fields are required to create the class.
         schemas = {}
@@ -61,9 +55,6 @@ class BaseFactory(ABC):
             schemas[schema["title"]] = schema
 
         return schemas
-
-    def _get_factory_class(self, config_name: str) -> Type[BaseModel] | None:
-        return next((cls for cls in self.get_allowed_classes() if cls.__name__ == config_name), None)
 
     def get_from_config_name(self, agent_id: str, config_name: str) -> Any:
         # get plugin file manager factory class

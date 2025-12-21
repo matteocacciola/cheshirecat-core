@@ -1,6 +1,7 @@
 from typing import Dict, List
 
-from cat.mad_hatter import MadHatter, Plugin
+from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
+from cat.looking_glass.mad_hatter.plugin import Plugin
 from cat.looking_glass.tweedledum import Tweedledum
 
 

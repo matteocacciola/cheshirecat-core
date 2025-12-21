@@ -6,7 +6,7 @@ from cat.log import log
 
 
 # class to represent a @endpoint
-class CustomEndpoint:
+class CatEndpoint:
     def __init__(
         self,
         prefix: str,
@@ -32,7 +32,7 @@ class CustomEndpoint:
 
     def __eq__(self, other):
         """Two endpoints are equal if they have the same name and methods"""
-        if not isinstance(other, CustomEndpoint):
+        if not isinstance(other, CatEndpoint):
             return False
         return self.name == other.name and set(self.methods or []) == set(other.methods or [])
 
@@ -130,7 +130,7 @@ class Endpoint:
         tags = tags or self.default_tags
 
         def _make_endpoint(endpoint_function: Callable):
-            custom_endpoint = CustomEndpoint(
+            custom_endpoint = CatEndpoint(
                 prefix=prefix,
                 path=path,
                 function=endpoint_function,

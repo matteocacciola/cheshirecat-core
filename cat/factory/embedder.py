@@ -100,7 +100,7 @@ class EmbedderDumbConfig(EmbedderSettings):
 class EmbedderFactory(BaseFactory):
     def get_allowed_classes(self) -> List[Type[EmbedderSettings]]:
         list_embedder = self._hook_manager.execute_hook(
-            "factory_allowed_embedders", [EmbedderDumbConfig], obj=None
+            "factory_allowed_embedders", [EmbedderDumbConfig], caller=None
         )
         return list_embedder
 

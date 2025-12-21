@@ -248,7 +248,7 @@ class RabbitHole:
         plugin_manager = self.cat.plugin_manager
 
         # hook the docs before they are stored in the vector memory
-        docs = plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, obj=self.stray or self.cat)
+        docs = plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, caller=self.stray or self.cat)
 
         metadata = metadata or {}
 
@@ -275,7 +275,7 @@ class RabbitHole:
                 "when": time.time(),
             }
 
-            doc = plugin_manager.execute_hook("before_rabbithole_insert_memory", doc, obj=self.stray or self.cat)
+            doc = plugin_manager.execute_hook("before_rabbithole_insert_memory", doc, caller=self.stray or self.cat)
             inserting_info = f"{d + 1}/{len(docs)}):    {doc.page_content}"
             if doc.page_content != "":
                 doc_embedding = embedder.embed_documents([doc.page_content])
@@ -296,7 +296,7 @@ class RabbitHole:
 
         # hook the points after they are stored in the vector memory
         plugin_manager.execute_hook(
-            "after_rabbithole_stored_documents", source, stored_points, obj=self.stray or self.cat
+            "after_rabbithole_stored_documents", source, stored_points, caller=self.stray or self.cat
         )
 
         # notify client
@@ -334,7 +334,7 @@ class RabbitHole:
         plugin_manager = self.cat.plugin_manager
 
         # do something on the docs before they are split
-        docs = plugin_manager.execute_hook("before_rabbithole_splits_documents", docs, obj=self.stray or self.cat)
+        docs = plugin_manager.execute_hook("before_rabbithole_splits_documents", docs, caller=self.stray or self.cat)
 
         # split docs
         chunker = self.cat.chunker

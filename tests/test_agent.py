@@ -3,8 +3,8 @@ import pytest
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
 from cat import agent
-from cat.mad_hatter.decorators import CatFormState
 from cat.looking_glass import AgentOutput
+from cat.looking_glass.mad_hatter.decorators.experimental.form import CatFormState
 from cat.utils import default_llm_answer_prompt
 
 from tests.utils import just_installed_plugin

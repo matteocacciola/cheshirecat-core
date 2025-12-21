@@ -4,7 +4,7 @@ import aiofiles
 import httpx
 
 from cat.log import log
-from cat.mad_hatter.plugin_manifest import PluginManifest
+from cat.looking_glass.mad_hatter.plugin_manifest import PluginManifest
 
 
 def get_registry_url():

@@ -15,7 +15,6 @@ from cat.auth.permissions import (
 )
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException
-from cat.factory.auth_handler import BaseAuthHandler
 from cat.looking_glass import BillTheLizard, CheshireCat, StrayCat
 
 
@@ -61,6 +60,8 @@ class AdminConnectionAuth:
 
 
 class ConnectionAuth(ABC):
+    from cat.factory.auth_handler import BaseAuthHandler
+
     def __init__(self, resource: AuthResource, permission: AuthPermission, is_chat: bool = False):
         self.resource = resource
         self.permission = permission
@@ -126,6 +127,8 @@ class ConnectionAuth(ABC):
 
 
 class HTTPAuth(ConnectionAuth):
+    from cat.factory.auth_handler import BaseAuthHandler
+
     def _before_get_agent_user_info(self, connection: Request, auth_handler: BaseAuthHandler, agent_id: str):
         pass
 
@@ -134,6 +137,8 @@ class HTTPAuth(ConnectionAuth):
 
 
 class WebSocketAuth(ConnectionAuth):
+    from cat.factory.auth_handler import BaseAuthHandler
+
     def _before_get_agent_user_info(self, connection: WebSocket, auth_handler: BaseAuthHandler, agent_id: str):
         user_id = auth_handler.extract_user_id_websocket(connection)
         if not user_id:

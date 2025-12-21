@@ -6,7 +6,7 @@ from mcp.types import Tool
 from pydantic import ConfigDict
 from slugify import slugify
 
-from cat.mad_hatter.procedures import CatProcedure, CatProcedureType
+from cat.looking_glass.mad_hatter.procedures import CatProcedure, CatProcedureType
 
 
 class CatTool(CatProcedure):

@@ -26,7 +26,10 @@ from cat.exceptions import CustomForbiddenException, CustomValidationException
 from cat.factory.base_factory import BaseFactory
 from cat.log import log
 from cat.looking_glass import BillTheLizard
-from cat.mad_hatter import MadHatter, Plugin, registry_search_plugins, PluginManifest
+from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
+from cat.looking_glass.mad_hatter.plugin import Plugin
+from cat.looking_glass.mad_hatter.plugin_manifest import PluginManifest
+from cat.looking_glass.mad_hatter.registry import registry_search_plugins
 
 
 class Plugins(BaseModel):

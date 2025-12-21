@@ -3,17 +3,17 @@ import os
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Union
 from pydantic import BaseModel, Field, ConfigDict
 
 from cat import utils
 from cat.db.cruds import settings as crud_settings
 from cat.db.models import Setting
 from cat.log import log
-from cat.mad_hatter.decorators import CustomEndpoint, CatHook
-from cat.mad_hatter.plugin import Plugin
-from cat.mad_hatter.procedures import CatProcedure
-
+from cat.looking_glass.mad_hatter.decorators.endpoint import CatEndpoint
+from cat.looking_glass.mad_hatter.decorators.hook import CatHook
+from cat.looking_glass.mad_hatter.plugin import Plugin
+from cat.looking_glass.mad_hatter.procedures import CatProcedure
 
 class LoadedPlugin(BaseModel):
     plugin: Plugin | None = None
@@ -39,7 +39,7 @@ class MadHatter(ABC):
         # dict of active plugins hooks (hook_name -> [CatHook, CatHook, ...])
         self.hooks: Dict[str, List[CatHook]] = {}
         # list of active plugins endpoints
-        self.endpoints: List[CustomEndpoint] = []
+        self.endpoints: List[CatEndpoint] = []
 
         self.active_plugins: List[str] = []
 
@@ -170,20 +170,9 @@ class MadHatter(ABC):
         self.dispatcher.dispatch("on_finish_plugins_sync", self.manage_endpoints)
 
     # execute requested hook
-    def execute_hook(self, hook_name: str, *args, obj) -> Any:
+    def execute_hook(self, hook_name: str, *args, caller: Union["BillTheLizard", "CheshireCat", "StrayCat"]) -> Any:
         if hook_name not in self.hooks.keys():
             raise Exception(f"Hook {hook_name} not present in any plugin")
-
-        if len(args) == 0:
-            for hook in self.hooks[hook_name]:
-                try:
-                    log.debug(f"Executing {hook.plugin_id}::{hook.name} with priority {hook.priority}")
-                    hook.function(**{self.context_execute_hook: obj})
-                except Exception as e:
-                    log.error(f"Error in plugin {hook.plugin_id}::{hook.name}: {e}")
-                    plugin_obj = self.plugins[hook.plugin_id]
-                    log.warning(plugin_obj.plugin_specific_error_message())
-            return None
 
         tea_cup = deepcopy(args[0])
 
@@ -191,7 +180,7 @@ class MadHatter(ABC):
         for hook in self.hooks[hook_name]:
             try:
                 log.debug(f"Executing {hook.plugin_id}::{hook.name} with priority {hook.priority}")
-                tea_spoon = hook.function(deepcopy(tea_cup), *deepcopy(args[1:]), **{self.context_execute_hook: obj})
+                tea_spoon = hook.function(deepcopy(tea_cup), *deepcopy(args[1:]), **{self.context_execute_hook: caller})
                 if tea_spoon is not None:
                     tea_cup = tea_spoon
             except Exception as e:

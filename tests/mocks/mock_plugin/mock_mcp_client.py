@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Dict, Any, List
 from fastmcp import FastMCP
 
-from cat.mad_hatter.decorators import CatMcpClient, mcp_client
+from cat import CatMcpClient, mcp_client
 
 # Create in memory server for testing, otherwise tests get slow
 server = FastMCP("TestInMemoryServer")

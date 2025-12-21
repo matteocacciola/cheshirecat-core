@@ -1,7 +1,7 @@
 from enum import Enum
 from pydantic import BaseModel, Field
 
-from cat.mad_hatter.decorators import CatForm, form
+from cat import CatForm, form
 
 
 class PizzaBorderEnum(Enum):

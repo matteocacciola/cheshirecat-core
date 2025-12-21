@@ -12,9 +12,9 @@ from cat import utils
 from cat.agent import run_agent
 from cat.auth.permissions import AuthUserInfo
 from cat.log import log
-from cat.looking_glass import NewTokenHandler
+from cat.looking_glass.callbacks import NewTokenHandler
+from cat.looking_glass.mad_hatter.procedures import CatProcedure
 from cat.looking_glass.tweedledee import Tweedledee
-from cat.mad_hatter import CatProcedure
 from cat.memory.messages import CatMessage, UserMessage
 from cat.memory.utils import recall_relevant_memories_to_working_memory, VectorMemoryType
 from cat.memory.working_memory import WorkingMemory
@@ -283,18 +283,18 @@ class StrayCat(CatMixin):
         plugin_manager = self.plugin_manager
 
         # Run a totally custom reply (skips all the side effects of the framework)
-        if fast_reply := plugin_manager.execute_hook("fast_reply", None, obj=self):
+        if fast_reply := plugin_manager.execute_hook("fast_reply", None, caller=self):
             return CatMessage(text=fast_reply)
 
         # hook to modify/enrich user input; this is the latest user message
         self.working_memory.user_message = utils.restore_original_model(
-            plugin_manager.execute_hook("before_cat_reads_message", self.working_memory.user_message, obj=self),
+            plugin_manager.execute_hook("before_cat_reads_message", self.working_memory.user_message, caller=self),
             UserMessage
         )
 
         # if the agent is set to fast reply, skip everything and return the output
         agent_fast_reply = utils.restore_original_model(
-            self.plugin_manager.execute_hook("agent_fast_reply", {}, obj=self),
+            self.plugin_manager.execute_hook("agent_fast_reply", {}, caller=self),
             AgentOutput
         )
         if agent_fast_reply and agent_fast_reply.output:
@@ -310,18 +310,18 @@ class StrayCat(CatMixin):
                     input=self.working_memory.user_message.text,
                     history=[h.langchainfy() for h in self.working_memory.history[-latest_n_history:]]
                 ),
-                obj=self
+                caller=self
             ),
             AgentInput
         )
 
         # obtain prompt parts from plugins
-        prompt_prefix = self.plugin_manager.execute_hook("agent_prompt_prefix", prompts.MAIN_PROMPT, obj=self)
-        prompt_suffix = self.plugin_manager.execute_hook("agent_prompt_suffix", "", obj=self)
+        prompt_prefix = self.plugin_manager.execute_hook("agent_prompt_prefix", prompts.MAIN_PROMPT, caller=self)
+        prompt_suffix = self.plugin_manager.execute_hook("agent_prompt_suffix", "", caller=self)
         prompt_variables = self.plugin_manager.execute_hook(
             "agent_prompt_variables",
             {"context": agent_input.context, "input": agent_input.input},
-            obj=self,
+            caller=self,
         )
 
         system_prompt = prompt_prefix + prompt_suffix
@@ -336,7 +336,7 @@ class StrayCat(CatMixin):
                 ]),
                 tools=tools,
                 prompt_variables=prompt_variables,
-                callbacks=self.plugin_manager.execute_hook("llm_callbacks", [NewTokenHandler(self)], obj=self),
+                callbacks=self.plugin_manager.execute_hook("llm_callbacks", [NewTokenHandler(self)], caller=self),
             )
 
             if agent_output.output == utils.default_llm_answer_prompt():
@@ -353,7 +353,7 @@ class StrayCat(CatMixin):
         # run a message through plugins
         final_output = utils.restore_original_model(
             self.plugin_manager.execute_hook(
-                "before_cat_sends_message", final_output, agent_output, obj=self
+                "before_cat_sends_message", final_output, agent_output, caller=self
             ),
             CatMessage,
         )

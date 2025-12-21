@@ -5,7 +5,9 @@ from cat import utils
 from cat.db.cruds import plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.log import log
-from cat.mad_hatter import MadHatter, Plugin, PluginExtractor
+from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
+from cat.looking_glass.mad_hatter.plugin import Plugin
+from cat.looking_glass.mad_hatter.plugin_extractor import PluginExtractor
 from cat.utils import singleton
 
 

@@ -1,7 +1,10 @@
 from inspect import isfunction
 
-from cat.mad_hatter import Plugin, CatProcedure
-from cat.mad_hatter.decorators import CatHook, CatTool
+from cat.looking_glass.mad_hatter.decorators.hook import CatHook
+from cat.looking_glass.mad_hatter.decorators.tool import CatTool
+from cat.looking_glass.mad_hatter.plugin import Plugin
+from cat.looking_glass.mad_hatter.procedures import CatProcedure
+
 
 def test_instantiation_discovery(cheshire_cat):
     plugin_manager = cheshire_cat.plugin_manager

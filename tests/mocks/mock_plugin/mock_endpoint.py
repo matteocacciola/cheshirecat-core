@@ -9,8 +9,7 @@ from cat.auth.permissions import (
     check_permissions,
     check_admin_permissions,
 )
-from cat.looking_glass import BillTheLizard
-from cat.mad_hatter.decorators import endpoint
+from cat import BillTheLizard, endpoint
 
 
 class Item(BaseModel):

@@ -5,7 +5,7 @@ from fastapi.requests import HTTPConnection
 from jwt.exceptions import InvalidTokenError
 from pydantic import BaseModel
 
-from cat.db.database import DEFAULT_AGENT_KEY, DEFAULT_SYSTEM_KEY
+from cat.db.database import DEFAULT_SYSTEM_KEY
 
 DEFAULT_ADMIN_USERNAME = "admin"
 DEFAULT_USER_USERNAME = "user"

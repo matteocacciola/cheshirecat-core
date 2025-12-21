@@ -64,7 +64,7 @@ class LLMDefaultConfig(LLMSettings):
 
 class LLMFactory(BaseFactory):
     def get_allowed_classes(self) -> List[Type[LLMSettings]]:
-        list_llms = self._hook_manager.execute_hook("factory_allowed_llms", [LLMDefaultConfig], obj=None)
+        list_llms = self._hook_manager.execute_hook("factory_allowed_llms", [LLMDefaultConfig], caller=None)
         return list_llms
 
     @property

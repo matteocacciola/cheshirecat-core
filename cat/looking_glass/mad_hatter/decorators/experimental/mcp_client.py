@@ -6,8 +6,8 @@ from mcp.types import Prompt, Resource, Tool
 from slugify import slugify
 
 from cat.log import log
-from cat.mad_hatter.procedures import CatProcedure, CatProcedureType
-from cat.mad_hatter.decorators.tool import CatTool
+from cat.looking_glass.mad_hatter.decorators.tool import CatTool
+from cat.looking_glass.mad_hatter.procedures import CatProcedure, CatProcedureType
 from cat.utils import run_sync_or_async
 
 

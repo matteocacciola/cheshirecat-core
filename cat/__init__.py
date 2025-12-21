@@ -15,13 +15,14 @@ from .factory.llm import LLMSettings
 from .factory.vector_db import BaseVectorDatabaseHandler, VectorDatabaseSettings
 from .log import log
 from .looking_glass import AgentOutput, BillTheLizard, CheshireCat, StrayCat
-from .mad_hatter.decorators import hook, tool, plugin, endpoint
-from .mad_hatter.decorators.experimental.cat_form import form, CatForm
-from .mad_hatter.decorators.experimental.cat_mcp_client import mcp_client, CatMcpClient
+from .looking_glass.mad_hatter.decorators.experimental.form import form, CatForm
+from .looking_glass.mad_hatter.decorators.experimental.mcp_client import mcp_client, CatMcpClient
+from .looking_glass.mad_hatter.decorators.endpoint import endpoint
+from .looking_glass.mad_hatter.decorators.hook import hook
+from .looking_glass.mad_hatter.decorators.plugin_decorator import plugin
+from .looking_glass.mad_hatter.decorators.tool import tool
 from .memory.messages import CatMessage, ConversationMessage, MessageWhy, UserMessage
 from .utils import get_caller_info, run_sync_or_async
-
-
 
 __all__ = [
     "AgentOutput",

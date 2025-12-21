@@ -281,7 +281,7 @@ class AuthHandlerFactory(BaseFactory):
         ]
 
         list_auth_handler = self._hook_manager.execute_hook(
-            "factory_allowed_auth_handlers", list_auth_handler_default, obj=None
+            "factory_allowed_auth_handlers", list_auth_handler_default, caller=None
         )
 
         return list_auth_handler

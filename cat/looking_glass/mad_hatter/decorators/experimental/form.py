@@ -8,7 +8,7 @@ from slugify import slugify
 
 from cat.agent import run_agent
 from cat.log import log
-from cat.mad_hatter.procedures import CatProcedure, CatProcedureType
+from cat.looking_glass.mad_hatter.procedures import CatProcedure, CatProcedureType
 from cat.utils import Enum, parse_json
 
 

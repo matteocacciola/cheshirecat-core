@@ -8,7 +8,7 @@ from cat import log
 from cat.auth.permissions import AuthPermission, AdminAuthResource, check_admin_permissions
 from cat.exceptions import CustomValidationException, CustomNotFoundException
 from cat.looking_glass import BillTheLizard
-from cat.mad_hatter import registry_download_plugin
+from cat.looking_glass.mad_hatter.registry import registry_download_plugin
 from cat.routes.routes_utils import (
     DeletePluginResponse,
     GetAvailablePluginsResponse,

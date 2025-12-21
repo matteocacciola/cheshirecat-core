@@ -16,8 +16,8 @@ from cat.factory.embedder import EmbedderFactory
 from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.looking_glass.cheshire_cat import CheshireCat
+from cat.looking_glass.mad_hatter.decorators.endpoint import CatEndpoint
 from cat.looking_glass.tweedledum import Tweedledum
-from cat.mad_hatter.decorators import CustomEndpoint
 from cat.rabbit_hole import RabbitHole
 from cat.services.websocket_manager import WebSocketManager
 from cat.utils import (
@@ -69,7 +69,7 @@ class BillTheLizard:
         self.plugin_manager.discover_plugins()
 
         # allows plugins to do something before cat components are loaded
-        self.plugin_manager.execute_hook("before_lizard_bootstrap", obj=self)
+        self.plugin_manager.execute_hook("before_lizard_bootstrap", None, caller=self)
 
         self.websocket_manager = WebSocketManager()
 
@@ -85,7 +85,7 @@ class BillTheLizard:
         if not crud_users.get_users(self._key):
             self.initialize_users()
 
-        self.plugin_manager.execute_hook("after_lizard_bootstrap", obj=self)
+        self.plugin_manager.execute_hook("after_lizard_bootstrap", None, caller=self)
 
     @subscriber("on_end_plugin_install")
     def on_end_plugin_install(self, plugin_id: str, plugin_path: str) -> None:
@@ -96,7 +96,7 @@ class BillTheLizard:
         if self.fastapi_app is not None:
             self._activate_pending_endpoints()
 
-        self.plugin_manager.execute_hook("lizard_notify_plugin_installation", plugin_id, plugin_path, obj=self)
+        self.plugin_manager.execute_hook("lizard_notify_plugin_installation", plugin_id, plugin_path, caller=self)
 
     @subscriber("on_start_plugin_uninstall")
     def on_start_plugin_uninstall(self, plugin_id: str) -> None:
@@ -104,7 +104,7 @@ class BillTheLizard:
         self.on_start_plugin_deactivate(plugin_id)
 
     @subscriber("on_end_plugin_uninstall")
-    def on_end_plugin_uninstall(self, plugin_id: str, endpoints: List[CustomEndpoint]) -> None:
+    def on_end_plugin_uninstall(self, plugin_id: str, endpoints: List[CatEndpoint]) -> None:
         # Store endpoints for later activation
         self._pending_endpoints = endpoints
 
@@ -112,7 +112,7 @@ class BillTheLizard:
         if self.fastapi_app is not None:
             self._deactivate_pending_endpoints(plugin_id)
 
-        self.plugin_manager.execute_hook("lizard_notify_plugin_uninstallation", plugin_id, obj=self)
+        self.plugin_manager.execute_hook("lizard_notify_plugin_uninstallation", plugin_id, caller=self)
 
     @subscriber("on_finish_plugins_sync")
     def on_finish_plugins_sync(self, with_endpoints: bool) -> None:
@@ -274,7 +274,7 @@ class BillTheLizard:
         Returns:
             None
         """
-        self.plugin_manager.execute_hook("before_lizard_shutdown", obj=self)
+        self.plugin_manager.execute_hook("before_lizard_shutdown", None, caller=self)
 
         self.dispatcher.unsubscribe_from(self)
 

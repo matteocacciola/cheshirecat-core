@@ -17,7 +17,7 @@ from cat.db.database import Database
 from cat.env import get_env
 from cat.factory.vector_db import QdrantHandler
 from cat.looking_glass import BillTheLizard, StrayCat
-from cat.mad_hatter import Plugin
+from cat.looking_glass.mad_hatter.plugin import Plugin
 from cat.memory.messages import UserMessage
 from cat.startup import cheshire_cat_api
 import cat.utils as utils

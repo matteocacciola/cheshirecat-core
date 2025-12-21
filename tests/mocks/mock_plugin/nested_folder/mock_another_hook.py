@@ -1,4 +1,4 @@
-from cat.mad_hatter.decorators import hook
+from cat import hook
 
 
 @hook(priority=3)
