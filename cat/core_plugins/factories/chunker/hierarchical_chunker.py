@@ -561,8 +561,6 @@ class MathAwareHierarchicalChunker:
             )
             chunks.append(doc)
 
-            current_pos = formula_pos["end"]
-
         return chunks
 
     def _standard_split(
