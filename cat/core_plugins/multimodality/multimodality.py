@@ -9,7 +9,7 @@ from langchain_community.document_loaders import (
 )
 
 from cat import EmbedderSettings, hook
-from cat.core_plugins.multimodality.embedder import EmbedderJinaMultimodalConfig
+from cat.core_plugins.multimodality.embedder import EmbedderJinaMultimodalConfig, JinaCLIPEmbeddingsConfig
 from cat.core_plugins.multimodality.unstructured_parser import UnstructuredParser
 
 
@@ -21,6 +21,7 @@ nltk.download("averaged_perceptron_tagger")
 def factory_allowed_embedders(allowed: List[EmbedderSettings], lizard) -> List:
     return allowed + [
         EmbedderJinaMultimodalConfig,
+        JinaCLIPEmbeddingsConfig,
     ]
 
 

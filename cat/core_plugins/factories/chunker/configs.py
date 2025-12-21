@@ -4,6 +4,8 @@ from pydantic import ConfigDict
 from cat.core_plugins.factories.chunker.custom import (
     SemanticChunker,
     HTMLSemanticChunker,
+    HierarchicalChunker,
+    MathAwareHierarchicalChunker,
     JSONChunker,
     TokenSpacyChunker,
     TokenNLTKChunker,
@@ -101,3 +103,44 @@ class TokenNLTKChunkerSettings(ChunkerSettings):
     @classmethod
     def pyclass(cls) -> Type[TokenNLTKChunker]:
         return TokenNLTKChunker
+
+
+class HierarchicalChunkerSettings(ChunkerSettings):
+    chunk_size: int
+    chunk_overlap: int = 200
+    min_chunk_size: int = 100
+    max_chunk_size: int = 2000
+    preserve_structure: bool = True
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "Hierarchical chunker",
+            "description": "Configuration for hierarchical chunker to be used to split text into smaller chunks",
+            "link": "",
+        }
+    )
+
+    @classmethod
+    def pyclass(cls) -> Type[HierarchicalChunker]:
+        return HierarchicalChunker
+
+
+class MathAwareHierarchicalChunkerSettings(ChunkerSettings):
+    chunk_size: int
+    chunk_overlap: int = 200
+    min_chunk_size: int = 100
+    max_chunk_size: int = 2000
+    formula_context_window: int = 300
+    preserve_structure: bool = True
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "Math-aware hierarchical chunker",
+            "description": "Configuration for math-aware hierarchical chunker to be used to split text into smaller chunks",
+            "link": "",
+        }
+    )
+
+    @classmethod
+    def pyclass(cls) -> Type[MathAwareHierarchicalChunker]:
+        return MathAwareHierarchicalChunker

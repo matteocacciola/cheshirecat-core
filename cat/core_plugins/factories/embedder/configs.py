@@ -1,4 +1,4 @@
-from typing import Type
+from typing import Type, Any
 from fastembed import TextEmbedding
 # from langchain_cohere import CohereEmbeddings
 from langchain_community.embeddings import FakeEmbeddings, FastEmbedEmbeddings
@@ -12,6 +12,10 @@ from cat.core_plugins.factories.embedder.custom import (
     CustomOpenAIEmbeddings,
     CustomOllamaEmbeddings,
     CustomJinaEmbedder,
+    Qwen3LocalEmbeddings,
+    Qwen3OllamaEmbeddings,
+    Qwen3DeepInfraEmbeddings,
+    Qwen3TEIEmbeddings,
 )
 from cat.factory.embedder import EmbedderSettings
 from cat.utils import Enum
@@ -241,3 +245,71 @@ class EmbedderJinaConfig(EmbedderSettings):
     @classmethod
     def pyclass(cls) -> Type[CustomJinaEmbedder]:
         return CustomJinaEmbedder
+
+
+class Qwen3LocalEmbeddingsConfig(EmbedderSettings):
+    model_name: str
+    device: str = "cuda"
+    model: Any = None
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "Local Qwen3 embeddings using HuggingFace Sentence Transformers",
+            "description": "Configuration for Local Qwen3 embeddings using HuggingFace Sentence Transformers",
+            "link": "",
+        }
+    )
+
+    @classmethod
+    def pyclass(cls) -> Type[Qwen3LocalEmbeddings]:
+        return Qwen3LocalEmbeddings
+
+
+class Qwen3OllamaEmbeddingsConfig(EmbedderSettings):
+    model_name: str
+    base_url: str
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "Qwen3 embeddings via Ollama",
+            "description": "Configuration for Qwen3 embeddings via Ollama",
+            "link": "",
+        }
+    )
+
+    @classmethod
+    def pyclass(cls) -> Type[Qwen3OllamaEmbeddings]:
+        return Qwen3OllamaEmbeddings
+
+
+class Qwen3DeepInfraEmbeddingsConfig(EmbedderSettings):
+    model_name: str
+    base_url: str
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "Qwen3 embeddings via DeepInfra API (OpenAI-compatible)",
+            "description": "Configuration for Qwen3 embeddings via DeepInfra API (OpenAI-compatible) embeddings",
+            "link": "",
+        }
+    )
+
+    @classmethod
+    def pyclass(cls) -> Type[Qwen3DeepInfraEmbeddings]:
+        return Qwen3DeepInfraEmbeddings
+
+
+class Qwen3TEIEmbeddingsConfig(EmbedderSettings):
+    base_url: str
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "Qwen3 embeddings via Text Embeddings Inference",
+            "description": "Configuration for Qwen3 embeddings via Text Embeddings Inference embeddings",
+            "link": "",
+        }
+    )
+
+    @classmethod
+    def pyclass(cls) -> Type[Qwen3TEIEmbeddings]:
+        return Qwen3TEIEmbeddings

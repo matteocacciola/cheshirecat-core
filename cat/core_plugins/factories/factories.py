@@ -7,6 +7,8 @@ from cat.core_plugins.factories.chunker.configs import (
     JSONChunkerSettings,
     TokenSpacyChunkerSettings,
     TokenNLTKChunkerSettings,
+    HierarchicalChunkerSettings,
+    MathAwareHierarchicalChunkerSettings,
 )
 from cat.core_plugins.factories.embedder.configs import (
     EmbedderQdrantFastEmbedConfig,
@@ -20,6 +22,10 @@ from cat.core_plugins.factories.embedder.configs import (
     # EmbedderVoyageAIChatConfig,
     EmbedderOllamaConfig,
     EmbedderJinaConfig,
+    Qwen3LocalEmbeddingsConfig,
+    Qwen3OllamaEmbeddingsConfig,
+    Qwen3DeepInfraEmbeddingsConfig,
+    Qwen3TEIEmbeddingsConfig,
 )
 from cat.core_plugins.factories.file_manager.configs import (
     LocalFileManagerConfig,
@@ -84,6 +90,10 @@ def factory_allowed_embedders(allowed: List[EmbedderSettings], lizard) -> List:
         # EmbedderVoyageAIChatConfig,
         EmbedderOllamaConfig,
         EmbedderJinaConfig,
+        Qwen3LocalEmbeddingsConfig,
+        Qwen3OllamaEmbeddingsConfig,
+        Qwen3DeepInfraEmbeddingsConfig,
+        Qwen3TEIEmbeddingsConfig,
     ]
 
 
@@ -105,4 +115,6 @@ def factory_allowed_chunkers(allowed: List[ChunkerSettings], cat) -> List:
         JSONChunkerSettings,
         TokenSpacyChunkerSettings,
         TokenNLTKChunkerSettings,
+        HierarchicalChunkerSettings,
+        MathAwareHierarchicalChunkerSettings,
     ]

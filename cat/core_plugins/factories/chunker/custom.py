@@ -9,6 +9,10 @@ from langchain_text_splitters import (
 )
 
 from cat.core_plugins.factories.chunker.semantic_chunker import SemanticChunker as SemanticAnalyzer
+from cat.core_plugins.factories.chunker.hierarchical_chunker import (
+    HierarchicalChunker as HierarchicalAnalyzer,
+    MathAwareHierarchicalChunker as MathAwareHierarchicalAnalyzer,
+)
 from cat.factory.chunker import BaseChunker
 
 
@@ -36,7 +40,6 @@ class SemanticChunker(BaseChunker):
             Document(
                 page_content=chunk["text"],
                 metadata={"source_chunks": chunk.get("metadata", [])}
-
             )
             for chunk in chunks
         ]
@@ -112,3 +115,59 @@ class TokenNLTKChunker(BaseChunker):
 
     def split_documents(self, documents: Iterable[Document]) -> List[Document]:
         return self.analyzer.split_documents(documents)
+
+
+class HierarchicalChunker(BaseChunker):
+    def __init__(
+        self, chunk_size: int, chunk_overlap: int, min_chunk_size: int, max_chunk_size: int, preserve_structure: bool
+    ):
+        self._chunk_size = chunk_size
+        self._chunk_overlap = chunk_overlap
+        self._min_chunk_size = min_chunk_size
+        self._max_chunk_size = max_chunk_size
+        self._preserve_structure = preserve_structure
+
+    @property
+    def analyzer(self):
+        return HierarchicalAnalyzer(
+            chunk_size=self._chunk_size,
+            chunk_overlap=self._chunk_overlap,
+            min_chunk_size=self._min_chunk_size,
+            max_chunk_size=self._max_chunk_size,
+            preserve_structure=self._preserve_structure
+        )
+
+    def split_documents(self, documents: Iterable[Document]) -> List[Document]:
+        return [chunk for doc in documents for chunk in self.analyzer.chunk_document(doc.page_content, doc.metadata)]
+
+
+class MathAwareHierarchicalChunker(BaseChunker):
+    def __init__(
+        self,
+        chunk_size: int,
+        chunk_overlap: int,
+        min_chunk_size: int,
+        max_chunk_size: int,
+        formula_context_window: int,
+        preserve_structure: bool,
+    ):
+        self._chunk_size = chunk_size
+        self._chunk_overlap = chunk_overlap
+        self._min_chunk_size = min_chunk_size
+        self._max_chunk_size = max_chunk_size
+        self._formula_context_window = formula_context_window
+        self._preserve_structure = preserve_structure
+
+    @property
+    def analyzer(self):
+        return MathAwareHierarchicalAnalyzer(
+            chunk_size=self._chunk_size,
+            chunk_overlap=self._chunk_overlap,
+            min_chunk_size=self._min_chunk_size,
+            max_chunk_size=self._max_chunk_size,
+            formula_context_window=self._formula_context_window,
+            preserve_structure=self._preserve_structure,
+        )
+
+    def split_documents(self, documents: Iterable[Document]) -> List[Document]:
+        return [chunk for doc in documents for chunk in self.analyzer.chunk_document(doc.page_content, doc.metadata)]

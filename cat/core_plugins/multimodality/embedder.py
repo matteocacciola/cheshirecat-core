@@ -1,6 +1,7 @@
 import base64
 import os
-from typing import Type, List
+from typing import Type, List, Dict, Any
+import requests
 from pydantic import ConfigDict
 import httpx
 
@@ -79,3 +80,97 @@ class EmbedderJinaMultimodalConfig(EmbedderMultimodalSettings):
     @classmethod
     def pyclass(cls) -> Type[CustomJinaMultimodalEmbedder]:
         return CustomJinaMultimodalEmbedder
+
+
+class JinaCLIPEmbeddings(MultimodalEmbeddings):
+    """
+    Jina CLIP v2 multimodal embeddings.
+    Handles both text and images in same vector space.
+    """
+    def __init__(self, api_key: str, model_name: str, base_url: str):
+        self.api_key = api_key
+        self.model_name = model_name
+        self.base_url = base_url
+
+    def _get_embeddings(self, inputs: List[Dict[str, Any]]) -> List[List[float]]:
+        """
+        Get embeddings from Jina API.
+
+        Args:
+            inputs: List of {"text": str} or {"image": bytes/url}
+        """
+        if not self.api_key:
+            raise ValueError("Jina API key required")
+
+        try:
+            # Prepare input for Jina API
+            prepared_inputs = []
+            for inp in inputs:
+                if "text" in inp:
+                    prepared_inputs.append({"text": inp["text"]})
+                elif "image" in inp:
+                    # Handle image bytes or URL
+                    if isinstance(inp["image"], bytes):
+                        img_b64 = base64.b64encode(inp["image"]).decode()
+                        prepared_inputs.append({
+                            "image": f"data:image/png;base64,{img_b64}"
+                        })
+                    else:
+                        prepared_inputs.append({"image": inp["image"]})
+
+            response = requests.post(
+                self.base_url,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.api_key}"
+                },
+                json={
+                    "model": self.model_name,
+                    "input": prepared_inputs
+                },
+                timeout=60
+            )
+            response.raise_for_status()
+            data = response.json()
+
+            return [item["embedding"] for item in data["data"]]
+
+        except requests.RequestException as e:
+            raise RuntimeError(f"Jina embedding failed: {e}")
+
+    def embed_documents(self, texts: List[str]) -> List[List[float]]:
+        """Embed text documents"""
+        inputs = [{"text": text} for text in texts]
+        return self._get_embeddings(inputs)
+
+    def embed_query(self, text: str) -> List[float]:
+        """Embed single text query"""
+        return self._get_embeddings([{"text": text}])[0]
+
+    def embed_image(self, image: bytes) -> List[float]:
+        """Embed single image"""
+        return self._get_embeddings([{"image": image}])[0]
+
+    def embed_images(self, images: List[bytes]) -> List[List[float]]:
+        """Embed multiple images"""
+        inputs = [{"image": img} for img in images]
+        return self._get_embeddings(inputs)
+
+
+class JinaCLIPEmbeddingsConfig(EmbedderMultimodalSettings):
+    api_key: str
+    model_name: str = "jina-clip-v2"
+    base_url: str = "https://api.jina.ai/v1/embeddings"
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "humanReadableName": "Jina CLIP Embedder",
+            "description": "Configuration for Jina CLIP embeddings",
+            "link": "https://docs.jina.ai/",
+        }
+    )
+
+    @classmethod
+    def pyclass(cls) -> Type[CustomJinaMultimodalEmbedder]:
+        return CustomJinaMultimodalEmbedder
+
