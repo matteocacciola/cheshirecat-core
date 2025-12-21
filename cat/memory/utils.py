@@ -220,7 +220,7 @@ async def recall_relevant_memories_to_working_memory(cat: "StrayCat", collection
     )
 
     # hook to modify/enrich retrieved memories
-    plugin_manager.execute_hook("after_cat_recalls_memories", None, caller=cat)
+    plugin_manager.execute_hook("after_cat_recalls_memories", caller=cat)
 
     return memories
 

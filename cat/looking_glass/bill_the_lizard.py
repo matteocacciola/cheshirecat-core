@@ -69,7 +69,7 @@ class BillTheLizard:
         self.plugin_manager.discover_plugins()
 
         # allows plugins to do something before cat components are loaded
-        self.plugin_manager.execute_hook("before_lizard_bootstrap", None, caller=self)
+        self.plugin_manager.execute_hook("before_lizard_bootstrap", caller=self)
 
         self.websocket_manager = WebSocketManager()
 
@@ -85,7 +85,7 @@ class BillTheLizard:
         if not crud_users.get_users(self._key):
             self.initialize_users()
 
-        self.plugin_manager.execute_hook("after_lizard_bootstrap", None, caller=self)
+        self.plugin_manager.execute_hook("after_lizard_bootstrap", caller=self)
 
     @subscriber("on_end_plugin_install")
     def on_end_plugin_install(self, plugin_id: str, plugin_path: str) -> None:
@@ -274,7 +274,7 @@ class BillTheLizard:
         Returns:
             None
         """
-        self.plugin_manager.execute_hook("before_lizard_shutdown", None, caller=self)
+        self.plugin_manager.execute_hook("before_lizard_shutdown", caller=self)
 
         self.dispatcher.unsubscribe_from(self)
 

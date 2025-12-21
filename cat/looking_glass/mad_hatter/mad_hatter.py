@@ -174,18 +174,22 @@ class MadHatter(ABC):
         if hook_name not in self.hooks.keys():
             raise Exception(f"Hook {hook_name} not present in any plugin")
 
-        tea_cup = deepcopy(args[0])
+        tea_cup = deepcopy(args[0]) if len(args) > 0 else None
 
-        # run hooks
         for hook in self.hooks[hook_name]:
             try:
                 log.debug(f"Executing {hook.plugin_id}::{hook.name} with priority {hook.priority}")
-                tea_spoon = hook.function(deepcopy(tea_cup), *deepcopy(args[1:]), **{self.context_execute_hook: caller})
+                tea_spoon = (
+                    hook.function(**{self.context_execute_hook: caller})
+                    if len(args) == 0
+                    else hook.function(deepcopy(tea_cup), *deepcopy(args[1:]), **{self.context_execute_hook: caller})
+                )
                 if tea_spoon is not None:
                     tea_cup = tea_spoon
             except Exception as e:
                 log.error(f"Error in plugin {hook.plugin_id}::{hook.name}: {e}")
-
+                plugin_obj = self.plugins[hook.plugin_id]
+                log.warning(plugin_obj.plugin_specific_error_message())
         return tea_cup
 
     def get_plugin(self):

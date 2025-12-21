@@ -56,7 +56,7 @@ class CheshireCat(CatMixin):
         self.plugin_manager.discover_plugins()
 
         # allows plugins to do something before cat components are loaded
-        self.plugin_manager.execute_hook("before_cat_bootstrap", None, caller=self)
+        self.plugin_manager.execute_hook("before_cat_bootstrap", caller=self)
 
         self.large_language_model: BaseLanguageModel = get_factory_object(self.id, LLMFactory(self.plugin_manager))
         self.custom_auth_handler: BaseAuthHandler = get_factory_object(self.id, AuthHandlerFactory(self.plugin_manager))
@@ -72,7 +72,7 @@ class CheshireCat(CatMixin):
             self.initialize_users()
 
         # allows plugins to do something after the cat bootstrap is complete
-        self.plugin_manager.execute_hook("after_cat_bootstrap", None, caller=self)
+        self.plugin_manager.execute_hook("after_cat_bootstrap", caller=self)
 
     def __eq__(self, other: "CheshireCat") -> bool:
         """Check if two cats are equal."""

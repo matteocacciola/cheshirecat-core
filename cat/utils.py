@@ -1,5 +1,4 @@
 import asyncio
-import concurrent.futures
 import socket
 import base64
 import hashlib
@@ -433,21 +432,33 @@ def retrieve_image(content_image: str | None) -> str | None:
 
 
 def run_sync_or_async(callback: Callable[..., Any], *args, **kwargs) -> Any:
-    def run_async_in_thread():
-        return asyncio.run(coro)
+    # check if the callback is an async function
+    if inspect.iscoroutinefunction(callback):
+        try:
+            # Get the existing loop (Cheshire Cat's loop)
+            loop = asyncio.get_running_loop()
 
-    if not asyncio.iscoroutinefunction(callback) and not asyncio.iscoroutine(callback):
-        return callback(*args, **kwargs)
+            # Schedule the coroutine to run in the background.
+            # This returns a Task, which satisfies Python that the
+            # coroutine is being handled, and it will execute on the next loop tick.
+            return loop.create_task(callback(*args, **kwargs))
+        except RuntimeError:
+            # If no loop is running (e.g. startup scripts),
+            # we can safely use asyncio.run to block.
+            return asyncio.run(callback(*args, **kwargs))
 
-    coro = callback(*args, **kwargs)
+    # handle the case where the callback is already a coroutine object
+    if inspect.iscoroutine(callback):
+        # This shouldn't happen often with your decorator,
+        # but safe to handle.
+        try:
+            loop = asyncio.get_running_loop()
+            return loop.create_task(callback)
+        except RuntimeError:
+            return asyncio.run(callback)
 
-    try:
-        asyncio.get_running_loop()
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future = executor.submit(run_async_in_thread)
-            return future.result()
-    except RuntimeError:
-        return asyncio.run(coro)
+    # handle standard synchronous functions
+    return callback(*args, **kwargs)
 
 
 def colored_text(text: str, color: str):
