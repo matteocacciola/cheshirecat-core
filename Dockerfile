@@ -45,7 +45,7 @@ RUN find /app/cat/core_plugins -name requirements.txt -exec uv pip install --lin
 # RUN python3 -c "import nltk; nltk.download('punkt');nltk.download('averaged_perceptron_tagger');import tiktoken;tiktoken.get_encoding('cl100k_base')"
 
 ### FINISH ###
-CMD ["uv", "run", "python", "-m", "cat.main"]
+CMD ["uv", "run", "--link-mode=copy", "python", "-m", "cat.main"]
 
 FROM libraries AS build-prod
 

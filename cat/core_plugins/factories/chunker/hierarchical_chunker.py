@@ -522,8 +522,6 @@ class MathAwareHierarchicalChunker:
             )
 
         # Split around formulas with context
-        current_pos = 0
-
         for formula_pos in formula_positions:
             # Get context before formula
             context_start = max(0, formula_pos["start"] - self.formula_context_window)

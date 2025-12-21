@@ -15,9 +15,7 @@ def test_ping_success(client):
     assert response.status_code == 200
 
     json_response = response.json()
-    assert "status" in json_response
-    assert "entities" in json_response
-    assert len(json_response["entities"]) >= 2
+    assert isinstance(json_response, str)
 
 
 def test_ping_non_admin_endpoint_with_admin(secure_client, secure_client_headers, client):

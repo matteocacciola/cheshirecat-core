@@ -161,7 +161,9 @@ async def recall(
     return memories
 
 
-async def recall_relevant_memories_to_working_memory(cat: "StrayCat", collection: VectorMemoryType, query: str) -> List[DocumentRecall]:
+async def recall_relevant_memories_to_working_memory(
+    cat: "StrayCat", collection: VectorMemoryType, query: str
+) -> List[DocumentRecall]:
     """
     Retrieve context from memory.
     The method retrieves the relevant memories from the vector collections that are given as context to the LLM.

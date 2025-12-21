@@ -19,12 +19,25 @@ _healthChecks.add_many([
 ])
 
 router.add_api_route(
-    '/',
+    "/health/readiness",
     endpoint=health_check_route(registry=_healthChecks),
     methods=["GET"],
-    tags=["Health"],
-    name="health_check",
+    name="readiness_probe",
+    include_in_schema=False,
 )
+
+router.add_api_route(
+    "/health/liveness",
+    endpoint=health_check_route(registry=_healthChecks),
+    methods=["GET"],
+    name="liveness_probe",
+    include_in_schema=False,
+)
+
+
+@router.get("/", name="index", include_in_schema=False)
+async def home() -> str:
+    return "We're all mad here, dear!"
 
 
 @router.post("/message", response_model=ChatResponse, tags=["Message"])
