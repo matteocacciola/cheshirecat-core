@@ -177,6 +177,8 @@ class CatLogEngine:
         from cat.utils import get_base_path, get_base_url
 
         cat_docs_address = os.path.join(get_base_url().strip("/"), "docs")
+        if os.path.exists(".welcome"):
+            return
 
         print("\n\n")
         try:
@@ -189,6 +191,9 @@ class CatLogEngine:
         print("\n=============== ^._.^ ===============\n")
         print(f"Cat REST API:   {cat_docs_address}")
         print("======================================")
+
+        with open(".welcome", "w") as f:
+            f.write("")
 
         # self.log_examples() # You can uncomment this for testing purposes
 

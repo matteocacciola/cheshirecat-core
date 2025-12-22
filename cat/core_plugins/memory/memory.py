@@ -26,7 +26,7 @@ class EmbedderModelInteraction(ModelInteraction):
 @hook(priority=1)
 def before_cat_recalls_memories(config: Dict, cat) -> None:
     message = cat.working_memory.recall_query
-    cat.working_memory.model_interactions.append(
+    cat.working_memory.model_interactions.add(
         EmbedderModelInteraction(
             prompt=[message],
             source=get_caller_info(skip=1),

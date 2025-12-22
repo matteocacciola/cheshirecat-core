@@ -3,11 +3,12 @@ FROM python:3.13-slim-bullseye AS system
 ### ENVIRONMENT VARIABLES ###
 ENV PYTHONUNBUFFERED=1
 ENV WATCHFILES_FORCE_POLLING=true
+ENV UV_LINK_MODE=copy
 
 ### SYSTEM SETUP ###
-# Install system dependencies for Unstructured document parsing
+# Install system dependencies in a single layer with cleanup
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
         curl \
         build-essential \
         fastjar \
@@ -19,35 +20,38 @@ RUN apt-get update && \
         libgl1-mesa-glx \
         mime-support && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+### INSTALL UV ###
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
 FROM system AS libraries
 
 ### PREPARE BUILD WITH NECESSARY FILES AND FOLDERS ###
-COPY ./pyproject.toml /app/pyproject.toml
-COPY ./LICENSE /app/LICENSE
-COPY ./uv.lock /app/uv.lock
-
-### COPY CAT CODE INSIDE THE CONTAINER (so it can be run standalone) ###
-COPY ./data /app/data
-COPY ./cat /app/cat
-
-### INSTALL PYTHON DEPENDENCIES (Core) ###
 WORKDIR /app
-RUN pip install -U pip && \
-    pip install uv && \
-    uv sync --no-cache --link-mode=copy
+COPY ./pyproject.toml ./uv.lock ./LICENSE ./
+
+### COPY APPLICATION CODE ###
+COPY ./data ./data
+COPY ./cat ./cat
+
+### INSTALL CORE DEPENDENCIES ###
+# Copy and install dependencies in separate layers for better caching
+RUN /root/.local/bin/uv sync --no-cache
 
 FROM libraries AS build-dev
 
-### INSTALL PYTHON DEPENDENCIES (Plugins) ###
-RUN find /app/cat/core_plugins -name requirements.txt -exec uv pip install --link-mode=copy --no-cache -r {} \;
-# RUN python3 -c "import nltk; nltk.download('punkt');nltk.download('averaged_perceptron_tagger');import tiktoken;tiktoken.get_encoding('cl100k_base')"
+### INSTALL PLUGIN DEPENDENCIES ###
+# Clean cache immediately after each installation
+RUN find /app/cat/core_plugins -name requirements.txt -exec /root/.local/bin/uv pip install --no-cache -r {} \; && \
+    /root/.local/bin/uv cache clean && \
+    rm -rf /root/.cache/uv && \
+    find /app -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 ### FINISH ###
-CMD ["uv", "run", "--link-mode=copy", "python", "-m", "cat.main"]
+CMD ["/root/.local/bin/uv", "run", "python", "-m", "cat.main"]
 
 FROM libraries AS build-prod
 
 ### FINISH ###
-CMD ["uv", "run", "--link-mode=copy", "python", "-m", "cat.main"]
+CMD ["/root/.local/bin/uv", "run", "python", "-m", "cat.main"]

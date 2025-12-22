@@ -29,3 +29,11 @@ class ModelInteraction(BaseModel):
     model_config = ConfigDict(
         protected_namespaces=()
     )
+
+    def __hash__(self):
+        return hash((self.model_type, tuple(self.prompt), self.input_tokens))
+
+    def __eq__(self, other):
+        if not isinstance(other, ModelInteraction):
+            return NotImplemented
+        return (self.model_type, self.prompt, self.input_tokens) == (other.model_type, other.prompt, other.input_tokens)

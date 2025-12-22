@@ -4,6 +4,7 @@ import base64
 import hashlib
 import inspect
 import os
+import threading
 from enum import Enum as BaseEnum, EnumMeta
 from io import BytesIO
 from typing import Dict, List, Type, TypeVar, Any, Callable, Union, Generic
@@ -432,33 +433,90 @@ def retrieve_image(content_image: str | None) -> str | None:
 
 
 def run_sync_or_async(callback: Callable[..., Any], *args, **kwargs) -> Any:
-    # check if the callback is an async function
+    """
+    Execute a callback function whether it's synchronous or asynchronous.
+
+    If the callback is async and there's already a running event loop,
+    it will be executed in a new event loop in a separate thread to avoid
+    blocking the main event loop.
+
+    Args:
+        callback: The function to execute (sync or async)
+        *args: Positional arguments to pass to the callback
+        **kwargs: Keyword arguments to pass to the callback
+
+    Returns:
+        The result of the callback execution
+
+    Raises:
+        Any exception raised by the callback
+    """
+    # Handle async functions
     if inspect.iscoroutinefunction(callback):
         try:
-            # Get the existing loop (Cheshire Cat's loop)
-            loop = asyncio.get_running_loop()
+            # Check if there's already a running event loop
+            asyncio.get_running_loop()
 
-            # Schedule the coroutine to run in the background.
-            # This returns a Task, which satisfies Python that the
-            # coroutine is being handled, and it will execute on the next loop tick.
-            return loop.create_task(callback(*args, **kwargs))
+            # If we're here, there's a running loop, so we need to run
+            # the async function in a separate thread with its own event loop
+            return _run_async_in_thread(callback(*args, **kwargs))
         except RuntimeError:
-            # If no loop is running (e.g. startup scripts),
-            # we can safely use asyncio.run to block.
+            # No running event loop, safe to use asyncio.run
             return asyncio.run(callback(*args, **kwargs))
 
-    # handle the case where the callback is already a coroutine object
+    # Handle coroutine objects (already created coroutines)
     if inspect.iscoroutine(callback):
-        # This shouldn't happen often with your decorator,
-        # but safe to handle.
         try:
-            loop = asyncio.get_running_loop()
-            return loop.create_task(callback)
+            asyncio.get_running_loop()
+            return _run_async_in_thread(callback)
         except RuntimeError:
             return asyncio.run(callback)
 
-    # handle standard synchronous functions
+    # Handle synchronous functions
     return callback(*args, **kwargs)
+
+
+def _run_async_in_thread(coro) -> Any:
+    """
+    Run a coroutine in a new event loop in a separate thread.
+
+    Args:
+        coro: The coroutine to execute
+
+    Returns:
+        The result of the coroutine execution
+
+    Raises:
+        Any exception raised by the coroutine
+    """
+    result = None
+    exception = None
+
+    def thread_target():
+        nonlocal result, exception
+        try:
+            # Create a new event loop for this thread
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+
+            # Run the coroutine to completion
+            result = new_loop.run_until_complete(coro)
+
+            # Clean up
+            new_loop.close()
+        except Exception as e:
+            exception = e
+
+    # Start the thread and wait for it to complete
+    thread = threading.Thread(target=thread_target)
+    thread.start()
+    thread.join()
+
+    # Re-raise any exception that occurred in the thread
+    if exception is not None:
+        raise exception
+
+    return result
 
 
 def colored_text(text: str, color: str):

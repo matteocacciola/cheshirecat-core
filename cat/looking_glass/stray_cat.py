@@ -276,7 +276,7 @@ class StrayCat(CatMixin):
         """
         # set up working memory for this convo turn
         # keeping track of model interactions
-        self.working_memory.model_interactions = []
+        self.working_memory.model_interactions = set()
         # latest user message
         self.working_memory.user_message = user_message
 

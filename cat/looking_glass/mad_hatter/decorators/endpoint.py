@@ -49,7 +49,7 @@ class CatEndpoint:
 
         # Set the fastapi api_route into the Custom Endpoint
         if any(api_route.path == self.name and api_route.methods == self.methods for api_route in cheshire_cat_api.routes):
-            log.info(f"There is already an active {self.methods} endpoint with path {self.name}")
+            log.debug(f"There is already an active {self.methods} endpoint with path {self.name}")
             return
 
         plugins_router = APIRouter()

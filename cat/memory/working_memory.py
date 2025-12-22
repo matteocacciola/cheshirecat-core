@@ -1,4 +1,4 @@
-from typing import List, Any, Literal, Dict
+from typing import List, Any, Literal, Dict, Set
 from pydantic import Field, field_validator
 
 from cat.db.cruds import conversations as crud_conversations
@@ -45,7 +45,7 @@ class WorkingMemory(BaseModelDict):
     declarative_memories: List[DocumentRecall] = Field(default_factory=list)
 
     # track models usage
-    model_interactions: List[ModelInteraction] = Field(default_factory=list)
+    model_interactions: Set[ModelInteraction] = Field(default_factory=set)
 
     @field_validator("model_interactions")
     @classmethod

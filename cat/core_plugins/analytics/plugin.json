@@ -6,5 +6,5 @@
     "tags": "core, analytics, embedding, token-usage",
     "thumb": "",
     "version": "0.0.1",
-    "dependencies": ["interactions"]
+    "dependencies": ["interactions", "memory"]
 }

@@ -86,6 +86,10 @@ class Plugin:
         # the new setting coming from the model to be activated
         new_setting = self._get_settings_from_model()
 
+        if not setting and not new_setting:
+            # no settings to migrate
+            return True
+
         if setting is not None and new_setting and setting == new_setting:
             # settings are the same, no need to migrate
             return True
@@ -98,6 +102,10 @@ class Plugin:
             self.settings_model().model_validate(finalized_setting)
         except:
             finalized_setting = new_setting
+
+        if setting == finalized_setting:
+            # no settings to migrate
+            return True
 
         # try to create the new incremental settings into the Redis database
         crud_plugins.set_setting(agent_id, self._id, finalized_setting)
@@ -317,14 +325,15 @@ class Plugin:
 
         try:
             subprocess.run(
-                ["uv", "pip", "install", "--no-cache", "--link-mode=copy", "-r", tmp_name], check=True
+                ["/root/.local/bin/uv", "pip", "install", "--no-cache", "--link-mode=copy", "-r", tmp_name],
+                check=True
             )
         except subprocess.CalledProcessError as e:
             log.error(f"Error while installing plugin {self.id} requirements: {e}")
 
             # Uninstall the previously installed packages
             log.info(f"Uninstalling requirements for: {self.id}")
-            subprocess.run(["uv", "pip", "uninstall", "-r", tmp_name], check=True)
+            subprocess.run(["/root/.local/bin/uv", "pip", "uninstall", "-r", tmp_name], check=True)
 
             raise Exception(f"Error during plugin {self.id} requirements installation")
         finally:
