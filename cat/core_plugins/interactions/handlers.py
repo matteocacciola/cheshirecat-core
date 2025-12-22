@@ -9,6 +9,9 @@ from langchain_core.outputs.llm_result import LLMResult
 from cat import log
 from cat.core_plugins.interactions.models import LLMModelInteraction
 
+# Thread-safe registry for concurrent requests
+_stray_registry = {}
+
 
 class ModelInteractionHandler(BaseCallbackHandler):
     """
@@ -20,7 +23,10 @@ class ModelInteractionHandler(BaseCallbackHandler):
             stray: StrayCat instance
             source: Source of the model interaction
         """
-        self.stray = stray
+        # Store the stray ID to survive serialization
+        self.stray_id = id(stray)
+        _stray_registry[self.stray_id] = stray
+
         self.interaction = LLMModelInteraction(
             source=source,
             prompt=[],
@@ -155,15 +161,22 @@ class ModelInteractionHandler(BaseCallbackHandler):
         """Track output tokens and response content."""
         generation = response.generations[0][0]
 
-        # For chat models, use .message.content instead of .text
         if hasattr(generation, "message"):
             response_text = generation.message.content
         else:
-            # Fallback for non-chat models
             response_text = generation.text
 
         self.interaction.output_tokens = self._count_tokens(response_text)
         self.interaction.reply = response_text
         self.interaction.ended_at = time.time()
 
-        self.stray.working_memory.model_interactions.add(self.interaction)
+        # Retrieve the correct stray from the registry
+        stray = _stray_registry.get(self.stray_id)
+        if stray is not None:
+            stray.working_memory.model_interactions.add(self.interaction)
+            _stray_registry.pop(self.stray_id, None)
+
+    def on_llm_error(self, error: Exception, **kwargs) -> None:
+        """Handle LLM errors and clean up."""
+        log.error(f"LLM error in ModelInteractionHandler: {error}")
+        _stray_registry.pop(self.stray_id, None)
