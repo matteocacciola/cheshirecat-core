@@ -162,6 +162,7 @@ def _start_consumer_threads(lizard):
     for thread in _consumer_threads:
         thread.start()
 
+
 def _end_consumer_threads():
     global _consumer_threads
 
