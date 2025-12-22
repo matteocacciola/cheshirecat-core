@@ -43,9 +43,9 @@ FROM libraries AS build-dev
 
 ### INSTALL PLUGIN DEPENDENCIES ###
 # Clean cache immediately after each installation
-RUN find /app/cat/core_plugins -name requirements.txt -exec /root/.local/bin/uv pip install --no-cache -r {} \; && \
-    /root/.local/bin/uv cache clean && \
-    rm -rf /root/.cache/uv && \
+RUN find /app/cat/core_plugins -name requirements.txt -exec /root/.local/bin/uv pip install -r {} \; && \
+    /root/.local/bin/uv cache clean || true && \
+    rm -rf /root/.cache/uv 2>/dev/null || true && \
     find /app -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 ### FINISH ###
