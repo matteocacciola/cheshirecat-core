@@ -24,11 +24,12 @@ def before_cat_sends_message(message, agent_output, cat) -> Dict:
     input_tokens = 0
     output_tokens = 0
     for interaction in cat.working_memory.model_interactions:
-        if not hasattr(interaction, "output_tokens"):
-            continue
-
         input_tokens += interaction.input_tokens
-        output_tokens += interaction.output_tokens
+        if hasattr(interaction, "output_tokens"):
+            output_tokens += interaction.output_tokens
+
+    if input_tokens == 0 and output_tokens == 0:
+        return message
 
     agent_id = cat.agent_key
     user_id = cat.user.id
@@ -57,6 +58,8 @@ def after_rabbithole_stored_documents(source: str, stored_points: List[PointStru
             log.error(f"Error in storing analytics for stored document with id {point.id} with source {source}: {e}")
 
     total_tokens = int(total_tokens * buffer_multiplier)
+    if total_tokens == 0:
+        return
 
     agent_id = cat.agent_key
     embedder_id = cat.embedder_name

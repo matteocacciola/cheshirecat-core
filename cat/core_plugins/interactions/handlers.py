@@ -120,7 +120,8 @@ class ModelInteractionHandler(BaseCallbackHandler):
         input_tokens = 0
         input_prompt = []
 
-        for m in messages[0]:
+        lc_prompt = messages[0] if isinstance(messages, list) else messages
+        for m in lc_prompt:
             if isinstance(m.content, str):
                 input_tokens += self._count_tokens(m.content)
                 input_prompt.append(m.content)
@@ -152,9 +153,17 @@ class ModelInteractionHandler(BaseCallbackHandler):
 
     def on_llm_end(self, response: LLMResult, **kwargs) -> None:
         """Track output tokens and response content."""
-        response_text = response.generations[0][0].text
+        generation = response.generations[0][0]
+
+        # For chat models, use .message.content instead of .text
+        if hasattr(generation, "message"):
+            response_text = generation.message.content
+        else:
+            # Fallback for non-chat models
+            response_text = generation.text
+
         self.interaction.output_tokens = self._count_tokens(response_text)
         self.interaction.reply = response_text
         self.interaction.ended_at = time.time()
 
-        self.stray.working_memory.model_interactions.append(self.interaction)
+        self.stray.working_memory.model_interactions.add(self.interaction)

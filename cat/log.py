@@ -92,8 +92,6 @@ class CatLogEngine:
         if sys.exc_info()[0] is not None:
             exc_type, exc_value, exc_traceback = sys.exc_info()
             formatted_traceback = traceback.format_exception(exc_type, exc_value, exc_traceback)
-            if len(formatted_traceback) > 10:
-                formatted_traceback = formatted_traceback[-10:]
             for err in formatted_traceback:
                 print(colored_text(err, "red"))
 
