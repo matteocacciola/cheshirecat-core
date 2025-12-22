@@ -4,7 +4,6 @@ FROM python:3.13-slim-bullseye AS system
 ENV PYTHONUNBUFFERED=1
 ENV WATCHFILES_FORCE_POLLING=true
 ENV UV_LINK_MODE=copy
-ENV UV_PYTHON_DOWNLOADS=never
 
 ### SYSTEM SETUP ###
 # Install system dependencies in a single layer with cleanup
