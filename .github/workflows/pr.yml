@@ -29,7 +29,7 @@ jobs:
         run: |
           # Build with --no-cache to ensure clean state
           docker compose build --no-cache
-          docker compose run --rm cheshire-cat-core /root/.local/bin/uv run python -m pytest --color=yes -W ignore --disable-warnings .
+          docker compose run --rm cheshire-cat-core uv run python -m pytest --color=yes -W ignore --disable-warnings .
       - name: Cleanup after tests
         if: always()
         run: |

@@ -325,7 +325,7 @@ class Plugin:
 
         try:
             subprocess.run(
-                ["/root/.local/bin/uv", "pip", "install", "--no-cache", "--link-mode=copy", "-r", tmp_name],
+                ["uv", "pip", "install", "--no-cache", "--link-mode=copy", "-r", tmp_name],
                 check=True
             )
         except subprocess.CalledProcessError as e:
@@ -333,7 +333,7 @@ class Plugin:
 
             # Uninstall the previously installed packages
             log.info(f"Uninstalling requirements for: {self.id}")
-            subprocess.run(["/root/.local/bin/uv", "pip", "uninstall", "-r", tmp_name], check=True)
+            subprocess.run(["uv", "pip", "uninstall", "-r", tmp_name], check=True)
 
             raise Exception(f"Error during plugin {self.id} requirements installation")
         finally:

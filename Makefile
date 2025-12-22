@@ -32,7 +32,7 @@ restart:  ## Restart service(s) [args="<name_of_service>"].
 	@docker compose ${docker-compose-files} restart ${args}
 
 test:  ## Run tests.
-	@docker exec cheshire_cat_core /root/.local/bin/uv run python -m pytest --color=yes -vvv -W ignore --disable-warnings ${args}
+	@docker exec cheshire_cat_core uv run python -m pytest --color=yes -vvv -W ignore --disable-warnings ${args}
 
 install: ## Update the local virtual environment with the latest requirements.
 	@# install the requirements
