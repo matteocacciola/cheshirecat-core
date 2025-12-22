@@ -204,8 +204,6 @@ class PizzaForm(CatForm):
     </summary>
 
 ```python
-# my_mcp_plugin.py
-
 from cat import hook, log, mcp_client, plugin, CatMcpClient
 
 
