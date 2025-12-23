@@ -26,7 +26,7 @@ async def checks_on_agent_create(lizard, new_agent_id):
     assert plugins is None
 
     users = crud_users.get_users(new_agent_id)
-    assert len(users) == 1
+    assert len(users) == 0
 
     ccat = lizard.get_cheshire_cat(new_agent_id)
     num_vectors = await ccat.vector_memory_handler.get_tenant_vectors_count(str(VectorMemoryType.DECLARATIVE))

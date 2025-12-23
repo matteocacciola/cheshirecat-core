@@ -18,7 +18,7 @@ from cat.looking_glass.tweedledee import Tweedledee
 from cat.memory.messages import CatMessage, UserMessage
 from cat.memory.utils import recall_relevant_memories_to_working_memory, VectorMemoryType
 from cat.memory.working_memory import WorkingMemory
-from cat.mixin.runtime import CatMixin
+from cat.services.mixin import CatMixin
 from cat.templates import prompts
 
 MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]

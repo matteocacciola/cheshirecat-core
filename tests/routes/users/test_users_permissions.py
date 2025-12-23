@@ -1,7 +1,7 @@
 import pytest
 
 from tests.conftest import api_key
-from tests.utils import agent_id
+from tests.utils import agent_id, create_new_user, get_base_permissions, new_user_password
 
 
 # test endpoints with different user permissions
@@ -62,7 +62,15 @@ def test_users_permissions(secure_client, secure_client_headers, endpoint):
     assert res.json()["detail"] == "Invalid Credentials"
     
     # obtain JWT
-    credentials = {"username": "user", "password": "user"}
+    credentials = {"username": "user", "password": new_user_password}
+    create_new_user(
+        secure_client,
+        "/users",
+        credentials["username"],
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+        password=credentials["password"],
+    )
     res = secure_client.post("/auth/token", json=credentials, headers=secure_client_headers)
     assert res.status_code == 200
     jwt = res.json()["access_token"]

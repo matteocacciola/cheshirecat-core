@@ -1,7 +1,7 @@
 from cat.db.cruds import users as crud_users
 from cat.memory.utils import VectorMemoryType
 
-from tests.utils import send_n_websocket_messages, agent_id
+from tests.utils import send_n_websocket_messages, agent_id, create_new_user, api_key, get_base_permissions
 
 
 # search on default startup memory
@@ -33,33 +33,49 @@ def test_memory_recall_without_query_error(secure_client, secure_client_headers)
 
 # search with query
 def test_memory_recall_success(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+    user = create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
     # send a few messages via chat
     num_messages = 3
-    send_n_websocket_messages(num_messages, secure_client)
+    send_n_websocket_messages(num_messages, secure_client, query_params={"user_id": user["id"]})
 
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user_db = crud_users.get_user_by_username(agent_id, "user")
+    assert user_db["username"] == user["username"]
 
     # recall
     params = {"text": "Red Queen"}
     response = secure_client.get(
-        "/memory/recall/", params=params, headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+        "/memory/recall/", params=params, headers={**secure_client_headers, **{"X-User-ID": user_db["id"]}}
     )
     assert response.status_code == 200
 
 
 # search with query and k
 def test_memory_recall_with_k_success(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+    user = create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
     # send a few messages via chat
     num_messages = 6
-    send_n_websocket_messages(num_messages, secure_client)
+    send_n_websocket_messages(num_messages, secure_client, query_params={"user_id": user["id"]})
 
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user_db = crud_users.get_user_by_username(agent_id, "user")
+    assert user_db["username"] == user["username"]
 
     # recall at max k memories
     max_k = 2
     params = {"k": max_k, "text": "Red Queen"}
     response = secure_client.get(
-        "/memory/recall/", params=params, headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+        "/memory/recall/", params=params, headers={**secure_client_headers, **{"X-User-ID": user_db["id"]}}
     )
     assert response.status_code == 200
 

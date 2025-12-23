@@ -6,10 +6,20 @@ from tests.utils import (
     agent_id,
     fake_timestamp,
     send_file,
+    create_new_user,
+    api_key,
+    get_base_permissions,
 )
 
 
 def test_create_point_wrong_collection(secure_client, secure_client_headers, cheshire_cat):
+    create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
     user = crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
@@ -21,6 +31,13 @@ def test_create_point_wrong_collection(secure_client, secure_client_headers, che
 
 
 def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
+    create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
     user = crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
@@ -51,6 +68,13 @@ def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat,
 
 
 def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+    create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
     send_file("sample.pdf", "application/pdf", secure_client, secure_client_headers)
 
     user = crud_users.get_user_by_username(agent_id, "user")
@@ -157,6 +181,13 @@ def test_get_collection_points_wrong_collection(secure_client, secure_client_hea
 
 
 def test_get_collection_points(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
+    create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
     user = crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
@@ -206,6 +237,13 @@ def test_get_collection_points(secure_client, secure_client_headers, cheshire_ca
 
 
 def test_get_collection_points_offset(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
+    create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
     user = crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
@@ -268,6 +306,13 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, ches
 
 
 def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_client_headers, cheshire_cat):
+    create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
     user = crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
@@ -285,6 +330,13 @@ def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_client_
 
 
 def test_edit_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
+    create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
     user = crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 

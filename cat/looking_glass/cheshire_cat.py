@@ -1,9 +1,6 @@
 from typing import Dict
-from uuid import uuid4
 from langchain_core.language_models import BaseLanguageModel
 
-from cat.auth.auth_utils import hash_password, DEFAULT_USER_USERNAME
-from cat.auth.permissions import get_base_permissions
 from cat.db.cruds import (
     settings as crud_settings,
     conversations as crud_conversations,
@@ -21,7 +18,7 @@ from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.looking_glass.mad_hatter.decorators.tool import CatTool
 from cat.looking_glass.tweedledee import Tweedledee
 from cat.memory.utils import VectorMemoryType
-from cat.mixin.runtime import CatMixin
+from cat.services.mixin import CatMixin
 from cat.utils import get_factory_object, get_updated_factory_object
 
 
@@ -69,7 +66,7 @@ class CheshireCat(CatMixin):
 
         # Initialize the default user if not present
         if not crud_users.get_users(self.id):
-            self.initialize_users()
+            crud_users.set_users(self.id, {})
 
         # allows plugins to do something after the cat bootstrap is complete
         self.plugin_manager.execute_hook("after_cat_bootstrap", caller=self)
@@ -89,19 +86,6 @@ class CheshireCat(CatMixin):
     def __del__(self):
         """Cat destructor."""
         self.shutdown()
-
-    def initialize_users(self):
-        user_id = str(uuid4())
-
-        crud_users.set_users(self.id, {
-            user_id: {
-                "id": user_id,
-                "username": DEFAULT_USER_USERNAME,
-                "password": hash_password(DEFAULT_USER_USERNAME),
-                # user has minor permissions
-                "permissions": get_base_permissions(),
-            }
-        })
 
     def shutdown(self) -> None:
         self.dispatcher.unsubscribe_from(self)

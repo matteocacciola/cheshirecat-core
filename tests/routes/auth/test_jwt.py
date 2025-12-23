@@ -6,7 +6,7 @@ from cat.env import get_env
 from cat.auth.permissions import AuthPermission, AuthResource
 from cat.auth.auth_utils import is_jwt, DEFAULT_JWT_ALGORITHM
 
-from tests.utils import agent_id, chat_id
+from tests.utils import agent_id, chat_id, create_new_user, get_base_permissions, api_key, new_user_password
 
 
 def test_is_jwt():
@@ -20,8 +20,17 @@ def test_is_jwt():
     assert is_jwt(actual_jwt)
 
 
-def test_refuse_issue_jwt(client):
+def test_refuse_issue_jwt(secure_client, client):
     creds = {"username": "user", "password": "wrong"}
+
+    create_new_user(
+        secure_client,
+        "/users",
+        creds["username"],
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
+
     res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
 
     # wrong credentials
@@ -30,8 +39,16 @@ def test_refuse_issue_jwt(client):
     assert json["detail"] == "Invalid Credentials"
 
 
-def test_issue_jwt(client, cheshire_cat):
-    creds = {"username": "user", "password": "user"}
+def test_issue_jwt(secure_client, client, cheshire_cat):
+    creds = {"username": "user", "password": new_user_password}
+    create_new_user(
+        secure_client,
+        "/users",
+        creds["username"],
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+        password=creds["password"],
+    )
 
     res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
     assert res.status_code == 200
@@ -92,7 +109,7 @@ def test_issue_jwt_for_new_user(client, secure_client, secure_client_headers):
 
 # test token expiration after successful login
 # NOTE: here we are using the secure_client fixture (see conftest.py)
-def test_jwt_expiration(client, cheshire_cat):
+def test_jwt_expiration(secure_client, client, cheshire_cat):
     message = {"text": "hey"}
 
     # set ultrashort JWT expiration time
@@ -105,7 +122,16 @@ def test_jwt_expiration(client, cheshire_cat):
     assert response.json()["detail"] == "Invalid Credentials"
 
     # request JWT
-    creds = {"username": "user", "password": "user"}
+    creds = {"username": "user", "password": new_user_password}
+    create_new_user(
+        secure_client,
+        "/users",
+        creds["username"],
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+        password=creds["password"],
+    )
+
     res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
     assert res.status_code == 200
     token = res.json()["access_token"]
@@ -133,7 +159,7 @@ def test_jwt_expiration(client, cheshire_cat):
 
 # test ws and http endpoints can get user_id from JWT
 # NOTE: here we are using the secure_client fixture (see conftest.py)
-def test_jwt_imposes_user_id(client, cheshire_cat):
+def test_jwt_imposes_user_id(secure_client, client, cheshire_cat):
     message = {"text": "hey"}
 
     # not allowed
@@ -142,7 +168,15 @@ def test_jwt_imposes_user_id(client, cheshire_cat):
     assert response.json()["detail"] == "Invalid Credentials"
 
     # request JWT
-    creds = {"username": "user", "password": "user"}
+    creds = {"username": "user", "password": new_user_password}
+    create_new_user(
+        secure_client,
+        "/users",
+        creds["username"],
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+        password=creds["password"],
+    )
     res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
     assert res.status_code == 200
     token = res.json()["access_token"]

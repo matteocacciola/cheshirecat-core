@@ -1,6 +1,15 @@
 from cat.memory.utils import VectorMemoryType
 
-from tests.utils import send_websocket_message, get_collections_names_and_point_count, api_key, send_file
+from tests.utils import (
+    send_websocket_message,
+    get_collections_names_and_point_count,
+    api_key,
+    send_file,
+    create_new_user,
+    get_base_permissions,
+    agent_id,
+    new_user_password,
+)
 
 
 def test_memory_collections_created(secure_client, secure_client_headers):
@@ -29,8 +38,17 @@ def test_memory_collection_non_existent_clear(secure_client, secure_client_heade
 def test_memory_collections_wipe(
     secure_client, secure_client_headers, mocked_default_llm_answer_prompt
 ):
+    user = create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+        password=new_user_password,
+    )
+
     message = {"text": "Meow"}
-    send_websocket_message(message, secure_client, api_key)
+    send_websocket_message(message, secure_client, api_key, query_params={"user_id": user["id"]})
 
     # create declarative memories
     send_file("sample.txt", "text/plain", secure_client, secure_client_headers)

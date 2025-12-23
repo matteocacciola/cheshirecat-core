@@ -28,7 +28,7 @@ def get_class_from_decorated_singleton(singleton):
     return singleton().__class__
 
 
-def send_file(file_name, content_type, client, headers, payload=None, ch_id=None):
+def send_file(file_name, content_type, client, headers, payload = None, ch_id = None):
     file_path = f"tests/mocks/{file_name}"
 
     url = "/rabbithole/" if not ch_id else f"/rabbithole/{ch_id}"
@@ -52,10 +52,12 @@ def send_websocket_message(msg, client, token, query_params = None, ch_id = None
 
 
 # utility to send n messages via chat
-def send_n_websocket_messages(num_messages, client, image=None, ch_id=None):
+def send_n_websocket_messages(num_messages, client, image = None, ch_id = None, query_params = None):
     responses = []
 
     url = f"/ws/{agent_id}" if not ch_id else f"/ws/{agent_id}/{ch_id}"
+    if query_params:
+        url += "?" + urlencode(query_params)
 
     with client.websocket_connect(url, headers={"Authorization": f"Bearer {api_key}"}) as websocket:
         for m in range(num_messages):
@@ -95,7 +97,7 @@ def create_mock_plugin_zip(flat: bool, plugin_id="mock_plugin"):
 
 
 # utility to retrieve declarative memory contents
-def get_declarative_memory_contents(client, headers=None):
+def get_declarative_memory_contents(client, headers = None):
     headers = headers or {} | {"X-Agent-ID": agent_id}
     params = {"text": "Something"}
     response = client.get("/memory/recall/", params=params, headers=headers)
@@ -106,7 +108,7 @@ def get_declarative_memory_contents(client, headers=None):
 
 
 # utility to get collections and point count from `GET /memory/collections` in a simpler format
-def get_collections_names_and_point_count(client, headers=None):
+def get_collections_names_and_point_count(client, headers = None):
     headers = headers or {} | {"X-Agent-ID": agent_id}
     response = client.get("/memory/collections", headers=headers)
     json = response.json()
@@ -115,8 +117,8 @@ def get_collections_names_and_point_count(client, headers=None):
     return collections_n_points
 
 
-def create_new_user(client, route: str, username="Alice", headers=None, permissions=None):
-    new_user = {"username": username, "password": new_user_password}
+def create_new_user(client, route: str, username="Alice", headers = None, permissions = None, password = None):
+    new_user = {"username": username, "password": password or new_user_password}
     if permissions:
         new_user["permissions"] = permissions
     response = client.post(route, json=new_user, headers=headers)
@@ -137,8 +139,16 @@ def check_user_fields(u):
         assert False, "Not a UUID"
 
 
-def get_fake_memory_export(embedder_name="DumbEmbedder", dim=2367):
-    user = crud_users.get_user_by_username(agent_id, "user")
+def get_fake_memory_export(client, embedder_name="DumbEmbedder", dim = 2367):
+    user = create_new_user(
+        client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
+
+    user = crud_users.get_user_by_username(agent_id, user["username"])
     return {
         "embedder": embedder_name,
         "collections": {

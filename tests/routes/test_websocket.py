@@ -1,10 +1,20 @@
 import time
 import uuid
 
+import pytest
+from starlette.websockets import WebSocketDisconnect
+
 from cat.db.cruds import users as crud_users
 from cat.memory.utils import VectorMemoryType
 
-from tests.utils import send_websocket_message, send_n_websocket_messages, agent_id, api_key, create_new_user
+from tests.utils import (
+    send_websocket_message,
+    send_n_websocket_messages,
+    agent_id,
+    api_key,
+    create_new_user,
+    get_base_permissions,
+)
 
 
 def check_correct_websocket_reply(reply):
@@ -26,9 +36,17 @@ def check_correct_websocket_reply(reply):
 
 
 def test_websocket(secure_client, secure_client_headers):
+    user = create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
+
     msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
     # send websocket message
-    res = send_websocket_message(msg, secure_client, api_key)
+    res = send_websocket_message(msg, secure_client, api_key, query_params={"user_id": user["id"]})
 
     assert res["agent_id"] == agent_id
     assert res["user_id"] is not None
@@ -66,13 +84,21 @@ def test_websocket(secure_client, secure_client_headers):
 
 
 def test_websocket_with_additional_items_in_message(secure_client):
+    user = create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
+
     msg = {
         "text": "It's late! It's late",
         "image": "tests/mocks/sample.png",
         "prompt_settings": {"temperature": 0.5}
     }
     # send websocket message
-    res = send_websocket_message(msg, secure_client, api_key)
+    res = send_websocket_message(msg, secure_client, api_key, query_params={"user_id": user["id"]})
 
     assert res["agent_id"] == agent_id
     assert res["user_id"] is not None
@@ -80,27 +106,27 @@ def test_websocket_with_additional_items_in_message(secure_client):
     check_correct_websocket_reply(res["message"])
 
 
-def test_websocket_with_new_user(secure_client):
-    mocked_user_id = uuid.uuid4()
+def test_websocket_with_non_saved_user(secure_client):
+    with pytest.raises(WebSocketDisconnect):
+        mocked_user_id = uuid.uuid4()
+        user = crud_users.get_user(agent_id, str(mocked_user_id))
+        assert user is None
 
-    user = crud_users.get_user(agent_id, str(mocked_user_id))
-    assert user is None
-
-    msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
-    res = send_websocket_message(msg, secure_client, api_key, {"user_id": mocked_user_id})
-
-    assert res["agent_id"] == agent_id
-    assert res["user_id"] == str(mocked_user_id)
-    assert res["chat_id"] is not None
-    check_correct_websocket_reply(res["message"])
-
-    user = crud_users.get_user(agent_id, str(mocked_user_id))
-    assert user is not None
+        msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
+        send_websocket_message(msg, secure_client, api_key, {"user_id": mocked_user_id})
 
 
 def test_websocket_multiple_messages(secure_client):
+    user = create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
+
     # send websocket message
-    replies = send_n_websocket_messages(3, secure_client)
+    replies = send_n_websocket_messages(3, secure_client, query_params={"user_id": user["id"]})
 
     for res in replies:
         check_correct_websocket_reply(res["message"])
@@ -112,11 +138,12 @@ def test_websocket_multiple_connections(secure_client, secure_client_headers, li
     data = create_new_user(secure_client, "/users", username="Alice", headers=secure_client_headers)
     data2 = create_new_user(secure_client, "/users", username="Caterpillar", headers=secure_client_headers)
 
-    with secure_client.websocket_connect(f"/ws/{agent_id}?user_id={data['id']}", headers={"Authorization": f"Bearer {api_key}"}) as websocket:
+    headers = {"Authorization": f"Bearer {api_key}"}
+    with secure_client.websocket_connect(f"/ws/{agent_id}?user_id={data['id']}", headers=headers) as websocket:
         # send ws message
         websocket.send_json(mex)
 
-        with secure_client.websocket_connect(f"/ws/{agent_id}?user_id={data2['id']}", headers={"Authorization": f"Bearer {api_key}"}) as websocket2:
+        with secure_client.websocket_connect(f"/ws/{agent_id}?user_id={data2['id']}", headers=headers) as websocket2:
             # send ws message
             websocket2.send_json(mex)
             # get reply

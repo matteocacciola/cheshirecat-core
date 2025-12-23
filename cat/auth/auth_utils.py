@@ -8,7 +8,6 @@ from pydantic import BaseModel
 from cat.db.database import DEFAULT_SYSTEM_KEY
 
 DEFAULT_ADMIN_USERNAME = "admin"
-DEFAULT_USER_USERNAME = "user"
 DEFAULT_JWT_ALGORITHM = "HS256"
 
 
@@ -71,14 +70,16 @@ def extract_chat_id_from_request(request: HTTPConnection) -> str | None:
 def extract_user_info_on_api_key(agent_key: str, user_id: str | None = None) -> UserInfo | None:
     from cat.db.cruds import users as crud_users
 
+    user = None
     if user_id:
         user = crud_users.get_user(agent_key, user_id)
-    else:
+    elif agent_key == DEFAULT_SYSTEM_KEY:
         # backward compatibility
-        default = DEFAULT_ADMIN_USERNAME if agent_key == DEFAULT_SYSTEM_KEY else DEFAULT_USER_USERNAME
-        user = crud_users.get_user_by_username(agent_key, default)
+        user = crud_users.get_user_by_username(agent_key, DEFAULT_ADMIN_USERNAME)
 
     if not user:
         return None
 
-    return UserInfo(user_id=user["id"], username=user["username"], permissions=user["permissions"])
+    return UserInfo(
+        user_id=user["id"], username=user["username"], permissions=user["permissions"] # type: ignore
+    )

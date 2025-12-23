@@ -1,7 +1,7 @@
 from cat.looking_glass.mad_hatter.decorators.endpoint import CatEndpoint
 
 
-def get_endpoint(plugin_manager, uri, method=None):
+def get_endpoint(plugin_manager, uri, method = None):
     for e in plugin_manager.endpoints:
         condition = e.name == uri
         if method:

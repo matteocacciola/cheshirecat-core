@@ -5,8 +5,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from typing_extensions import Self
 
 from cat.auth.auth_utils import extract_agent_id_from_request, extract_chat_id_from_request
-from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo, get_base_permissions
-from cat.db.cruds import users as crud_users
+from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException
 from cat.looking_glass import BillTheLizard, CheshireCat, StrayCat
 
@@ -67,7 +66,6 @@ class ConnectionAuth(ABC):
 
         # fallback to agent-specific auth if needed and available
         if not user and ccat is not None:
-            self._before_get_agent_user_info(connection, ccat.custom_auth_handler, agent_id)
             user = ccat.custom_auth_handler.authorize(
                 connection,
                 self.resource,
@@ -85,35 +83,15 @@ class ConnectionAuth(ABC):
         return AuthorizedInfo(lizard=lizard, cheshire_cat=ccat, user=user, stray_cat=stray_cat, agent_id=agent_id)
 
     @abstractmethod
-    def _before_get_agent_user_info(self, connection: HTTPConnection, auth_handler: BaseAuthHandler, agent_id: str):
-        pass
-
-    @abstractmethod
     def _not_allowed(self, connection: HTTPConnection, **kwargs):
         pass
 
 
 class HTTPAuth(ConnectionAuth):
-    from cat.factory.auth_handler import BaseAuthHandler
-
-    def _before_get_agent_user_info(self, connection: Request, auth_handler: BaseAuthHandler, agent_id: str):
-        pass
-
     def _not_allowed(self, connection: Request, **kwargs):
         raise CustomForbiddenException("Invalid Credentials")
 
 
 class WebSocketAuth(ConnectionAuth):
-    from cat.factory.auth_handler import BaseAuthHandler
-
-    def _before_get_agent_user_info(self, connection: WebSocket, auth_handler: BaseAuthHandler, agent_id: str):
-        user_id = auth_handler.extract_user_id_websocket(connection)
-        if not user_id:
-            return
-        crud_users.create_user(
-            agent_id,
-            {"id": user_id, "username": user_id, "password": user_id, "permissions": get_base_permissions()},
-        )
-
     def _not_allowed(self, connection: WebSocket, **kwargs):
         raise WebSocketException(code=1004, reason="Invalid Credentials")

@@ -3,7 +3,15 @@ import time
 from cat import AuthResource, AuthPermission
 from cat.db.cruds import users as crud_users, conversations as crud_conversations
 
-from tests.utils import send_websocket_message, agent_id, api_key, create_new_user, new_user_password, chat_id
+from tests.utils import (
+    send_websocket_message,
+    agent_id,
+    api_key,
+    create_new_user,
+    new_user_password,
+    chat_id,
+    get_base_permissions,
+)
 
 
 def test_convo_history_absent(secure_client, secure_client_headers):
@@ -16,10 +24,19 @@ def test_convo_history_absent(secure_client, secure_client_headers):
 
 
 def test_convo_history_no_update_invalid_llm(secure_client, secure_client_headers):
+    user = create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
     message = "It's late! It's late!"
 
     # send websocket messages
-    send_websocket_message({"text": message}, secure_client, api_key, ch_id=chat_id)
+    send_websocket_message(
+        {"text": message}, secure_client, api_key, ch_id=chat_id, query_params={"user_id": user["id"]}
+    )
 
     # check conversation history update
     response = secure_client.get(f"/conversation/{chat_id}", headers=secure_client_headers)
@@ -30,10 +47,19 @@ def test_convo_history_no_update_invalid_llm(secure_client, secure_client_header
 
 
 def test_convo_history_update(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+    user = create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
     message = "It's late! It's late!"
 
     # send websocket messages
-    send_websocket_message({"text": message}, secure_client, api_key, ch_id=chat_id)
+    send_websocket_message(
+        {"text": message}, secure_client, api_key, ch_id=chat_id, query_params={"user_id": user["id"]}
+    )
     user = crud_users.get_user_by_username(agent_id, "user")
 
     # check conversation history update
@@ -55,9 +81,21 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
 
 
 def test_convo_delete(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+    user = create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
+
     # send websocket messages
     send_websocket_message(
-        {"text": "It's late! It's late!"}, secure_client, api_key, ch_id=chat_id
+        {"text": "It's late! It's late!"},
+        secure_client,
+        api_key,
+        ch_id=chat_id,
+        query_params={"user_id": user["id"]},
     )
     user = crud_users.get_user_by_username(agent_id, "user")
 
@@ -214,6 +252,14 @@ def test_change_name_to_conversation(secure_client, secure_client_headers, clien
 
 
 def test_get_empty_conversations(secure_client, secure_client_headers):
+    create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
+
     user = crud_users.get_user_by_username(agent_id, "user")
 
     # check conversation history update
@@ -228,6 +274,13 @@ def test_get_empty_conversations(secure_client, secure_client_headers):
 
 
 def test_get_conversations(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+    create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
     user = crud_users.get_user_by_username(agent_id, "user")
 
     message = "It's late! It's late!"
@@ -235,7 +288,7 @@ def test_get_conversations(secure_client, secure_client_headers, mocked_default_
     for _ in range(3):
         # send websocket messages
         send_websocket_message(
-            {"text": message}, secure_client, api_key, {"user_id": user["id"]}
+            {"text": message}, secure_client, api_key, query_params={"user_id": user["id"]}
         )
 
     # check all the conversation histories
@@ -252,7 +305,7 @@ def test_get_conversations(secure_client, secure_client_headers, mocked_default_
     for _ in range(2):
         # send websocket messages
         send_websocket_message(
-            {"text": message}, secure_client, api_key, {"user_id": user["id"]}, ch_id=chat_id
+            {"text": message}, secure_client, api_key, query_params={"user_id": user["id"]}, ch_id=chat_id
         )
 
     # check again all the conversation histories

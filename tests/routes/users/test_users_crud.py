@@ -3,7 +3,7 @@ from pydantic import ValidationError
 
 from cat.routes.users import UserBase, UserUpdate
 
-from tests.utils import agent_id, api_key, create_new_user, check_user_fields, new_user_password, get_base_permissions
+from tests.utils import agent_id, api_key, create_new_user, check_user_fields, new_user_password
 
 
 def test_validation_errors():
@@ -61,7 +61,7 @@ def test_get_users(secure_client, secure_client_headers):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 1 # user
+    assert len(data) == 0
 
     # create user
     create_new_user(secure_client, "/users", headers=secure_client_headers)
@@ -71,16 +71,13 @@ def test_get_users(secure_client, secure_client_headers):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 2
+    assert len(data) == 1
 
     # check users integrity and values
     for idx, d in enumerate(data):
         check_user_fields(d)
-        assert d["username"] in ["user", "Alice"]
-        if d["username"] == "user":
-            assert d["permissions"] == get_base_permissions()
-        else:
-            assert len(d["permissions"]) == 0
+        assert d["username"] == "Alice"
+        assert len(d["permissions"]) == 0
 
 
 def test_get_user(secure_client, secure_client_headers, cheshire_cat):
@@ -165,14 +162,11 @@ def test_update_user(secure_client, secure_client_headers):
     response = secure_client.get("/users", headers=secure_client_headers)
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 2
+    assert len(data) == 1
     for d in data:
         check_user_fields(d)
-        assert d["username"] in ["user", "Alice3"]
-        if d["username"] == "Alice3":
-            assert d["permissions"] == {"UPLOAD": ["WRITE"]}
-        else:
-            assert d["permissions"] == get_base_permissions()
+        assert d["username"] == "Alice3"
+        assert d["permissions"] == {"UPLOAD": ["WRITE"]}
 
 
 def test_delete_user(secure_client, secure_client_headers):
@@ -200,7 +194,7 @@ def test_delete_user(secure_client, secure_client_headers):
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
-    assert len(data) == 1
+    assert len(data) == 0
 
 
 # note: using secure secure_client (api key set both for http and ws)
@@ -229,5 +223,4 @@ def test_no_access_if_api_keys_active(secure_client, secure_client_headers):
     headers = {"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id}
     response = secure_client.get("/users", headers=headers)
     assert response.status_code == 200
-    assert len(response.json()) == 1
-    assert response.json()[0]["username"] == "user"
+    assert len(response.json()) == 0

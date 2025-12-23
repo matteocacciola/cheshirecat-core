@@ -45,7 +45,7 @@ def test_upload_memory_check_mimetype(secure_client, secure_client_headers):
 def test_upload_memory_check_embedder(secure_client, secure_client_headers, cheshire_cat):
     # Create fake memory
     another_embedder = "AnotherEmbedder"
-    fake_memory = get_fake_memory_export(embedder_name=another_embedder)
+    fake_memory = get_fake_memory_export(secure_client, embedder_name=another_embedder)
 
     with pytest.raises(Exception) as e:
         response = secure_client.post(
@@ -70,7 +70,7 @@ def test_upload_memory_check_embedder(secure_client, secure_client_headers, ches
 def test_upload_memory_check_dimensionality(secure_client, secure_client_headers, cheshire_cat):
     # Create fake memory
     wrong_dim = 9
-    fake_memory = get_fake_memory_export(dim=wrong_dim)
+    fake_memory = get_fake_memory_export(secure_client, dim=wrong_dim)
 
     with pytest.raises(Exception) as e:
         response = secure_client.post(
