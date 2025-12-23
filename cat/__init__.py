@@ -1,9 +1,7 @@
 from .auth.connection import AuthorizedInfo
 from .auth.permissions import (
-    check_admin_permissions,
     check_permissions,
     check_websocket_permissions,
-    AdminAuthResource,
     AuthResource,
     AuthPermission,
 )
@@ -27,10 +25,8 @@ from .utils import get_caller_info, run_sync_or_async
 __all__ = [
     "AgentOutput",
     "AuthorizedInfo",
-    "check_admin_permissions",
     "check_permissions",
     "check_websocket_permissions",
-    "AdminAuthResource",
     "AuthResource",
     "AuthPermission",
     "hook",

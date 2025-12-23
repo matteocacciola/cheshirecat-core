@@ -15,11 +15,7 @@ def test_validation_errors():
     assert user.username == "Alice"
 
     with pytest.raises(ValidationError):
-        UserUpdate(username="Alice", permissions={})
-    with pytest.raises(ValidationError):
         UserUpdate(username="Alice", permissions={"READ": []})
-    with pytest.raises(ValidationError):
-        UserUpdate(username="Alice", permissions={"STATUS": []})
     with pytest.raises(ValidationError):
         UserUpdate(username="Alice", permissions={"STATUS": ["WRITE", "WRONG"]})
 
@@ -32,7 +28,7 @@ def test_create_user(secure_client, secure_client_headers):
     check_user_fields(data)
 
     assert data["username"] == "Alice"
-    assert data["permissions"] == get_base_permissions()
+    assert len(data["permissions"]) == 0
 
 
 def test_cannot_create_duplicate_user(secure_client, secure_client_headers):
@@ -81,7 +77,10 @@ def test_get_users(secure_client, secure_client_headers):
     for idx, d in enumerate(data):
         check_user_fields(d)
         assert d["username"] in ["user", "Alice"]
-        assert d["permissions"] == get_base_permissions()
+        if d["username"] == "user":
+            assert d["permissions"] == get_base_permissions()
+        else:
+            assert len(d["permissions"]) == 0
 
 
 def test_get_user(secure_client, secure_client_headers, cheshire_cat):
@@ -101,7 +100,7 @@ def test_get_user(secure_client, secure_client_headers, cheshire_cat):
     # check user integrity and values
     check_user_fields(data)
     assert data["username"] == "Alice"
-    assert data["permissions"] == get_base_permissions()
+    assert len(data["permissions"]) == 0
 
 
 def test_update_user(secure_client, secure_client_headers):
@@ -123,7 +122,7 @@ def test_update_user(secure_client, secure_client_headers):
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice"
-    assert data["permissions"] == get_base_permissions()
+    assert len(data["permissions"]) == 0
     
     # update password
     updated_user = {"username": data["username"], "password": "12345", "permissions": data["permissions"]}
@@ -132,7 +131,7 @@ def test_update_user(secure_client, secure_client_headers):
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice"
-    assert data["permissions"] == get_base_permissions()
+    assert len(data["permissions"]) == 0
     assert "password" not in data # api will not send passwords around
     
     # change username
@@ -142,7 +141,7 @@ def test_update_user(secure_client, secure_client_headers):
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice2"
-    assert data["permissions"] == get_base_permissions()
+    assert len(data["permissions"]) == 0
 
     # change permissions
     updated_user = {"username": data["username"], "permissions": {"MEMORY": ["READ"]}}
@@ -210,24 +209,24 @@ def test_no_access_if_api_keys_active(secure_client, secure_client_headers):
     response = secure_client.post(
         "/users",
         json={"username": "Alice", "password": new_user_password},
-        headers={"agent_id": agent_id}
+        headers={"X-Agent-ID": agent_id}
     )
     assert response.status_code == 403
 
     # read users (forbidden)
-    response = secure_client.get("/users", headers={"agent_id": agent_id})
+    response = secure_client.get("/users", headers={"X-Agent-ID": agent_id})
     assert response.status_code == 403
 
     # edit user (forbidden)
     response = secure_client.put(
         "/users/non_existent_id", # it does not exist, but request should be blocked before the check
         json={"username": "Alice"},
-        headers={"agent_id": agent_id}
+        headers={"X-Agent-ID": agent_id}
     )
     assert response.status_code == 403
 
     # check default list giving the correct CCAT_API_KEY
-    headers = {"Authorization": f"Bearer {api_key}", "agent_id": agent_id}
+    headers = {"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id}
     response = secure_client.get("/users", headers=headers)
     assert response.status_code == 200
     assert len(response.json()) == 1

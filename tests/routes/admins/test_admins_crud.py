@@ -8,7 +8,7 @@ from tests.utils import (
     create_new_user,
     check_user_fields,
     get_client_admin_headers,
-    get_full_admin_permissions,
+    get_full_permissions,
     new_user_password,
 )
 
@@ -22,11 +22,7 @@ def test_validation_errors():
     assert admin.username == "Alice"
 
     with pytest.raises(ValidationError):
-        AdminUpdate(username="Alice", permissions={})
-    with pytest.raises(ValidationError):
         AdminUpdate(username="Alice", permissions={"READ": []})
-    with pytest.raises(ValidationError):
-        AdminUpdate(username="Alice", permissions={"CHESHIRE_CAT": []})
     with pytest.raises(ValidationError):
         AdminUpdate(username="Alice", permissions={"CHESHIRE_CAT": ["WRITE", "WRONG"]})
 
@@ -39,7 +35,7 @@ def test_create_admin(client):
     check_user_fields(data)
 
     assert data["username"] == "Alice"
-    assert data["permissions"] == get_full_admin_permissions()
+    assert len(data["permissions"]) == 0
 
 
 def test_cannot_create_duplicate_admin(client):
@@ -76,7 +72,10 @@ def test_get_admins(client):
     for idx, d in enumerate(data):
         check_user_fields(d)
         assert d["username"] in ["admin", "Alice"]
-        assert d["permissions"] == get_full_admin_permissions()
+        if d["username"] == "Alice":
+            assert len(d["permissions"]) == 0
+        else:
+            assert d["permissions"] == get_full_permissions()
 
 
 def test_get_admin(client):
@@ -96,7 +95,7 @@ def test_get_admin(client):
     # check admin integrity and values
     check_user_fields(data)
     assert data["username"] == "Alice"
-    assert data["permissions"] == get_full_admin_permissions()
+    assert len(data["permissions"]) == 0
 
 
 def test_update_admin(client):
@@ -120,7 +119,7 @@ def test_update_admin(client):
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice"
-    assert data["permissions"] == get_full_admin_permissions()
+    assert len(data["permissions"]) == 0
 
     # update password
     updated_admin = {"username": data["username"], "password": "12345", "permissions": data["permissions"]}
@@ -129,7 +128,7 @@ def test_update_admin(client):
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice"
-    assert data["permissions"] == get_full_admin_permissions()
+    assert len(data["permissions"]) == 0
     assert "password" not in data # api will not send passwords around
 
     # change username
@@ -139,7 +138,7 @@ def test_update_admin(client):
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice2"
-    assert data["permissions"] == get_full_admin_permissions()
+    assert len(data["permissions"]) == 0
 
     # change permissions
     updated_admin = {"username": data["username"], "permissions": {"EMBEDDER": ["READ"]}}
@@ -170,7 +169,7 @@ def test_update_admin(client):
         if d["username"] == "Alice3":
             assert d["permissions"] == {"EMBEDDER": ["WRITE"]}
         else:
-            assert d["permissions"] == get_full_admin_permissions()
+            assert d["permissions"] == get_full_permissions()
 
 
 def test_delete_admin(client):

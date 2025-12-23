@@ -193,7 +193,7 @@ async def secure_client(client):
 
 @pytest.fixture(scope="function")
 def secure_client_headers():
-    yield {"agent_id": agent_id, "Authorization": f"Bearer {api_key}"}
+    yield {"X-Agent-ID": agent_id, "Authorization": f"Bearer {api_key}"}
 
 
 @pytest.fixture(scope="function")

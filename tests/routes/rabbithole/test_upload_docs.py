@@ -79,7 +79,7 @@ async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_header
 
     # declarative memory should be empty for another agent
     declarative_memories = get_declarative_memory_contents(
-        secure_client, {"agent_id": "another_agent_test", "Authorization": f"Bearer {api_key}"}
+        secure_client, {"X-Agent-ID": "another_agent_test", "Authorization": f"Bearer {api_key}"}
     )
     assert len(declarative_memories) == 0
 

@@ -11,7 +11,7 @@ from tests.utils import (
 
 def test_create_point_wrong_collection(secure_client, secure_client_headers, cheshire_cat):
     user = crud_users.get_user_by_username(agent_id, "user")
-    headers = secure_client_headers | {"user_id": user["id"]}
+    headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     req_json = {"content": "Hello dear"}
 
@@ -22,7 +22,7 @@ def test_create_point_wrong_collection(secure_client, secure_client_headers, che
 
 def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
     user = crud_users.get_user_by_username(agent_id, "user")
-    headers = secure_client_headers | {"user_id": user["id"]}
+    headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     # create a point
     content = "Hello dear"
@@ -32,7 +32,7 @@ def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat,
     assert res.status_code == 200
     json = res.json()
     assert json["content"] == content
-    expected_metadata = {"when": fake_timestamp, "source": headers["user_id"], **metadata}
+    expected_metadata = {"when": fake_timestamp, "source": headers["X-User-ID"], **metadata}
     assert json["metadata"] == expected_metadata
     assert "id" in json
     assert "vector" in json
@@ -58,7 +58,7 @@ def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_
     # get point back
     params = {"text": "Mad Hatter"}
     response = secure_client.get(
-        "/memory/recall/", params=params, headers={**secure_client_headers, **{"user_id": user["id"]}}
+        "/memory/recall/", params=params, headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     json = response.json()
     assert response.status_code == 200
@@ -82,7 +82,7 @@ def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_
     # there is no point now
     params = {"text": "Mad Hatter"}
     response = secure_client.get(
-        "/memory/recall/", params=params, headers={**secure_client_headers, **{"user_id": user["id"]}}
+        "/memory/recall/", params=params, headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     json = response.json()
     assert response.status_code == 200
@@ -158,7 +158,7 @@ def test_get_collection_points_wrong_collection(secure_client, secure_client_hea
 
 def test_get_collection_points(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
     user = crud_users.get_user_by_username(agent_id, "user")
-    headers = secure_client_headers | {"user_id": user["id"]}
+    headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     # create 100 points
     n_points = 100
@@ -184,7 +184,7 @@ def test_get_collection_points(secure_client, secure_client_headers, cheshire_ca
             "page_content": p["content"],
             "metadata": {
                 "when": fake_timestamp,
-                "source": headers["user_id"],
+                "source": headers["X-User-ID"],
                 **p["metadata"]
             },
             "tenant_id": agent_id,
@@ -207,7 +207,7 @@ def test_get_collection_points(secure_client, secure_client_headers, cheshire_ca
 
 def test_get_collection_points_offset(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
     user = crud_users.get_user_by_username(agent_id, "user")
-    headers = secure_client_headers | {"user_id": user["id"]}
+    headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     # create 200 points
     n_points = 200
@@ -246,7 +246,7 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, ches
             "page_content": p["content"],
             "metadata": {
                 "when": fake_timestamp,
-                "source": headers["user_id"],
+                "source": headers["X-User-ID"],
                 **p["metadata"]
             },
             "tenant_id": agent_id,
@@ -269,7 +269,7 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, ches
 
 def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_client_headers, cheshire_cat):
     user = crud_users.get_user_by_username(agent_id, "user")
-    headers = secure_client_headers | {"user_id": user["id"]}
+    headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     req_json = {"content": "Hello dear"}
 
@@ -286,7 +286,7 @@ def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_client_
 
 def test_edit_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
     user = crud_users.get_user_by_username(agent_id, "user")
-    headers = secure_client_headers | {"user_id": user["id"]}
+    headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     # create a point
     content = "Hello dear"
@@ -309,7 +309,7 @@ def test_edit_memory_point(secure_client, secure_client_headers, cheshire_cat, p
     assert res.status_code == 200
     json = res.json()
     assert json["content"] == content
-    expected_metadata = {"when":fake_timestamp, "source": headers["user_id"], **metadata}
+    expected_metadata = {"when":fake_timestamp, "source": headers["X-User-ID"], **metadata}
     assert json["metadata"] == expected_metadata
     assert "id" in json
     assert "vector" in json

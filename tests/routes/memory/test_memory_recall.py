@@ -42,7 +42,7 @@ def test_memory_recall_success(secure_client, secure_client_headers, mocked_defa
     # recall
     params = {"text": "Red Queen"}
     response = secure_client.get(
-        "/memory/recall/", params=params, headers={**secure_client_headers, **{"user_id": user["id"]}}
+        "/memory/recall/", params=params, headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     assert response.status_code == 200
 
@@ -59,7 +59,7 @@ def test_memory_recall_with_k_success(secure_client, secure_client_headers, mock
     max_k = 2
     params = {"k": max_k, "text": "Red Queen"}
     response = secure_client.get(
-        "/memory/recall/", params=params, headers={**secure_client_headers, **{"user_id": user["id"]}}
+        "/memory/recall/", params=params, headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     assert response.status_code == 200
 

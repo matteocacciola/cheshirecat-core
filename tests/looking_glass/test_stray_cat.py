@@ -91,7 +91,7 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
 @pytest.mark.asyncio
 async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray):
     ccat = stray.cheshire_cat
-    ccat_headers = {"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
+    ccat_headers = {"X-Agent-ID": ccat.id, "Authorization": f"Bearer {api_key}"}
 
     # manually install the plugin
     zip_path = create_mock_plugin_zip(flat=True, plugin_id="mock_plugin_fast_reply")

@@ -3,7 +3,7 @@ import os
 
 def get_supported_env_variables():
     return {
-        "CCAT_ADMIN_DEFAULT_PASSWORD": "AIBlackBirdWithCheshireCat",
+        "CCAT_ADMIN_DEFAULT_PASSWORD": "admin",
         "CCAT_API_KEY": None,
         "CCAT_DEBUG": "true",
         "CCAT_LOG_LEVEL": "INFO",

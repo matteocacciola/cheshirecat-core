@@ -87,10 +87,10 @@ def test_granted_access_on_permissions(secure_client, secure_client_headers, cli
 
     creds = {"username": data["username"], "password": new_user_password}
 
-    res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
+    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
     received_token = res.json()["access_token"]
 
-    response = client.get("/chunking/settings", headers={"Authorization": f"Bearer {received_token}", "agent_id": agent_id})
+    response = client.get("/chunking/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
     assert response.status_code == 200
 
 
@@ -100,10 +100,10 @@ def test_forbidden_access_no_permission(secure_client, secure_client_headers, cl
 
     creds = {"username": data["username"], "password": new_user_password}
 
-    res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
+    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
     received_token = res.json()["access_token"]
 
-    response = client.get("/chunking/settings", headers={"Authorization": f"Bearer {received_token}", "agent_id": agent_id})
+    response = client.get("/chunking/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
     assert response.status_code == 403
     assert response.json()["detail"] == "Invalid Credentials"
 
@@ -114,9 +114,9 @@ def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers
 
     creds = {"username": data["username"], "password": new_user_password}
 
-    res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
+    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
     received_token = res.json()["access_token"]
 
-    response = client.get("/chunking/settings", headers={"Authorization": f"Bearer {received_token}", "agent_id": agent_id})
+    response = client.get("/chunking/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
     assert response.status_code == 403
     assert response.json()["detail"] == "Invalid Credentials"

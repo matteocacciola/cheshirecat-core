@@ -7,7 +7,7 @@ from cat.db.cruds import settings as crud_settings, users as crud_users
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.factory.auth_handler import AuthHandlerFactory
 
-from tests.utils import agent_id, get_full_admin_permissions
+from tests.utils import agent_id, get_full_permissions
 
 
 def test_get_settings(cheshire_cat):
@@ -168,7 +168,7 @@ def test_get_user(lizard):
     user = crud_users.create_user(lizard.config_key, {
         "username": "admin",
         "password": hash_password("admin"),
-        "permissions": get_full_admin_permissions()
+        "permissions": get_full_permissions()
     })
     assert user is None
     users = crud_users.get_users(lizard.config_key)
@@ -178,7 +178,7 @@ def test_get_user(lizard):
     expected_user = {
         "username": "admin2",
         "password": hash_password("admin2"),
-        "permissions": get_full_admin_permissions()
+        "permissions": get_full_permissions()
     }
     user = crud_users.create_user(lizard.config_key, expected_user)
     assert user["username"] == expected_user["username"]
@@ -198,7 +198,7 @@ def test_get_user_by_username(lizard):
     expected_user = {
         "username": username,
         "password": hash_password("admin2"),
-        "permissions": get_full_admin_permissions()
+        "permissions": get_full_permissions()
     }
     crud_users.create_user(lizard.config_key, expected_user)
 
@@ -212,7 +212,7 @@ def test_update_user(lizard):
     new_user = {
         "username": "admin2",
         "password": hash_password("admin2"),
-        "permissions": get_full_admin_permissions()
+        "permissions": get_full_permissions()
     }
     user = crud_users.create_user(lizard.config_key, new_user)
 
@@ -230,7 +230,7 @@ def test_delete_user(lizard):
     new_user = {
         "username": "admin2",
         "password": hash_password("admin2"),
-        "permissions": get_full_admin_permissions()
+        "permissions": get_full_permissions()
     }
     user = crud_users.create_user(lizard.config_key, new_user)
 
@@ -245,7 +245,7 @@ def test_get_user_by_credentials(lizard):
     new_user = {
         "username": "admin2",
         "password": "admin2",
-        "permissions": get_full_admin_permissions()
+        "permissions": get_full_permissions()
     }
     crud_users.create_user(lizard.config_key, new_user)
 

@@ -44,7 +44,7 @@ def test_users_permissions(secure_client, secure_client_headers, endpoint):
     response = secure_client.post(
         "/users",
         json={"username": "Caterpillar", "password": "U R U"},
-        headers={"Authorization": f"Bearer {api_key}", "agent_id": agent_id}
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id}
     )
     assert response.status_code == 200
     target_user_id = response.json()["id"]
@@ -56,7 +56,7 @@ def test_users_permissions(secure_client, secure_client_headers, endpoint):
         endpoint["method"],
         endpoint["path"].replace("ID_PLACEHOLDER", target_user_id),
         json=endpoint["payload"],
-        headers={"agent_id": agent_id}
+        headers={"X-Agent-ID": agent_id}
     )
     assert res.status_code == 403
     assert res.json()["detail"] == "Invalid Credentials"
@@ -72,7 +72,7 @@ def test_users_permissions(secure_client, secure_client_headers, endpoint):
         endpoint["method"],
         endpoint["path"].replace("ID_PLACEHOLDER", target_user_id),
         json=endpoint["payload"],
-        headers={"Authorization": f"Bearer {jwt}", "agent_id": agent_id} # using credentials
+        headers={"Authorization": f"Bearer {jwt}", "X-Agent-ID": agent_id} # using credentials
     )
     # `admin` can now use endpoints, `user` cannot
     if credentials["username"] == "admin":

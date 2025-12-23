@@ -147,11 +147,9 @@ async def auth_token(credentials: UserCredentials, agent_id: str):
     # use username and password to authenticate user from local identity provider and get token
     from cat.db.cruds import users as crud_users
 
-    key_id = agent_id
-
     # brutal search over users, which are stored in a simple dictionary.
     # waiting to have graph in core to store them properly
-    user = crud_users.get_user_by_credentials(key_id, credentials.username, credentials.password)
+    user = crud_users.get_user_by_credentials(agent_id, credentials.username, credentials.password)
     if not user:
         # Invalid username or password
         # wait a little to avoid brute force attacks
@@ -163,9 +161,7 @@ async def auth_token(credentials: UserCredentials, agent_id: str):
     expires = datetime.now(utc) + timedelta(seconds=expire_delta_in_seconds)
 
     jwt_content = {
-        "sub": user["id"],  # Subject (the user ID)
-        "username": credentials.username,  # Username
-        "permissions": user["permissions"],  # User permissions
+        "sub": credentials.username,  # Subject (the Username)
         "exp": expires  # Expiry date as a Unix timestamp
     }
     access_token = jwt.encode(jwt_content, get_env("CCAT_JWT_SECRET"), algorithm=DEFAULT_JWT_ALGORITHM)

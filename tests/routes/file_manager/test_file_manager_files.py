@@ -23,7 +23,6 @@ def test_file_deleted(secure_client, secure_client_headers):
     )
     assert res.status_code == 200
     json = res.json()
-    print(json)
     files = json["files"]
     assert len(files) == 1
     assert any(f["name"] == "sample.pdf" for f in files)

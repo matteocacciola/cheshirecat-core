@@ -5,9 +5,9 @@ from slugify import slugify
 from typing import Dict
 
 from cat import log
-from cat.auth.permissions import AuthPermission, AdminAuthResource, check_admin_permissions
+from cat.auth.connection import AuthorizedInfo
+from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException, CustomNotFoundException
-from cat.looking_glass import BillTheLizard
 from cat.looking_glass.mad_hatter.registry import registry_download_plugin
 from cat.routes.routes_utils import (
     DeletePluginResponse,
@@ -32,22 +32,21 @@ router = APIRouter(tags=["Admins - Plugins"], prefix="/plugins")
 @router.get("/", response_model=GetAvailablePluginsResponse)
 async def get_lizard_available_plugins(
     query: str = None,
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGIN, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.LIST),
     # author: str = None, to be activated in case of more granular search
     # tag: str = None, to be activated in case of more granular search
 ) -> GetAvailablePluginsResponse:
     """List available plugins"""
-    
     if query is not None:
         query = slugify(query, separator="_")
 
-    return await get_available_plugins(lizard.plugin_manager, query)
+    return await get_available_plugins(info.lizard.plugin_manager, query)
 
 
 @router.post("/upload", response_model=InstallPluginResponse)
 async def install_plugin(
     file: UploadFile,
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGIN, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.WRITE),
 ) -> InstallPluginResponse:
     """Install a new plugin from a zip file"""
     allowed_mime_types = get_allowed_plugins_mime_types()
@@ -65,7 +64,7 @@ async def install_plugin(
         await f.write(content)
 
     try:
-        lizard.plugin_manager.install_plugin(plugin_archive_path)
+        info.lizard.plugin_manager.install_plugin(plugin_archive_path)
     except Exception as e:
         raise CustomValidationException(f"Could not install plugin from file: {e}")
 
@@ -79,13 +78,13 @@ async def install_plugin(
 @router.post("/upload/registry", response_model=InstallPluginFromRegistryResponse)
 async def install_plugin_from_registry(
     payload: Dict = Body({"url": "https://github.com/plugin-dev-account/plugin-repo"}),
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGIN, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.WRITE),
 ) -> InstallPluginFromRegistryResponse:
     """Install a new plugin from registry"""
     # download zip from registry
     try:
         tmp_plugin_path = await registry_download_plugin(payload["url"])
-        lizard.plugin_manager.install_plugin(tmp_plugin_path)
+        info.lizard.plugin_manager.install_plugin(tmp_plugin_path)
     except Exception as e:
         raise CustomValidationException(f"Could not install plugin from registry: {e}")
 
@@ -94,18 +93,20 @@ async def install_plugin_from_registry(
 
 @router.get("/settings", response_model=PluginsSettingsResponse)
 async def get_lizard_plugins_settings(
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGIN, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.READ),
 ) -> PluginsSettingsResponse:
     """Returns the default settings of all the plugins"""
+    lizard = info.lizard
     return get_plugins_settings(lizard.plugin_manager, lizard.config_key)
 
 
 @router.get("/settings/{plugin_id}", response_model=GetSettingResponse)
 async def get_lizard_plugin_settings(
     plugin_id: str,
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGIN, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Returns the default settings of a specific plugin"""
+    lizard = info.lizard
     plugin_manager = lizard.plugin_manager
     if not plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
@@ -116,16 +117,17 @@ async def get_lizard_plugin_settings(
 @router.get("/{plugin_id}", response_model=GetPluginDetailsResponse)
 async def get_plugin_details(
     plugin_id: str,
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGIN, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.READ),
 ) -> GetPluginDetailsResponse:
     """Returns information on a single plugin, at a system level"""
+    plugin_manager = info.lizard.plugin_manager
     plugin_id = slugify(plugin_id, separator="_")
 
-    if not lizard.plugin_manager.plugin_exists(plugin_id):
+    if not plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
-    active_plugins = lizard.plugin_manager.load_active_plugins_ids_from_db()
-    plugin = lizard.plugin_manager.plugins[plugin_id]
+    active_plugins = plugin_manager.load_active_plugins_ids_from_db()
+    plugin = plugin_manager.plugins[plugin_id]
 
     # get manifest and active True/False. We make a copy to avoid modifying the original obj
     return GetPluginDetailsResponse(data=create_plugin_manifest(plugin, active_plugins))
@@ -134,16 +136,17 @@ async def get_plugin_details(
 @router.delete("/{plugin_id}", response_model=DeletePluginResponse)
 async def uninstall_plugin(
     plugin_id: str,
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGIN, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.DELETE),
 ) -> DeletePluginResponse:
     """Physically remove plugin at a system level."""
+    plugin_manager = info.lizard.plugin_manager
     plugin_id = slugify(plugin_id, separator="_")
 
-    if not lizard.plugin_manager.plugin_exists(plugin_id):
+    if not plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
     # remove folder, hooks and tools
-    lizard.plugin_manager.uninstall_plugin(plugin_id)
+    plugin_manager.uninstall_plugin(plugin_id)
 
     return DeletePluginResponse(deleted=plugin_id)
 
@@ -151,15 +154,16 @@ async def uninstall_plugin(
 @router.put("/toggle/{plugin_id}", status_code=200, response_model=TogglePluginResponse)
 async def toggle_plugin_admin(
     plugin_id: str,
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGIN, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.DELETE),
 ) -> TogglePluginResponse:
     """Enable or disable a single plugin"""
+    plugin_manager = info.lizard.plugin_manager
     plugin_id = slugify(plugin_id, separator="_")
 
     # check if plugin exists
-    if not lizard.plugin_manager.plugin_exists(plugin_id):
+    if not plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
     # toggle plugin
-    lizard.plugin_manager.toggle_plugin(plugin_id)
+    plugin_manager.toggle_plugin(plugin_id)
     return TogglePluginResponse(info=f"Plugin {plugin_id} toggled")

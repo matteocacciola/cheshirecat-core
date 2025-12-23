@@ -4,24 +4,17 @@ from typing import List
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
-from cat.auth.auth_utils import extract_agent_id_from_request
 from cat.auth.connection import AuthorizedInfo
-from cat.auth.permissions import (
-    AdminAuthResource,
-    AuthPermission,
-    AuthResource,
-    check_admin_permissions,
-    check_permissions,
-)
+from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.db import crud
 from cat.db.database import get_db
 from cat.log import log
-from cat.looking_glass import BillTheLizard
 from cat.memory.utils import VectorMemoryType
 from cat.routes.routes_utils import startup_app, shutdown_app
 from cat.utils import get_plugins_path
 
 router = APIRouter(tags=["Utilities"], prefix="/utils")
+
 
 class ResetResponse(BaseModel):
     deleted_settings: bool
@@ -33,7 +26,7 @@ class CreatedResponse(BaseModel):
     created: bool
 
 
-class AgentCloneRequest(BaseModel):
+class AgentRequest(BaseModel):
     agent_id: str
 
 
@@ -44,7 +37,7 @@ class AgentClonedResponse(BaseModel):
 @router.post("/factory/reset", response_model=ResetResponse)
 async def factory_reset(
     request: Request,
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CAT, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.ADMIN, AuthPermission.DESTROY),
 ) -> ResetResponse:
     """
     Factory reset the entire application. This will delete all settings, memories, and metadata.
@@ -53,7 +46,7 @@ async def factory_reset(
     cheshire_cats_ids = crud.get_agents_main_keys()
     deleted_memories = False
     for agent_id in cheshire_cats_ids:
-        ccat = lizard.get_cheshire_cat_from_db(agent_id)
+        ccat = info.lizard.get_cheshire_cat_from_db(agent_id)
         if not ccat:
             continue
         try:
@@ -96,7 +89,7 @@ async def factory_reset(
     )
 
 
-@router.get("/agents", dependencies=[check_admin_permissions(AdminAuthResource.CHESHIRE_CAT, AuthPermission.LIST)])
+@router.get("/agents", dependencies=[check_permissions(AuthResource.CHESHIRE_CAT, AuthPermission.LIST)])
 async def get_agents() -> List[str]:
     """
     Get all agents.
@@ -110,18 +103,14 @@ async def get_agents() -> List[str]:
 
 @router.post("/agents/create", response_model=CreatedResponse)
 async def agent_create(
-    request: Request,
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CAT, AuthPermission.DELETE),
+    request: AgentRequest,
+    info: AuthorizedInfo = check_permissions(AuthResource.CHESHIRE_CAT, AuthPermission.WRITE),
 ) -> CreatedResponse:
     """
     Reset a single agent. This will delete all settings, memories, and metadata, for the agent.
     """
     try:
-        agent_id = extract_agent_id_from_request(request)
-        if agent_id is None:
-            raise ValueError("agent_id is required in headers, path params or query params")
-
-        await lizard.create_cheshire_cat(agent_id)
+        await info.lizard.create_cheshire_cat(request.agent_id)
         return CreatedResponse(created=True)
     except Exception as e:
         log.error(f"Error creating agent: {e}")
@@ -131,7 +120,7 @@ async def agent_create(
 @router.post("/agents/destroy", response_model=ResetResponse)
 async def agent_destroy(
     request: Request,
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.CHESHIRE_CAT, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.CHESHIRE_CAT, AuthPermission.DELETE),
 ) -> ResetResponse:
     """
     Destroy a single agent. This will completely delete all settings, memories, and metadata, for the agent.
@@ -141,14 +130,9 @@ async def agent_destroy(
     deleted_memories = False
 
     try:
-        agent_id = extract_agent_id_from_request(request)
-        if agent_id is None:
-            raise ValueError("agent_id is required in headers, path params or query params")
-
-        if ccat := lizard.get_cheshire_cat_from_db(agent_id):
-            await ccat.destroy()
-            deleted_settings = True
-            deleted_memories = True
+        await info.cheshire_cat.destroy()
+        deleted_settings = True
+        deleted_memories = True
     except Exception as e:
         log.error(f"Error deleting settings: {e}")
 
@@ -161,18 +145,16 @@ async def agent_destroy(
 
 @router.post("/agents/reset", response_model=ResetResponse)
 async def agent_reset(
-    info: AuthorizedInfo = check_permissions(AuthResource.SETTING, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.CHESHIRE_CAT, AuthPermission.WRITE),
 ) -> ResetResponse:
     """
     Reset a single agent. This will delete all settings, memories, and metadata, for the agent.
     """
     ccat = info.cheshire_cat
     agent_id = ccat.agent_key
-
-    lizard = ccat.lizard
     try:
         await ccat.destroy()
-        await lizard.create_cheshire_cat(agent_id)
+        await info.lizard.create_cheshire_cat(agent_id)
 
         deleted_settings = True
         deleted_memories = True
@@ -190,8 +172,8 @@ async def agent_reset(
 
 @router.post("/agents/clone", response_model=AgentClonedResponse)
 async def agent_clone(
-    request: AgentCloneRequest,
-    info: AuthorizedInfo = check_permissions(AuthResource.SETTING, AuthPermission.WRITE),
+    request: AgentRequest,
+    info: AuthorizedInfo = check_permissions(AuthResource.CHESHIRE_CAT, AuthPermission.WRITE),
 ) -> AgentClonedResponse:
     """
     Clone a single agent. This will clone all settings, memories, and metadata, for the agent.

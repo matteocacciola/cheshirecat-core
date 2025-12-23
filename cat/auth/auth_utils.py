@@ -50,9 +50,9 @@ def check_password(password: str, hashed: str) -> bool:
         return False
 
 
-def _extract_key_from_request(request: HTTPConnection, key: str) -> str:
+def _extract_key_from_request(request: HTTPConnection, key: str, key_header: str) -> str:
     return request.headers.get(
-        key,
+        key_header,
         request.path_params.get(
             key,
             request.query_params.get(key)
@@ -61,11 +61,11 @@ def _extract_key_from_request(request: HTTPConnection, key: str) -> str:
 
 
 def extract_agent_id_from_request(request: HTTPConnection) -> str | None:
-    return _extract_key_from_request(request, "agent_id")
+    return _extract_key_from_request(request, "agent_id", "X-Agent-ID")
 
 
 def extract_chat_id_from_request(request: HTTPConnection) -> str | None:
-    return _extract_key_from_request(request, "chat_id")
+    return _extract_key_from_request(request, "chat_id", "X-Chat-ID")
 
 
 def extract_user_info_on_api_key(agent_key: str, user_id: str | None = None) -> UserInfo | None:

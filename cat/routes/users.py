@@ -24,11 +24,12 @@ class UserBase(BaseModel):
 
 class UserBaseRequest(UserBase):
     def __init__(self, **data):
-        super().__init__(**data)
+        permissions = data.get("permissions", {})
         # Ensure to attach all permissions for 'me'
-        if not self.permissions:
-            self.permissions = {}
-        self.permissions[str(AuthResource.ME)] = [str(p) for p in AuthPermission]
+        permissions[str(AuthResource.ME)] = [str(p) for p in AuthPermission]
+        data["permissions"] = permissions
+
+        super().__init__(**data)
 
 
 class UserCreate(UserBaseRequest):
@@ -40,15 +41,7 @@ class UserCreate(UserBaseRequest):
 
 class UserUpdate(UserBaseRequest):
     password: str = Field(default=None, min_length=5)
-    permissions: Dict[str, List[str]] = None
     model_config = ConfigDict(extra="forbid")
-
-    @field_validator("permissions")
-    @classmethod
-    def validate_permissions(cls, v):
-        if v is None:
-            return v
-        return super().validate_permissions(v)
 
 
 class UserResponse(UserBase):

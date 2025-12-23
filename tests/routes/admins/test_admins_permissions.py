@@ -62,7 +62,7 @@ def test_admins_permissions(secure_client, endpoint):
     assert res.json()["detail"] == "Invalid Credentials"
 
     # obtain JWT
-    res = secure_client.post("/admins/auth/token", json=credentials, headers={"agent_id": "core"})
+    res = secure_client.post("/auth/token", json=credentials)
     assert res.status_code == 200
     jwt = res.json()["access_token"]
 

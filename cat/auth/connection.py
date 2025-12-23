@@ -5,14 +5,7 @@ from pydantic import BaseModel, ConfigDict, model_validator
 from typing_extensions import Self
 
 from cat.auth.auth_utils import extract_agent_id_from_request, extract_chat_id_from_request
-from cat.auth.permissions import (
-    AdminAuthResource,
-    AuthPermission,
-    AuthResource,
-    AuthUserInfo,
-    get_full_admin_permissions,
-    get_base_permissions,
-)
+from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo, get_base_permissions
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException
 from cat.looking_glass import BillTheLizard, CheshireCat, StrayCat
@@ -21,7 +14,7 @@ from cat.looking_glass import BillTheLizard, CheshireCat, StrayCat
 class AuthorizedInfo(BaseModel):
     agent_id: str | None
     lizard: BillTheLizard
-    cheshire_cat: CheshireCat
+    cheshire_cat: CheshireCat | None = None
     user: AuthUserInfo
     stray_cat: StrayCat | None = None
 
@@ -32,31 +25,6 @@ class AuthorizedInfo(BaseModel):
         if self.agent_id is not None and self.cheshire_cat is None:
             raise ValueError("CheshireCat cannot be None for non-system agents.")
         return self
-
-
-class AdminConnectionAuth:
-    def __init__(self, resource: AdminAuthResource, permission: AuthPermission):
-        self.resource = resource
-        self.permission = permission
-
-    def __call__(self, request: Request) -> BillTheLizard:
-        lizard: BillTheLizard = request.app.state.lizard
-
-        user: AuthUserInfo = lizard.core_auth_handler.authorize(
-            request,
-            self.resource,
-            self.permission,
-            key_id=lizard.config_key,
-            http_permissions=get_full_admin_permissions(),
-        )
-        if not user:
-            # if no user was obtained, raise exception
-            self.not_allowed(request)
-
-        return lizard
-
-    def not_allowed(self, connection: Request, **kwargs):
-        raise CustomForbiddenException("Invalid Credentials")
 
 
 class ConnectionAuth(ABC):
@@ -92,10 +60,9 @@ class ConnectionAuth(ABC):
             # is that an admin able to manage agents?
             user = lizard.core_auth_handler.authorize(
                 connection,
-                AdminAuthResource.CHESHIRE_CAT,
+                AuthResource.CHESHIRE_CAT,
                 self.permission,
-                key_id=lizard.config_key,
-                http_permissions=get_full_admin_permissions(),
+                lizard.config_key,
             )
 
         # fallback to agent-specific auth if needed and available
@@ -105,7 +72,7 @@ class ConnectionAuth(ABC):
                 connection,
                 self.resource,
                 self.permission,
-                key_id=ccat.id,
+                ccat.id,
             )
 
         # if no user was obtained, raise an exception

@@ -1,15 +1,12 @@
 from pydantic import BaseModel
 
-
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import (
-    AdminAuthResource,
     AuthPermission,
     AuthResource,
     check_permissions,
-    check_admin_permissions,
 )
-from cat import BillTheLizard, endpoint
+from cat import endpoint
 
 
 class Item(BaseModel):
@@ -33,7 +30,7 @@ def test_get(info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthP
 
 
 @endpoint.get(path="/admin/crud", prefix="/tests", tags=["Tests"])
-def test_get_admin(lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.PLUGIN, AuthPermission.LIST)):
+def test_get_admin(info: AuthorizedInfo = check_permissions(AuthResource.CHESHIRE_CAT, AuthPermission.LIST)):
     return {"result": "ok"}
 
 

@@ -5,7 +5,7 @@ from fastapi.requests import HTTPConnection
 from pydantic import ConfigDict
 
 from cat.auth.auth_utils import is_jwt, extract_user_info_on_api_key, DEFAULT_JWT_ALGORITHM
-from cat.auth.permissions import AuthResource, AdminAuthResource, AuthPermission, AuthUserInfo
+from cat.auth.permissions import AuthResource, AuthPermission, AuthUserInfo
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
 from cat.factory.base_factory import BaseFactory, BaseFactoryConfigModel
@@ -23,9 +23,9 @@ class BaseAuthHandler(ABC):
     def authorize(
         self,
         request: HTTPConnection,
-        auth_resource: AuthResource | AdminAuthResource,
+        auth_resource: AuthResource,
         auth_permission: AuthPermission,
-        **kwargs,
+        key_id: str,
     ) -> AuthUserInfo | None:
         """
         Authorize a user based on the request and the given resource and permission. This method will extract the token
@@ -37,7 +37,7 @@ class BaseAuthHandler(ABC):
             request: the Starlette request to authorize the user on
             auth_resource: the resource to authorize the user on
             auth_permission: the permission to authorize the user on
-            **kwargs: additional keyword arguments
+            key_id: the key ID of the agent to authorize the user with
 
         Returns:
             An AuthUserInfo object if the user is authorized, None otherwise.
@@ -60,10 +60,10 @@ class BaseAuthHandler(ABC):
 
         if is_jwt(token):
             # JSON Web Token auth
-            return self.authorize_user_from_jwt(token, auth_resource, auth_permission, **kwargs)
+            return self.authorize_user_from_jwt(token, auth_resource, auth_permission, key_id)
 
         # API_KEY auth
-        return self.authorize_user_from_key(protocol, token, auth_resource, auth_permission, user_id, **kwargs)
+        return self.authorize_user_from_key(protocol, token, auth_resource, auth_permission, key_id, user_id)
 
     def extract_token(self, request: HTTPConnection) -> str | None:
         """
@@ -122,9 +122,9 @@ class BaseAuthHandler(ABC):
     def authorize_user_from_jwt(
         self,
         token: str,
-        auth_resource: AuthResource | AdminAuthResource,
+        auth_resource: AuthResource,
         auth_permission: AuthPermission,
-        **kwargs,
+        key_id: str,
     ) -> AuthUserInfo | None:
         """
         Authorize a user from a JWT token. This method is used to authorize users when they are using a JWT token.
@@ -133,7 +133,7 @@ class BaseAuthHandler(ABC):
             token: the JWT token to authorize the user from
             auth_resource: the resource to authorize the user on
             auth_permission: the permission to authorize the user on
-            **kwargs: additional keyword arguments
+            key_id: the key ID of the agent to authorize the user with
 
         Returns:
             An AuthUserInfo object if the user is authorized, None otherwise.
@@ -146,10 +146,10 @@ class BaseAuthHandler(ABC):
         self,
         protocol: Literal["http", "websocket"],
         api_key: str,
-        auth_resource: AuthResource | AdminAuthResource,
+        auth_resource: AuthResource,
         auth_permission: AuthPermission,
+        key_id: str,
         request_user_id: str | None = None,
-        **kwargs,
     ) -> AuthUserInfo | None:
         """
         Authorize a user from an API key. This method is used to authorize users when they are not using a JWT token.
@@ -158,8 +158,8 @@ class BaseAuthHandler(ABC):
             api_key: the API key to authorize the user
             auth_resource: the resource to authorize the user on
             auth_permission: the permission to authorize the user on
+            key_id: the key ID of the agent to authorize the user with
             request_user_id: the user ID to authorize (it can be null)
-            kwargs: additional keyword arguments
 
         Returns:
             An AuthUserInfo object if the user is authorized, None otherwise.
@@ -171,7 +171,7 @@ class BaseAuthHandler(ABC):
 # Core auth handler, verify token on local idp
 class CoreAuthHandler(BaseAuthHandler):
     def extract_user_id_http(self, request: HTTPConnection) -> str | None:
-        return request.headers.get("user_id")
+        return request.headers.get("X-User-ID")
 
     def extract_user_id_websocket(self, request: HTTPConnection) -> str | None:
         return request.query_params.get("user_id")
@@ -179,12 +179,10 @@ class CoreAuthHandler(BaseAuthHandler):
     def authorize_user_from_jwt(
         self,
         token: str,
-        auth_resource: AuthResource | AdminAuthResource,
+        auth_resource: AuthResource,
         auth_permission: AuthPermission,
-        **kwargs,
+        key_id: str,
     ) -> AuthUserInfo | None:
-        key_id = kwargs.get("key_id")
-
         try:
             # decode token
             payload = jwt.decode(token, get_env("CCAT_JWT_SECRET"), algorithms=[DEFAULT_JWT_ALGORITHM])
@@ -194,7 +192,7 @@ class CoreAuthHandler(BaseAuthHandler):
             return None
 
         # get user from DB
-        user = crud_users.get_user(key_id, payload["sub"])
+        user = crud_users.get_user_by_username(key_id, payload["sub"])
         if not user:
             # do not pass
             return None
@@ -207,8 +205,8 @@ class CoreAuthHandler(BaseAuthHandler):
             return None
 
         return AuthUserInfo(
-            id=payload["sub"],
-            name=payload["username"],
+            id=user["id"],
+            name=payload["sub"],
             permissions=user["permissions"],
             extra=user,
         )
@@ -217,34 +215,27 @@ class CoreAuthHandler(BaseAuthHandler):
         self,
         protocol: Literal["http", "websocket"],
         api_key: str,
-        auth_resource: AuthResource | AdminAuthResource,
+        auth_resource: AuthResource,
         auth_permission: AuthPermission,
+        key_id: str,
         request_user_id: str | None = None,
-        **kwargs,
     ) -> AuthUserInfo | None:
         if not (current_api_key := get_env("CCAT_API_KEY")):
             return None
         if api_key != current_api_key:
             return None
 
-        key_id = kwargs.get("key_id")
         if not (user_info := extract_user_info_on_api_key(key_id, request_user_id)):
             return None
 
-        permissions: Dict[str, List[str]] | None = None
-        if protocol == "websocket":
-            permissions = kwargs.get("websocket_permissions", user_info.permissions)
-        elif protocol == "http":
-            permissions = kwargs.get("http_permissions", user_info.permissions)
-
         # No match -> deny access
-        if not permissions:
+        if not user_info.permissions:
             return None
 
         return AuthUserInfo(
             id=user_info.user_id,
             name=user_info.username,
-            permissions=permissions
+            permissions=user_info.permissions
         )
 
 

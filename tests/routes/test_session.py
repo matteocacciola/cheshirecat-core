@@ -1,5 +1,5 @@
 from cat.auth.permissions import AuthUserInfo
-from cat.looking_glass import StrayCat
+from cat import AuthResource, AuthPermission, StrayCat
 
 from tests.utils import send_websocket_message, api_key, agent_id, create_new_user, new_user_password, chat_id
 
@@ -9,13 +9,21 @@ def test_session_creation_from_websocket(
 ):
     # create a new user with username CCC
     username = "Alice"
-    data = create_new_user(secure_client, "/users", username=username, headers=secure_client_headers)
+    data = create_new_user(
+        secure_client,
+        "/users",
+        username=username,
+        headers=secure_client_headers,
+        permissions={
+            str(AuthResource.CHAT): [str(AuthPermission.READ), str(AuthPermission.WRITE)],
+        }
+    )
 
     # get the token, to be used in the websocket connection
     res = client.post(
         "/auth/token",
         json={"username": data["username"], "password": new_user_password},
-        headers={"agent_id": agent_id}
+        headers={"X-Agent-ID": agent_id}
     )
     received_token = res.json()["access_token"]
     user_id = data["id"]
@@ -55,7 +63,7 @@ def test_session_creation_from_http(secure_client, secure_client_headers, cheshi
         response = secure_client.post(
             "/rabbithole/",
             files=files,
-            headers={"user_id": user_id, "Authorization": f"Bearer {api_key}", "agent_id": agent_id},
+            headers={"X-User-ID": user_id, "Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         )
 
     # check response

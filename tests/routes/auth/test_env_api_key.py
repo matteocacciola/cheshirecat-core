@@ -43,13 +43,13 @@ def test_api_key_http(secure_client):
 
     # all the previous headers result in a 403
     for headers in wrong_headers:
-        status_code, json = http_message(secure_client, headers | {"agent_id": agent_id})
+        status_code, json = http_message(secure_client, headers | {"X-Agent-ID": agent_id})
         assert status_code == 403
         assert json["detail"] == "Invalid Credentials"
 
     # allow access if CCAT_API_KEY is right
     headers = {header_name: f"{key_prefix} {api_key}"}
-    status_code, json = http_message(secure_client, headers | {"agent_id": agent_id})
+    status_code, json = http_message(secure_client, headers | {"X-Agent-ID": agent_id})
     assert status_code == 200
     assert json["chat_id"] is not None
     assert "You did not configure" in json["message"]["text"]

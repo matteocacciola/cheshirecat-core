@@ -38,8 +38,9 @@ def test_custom_endpoint_get(secure_client, secure_client_headers):
 
 def test_custom_endpoint_get_admin_not_found(client, secure_client, secure_client_headers):
     just_installed_plugin(secure_client, secure_client_headers)
+    secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
 
-    response = client.get("/tests/admin/crud", headers=get_client_admin_headers(client))
+    response = client.get("/tests/admin/crud", headers=get_client_admin_headers(client) | {"X-Agent-ID": agent_id})
     assert response.status_code == 200
 
 
@@ -121,7 +122,6 @@ def test_custom_endpoints_on_plugin_deactivation_or_uninstall(switch_type, secur
     for verb, endpoint, payload, upon_auth in custom_endpoints:
         # the endpoint is still reachable, unless it is behind the authentication, on deactivation
         response = secure_client.request(verb, endpoint, json=payload, headers=secure_client_headers)
-        print(verb, endpoint, payload, upon_auth, response.status_code)
         assert response.status_code == (404 if switch_type == "uninstall" or upon_auth else 200)
 
 
@@ -139,11 +139,11 @@ def test_custom_endpoint_permissions(resource, permission, client, secure_client
     creds = {"username": data["username"], "password": new_user_password}
 
     # get jwt for user
-    response = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
+    response = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
     received_token = response.json()["access_token"]
 
     # use endpoint (requires PLUGIN resource and LIST permission)
-    response = client.get("/tests/crud", headers={"Authorization": f"Bearer {received_token}", "agent_id": agent_id})
+    response = client.get("/tests/crud", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
     if resource == "PLUGIN" and permission == "LIST":
         assert response.status_code == 200
     else:

@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request
 
 from cat.auth.auth_utils import extract_agent_id_from_request
 from cat.auth.permissions import get_full_permissions, AuthResource
+from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.routes.routes_utils import UserCredentials, JWTResponse, auth_token as fnc_auth_token
 
 router = APIRouter(tags=["User Auth"], prefix="/auth")
@@ -22,6 +23,6 @@ async def agent_auth_token(request: Request, credentials: UserCredentials) -> JW
     """
     agent_id = extract_agent_id_from_request(request)
     if agent_id is None:
-        raise ValueError("agent_id is required in headers, path params or query params")
+        agent_id = DEFAULT_SYSTEM_KEY
 
     return await fnc_auth_token(credentials, agent_id)

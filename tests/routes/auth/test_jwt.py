@@ -22,7 +22,7 @@ def test_is_jwt():
 
 def test_refuse_issue_jwt(client):
     creds = {"username": "user", "password": "wrong"}
-    res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
+    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
 
     # wrong credentials
     assert res.status_code == 403
@@ -33,7 +33,7 @@ def test_refuse_issue_jwt(client):
 def test_issue_jwt(client, cheshire_cat):
     creds = {"username": "user", "password": "user"}
 
-    res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
+    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
     assert res.status_code == 200
 
     res_json = res.json()
@@ -58,7 +58,7 @@ def test_issue_jwt(client, cheshire_cat):
             get_env("CCAT_JWT_SECRET"),
             algorithms=[DEFAULT_JWT_ALGORITHM],
         )
-        assert payload["username"] == "user"
+        assert payload["sub"] == "user"
         assert (payload["exp"] - time.time() < 60 * 60 * 24)  # expires in less than 24 hours
     except jwt.exceptions.DecodeError:
         assert False
@@ -70,7 +70,7 @@ def test_issue_jwt_for_new_user(client, secure_client, secure_client_headers):
 
     # we should not obtain a JWT for this user
     # because it does not exist
-    res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
+    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
     assert res.status_code == 403
     assert res.json()["detail"] == "Invalid Credentials"
 
@@ -79,7 +79,7 @@ def test_issue_jwt_for_new_user(client, secure_client, secure_client_headers):
     assert res.status_code == 200
 
     # now we should get a JWT
-    res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
+    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
     assert res.status_code == 200
 
     res_json = res.json()
@@ -100,18 +100,18 @@ def test_jwt_expiration(client, cheshire_cat):
     os.environ["CCAT_JWT_EXPIRE_MINUTES"] = "0.05"  # 3 seconds
 
     # not allowed
-    response = client.post("/message", headers={"agent_id": agent_id, "chat_id": chat_id}, json=message)
+    response = client.post("/message", headers={"X-Agent-ID": agent_id, "X-Chat-ID": chat_id}, json=message)
     assert response.status_code == 403
     assert response.json()["detail"] == "Invalid Credentials"
 
     # request JWT
     creds = {"username": "user", "password": "user"}
-    res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
+    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
     assert res.status_code == 200
     token = res.json()["access_token"]
 
     # allowed via JWT
-    headers = {"Authorization": f"Bearer {token}", "agent_id": agent_id, "chat_id": chat_id}
+    headers = {"Authorization": f"Bearer {token}", "X-Agent-ID": agent_id, "X-Chat-ID": chat_id}
     response = client.post("/message", headers=headers, json=message)
     assert response.status_code == 200
 
@@ -119,7 +119,7 @@ def test_jwt_expiration(client, cheshire_cat):
     time.sleep(3)
 
     # not allowed because JWT expired
-    headers = {"Authorization": f"Bearer {token}", "agent_id": agent_id, "chat_id": chat_id}
+    headers = {"Authorization": f"Bearer {token}", "X-Agent-ID": agent_id, "X-Chat-ID": chat_id}
     response = client.post("/message", headers=headers, json=message)
     assert response.status_code == 403
     assert response.json()["detail"] == "Invalid Credentials"
@@ -137,17 +137,17 @@ def test_jwt_imposes_user_id(client, cheshire_cat):
     message = {"text": "hey"}
 
     # not allowed
-    response = client.post("/message", headers={"agent_id": agent_id, "chat_id": chat_id}, json=message)
+    response = client.post("/message", headers={"X-Agent-ID": agent_id, "X-Chat-ID": chat_id}, json=message)
     assert response.status_code == 403
     assert response.json()["detail"] == "Invalid Credentials"
 
     # request JWT
     creds = {"username": "user", "password": "user"}
-    res = client.post("/auth/token", json=creds, headers={"agent_id": agent_id})
+    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
     assert res.status_code == 200
     token = res.json()["access_token"]
 
     # send user specific message via http
-    headers = {"Authorization": f"Bearer {token}", "agent_id": agent_id, "chat_id": chat_id}
+    headers = {"Authorization": f"Bearer {token}", "X-Agent-ID": agent_id, "X-Chat-ID": chat_id}
     response = client.post("/message", headers=headers, json=message)
     assert response.status_code == 200

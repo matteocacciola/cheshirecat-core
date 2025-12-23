@@ -37,7 +37,7 @@ def test_plugin_install_from_zip(lizard, secure_client, secure_client_headers, c
 
     # now, lists the plugins as an agent (new plugins are installed but deactivated, initially)
     response = secure_client.get(
-        "/plugins", headers={"agent_id": cheshire_cat.id, "Authorization": f"Bearer {api_key}"}
+        "/plugins", headers={"X-Agent-ID": cheshire_cat.id, "Authorization": f"Bearer {api_key}"}
     )
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
@@ -65,7 +65,7 @@ async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client,
 
     # list the plugins as an agent: mock_plugin is not installed yet
     response = secure_client.get(
-        "/plugins", headers={"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
+        "/plugins", headers={"X-Agent-ID": ccat.id, "Authorization": f"Bearer {api_key}"}
     )
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
@@ -89,7 +89,7 @@ async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client,
 
     # now, lists the plugins as an agent (new plugins are installed but deactivated, initially)
     response = secure_client.get(
-        "/plugins", headers={"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
+        "/plugins", headers={"X-Agent-ID": ccat.id, "Authorization": f"Bearer {api_key}"}
     )
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
@@ -125,7 +125,7 @@ async def test_create_cheshire_cat_after_plugin_install(lizard, secure_client, s
 
     # now, lists the plugins as an agent (new plugins are installed but deactivated, initially)
     response = secure_client.get(
-        "/plugins", headers={"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
+        "/plugins", headers={"X-Agent-ID": ccat.id, "Authorization": f"Bearer {api_key}"}
     )
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
@@ -176,7 +176,7 @@ def test_plugin_uninstall(secure_client, secure_client_headers):
 async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_headers):
     # create a new agent
     ccat = await lizard.create_cheshire_cat("agent_test_test")
-    ccat_headers = {"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
+    ccat_headers = {"X-Agent-ID": ccat.id, "Authorization": f"Bearer {api_key}"}
 
     # manually install the plugin
     zip_path = create_mock_plugin_zip(flat=True)
@@ -222,7 +222,7 @@ async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_he
 async def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_client, secure_client_headers):
     # create a new agent
     ccat = await lizard.create_cheshire_cat("agent_test_test")
-    ccat_headers = {"agent_id": ccat.id, "Authorization": f"Bearer {api_key}"}
+    ccat_headers = {"X-Agent-ID": ccat.id, "Authorization": f"Bearer {api_key}"}
 
     # manually install the plugin
     zip_path = create_mock_plugin_zip(flat=True)

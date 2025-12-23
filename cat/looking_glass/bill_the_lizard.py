@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from langchain_core.embeddings import Embeddings
 
 from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
-from cat.auth.permissions import get_full_admin_permissions
+from cat.auth.permissions import get_full_permissions
 from cat.db import crud
 from cat.db.cruds import settings as crud_settings, users as crud_users
 from cat.db.database import DEFAULT_SYSTEM_KEY, UNALLOWED_AGENT_KEYS
@@ -163,8 +163,8 @@ class BillTheLizard:
                 "id": admin_id,
                 "username": DEFAULT_ADMIN_USERNAME,
                 "password": hash_password(get_env("CCAT_ADMIN_DEFAULT_PASSWORD")),
-                # admin has all permissions
-                "permissions": get_full_admin_permissions()
+                # base admin has all permissions
+                "permissions": get_full_permissions()
             }
         })
 

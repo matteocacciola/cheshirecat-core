@@ -2,7 +2,7 @@ import time
 import jwt
 
 from cat.env import get_env
-from cat.auth.permissions import AdminAuthResource, AuthPermission
+from cat.auth.permissions import AuthResource, AuthPermission
 from cat.auth.auth_utils import is_jwt, DEFAULT_JWT_ALGORITHM
 from cat.db.database import DEFAULT_SYSTEM_KEY
 
@@ -20,7 +20,7 @@ def test_is_jwt():
 
 def test_refuse_issue_jwt(client):
     creds = {"username": "admin", "password": "wrong"}
-    res = client.post("/admins/auth/token", json=creds)
+    res = client.post("/auth/token", json=creds)
 
     # wrong credentials
     assert res.status_code == 403
@@ -34,7 +34,7 @@ def test_issue_jwt(client, lizard):
         "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
-    res = client.post("/admins/auth/token", json=creds)
+    res = client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     res_json = res.json()
@@ -47,7 +47,7 @@ def test_issue_jwt(client, lizard):
     # is the JWT correct for core auth handler?
     auth_handler = lizard.core_auth_handler
     user_info = auth_handler.authorize_user_from_jwt(
-        received_token, AdminAuthResource.EMBEDDER, AuthPermission.WRITE, key_id=DEFAULT_SYSTEM_KEY
+        received_token, AuthResource.EMBEDDER, AuthPermission.WRITE, key_id=DEFAULT_SYSTEM_KEY
     )
     assert len(user_info.id) == 36 and len(user_info.id.split("-")) == 5 # uuid4
     assert user_info.name == "admin"
@@ -59,7 +59,7 @@ def test_issue_jwt(client, lizard):
             get_env("CCAT_JWT_SECRET"),
             algorithms=[DEFAULT_JWT_ALGORITHM],
         )
-        assert payload["username"] == "admin"
+        assert payload["sub"] == "admin"
         assert (
             payload["exp"] - time.time() < 60 * 60 * 24
         )  # expires in less than 24 hours
@@ -73,7 +73,7 @@ def test_issue_jwt_for_new_admin(client, secure_client, secure_client_headers):
 
     # we should not obtain a JWT for this user
     # because it does not exist
-    res = client.post("/admins/auth/token", json=creds)
+    res = client.post("/auth/token", json=creds)
     assert res.status_code == 403
     assert res.json()["detail"] == "Invalid Credentials"
 
@@ -82,7 +82,7 @@ def test_issue_jwt_for_new_admin(client, secure_client, secure_client_headers):
     assert res.status_code == 200
 
     # now we should get a JWT
-    res = client.post("/admins/auth/token", json=creds)
+    res = client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     # did we obtain a JWT?

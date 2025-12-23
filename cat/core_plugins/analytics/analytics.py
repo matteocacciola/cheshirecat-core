@@ -3,16 +3,13 @@ import tiktoken
 from fastapi import Query
 
 from cat import (
-    check_admin_permissions,
     check_permissions,
     hook,
     endpoint,
     log,
-    AdminAuthResource,
     AuthPermission,
     AuthResource,
     AuthorizedInfo,
-    BillTheLizard,
 )
 import cat.core_plugins.analytics.cruds.embeddings as crud_embeddings
 import cat.core_plugins.analytics.cruds.llm as crud_llm
@@ -71,7 +68,7 @@ def after_rabbithole_stored_documents(source: str, stored_points: List[PointStru
 async def get_analytics_embedder(
     agent_id: str = Query(default="*", description="Agent ID or * for all"),
     embedder_id: str = Query(default="*", description="Embedder ID or * for all"),
-    lizard: BillTheLizard = check_admin_permissions(AdminAuthResource.ANALYTICS, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.ANALYTICS, AuthPermission.READ),
 ) -> Dict[str, Dict[str, Any]]:
     """
     Get analytics data filtered by agent and/or embedder.

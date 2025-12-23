@@ -5,8 +5,7 @@ import random
 from urllib.parse import urlencode
 
 from cat.auth.permissions import (
-    AdminAuthResource,
-    get_full_admin_permissions as get_full_admin_permissions_base,
+    AuthResource,
     get_full_permissions as get_full_permissions_base,
     get_base_permissions as get_base_permissions_base,
 )
@@ -97,7 +96,7 @@ def create_mock_plugin_zip(flat: bool, plugin_id="mock_plugin"):
 
 # utility to retrieve declarative memory contents
 def get_declarative_memory_contents(client, headers=None):
-    headers = headers or {} | {"agent_id": agent_id}
+    headers = headers or {} | {"X-Agent-ID": agent_id}
     params = {"text": "Something"}
     response = client.get("/memory/recall/", params=params, headers=headers)
     assert response.status_code == 200
@@ -108,7 +107,7 @@ def get_declarative_memory_contents(client, headers=None):
 
 # utility to get collections and point count from `GET /memory/collections` in a simpler format
 def get_collections_names_and_point_count(client, headers=None):
-    headers = headers or {} | {"agent_id": agent_id}
+    headers = headers or {} | {"X-Agent-ID": agent_id}
     response = client.get("/memory/collections", headers=headers)
     json = response.json()
     assert response.status_code == 200
@@ -161,7 +160,7 @@ def get_client_admin_headers(client):
         "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
-    res = client.post("/admins/auth/token", json=creds)
+    res = client.post("/auth/token", json=creds)
     assert res.status_code == 200
     token = res.json()["access_token"]
 
@@ -195,16 +194,11 @@ def just_installed_plugin(client, headers, activate=False, plugin_id="mock_plugi
     return response
 
 
-def get_full_admin_permissions():
-    permissions = get_full_admin_permissions_base()
-    return {k: v for k, v in permissions.items() if k != str(AdminAuthResource.ME)}
-
-
 def get_full_permissions():
     permissions = get_full_permissions_base()
-    return {k: v for k, v in permissions.items() if k != str(AdminAuthResource.ME)}
+    return {k: v for k, v in permissions.items() if k != str(AuthResource.ME)}
 
 
 def get_base_permissions():
     permissions = get_base_permissions_base()
-    return {k: v for k, v in permissions.items() if k != str(AdminAuthResource.ME)}
+    return {k: v for k, v in permissions.items() if k != str(AuthResource.ME)}

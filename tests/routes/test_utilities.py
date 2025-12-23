@@ -40,24 +40,13 @@ async def checks_on_agent_reset(res, client, ccat_id, lizard):
 
     received_token = res.json()["access_token"]
     response = client.post(
-        "/utils/agents/reset", headers={"Authorization": f"Bearer {received_token}", "agent_id": ccat_id}
+        "/utils/agents/reset", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": ccat_id}
     )
 
     assert response.status_code == 200
     assert response.json() == {"deleted_settings": True, "deleted_memories": True, "deleted_plugin_folders": False}
 
     await checks_on_agent_create(lizard, ccat_id)
-
-
-def check_settings_on_agent_destroy(ccat_id):
-    conversations = get_db().get(crud_conversations.format_key(ccat_id, "*", "*"))
-    assert conversations is None
-
-    plugins = get_db().get(crud_plugins.format_key(ccat_id, "*"))
-    assert plugins is None
-
-    users = get_db().get(crud_users.format_key(ccat_id))
-    assert users is None
 
 
 async def checks_on_agent_destroy(cheshire_cat):
@@ -84,12 +73,12 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
         "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
-    res = client.post("/admins/auth/token", json=creds)
+    res = client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     received_token = res.json()["access_token"]
     response = client.post(
-        "/utils/factory/reset", headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
+        "/utils/factory/reset", headers={"Authorization": f"Bearer {received_token}"}
     )
 
     assert response.status_code == 200
@@ -106,8 +95,6 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
     c = await cheshire_cat.vector_memory_handler._client.get_collections()
     assert len(c.collections) == 2
 
-    check_settings_on_agent_destroy(cheshire_cat.id)
-
 
 @pytest.mark.asyncio
 async def test_agent_destroy_success(client, lizard, cheshire_cat):
@@ -116,12 +103,12 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
         "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
-    res = client.post("/admins/auth/token", json=creds)
+    res = client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     received_token = res.json()["access_token"]
     response = client.post(
-        "/utils/agents/destroy", headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
+        "/utils/agents/destroy", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": cheshire_cat.id}
     )
 
     assert response.status_code == 200
@@ -130,7 +117,14 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
     settings = crud_settings.get_settings(cheshire_cat.id)
     assert len(settings) == 0
 
-    check_settings_on_agent_destroy(cheshire_cat.id)
+    conversations = get_db().get(crud_conversations.format_key(cheshire_cat.id, "*", "*"))
+    assert conversations is None
+
+    plugins = get_db().get(crud_plugins.format_key(cheshire_cat.id, "*"))
+    assert plugins is None
+
+    users = get_db().get(crud_users.format_key(cheshire_cat.id))
+    assert users is None
 
     qdrant_filter = Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=cheshire_cat.id))])
     count_response = await cheshire_cat.vector_memory_handler._client.count(
@@ -146,7 +140,7 @@ async def test_agent_reset_success(client, lizard, cheshire_cat):
         "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
-    res = client.post("/admins/auth/token", json=creds)
+    res = client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     await checks_on_agent_reset(res, client, cheshire_cat.id, lizard)
@@ -154,9 +148,9 @@ async def test_agent_reset_success(client, lizard, cheshire_cat):
 
 @pytest.mark.asyncio
 async def test_agent_reset_by_agent_admin_success(secure_client, secure_client_headers, client, lizard, cheshire_cat):
-    data = create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"SETTING": ["WRITE"]})
+    data = create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"CHESHIRE_CAT": ["WRITE"]})
     creds = {"username": data["username"], "password": new_user_password}
-    res = client.post("/auth/token", json=creds, headers={"agent_id": cheshire_cat.agent_key})
+    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": cheshire_cat.agent_key})
 
     await checks_on_agent_reset(res, client, cheshire_cat.id, lizard)
 
@@ -169,12 +163,12 @@ async def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard
     )
 
     creds = {"username": data["username"], "password": new_user_password}
-    res = client.post("/admins/auth/token", json=creds)
+    res = client.post("/auth/token", json=creds)
     received_token = res.json()["access_token"]
 
     response = client.post(
         "/utils/agents/destroy",
-        headers={"Authorization": f"Bearer {received_token}", "agent_id": cheshire_cat.id}
+        headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": cheshire_cat.id}
     )
 
     assert response.status_code == 403
@@ -189,16 +183,15 @@ async def test_agent_destroy_error_because_of_not_existing_agent(client, lizard,
         "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
-    res = client.post("/admins/auth/token", json=creds)
+    res = client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     received_token = res.json()["access_token"]
     response = client.post(
-        "/utils/agents/destroy", headers={"Authorization": f"Bearer {received_token}", "agent_id": "wrong_id"}
+        "/utils/agents/destroy", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": "wrong_id"}
     )
 
-    assert response.status_code == 200
-    assert response.json() == {"deleted_settings": False, "deleted_memories": False, "deleted_plugin_folders": False}
+    assert response.status_code == 500
 
     await checks_on_agent_destroy(cheshire_cat)
 
@@ -212,12 +205,14 @@ async def test_agent_create_success(client, lizard):
 
     new_agent_id = str(uuid.uuid4())
 
-    res = client.post("/admins/auth/token", json=creds)
+    res = client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     received_token = res.json()["access_token"]
     response = client.post(
-        "/utils/agents/create", headers={"Authorization": f"Bearer {received_token}", "agent_id": new_agent_id}
+        "/utils/agents/create",
+        headers={"Authorization": f"Bearer {received_token}"},
+        json={"agent_id": new_agent_id},
     )
 
     assert response.status_code == 200

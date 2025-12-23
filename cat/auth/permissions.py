@@ -6,6 +6,9 @@ from cat.utils import Enum
 
 
 class AuthResource(Enum):
+    ADMIN = "ADMIN"
+    CHESHIRE_CAT = "CHESHIRE_CAT"
+    EMBEDDER = "EMBEDDER"
     MEMORY = "MEMORY"
     CHAT = "CHAT"
     SETTING = "SETTING"
@@ -21,21 +24,13 @@ class AuthResource(Enum):
     ME = "ME"
 
 
-class AdminAuthResource(Enum):
-    ADMINS = "ADMINS"
-    EMBEDDER = "EMBEDDER"
-    CHESHIRE_CAT = "CHESHIRE_CAT"
-    PLUGIN = "PLUGIN"
-    ANALYTICS = "ANALYTICS"
-    ME = "ME"
-
-
 class AuthPermission(Enum):
     WRITE = "WRITE"
     EDIT = "EDIT"
     LIST = "LIST"
     READ = "READ"
     DELETE = "DELETE"
+    DESTROY = "DESTROY"
 
 
 def get_full_permissions() -> Dict[str, List[str]]:
@@ -43,13 +38,6 @@ def get_full_permissions() -> Dict[str, List[str]]:
     Returns all available resources and permissions.
     """
     return {str(res): [str(p) for p in AuthPermission] for res in AuthResource}
-
-
-def get_full_admin_permissions() -> Dict[str, List[str]]:
-    """
-    Returns all available resources and permissions for an admin user.
-    """
-    return {str(res): [str(p) for p in AuthPermission] for res in AdminAuthResource}
 
 
 def get_base_permissions() -> Dict[str, List[str]]:
@@ -80,21 +68,6 @@ def check_permissions(resource: AuthResource, permission: AuthPermission, is_cha
     """
     from cat.auth.connection import HTTPAuth
     return Depends(HTTPAuth(resource=resource, permission=permission, is_chat=is_chat))
-
-
-def check_admin_permissions(resource: AdminAuthResource, permission: AuthPermission) -> "BillTheLizard":
-    """
-    Helper function to inject lizard into endpoints after checking for required permissions.
-
-    Args:
-        resource (AdminAuthResource): The resource that the user must have permission for.
-        permission (AuthPermission): The permission that the user must have for the resource.
-
-    Returns:
-        BillTheLizard: an instance of BillTheLizard
-    """
-    from cat.auth.connection import AdminConnectionAuth
-    return Depends(AdminConnectionAuth(resource=resource, permission=permission))
 
 
 def check_websocket_permissions(resource: AuthResource, permission: AuthPermission) -> "AuthorizedInfo":
