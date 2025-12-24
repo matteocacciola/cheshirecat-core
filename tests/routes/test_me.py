@@ -28,7 +28,7 @@ def test_get_me_success(secure_client, secure_client_headers, client):
     assert data["success"] is True
     assert list(data.keys()) == ["success", "agents", "auto_selected"]
     assert len(data.get("agents", [])) == 1
-    assert data["auto_selected"] == True if len(data.get("agents", [])) == 1 else False
+    assert data["auto_selected"] if len(data.get("agents", [])) == 1 else False
 
     match = data["agents"][0]
     assert match["agent_id"] == agent_id
