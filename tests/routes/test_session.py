@@ -1,5 +1,5 @@
 from cat.auth.permissions import AuthUserInfo
-from cat import AuthResource, AuthPermission, StrayCat
+from cat import StrayCat
 
 from tests.utils import send_websocket_message, api_key, agent_id, create_new_user, new_user_password, chat_id
 

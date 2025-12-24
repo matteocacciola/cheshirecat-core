@@ -382,7 +382,7 @@ def destroy_all(agent_id: str):
         raise
 
 
-def username_search(username: str) -> Dict[str] | None:
+def username_search(username: str) -> Dict[str, str] | None:
     """
     Search for users by username across all agents.
 
