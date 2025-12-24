@@ -1,7 +1,9 @@
 import pytest
 
+from cat.auth.permissions import get_base_permissions
+
 from tests.conftest import api_key
-from tests.utils import agent_id, create_new_user, get_base_permissions, new_user_password
+from tests.utils import agent_id, create_new_user, new_user_password
 
 
 # test endpoints with different user permissions
@@ -23,7 +25,7 @@ from tests.utils import agent_id, create_new_user, get_base_permissions, new_use
     {
         "method": "POST",
         "path": "/users",
-        "payload": {"username": "Alice", "password": "12345"}
+        "payload": {"username": "Alice", "password": "12345", "permissions": get_base_permissions()}
     },
     {
         "method": "PUT",
@@ -43,7 +45,7 @@ def test_users_permissions(secure_client, secure_client_headers, endpoint):
     # we create it using directly CCAT_API_KEY
     response = secure_client.post(
         "/users",
-        json={"username": "Caterpillar", "password": "U R U"},
+        json={"username": "Caterpillar", "password": "U R U", "permissions": get_base_permissions()},
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id}
     )
     assert response.status_code == 200
@@ -58,8 +60,8 @@ def test_users_permissions(secure_client, secure_client_headers, endpoint):
         json=endpoint["payload"],
         headers={"X-Agent-ID": agent_id}
     )
-    assert res.status_code == 403
-    assert res.json()["detail"] == "Invalid Credentials"
+    assert res.status_code == 401
+    assert res.json()["detail"] == "Unauthorized"
     
     # obtain JWT
     credentials = {"username": "user", "password": new_user_password}

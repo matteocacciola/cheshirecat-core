@@ -1,6 +1,7 @@
 import time
 
 from cat import AuthResource, AuthPermission
+from cat.auth.permissions import get_base_permissions
 from cat.db.cruds import users as crud_users, conversations as crud_conversations
 
 from tests.utils import (
@@ -10,7 +11,6 @@ from tests.utils import (
     create_new_user,
     new_user_password,
     chat_id,
-    get_base_permissions,
 )
 
 

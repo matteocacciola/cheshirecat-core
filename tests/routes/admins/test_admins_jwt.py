@@ -2,7 +2,7 @@ import time
 import jwt
 
 from cat.env import get_env
-from cat.auth.permissions import AuthResource, AuthPermission
+from cat.auth.permissions import AuthResource, AuthPermission, get_base_permissions
 from cat.auth.auth_utils import is_jwt, DEFAULT_JWT_ALGORITHM
 from cat.db.database import DEFAULT_SYSTEM_KEY
 
@@ -23,7 +23,7 @@ def test_refuse_issue_jwt(client):
     res = client.post("/auth/token", json=creds)
 
     # wrong credentials
-    assert res.status_code == 403
+    assert res.status_code == 401
     json = res.json()
     assert json["detail"] == "Invalid Credentials"
 
@@ -74,11 +74,13 @@ def test_issue_jwt_for_new_admin(client, secure_client, secure_client_headers):
     # we should not obtain a JWT for this user
     # because it does not exist
     res = client.post("/auth/token", json=creds)
-    assert res.status_code == 403
+    assert res.status_code == 401
     assert res.json()["detail"] == "Invalid Credentials"
 
     # let's create the user
-    res = secure_client.post("/admins/users", json=creds, headers=secure_client_headers)
+    res = secure_client.post(
+        "/admins/users", json=creds | {"permissions": get_base_permissions()}, headers=secure_client_headers
+    )
     assert res.status_code == 200
 
     # now we should get a JWT

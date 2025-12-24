@@ -4,11 +4,7 @@ import uuid
 import random
 from urllib.parse import urlencode
 
-from cat.auth.permissions import (
-    AuthResource,
-    get_full_permissions as get_full_permissions_base,
-    get_base_permissions as get_base_permissions_base,
-)
+from cat.auth.permissions import get_base_permissions, AuthResource, AuthPermission
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
 from cat.memory.utils import VectorMemoryType
@@ -80,7 +76,7 @@ def key_in_json(key, json):
 # create a plugin zip out of the mock plugin folder.
 # - Used to test plugin upload.
 # - zip can be created flat (plugin files in root dir) or nested (plugin files in zipped folder)
-def create_mock_plugin_zip(flat: bool, plugin_id="mock_plugin"):
+def create_mock_plugin_zip(flat: bool, plugin_id = "mock_plugin"):
     if flat:
         root_dir = f"tests/mocks/{plugin_id}"
         base_dir = "./"
@@ -117,10 +113,12 @@ def get_collections_names_and_point_count(client, headers = None):
     return collections_n_points
 
 
-def create_new_user(client, route: str, username="Alice", headers = None, permissions = None, password = None):
-    new_user = {"username": username, "password": password or new_user_password}
-    if permissions:
-        new_user["permissions"] = permissions
+def create_new_user(client, route: str, username = "Alice", headers = None, permissions = None, password = None):
+    new_user = {
+        "username": username,
+        "password": password or new_user_password,
+        "permissions": permissions or {str(AuthResource.CHAT): [str(AuthPermission.WRITE)]}
+    }
     response = client.post(route, json=new_user, headers=headers)
     assert response.status_code == 200
     return response.json()
@@ -139,7 +137,7 @@ def check_user_fields(u):
         assert False, "Not a UUID"
 
 
-def get_fake_memory_export(client, embedder_name="DumbEmbedder", dim = 2367):
+def get_fake_memory_export(client, embedder_name = "DumbEmbedder", dim = 2367):
     user = create_new_user(
         client,
         "/users",
@@ -177,7 +175,7 @@ def get_client_admin_headers(client):
     return {"Authorization": f"Bearer {token}"}
 
 
-def just_installed_plugin(client, headers, activate=False, plugin_id="mock_plugin", expected_status_code=200):
+def just_installed_plugin(client, headers, activate = False, plugin_id = "mock_plugin", expected_status_code = 200):
     # create zip file with a plugin
     zip_path = create_mock_plugin_zip(flat=True, plugin_id=plugin_id)
     zip_file_name = zip_path.split("/")[-1]  # mock_plugin.zip in tests/mocks folder
@@ -202,13 +200,3 @@ def just_installed_plugin(client, headers, activate=False, plugin_id="mock_plugi
             assert response.status_code == 200
 
     return response
-
-
-def get_full_permissions():
-    permissions = get_full_permissions_base()
-    return {k: v for k, v in permissions.items() if k != str(AuthResource.ME)}
-
-
-def get_base_permissions():
-    permissions = get_base_permissions_base()
-    return {k: v for k, v in permissions.items() if k != str(AuthResource.ME)}

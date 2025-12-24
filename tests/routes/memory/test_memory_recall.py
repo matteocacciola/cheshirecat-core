@@ -1,7 +1,8 @@
+from cat.auth.permissions import get_base_permissions
 from cat.db.cruds import users as crud_users
 from cat.memory.utils import VectorMemoryType
 
-from tests.utils import send_n_websocket_messages, agent_id, create_new_user, api_key, get_base_permissions
+from tests.utils import send_n_websocket_messages, agent_id, create_new_user, api_key
 
 
 # search on default startup memory

@@ -6,7 +6,7 @@ from typing_extensions import Self
 
 from cat.auth.auth_utils import extract_agent_id_from_request, extract_chat_id_from_request
 from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo
-from cat.exceptions import CustomNotFoundException, CustomForbiddenException
+from cat.exceptions import CustomNotFoundException, CustomForbiddenException, CustomUnauthorizedException
 from cat.looking_glass import BillTheLizard, CheshireCat, StrayCat
 
 
@@ -27,8 +27,6 @@ class AuthorizedInfo(BaseModel):
 
 
 class ConnectionAuth(ABC):
-    from cat.factory.auth_handler import BaseAuthHandler
-
     def __init__(self, resource: AuthResource, permission: AuthPermission, is_chat: bool = False):
         self.resource = resource
         self.permission = permission
@@ -75,6 +73,9 @@ class ConnectionAuth(ABC):
 
         # if no user was obtained, raise an exception
         if not user:
+            self._not_authorized(connection)
+
+        if user and user.permissions is None:
             self._not_allowed(connection)
 
         if ccat is not None and (chat_id := extract_chat_id_from_request(connection)):
@@ -83,15 +84,25 @@ class ConnectionAuth(ABC):
         return AuthorizedInfo(lizard=lizard, cheshire_cat=ccat, user=user, stray_cat=stray_cat, agent_id=agent_id)
 
     @abstractmethod
+    def _not_authorized(self, connection: HTTPConnection, **kwargs):
+        pass
+
+    @abstractmethod
     def _not_allowed(self, connection: HTTPConnection, **kwargs):
         pass
 
 
 class HTTPAuth(ConnectionAuth):
     def _not_allowed(self, connection: Request, **kwargs):
-        raise CustomForbiddenException("Invalid Credentials")
+        raise CustomForbiddenException("Forbidden")
+
+    def _not_authorized(self, connection: Request, **kwargs):
+        raise CustomUnauthorizedException("Unauthorized")
 
 
 class WebSocketAuth(ConnectionAuth):
     def _not_allowed(self, connection: WebSocket, **kwargs):
         raise WebSocketException(code=1004, reason="Invalid Credentials")
+
+    def _not_authorized(self, connection: WebSocket, **kwargs):
+        raise WebSocketException(code=1008, reason="Unauthorized")

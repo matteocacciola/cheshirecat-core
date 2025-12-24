@@ -1,3 +1,4 @@
+from cat.auth.permissions import get_base_permissions
 from cat.db.cruds import users as crud_users
 from cat.memory.utils import VectorMemoryType
 
@@ -8,7 +9,6 @@ from tests.utils import (
     send_file,
     create_new_user,
     api_key,
-    get_base_permissions,
 )
 
 

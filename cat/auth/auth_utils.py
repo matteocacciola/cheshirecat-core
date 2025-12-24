@@ -83,3 +83,25 @@ def extract_user_info_on_api_key(agent_key: str, user_id: str | None = None) -> 
     return UserInfo(
         user_id=user["id"], username=user["username"], permissions=user["permissions"] # type: ignore
     )
+
+
+def extract_token_from_request( request: HTTPConnection) -> str | None:
+    """
+    Extract the token from a request. This method is used to extract the token from the request by inspecting either
+    the `Authorization: Bearer <token>` or the `Cookie: jwt=<token>` header. It should return the token if it is
+    found, otherwise it should return None.
+
+    Args:
+        request: the Starlette request to extract the token from (HTTP or Websocket)
+
+    Returns:
+        The token if it is found, None otherwise.
+    """
+    token = request.headers.get("Authorization", request.headers.get("Cookie"))
+    if not token:
+        return None
+    if token.startswith("Bearer "):
+        return token[len("Bearer "):]
+    if token.startswith("jwt="):
+        return token[len("jwt="):]
+    return None

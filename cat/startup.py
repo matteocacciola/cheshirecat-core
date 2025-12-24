@@ -12,7 +12,8 @@ from cat.exceptions import (
     LoadMemoryException,
     CustomValidationException,
     CustomNotFoundException,
-    CustomForbiddenException
+    CustomForbiddenException,
+    CustomUnauthorizedException,
 )
 from cat.log import log
 from cat.routes import (
@@ -161,6 +162,12 @@ async def custom_not_found_exception_handler(request, exc):
 async def custom_forbidden_exception_handler(request, exc):
     log.error(exc)
     return JSONResponse(status_code=403, content={"detail": str(exc)})
+
+
+@cheshire_cat_api.exception_handler(CustomUnauthorizedException)
+async def custom_unauthorized_exception_handler(request, exc):
+    log.error(exc)
+    return JSONResponse(status_code=401, content={"detail": str(exc)})
 
 
 # openapi customization

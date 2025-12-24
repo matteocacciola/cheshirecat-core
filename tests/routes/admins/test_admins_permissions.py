@@ -1,5 +1,6 @@
 import pytest
 
+from cat.auth.permissions import get_base_permissions
 from cat.env import get_env
 
 # test endpoints with different user permissions
@@ -22,7 +23,7 @@ from cat.env import get_env
     {
         "method": "POST",
         "path": "/admins/users",
-        "payload": {"username": "Alice", "password": "12345"}
+        "payload": {"username": "Alice", "password": "12345", "permissions": get_base_permissions()}
     },
     {
         "method": "PUT",
@@ -44,7 +45,7 @@ def test_admins_permissions(secure_client, endpoint):
     # we create it using directly CCAT_API_KEY
     response = secure_client.post(
         "/admins/users",
-        json={"username": "Caterpillar", "password": "U R U"},
+        json={"username": "Caterpillar", "password": "U R U", "permissions": get_base_permissions()},
         headers={"Authorization": f"Bearer {get_env('CCAT_API_KEY')}"},
     )
     assert response.status_code == 200
@@ -58,8 +59,8 @@ def test_admins_permissions(secure_client, endpoint):
         endpoint["path"].replace("ID_PLACEHOLDER", target_admin_id),
         json=endpoint["payload"]
     )
-    assert res.status_code == 403
-    assert res.json()["detail"] == "Invalid Credentials"
+    assert res.status_code == 401
+    assert res.json()["detail"] == "Unauthorized"
 
     # obtain JWT
     res = secure_client.post("/auth/token", json=credentials)

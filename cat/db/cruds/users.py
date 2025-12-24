@@ -1,3 +1,4 @@
+import json
 import time
 from typing import Dict
 from uuid import uuid4
@@ -5,7 +6,59 @@ from redis.exceptions import RedisError
 
 from cat.auth.auth_utils import hash_password, check_password
 from cat.db import crud
+from cat.db.crud import get_db
 from cat.log import log
+
+
+USERNAME_SEARCH_SCRIPT = """
+local matches = {}
+local cursor = "0"
+local pattern = "*:users"
+local username = ARGV[1]
+
+repeat
+    local result = redis.call("SCAN", cursor, "MATCH", pattern, "COUNT", 100)
+    cursor = result[1]
+    local keys = result[2]
+
+    for i, key in ipairs(keys) do
+        local data = redis.call("JSON.GET", key)
+
+        if data then
+            local users_obj = cjson.decode(data)
+
+            for user_id, user in pairs(users_obj) do
+                if user.username == username then
+                    local agent_id = string.match(key, "(.+):users")
+
+                    -- Get agent metadata
+                    local agent_info = redis.call("JSON.GET", agent_id .. ":info")
+                    local agent_name = agent_id
+                    local agent_description = nil
+
+                    if agent_info then
+                        local info = cjson.decode(agent_info)
+                        agent_name = info.name or agent_id
+                        agent_description = info.description
+                    end
+
+                    table.insert(matches, cjson.encode({
+                        user = user,
+                        agent_id = agent_id,
+                        agent_name = agent_name,
+                        agent_description = agent_description
+                    }))
+                end
+            end
+        end
+    end
+until cursor == "0"
+
+if #matches > 0 then
+    return cjson.encode(matches)
+end
+return nil
+"""
 
 
 def _extract_user_data(user_data: Dict, excluded_keys: Dict | None = None) -> Dict:
@@ -327,3 +380,34 @@ def destroy_all(agent_id: str):
     except RedisError as e:
         log.error(f"Redis error destroying users for {agent_id}: {e}")
         raise
+
+
+def username_search(username: str) -> Dict[str] | None:
+    """
+    Search for users by username across all agents.
+
+    Args:
+        username: Username to search for.
+
+    Returns:
+        Dictionary of matching users with agent metadata, or None if no matches found.
+
+    Raises:
+        RedisError: If Redis connection fails.
+    """
+    try:
+        redis_client = get_db()
+        username_search_sha = redis_client.script_load(USERNAME_SEARCH_SCRIPT)
+
+        # Phase 1: Find all users with this username across all agents
+        result = redis_client.evalsha(username_search_sha, 0, username)
+
+        if not result:
+            return None
+
+        # Phase 2: Verify password for each candidate
+        matches_raw = json.loads(result)
+        return matches_raw
+    except RedisError as e:
+        log.error(f"Redis error searching for username {username}: {e}")
+        return None

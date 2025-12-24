@@ -3,10 +3,10 @@ import time
 import jwt
 
 from cat.env import get_env
-from cat.auth.permissions import AuthPermission, AuthResource
+from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions
 from cat.auth.auth_utils import is_jwt, DEFAULT_JWT_ALGORITHM
 
-from tests.utils import agent_id, chat_id, create_new_user, get_base_permissions, api_key, new_user_password
+from tests.utils import agent_id, chat_id, create_new_user, api_key, new_user_password
 
 
 def test_is_jwt():
@@ -34,7 +34,7 @@ def test_refuse_issue_jwt(secure_client, client):
     res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
 
     # wrong credentials
-    assert res.status_code == 403
+    assert res.status_code == 401
     json = res.json()
     assert json["detail"] == "Invalid Credentials"
 
@@ -88,11 +88,15 @@ def test_issue_jwt_for_new_user(client, secure_client, secure_client_headers):
     # we should not obtain a JWT for this user
     # because it does not exist
     res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
-    assert res.status_code == 403
+    assert res.status_code == 401
     assert res.json()["detail"] == "Invalid Credentials"
 
     # let's create the user
-    res = secure_client.post("/users", json=creds, headers=secure_client_headers)
+    res = secure_client.post(
+        "/users",
+        json=creds | {"permissions": {str(AuthResource.CHESHIRE_CAT): [str(AuthPermission.WRITE)]}},
+        headers=secure_client_headers,
+    )
     assert res.status_code == 200
 
     # now we should get a JWT
@@ -118,8 +122,8 @@ def test_jwt_expiration(secure_client, client, cheshire_cat):
 
     # not allowed
     response = client.post("/message", headers={"X-Agent-ID": agent_id, "X-Chat-ID": chat_id}, json=message)
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Invalid Credentials"
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Unauthorized"
 
     # request JWT
     creds = {"username": "user", "password": new_user_password}
@@ -147,8 +151,8 @@ def test_jwt_expiration(secure_client, client, cheshire_cat):
     # not allowed because JWT expired
     headers = {"Authorization": f"Bearer {token}", "X-Agent-ID": agent_id, "X-Chat-ID": chat_id}
     response = client.post("/message", headers=headers, json=message)
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Invalid Credentials"
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Unauthorized"
 
     # restore default env
     if current_jwt_expire_minutes:
@@ -164,8 +168,8 @@ def test_jwt_imposes_user_id(secure_client, client, cheshire_cat):
 
     # not allowed
     response = client.post("/message", headers={"X-Agent-ID": agent_id, "X-Chat-ID": chat_id}, json=message)
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Invalid Credentials"
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Unauthorized"
 
     # request JWT
     creds = {"username": "user", "password": new_user_password}

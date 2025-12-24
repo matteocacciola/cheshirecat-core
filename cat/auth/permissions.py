@@ -21,7 +21,6 @@ class AuthResource(Enum):
     UPLOAD = "UPLOAD"
     PLUGIN = "PLUGIN"
     ANALYTICS = "ANALYTICS"
-    ME = "ME"
 
 
 class AuthPermission(Enum):
@@ -50,7 +49,6 @@ def get_base_permissions() -> Dict[str, List[str]]:
             str(AuthPermission.READ),
         ],
         str(AuthResource.CHAT): [str(p) for p in AuthPermission],
-        str(AuthResource.ME): [str(p) for p in AuthPermission],
     }
 
 
@@ -95,7 +93,7 @@ class AuthUserInfo(BaseModel):
     name: str
 
     # permissions
-    permissions: Dict[str, List[str]]
+    permissions: Dict[str, List[str]] | None = None
 
     # only put in here what you are comfortable to pass plugins:
     # - profile data

@@ -70,7 +70,7 @@ def test_upsert_auth_handler_settings(secure_client, secure_client_headers):
     response = secure_client.get("/auth_handler/settings", headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 403
-    assert json["detail"] == "Invalid Credentials"
+    assert json["detail"] == "Forbidden"
 
     ## let's use the configured api_key for http
     response = secure_client.get("/auth_handler/settings", headers=secure_client_headers)

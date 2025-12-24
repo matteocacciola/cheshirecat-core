@@ -6,7 +6,7 @@ from cat.auth.auth_utils import hash_password
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions, check_permissions
 from cat.db.cruds import users as crud_users
-from cat.exceptions import CustomNotFoundException, CustomForbiddenException
+from cat.exceptions import CustomNotFoundException, CustomValidationException
 from cat.routes.routes_utils import validate_permissions as fnc_validate_permissions
 
 router = APIRouter(tags=["Users"], prefix="/users")
@@ -22,34 +22,20 @@ class UserBase(BaseModel):
         return fnc_validate_permissions(v, AuthResource)
 
 
-class UserBaseRequest(UserBase):
-    def __init__(self, **data):
-        permissions = data.get("permissions", {})
-        # Ensure to attach all permissions for 'me'
-        permissions[str(AuthResource.ME)] = [str(p) for p in AuthPermission]
-        data["permissions"] = permissions
-
-        super().__init__(**data)
-
-
-class UserCreate(UserBaseRequest):
+class UserCreate(UserBase):
     id: str | None = None
     password: str = Field(min_length=5)
     # no additional fields allowed
     model_config = ConfigDict(extra="forbid")
 
 
-class UserUpdate(UserBaseRequest):
+class UserUpdate(UserBase):
     password: str = Field(default=None, min_length=5)
     model_config = ConfigDict(extra="forbid")
 
 
 class UserResponse(UserBase):
     id: str
-
-    def __init__(self, **data):
-        super().__init__(**data)
-        self.permissions.pop(str(AuthResource.ME), None)
 
 
 @router.post("/", response_model=UserResponse)
@@ -60,7 +46,7 @@ async def create_user(
     agent_id = info.cheshire_cat.id
     created_user = crud_users.create_user(agent_id, new_user.model_dump())
     if not created_user:
-        raise CustomForbiddenException("Cannot duplicate user")
+        raise CustomValidationException("Cannot duplicate user")
 
     return UserResponse(**created_user)
 
@@ -119,12 +105,3 @@ async def delete_user(
         raise CustomNotFoundException("User not found")
 
     return UserResponse(**deleted_user)
-
-
-@router.get("/me", response_model=UserBase)
-async def me(
-    info: AuthorizedInfo = check_permissions(AuthResource.ME, AuthPermission.READ),
-) -> UserBase:
-    user = info.user
-
-    return UserBase(username=user.name, permissions=user.permissions)

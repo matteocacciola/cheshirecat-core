@@ -22,7 +22,7 @@ from cat.auth.permissions import AuthPermission
 from cat.db.cruds import settings as crud_settings
 from cat.db.database import DEFAULT_AGENT_KEY
 from cat.env import get_env
-from cat.exceptions import CustomForbiddenException, CustomValidationException
+from cat.exceptions import CustomUnauthorizedException, CustomValidationException
 from cat.factory.base_factory import BaseFactory
 from cat.log import log
 from cat.looking_glass import BillTheLizard
@@ -154,7 +154,7 @@ async def auth_token(credentials: UserCredentials, agent_id: str):
         # Invalid username or password
         # wait a little to avoid brute force attacks
         await asyncio.sleep(1)
-        raise CustomForbiddenException("Invalid Credentials")
+        raise CustomUnauthorizedException("Invalid Credentials")
 
     # using seconds for easier testing
     expire_delta_in_seconds = float(get_env("CCAT_JWT_EXPIRE_MINUTES")) * 60

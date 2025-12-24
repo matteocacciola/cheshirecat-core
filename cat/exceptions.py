@@ -16,3 +16,7 @@ class CustomNotFoundException(Exception):
 
 class CustomForbiddenException(Exception):
     pass
+
+
+class CustomUnauthorizedException(Exception):
+    pass

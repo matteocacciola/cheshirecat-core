@@ -2,10 +2,11 @@ import os
 import pytest
 from fastapi import WebSocketDisconnect
 
+from cat.auth.permissions import get_base_permissions
 from cat.env import get_env
 
 from tests.conftest import api_key
-from tests.utils import send_websocket_message, agent_id, create_new_user, get_base_permissions, new_user_password
+from tests.utils import send_websocket_message, agent_id, create_new_user, new_user_password
 
 
 # utility to make http requests with some headers
@@ -52,8 +53,8 @@ def test_api_key_http(secure_client, client):
     # all the previous headers result in a 403
     for headers in wrong_headers:
         status_code, json = http_message(secure_client, headers | {"X-Agent-ID": agent_id})
-        assert status_code == 403
-        assert json["detail"] == "Invalid Credentials"
+        assert status_code == 401
+        assert json["detail"] == "Unauthorized"
 
     # allow access if CCAT_API_KEY is right
     res = client.post(

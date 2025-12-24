@@ -1,10 +1,11 @@
 from cat import AuthPermission
 from cat.auth.permissions import AuthResource
 
+from cat.auth.permissions import get_full_permissions
+
 from tests.utils import (
     create_new_user,
     get_client_admin_headers,
-    get_full_permissions,
     new_user_password,
     agent_id,
 )

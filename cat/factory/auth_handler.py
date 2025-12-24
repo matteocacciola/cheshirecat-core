@@ -4,7 +4,7 @@ import jwt
 from fastapi.requests import HTTPConnection
 from pydantic import ConfigDict
 
-from cat.auth.auth_utils import is_jwt, extract_user_info_on_api_key, DEFAULT_JWT_ALGORITHM
+from cat.auth.auth_utils import is_jwt, extract_user_info_on_api_key, extract_token_from_request, DEFAULT_JWT_ALGORITHM
 from cat.auth.permissions import AuthResource, AuthPermission, AuthUserInfo
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
@@ -46,7 +46,7 @@ class BaseAuthHandler(ABC):
         protocol = request.scope.get("type")
 
         # extract token from request
-        token = self.extract_token(request)
+        token = extract_token_from_request(request)
         if protocol == "http":
             user_id = self.extract_user_id_http(request)
         elif protocol == "websocket":
@@ -64,27 +64,6 @@ class BaseAuthHandler(ABC):
 
         # API_KEY auth
         return self.authorize_user_from_key(protocol, token, auth_resource, auth_permission, key_id, user_id)
-
-    def extract_token(self, request: HTTPConnection) -> str | None:
-        """
-        Extract the token from a request. This method is used to extract the token from the request by inspecting either
-        the `Authorization: Bearer <token>` or the `Cookie: jwt=<token>` header. It should return the token if it is
-        found, otherwise it should return None.
-
-        Args:
-            request: the Starlette request to extract the token from (HTTP or Websocket)
-
-        Returns:
-            The token if it is found, None otherwise.
-        """
-        token = request.headers.get("Authorization", request.headers.get("Cookie"))
-        if not token:
-            return None
-        if token.startswith("Bearer "):
-            return token[len("Bearer "):]
-        if token.startswith("jwt="):
-            return token[len("jwt="):]
-        return None
 
     @abstractmethod
     def extract_user_id_http(self, request: HTTPConnection) -> str | None:
@@ -202,7 +181,11 @@ class CoreAuthHandler(BaseAuthHandler):
 
         if ar not in user["permissions"].keys() or ap not in user["permissions"][ar]:
             # do not pass
-            return None
+            return AuthUserInfo(
+                id=user["id"],
+                name=payload["sub"],
+                extra=user,
+            )
 
         return AuthUserInfo(
             id=user["id"],
@@ -230,7 +213,10 @@ class CoreAuthHandler(BaseAuthHandler):
 
         # No match -> deny access
         if not user_info.permissions:
-            return None
+            return AuthUserInfo(
+                id=user_info.user_id,
+                name=user_info.username,
+            )
 
         return AuthUserInfo(
             id=user_info.user_id,

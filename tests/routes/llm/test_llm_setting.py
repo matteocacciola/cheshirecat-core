@@ -78,7 +78,7 @@ def test_upsert_llm_settings_success(secure_client, secure_client_headers):
 
 def test_forbidden_access_no_auth(client):
     response = client.get("/llm/settings")
-    assert response.status_code == 403
+    assert response.status_code == 401
 
 
 def test_granted_access_on_permissions(secure_client, secure_client_headers, client):
@@ -105,7 +105,7 @@ def test_forbidden_access_no_permission(secure_client, secure_client_headers, cl
 
     response = client.get("/llm/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
     assert response.status_code == 403
-    assert response.json()["detail"] == "Invalid Credentials"
+    assert response.json()["detail"] == "Forbidden"
 
 
 def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client):
@@ -119,4 +119,4 @@ def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers
 
     response = client.get("/llm/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
     assert response.status_code == 403
-    assert response.json()["detail"] == "Invalid Credentials"
+    assert response.json()["detail"] == "Forbidden"

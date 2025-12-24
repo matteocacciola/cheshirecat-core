@@ -1,3 +1,4 @@
+from cat.auth.permissions import get_base_permissions
 from cat.memory.utils import VectorMemoryType
 
 from tests.utils import (
@@ -6,7 +7,6 @@ from tests.utils import (
     api_key,
     send_file,
     create_new_user,
-    get_base_permissions,
     agent_id,
     new_user_password,
 )

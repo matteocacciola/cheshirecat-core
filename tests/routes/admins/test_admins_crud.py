@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
+from cat.auth.permissions import get_full_permissions
 from cat.env import get_env
 from cat.routes.admins.crud import AdminBase, AdminUpdate
 
@@ -8,7 +9,6 @@ from tests.utils import (
     create_new_user,
     check_user_fields,
     get_client_admin_headers,
-    get_full_permissions,
     new_user_password,
 )
 
@@ -35,7 +35,7 @@ def test_create_admin(client):
     check_user_fields(data)
 
     assert data["username"] == "Alice"
-    assert len(data["permissions"]) == 0
+    assert len(data["permissions"]) == 1
 
 
 def test_cannot_create_duplicate_admin(client):
@@ -46,7 +46,7 @@ def test_cannot_create_duplicate_admin(client):
     response = client.post(
         "/admins/users", json={"username": "Alice", "password": "ecilA"}, headers=get_client_admin_headers(client)
     )
-    assert response.status_code == 403
+    assert response.status_code == 400
     assert response.json()["detail"] == "Cannot duplicate admin"
 
 
@@ -73,7 +73,7 @@ def test_get_admins(client):
         check_user_fields(d)
         assert d["username"] in ["admin", "Alice"]
         if d["username"] == "Alice":
-            assert len(d["permissions"]) == 0
+            assert len(d["permissions"]) == 1
         else:
             assert d["permissions"] == get_full_permissions()
 
@@ -95,7 +95,7 @@ def test_get_admin(client):
     # check admin integrity and values
     check_user_fields(data)
     assert data["username"] == "Alice"
-    assert len(data["permissions"]) == 0
+    assert len(data["permissions"]) == 1
 
 
 def test_update_admin(client):
@@ -119,7 +119,7 @@ def test_update_admin(client):
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice"
-    assert len(data["permissions"]) == 0
+    assert len(data["permissions"]) == 1
 
     # update password
     updated_admin = {"username": data["username"], "password": "12345", "permissions": data["permissions"]}
@@ -128,7 +128,7 @@ def test_update_admin(client):
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice"
-    assert len(data["permissions"]) == 0
+    assert len(data["permissions"]) == 1
     assert "password" not in data # api will not send passwords around
 
     # change username
@@ -138,7 +138,7 @@ def test_update_admin(client):
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice2"
-    assert len(data["permissions"]) == 0
+    assert len(data["permissions"]) == 1
 
     # change permissions
     updated_admin = {"username": data["username"], "permissions": {"EMBEDDER": ["READ"]}}
@@ -208,18 +208,18 @@ def test_no_access_if_api_keys_active(secure_client):
         "/admins/users",
         json={"username": "Alice", "password": new_user_password},
     )
-    assert response.status_code == 403
+    assert response.status_code == 401
 
     # read admins (forbidden)
     response = secure_client.get("/admins/users")
-    assert response.status_code == 403
+    assert response.status_code == 401
 
     # edit admin (forbidden)
     response = secure_client.put(
         "/admins/users/non_existent_id", # it does not exist, but request should be blocked before the check
         json={"username": "Alice"},
     )
-    assert response.status_code == 403
+    assert response.status_code == 401
 
     # check default list giving the correct CCAT_API_KEY
     headers = {"Authorization": f"Bearer {get_env('CCAT_API_KEY')}"}

@@ -6,7 +6,7 @@ from cat.auth.auth_utils import hash_password
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
 from cat.db.cruds import users as crud_users
-from cat.exceptions import CustomNotFoundException, CustomForbiddenException
+from cat.exceptions import CustomNotFoundException, CustomValidationException
 from cat.routes.routes_utils import validate_permissions as fnc_validate_permissions
 
 router = APIRouter(tags=["Admins"], prefix="/users")
@@ -22,33 +22,19 @@ class AdminBase(BaseModel):
         return fnc_validate_permissions(v, AuthResource)
 
 
-class AdminBaseRequest(AdminBase):
-    def __init__(self, **data):
-        permissions = data.get("permissions", {})
-        # Ensure to attach all permissions for 'me'
-        permissions[str(AuthResource.ME)] = [str(p) for p in AuthPermission]
-        data["permissions"] = permissions
-
-        super().__init__(**data)
-
-
-class AdminCreate(AdminBaseRequest):
+class AdminCreate(AdminBase):
     password: str = Field(min_length=5)
     # no additional fields allowed
     model_config = ConfigDict(extra="forbid")
 
 
-class AdminUpdate(AdminBaseRequest):
+class AdminUpdate(AdminBase):
     password: str = Field(default=None, min_length=5)
     model_config = ConfigDict(extra="forbid")
 
 
 class AdminResponse(AdminBase):
     id: str
-
-    def __init__(self, **data):
-        super().__init__(**data)
-        self.permissions.pop(str(AuthResource.ME), None)
 
 
 @router.post("/", response_model=AdminResponse)
@@ -58,7 +44,7 @@ async def create_admin(
 ):
     created_user = crud_users.create_user(info.lizard.config_key, new_user.model_dump())
     if not created_user:
-        raise CustomForbiddenException("Cannot duplicate admin")
+        raise CustomValidationException("Cannot duplicate admin")
 
     return created_user
 

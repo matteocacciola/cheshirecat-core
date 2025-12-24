@@ -14,9 +14,6 @@ def test_session_creation_from_websocket(
         "/users",
         username=username,
         headers=secure_client_headers,
-        permissions={
-            str(AuthResource.CHAT): [str(AuthPermission.READ), str(AuthPermission.WRITE)],
-        }
     )
 
     # get the token, to be used in the websocket connection

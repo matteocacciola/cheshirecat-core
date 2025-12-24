@@ -2,7 +2,7 @@ from typing import Dict, List
 from fastapi import APIRouter, Request
 
 from cat.auth.auth_utils import extract_agent_id_from_request
-from cat.auth.permissions import get_full_permissions, AuthResource
+from cat.auth.permissions import get_full_permissions
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.routes.routes_utils import UserCredentials, JWTResponse, auth_token as fnc_auth_token
 
@@ -13,7 +13,7 @@ router = APIRouter(tags=["User Auth"], prefix="/auth")
 async def get_available_permissions() -> Dict[str, List[str]]:
     """Returns all available resources and permissions."""
     permissions = get_full_permissions()
-    return {resource: perms for resource, perms in permissions.items() if resource != AuthResource.ME}
+    return {resource: perms for resource, perms in permissions.items()}
 
 
 @router.post("/token", response_model=JWTResponse)
