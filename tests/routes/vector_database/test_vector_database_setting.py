@@ -100,10 +100,7 @@ def test_granted_access_on_permissions(secure_client, secure_client_headers, cli
     data = create_new_user(
         secure_client, "/users", headers=secure_client_headers, permissions={"VECTOR_DATABASE": ["LIST"]}
     )
-
-    creds = {"username": data["username"], "password": new_user_password}
-
-    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
+    res = client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 
     response = client.get(
@@ -115,10 +112,7 @@ def test_granted_access_on_permissions(secure_client, secure_client_headers, cli
 def test_forbidden_access_no_permission(secure_client, secure_client_headers, client):
     # create user
     data = create_new_user(secure_client, "/users", headers=secure_client_headers)
-
-    creds = {"username": data["username"], "password": new_user_password}
-
-    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
+    res = client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 
     response = client.get(
@@ -133,10 +127,7 @@ def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers
     data = create_new_user(
         secure_client, "/users", headers=secure_client_headers, permissions={"VECTOR_DATABASE": ["READ"]}
     )
-
-    creds = {"username": data["username"], "password": new_user_password}
-
-    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
+    res = client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 
     response = client.get(

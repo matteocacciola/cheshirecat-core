@@ -144,7 +144,6 @@ def test_convo_history_by_user(secure_client, secure_client_headers, client, moc
         res = client.post(
             "/auth/token",
             json={"username": data["username"], "password": new_user_password},
-            headers={"X-Agent-ID": agent_id}
         )
         received_token = res.json()["access_token"]
         tokens[username] = received_token
@@ -225,7 +224,6 @@ def test_change_name_to_conversation(secure_client, secure_client_headers, clien
     res = client.post(
         "/auth/token",
         json={"username": user["username"], "password": new_user_password},
-        headers={"X-Agent-ID": agent_id}
     )
     received_token = res.json()["access_token"]
 

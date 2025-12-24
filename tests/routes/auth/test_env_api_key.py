@@ -58,7 +58,7 @@ def test_api_key_http(secure_client, client):
 
     # allow access if CCAT_API_KEY is right
     res = client.post(
-        "/auth/token", json={"username": "user", "password": new_user_password}, headers={"X-Agent-ID": agent_id}
+        "/auth/token", json={"username": "user", "password": new_user_password},
     )
     received_token = res.json()["access_token"]
 
@@ -96,7 +96,7 @@ def test_api_key_ws(secure_client, secure_client_headers, client):
 
     # allow access if CCAT_API_KEY is right
     res = client.post(
-        "/auth/token", json={"username": "user", "password": new_user_password}, headers={"X-Agent-ID": agent_id}
+        "/auth/token", json={"username": "user", "password": new_user_password},
     )
     received_token = res.json()["access_token"]
 

@@ -165,9 +165,14 @@ class CoreAuthHandler(BaseAuthHandler):
         try:
             # decode token
             payload = jwt.decode(token, get_env("CCAT_JWT_SECRET"), algorithms=[DEFAULT_JWT_ALGORITHM])
+        except jwt.ExpiredSignatureError:
+            log.error("Token expired")
+            return None
+        except jwt.InvalidTokenError:
+            log.error("Invalid token")
+            return None
         except Exception as e:
             log.error(f"Could not auth user from JWT: {e}")
-            # do not pass
             return None
 
         # get user from DB

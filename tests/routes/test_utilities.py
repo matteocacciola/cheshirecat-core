@@ -149,8 +149,7 @@ async def test_agent_reset_success(client, lizard, cheshire_cat):
 @pytest.mark.asyncio
 async def test_agent_reset_by_agent_admin_success(secure_client, secure_client_headers, client, lizard, cheshire_cat):
     data = create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"CHESHIRE_CAT": ["WRITE"]})
-    creds = {"username": data["username"], "password": new_user_password}
-    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": cheshire_cat.agent_key})
+    res = client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
 
     await checks_on_agent_reset(res, client, cheshire_cat.id, lizard)
 

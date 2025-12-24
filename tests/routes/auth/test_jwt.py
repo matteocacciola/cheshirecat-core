@@ -31,7 +31,7 @@ def test_refuse_issue_jwt(secure_client, client):
         permissions=get_base_permissions(),
     )
 
-    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
+    res = client.post("/auth/token", json=creds)
 
     # wrong credentials
     assert res.status_code == 401
@@ -50,7 +50,7 @@ def test_issue_jwt(secure_client, client, cheshire_cat):
         password=creds["password"],
     )
 
-    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
+    res = client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     res_json = res.json()
@@ -87,7 +87,7 @@ def test_issue_jwt_for_new_user(client, secure_client, secure_client_headers):
 
     # we should not obtain a JWT for this user
     # because it does not exist
-    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
+    res = client.post("/auth/token", json=creds)
     assert res.status_code == 401
     assert res.json()["detail"] == "Invalid Credentials"
 
@@ -100,7 +100,7 @@ def test_issue_jwt_for_new_user(client, secure_client, secure_client_headers):
     assert res.status_code == 200
 
     # now we should get a JWT
-    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
+    res = client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     res_json = res.json()
@@ -136,7 +136,7 @@ def test_jwt_expiration(secure_client, client, cheshire_cat):
         password=creds["password"],
     )
 
-    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
+    res = client.post("/auth/token", json=creds)
     assert res.status_code == 200
     token = res.json()["access_token"]
 
@@ -181,7 +181,7 @@ def test_jwt_imposes_user_id(secure_client, client, cheshire_cat):
         permissions=get_base_permissions(),
         password=creds["password"],
     )
-    res = client.post("/auth/token", json=creds, headers={"X-Agent-ID": agent_id})
+    res = client.post("/auth/token", json=creds)
     assert res.status_code == 200
     token = res.json()["access_token"]
 

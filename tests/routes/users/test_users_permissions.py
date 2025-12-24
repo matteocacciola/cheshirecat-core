@@ -73,7 +73,7 @@ def test_users_permissions(secure_client, secure_client_headers, endpoint):
         permissions=get_base_permissions(),
         password=credentials["password"],
     )
-    res = secure_client.post("/auth/token", json=credentials, headers=secure_client_headers)
+    res = secure_client.post("/auth/token", json=credentials)
     assert res.status_code == 200
     jwt = res.json()["access_token"]
 

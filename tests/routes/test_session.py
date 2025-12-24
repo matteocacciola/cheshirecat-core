@@ -20,7 +20,6 @@ def test_session_creation_from_websocket(
     res = client.post(
         "/auth/token",
         json={"username": data["username"], "password": new_user_password},
-        headers={"X-Agent-ID": agent_id}
     )
     received_token = res.json()["access_token"]
     user_id = data["id"]
