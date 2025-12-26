@@ -10,7 +10,7 @@ from cat.db.cruds import (
 )
 from cat.db.database import get_db
 from cat.env import get_env
-from cat.memory.utils import VectorMemoryType
+from cat.services.memory.utils import VectorMemoryType
 
 from tests.utils import create_new_user, get_client_admin_headers, new_user_password
 
@@ -271,7 +271,7 @@ async def test_clone_agent(secure_client, secure_client_headers, lizard, cheshir
     assert set(plugins) == set(cloned_plugins)
 
     # check that the vector memory points were cloned
-    cloned_ccat = lizard.get_cheshire_cat_from_db(new_agent_id)
+    cloned_ccat = lizard.get_cheshire_cat(new_agent_id)
     original_points, _ = await cheshire_cat.vector_memory_handler.get_all_tenant_points(
         str(VectorMemoryType.DECLARATIVE), with_vectors=True
     )

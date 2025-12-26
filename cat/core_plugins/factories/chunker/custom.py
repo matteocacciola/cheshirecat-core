@@ -13,7 +13,7 @@ from cat.core_plugins.factories.chunker.hierarchical_chunker import (
     HierarchicalChunker as HierarchicalAnalyzer,
     MathAwareHierarchicalChunker as MathAwareHierarchicalAnalyzer,
 )
-from cat.factory.chunker import BaseChunker
+from cat.services.factory.chunker import BaseChunker
 
 
 class SemanticChunker(BaseChunker):

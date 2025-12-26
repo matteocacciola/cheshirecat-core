@@ -107,7 +107,7 @@ async def run_agent(
         AgentOutput
             The final output from the agent, including text and any actions taken.
     """
-    from cat.looking_glass import LoggingCallbackHandler
+    from cat.looking_glass.callbacks import LoggingCallbackHandler
 
     callbacks = callbacks or []
     callbacks.append(LoggingCallbackHandler())

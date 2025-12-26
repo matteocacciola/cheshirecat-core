@@ -15,11 +15,11 @@ from cat.auth.permissions import AuthUserInfo, get_base_permissions
 from cat.core_plugins.march_hare.march_hare import MarchHare
 from cat.db.database import Database
 from cat.env import get_env
-from cat.factory.vector_db import QdrantHandler
 from cat.looking_glass import BillTheLizard, StrayCat
 from cat.looking_glass.mad_hatter.plugin import Plugin
-from cat.memory.messages import UserMessage
 from cat.startup import cheshire_cat_api
+from cat.services.memory.messages import UserMessage
+from cat.services.factory.vector_db import QdrantHandler
 import cat.utils as utils
 
 from tests.utils import (
@@ -146,6 +146,7 @@ async def encapsulate_each_test(request, monkeypatch):
 @pytest_asyncio.fixture(scope="function")
 async def lizard(encapsulate_each_test):
     l = BillTheLizard()
+    l.bootstrap_services()
     l.fastapi_app = cheshire_cat_api
     yield l
 
@@ -227,9 +228,8 @@ def agent_plugin_manager(cheshire_cat):
 async def stray_no_memory(cheshire_cat, agent_plugin_manager):
     stray_cat = StrayCat(
         user_data=AuthUserInfo(id="user_alice", name="Alice", permissions=get_base_permissions()),
-        agent_id=cheshire_cat.id
+        agent_id=cheshire_cat.id,
     )
-
     yield stray_cat
 
 

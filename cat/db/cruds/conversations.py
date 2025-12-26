@@ -4,7 +4,7 @@ from redis.exceptions import RedisError
 
 from cat.db import crud
 from cat.log import log
-from cat.memory.messages import ConversationMessage
+from cat.services.memory.messages import ConversationMessage
 
 
 def _get_expiration() -> int | None:

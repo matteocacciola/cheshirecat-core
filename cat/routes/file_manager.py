@@ -9,16 +9,9 @@ from starlette.responses import StreamingResponse
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
 from cat.exceptions import CustomNotFoundException, CustomValidationException
-from cat.factory.file_manager import FileManagerFactory, FileManagerAttributes
-from cat.memory.utils import VectorMemoryType
-from cat.routes.routes_utils import (
-    GetSettingsResponse,
-    GetSettingResponse,
-    UpsertSettingResponse,
-    get_factory_settings,
-    get_factory_setting,
-    on_upsert_factory_setting,
-)
+from cat.services.factory.base_factory import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
+from cat.services.factory.file_manager import FileManagerFactory, FileManagerAttributes
+from cat.services.memory.utils import VectorMemoryType
 
 router = APIRouter(tags=["File Manager"], prefix="/file_manager")
 
@@ -34,7 +27,7 @@ async def get_file_managers_settings(
 ) -> GetSettingsResponse:
     """Get the list of the File Managers and their settings"""
     ccat = info.cheshire_cat
-    return get_factory_settings(ccat.id, FileManagerFactory(ccat.plugin_manager))
+    return FileManagerFactory(ccat.plugin_manager).get_factory_settings(ccat.id)
 
 
 @router.get("/settings/{file_manager_name}", response_model=GetSettingResponse)
@@ -44,8 +37,7 @@ async def get_file_manager_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified File Manager"""
     ccat = info.cheshire_cat
-    factory = FileManagerFactory(ccat.plugin_manager)
-    return get_factory_setting(ccat.id, file_manager_name, factory)
+    return FileManagerFactory(ccat.plugin_manager).get_factory_setting(ccat.id, file_manager_name)
 
 
 @router.put("/settings/{file_manager_name}", response_model=UpsertSettingResponse)
@@ -56,9 +48,9 @@ async def upsert_file_manager_setting(
 ) -> UpsertSettingResponse:
     """Upsert the File Manager setting"""
     ccat = info.cheshire_cat
-    on_upsert_factory_setting(file_manager_name, FileManagerFactory(ccat.plugin_manager))
 
-    return UpsertSettingResponse(**ccat.replace_file_manager(file_manager_name, payload))
+    result = FileManagerFactory(ccat.plugin_manager).upsert_service(ccat.agent_key, file_manager_name, payload)
+    return UpsertSettingResponse(**result)
 
 
 @router.get("/", response_model=FileManagerAttributes)
@@ -124,6 +116,7 @@ async def download_file(
         headers={"Content-Disposition": f"attachment; filename={safe_filename}"}
     )
 
+
 @router.delete("/files/{source_name}")
 async def delete_file(
     source_name: str,
@@ -144,6 +137,7 @@ async def delete_file(
         return FileManagerDeletedFiles(deleted=res)
     except Exception as e:
         raise CustomValidationException(f"Failed to delete memory points: {e}")
+
 
 @router.delete("/files")
 async def delete_files(

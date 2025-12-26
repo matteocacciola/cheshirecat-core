@@ -1,7 +1,7 @@
 from typing import Literal
 from pydantic import Field
 
-from cat.memory.interactions import ModelInteraction
+from cat.services.memory.interactions import ModelInteraction
 
 
 class LLMModelInteraction(ModelInteraction):

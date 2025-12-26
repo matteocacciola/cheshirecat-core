@@ -15,7 +15,6 @@ from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, ConfigDict
 from rapidfuzz.distance import Levenshtein
 
-from cat.db import models
 from cat.log import log
 
 _T = TypeVar("_T")
@@ -344,51 +343,6 @@ def default_llm_answer_prompt() -> str:
     return "AI: You did not configure a Language Model. Do it in the settings!"
 
 
-def get_factory_object(agent_id: str, factory: "BaseFactory") -> Any:
-    from cat.db.cruds import settings as crud_settings
-
-    if not (selected_config := crud_settings.get_settings_by_category(agent_id, factory.setting_category)):
-        # if no config is saved, use default one and save to db
-        # create the settings for the factory
-        crud_settings.upsert_setting_by_name(
-            agent_id,
-            models.Setting(
-                name=factory.default_config_class.__name__,
-                category=factory.setting_category,
-                value=factory.default_config,
-            ),
-        )
-    
-        # reload from db and return
-        selected_config = crud_settings.get_settings_by_category(agent_id, factory.setting_category)
-
-    return factory.get_from_config_name(agent_id, selected_config["name"])
-
-
-def get_updated_factory_object(
-    agent_id: str, factory: "BaseFactory", settings_name: str, settings: Dict
-) -> UpdaterFactory:
-    from cat.db.cruds import settings as crud_settings
-    from cat.services.string_crypto import StringCrypto
-
-    current_setting = crud_settings.get_settings_by_category(agent_id, factory.setting_category)
-
-    # upsert the settings for the factory
-    crypto = StringCrypto()
-    final_setting = crud_settings.upsert_setting_by_category(agent_id, models.Setting(
-        name=settings_name,
-        category=factory.setting_category,
-        value={
-            k: crypto.encrypt(v)
-            if isinstance(v, str) and any(suffix in k for suffix in ["_key", "_secret"])
-            else v
-            for k, v in settings.items()
-        },
-    ))
-
-    return UpdaterFactory(old_setting=current_setting, new_setting=final_setting)
-
-
 def pod_id() -> str:
     if not os.path.exists(".pod_id"):
         p_id = hashlib.sha256(os.urandom(16)).hexdigest()[:8]
@@ -539,21 +493,3 @@ def colored_text(text: str, color: str):
 
     color_str = colors[color]
     return f"\u001b[{color_str}m\033[1;3m{text}\u001b[0m"
-
-
-def get_nlp_object_name(nlp_object: Any, default: str) -> str:
-    name = default
-    if hasattr(nlp_object, "repo_id"):
-        name = nlp_object.repo_id
-    elif hasattr(nlp_object, "model_path"):
-        name = nlp_object.model_path
-    elif hasattr(nlp_object, "model_name"):
-        name = nlp_object.model_name
-    elif hasattr(nlp_object, "model"):
-        name = nlp_object.model
-
-    replaces = ["/", "-", "."]
-    for v in replaces:
-        name = name.replace(v, "_")
-
-    return name.lower()

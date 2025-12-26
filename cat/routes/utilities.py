@@ -9,8 +9,8 @@ from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.db import crud
 from cat.db.database import get_db
 from cat.log import log
-from cat.memory.utils import VectorMemoryType
 from cat.routes.routes_utils import startup_app, shutdown_app
+from cat.services.memory.utils import VectorMemoryType
 from cat.utils import get_plugins_path
 
 router = APIRouter(tags=["Utilities"], prefix="/utils")
@@ -46,7 +46,7 @@ async def factory_reset(
     cheshire_cats_ids = crud.get_agents_main_keys()
     deleted_memories = False
     for agent_id in cheshire_cats_ids:
-        ccat = info.lizard.get_cheshire_cat_from_db(agent_id)
+        ccat = info.lizard.get_cheshire_cat(agent_id)
         if not ccat:
             continue
         try:
@@ -119,7 +119,6 @@ async def agent_create(
 
 @router.post("/agents/destroy", response_model=ResetResponse)
 async def agent_destroy(
-    request: Request,
     info: AuthorizedInfo = check_permissions(AuthResource.CHESHIRE_CAT, AuthPermission.DELETE),
 ) -> ResetResponse:
     """
@@ -192,7 +191,7 @@ async def agent_clone(
         crud.clone_agent(ccat.agent_key, agent_id, ["analytics"])
 
         # clone the vector points from the ccat to the provided agent
-        cloned_ccat = ccat.lizard.get_cheshire_cat_from_db(agent_id)
+        cloned_ccat = info.lizard.get_cheshire_cat(agent_id)
         await cloned_ccat.embed_procedures()
 
         log.info(f"Cloning vector memory from agent {ccat.agent_key} to agent {agent_id}")

@@ -1,8 +1,7 @@
 from copy import deepcopy
-from typing import Dict, List
+from typing import List
 from uuid import uuid4
 from fastapi import FastAPI
-from langchain_core.embeddings import Embeddings
 
 from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
 from cat.auth.permissions import get_full_permissions
@@ -10,27 +9,19 @@ from cat.db import crud
 from cat.db.cruds import settings as crud_settings, users as crud_users
 from cat.db.database import DEFAULT_SYSTEM_KEY, UNALLOWED_AGENT_KEYS
 from cat.env import get_env
-from cat.exceptions import LoadMemoryException
-from cat.factory.auth_handler import CoreAuthHandler
-from cat.factory.embedder import EmbedderFactory
-from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.mad_hatter.decorators.endpoint import CatEndpoint
 from cat.looking_glass.tweedledum import Tweedledum
 from cat.rabbit_hole import RabbitHole
+from cat.services.factory.auth_handler import CoreAuthHandler
+from cat.services.mixin import OrchestratorMixin
 from cat.services.websocket_manager import WebSocketManager
-from cat.utils import (
-    singleton,
-    explicit_error_message,
-    get_factory_object,
-    get_nlp_object_name,
-    get_updated_factory_object,
-)
+from cat.utils import singleton
 
 
 @singleton
-class BillTheLizard:
+class BillTheLizard(OrchestratorMixin):
     """
     Singleton class that manages the Cheshire Cats and their strays.
 
@@ -56,13 +47,8 @@ class BillTheLizard:
         self.dispatcher = HumptyDumpty()
         self.dispatcher.subscribe_from(self)
 
-        self._key = DEFAULT_SYSTEM_KEY
-
         self._fastapi_app = None
         self._pending_endpoints = []
-
-        self.embedder: Embeddings | None = None
-        self.embedder_size: int | None = None
 
         # load active plugins
         self.plugin_manager = Tweedledum()
@@ -71,10 +57,10 @@ class BillTheLizard:
         # allows plugins to do something before cat components are loaded
         self.plugin_manager.execute_hook("before_lizard_bootstrap", caller=self)
 
-        self.websocket_manager = WebSocketManager()
+        # bootstrap bill the lizard
+        super().__init__()
 
-        # load embedder
-        self.load_language_embedder()
+        self.websocket_manager = WebSocketManager()
 
         # Rabbit Hole Instance
         self.rabbit_hole = RabbitHole()
@@ -82,10 +68,13 @@ class BillTheLizard:
         self.core_auth_handler = CoreAuthHandler()
 
         # Initialize the default admin if not present
-        if not crud_users.get_users(self._key):
+        if not crud_users.get_users(self.agent_key):
             self.initialize_users()
 
         self.plugin_manager.execute_hook("after_lizard_bootstrap", caller=self)
+
+    def bootstrap_services(self):
+        self.service_provider.bootstrap_services_orchestrator()
 
     @subscriber("on_end_plugin_install")
     def on_end_plugin_install(self, plugin_id: str, plugin_path: str) -> None:
@@ -132,7 +121,7 @@ class BillTheLizard:
         for ccat_id in crud.get_agents_plugin_keys(plugin_id):
             ccat = self.get_cheshire_cat(ccat_id)
             # if the plugin is not active for the Cheshire Cat, then skip it
-            if not ccat.plugin_manager.local_plugin_exists(plugin_id):
+            if ccat is None or not ccat.plugin_manager.local_plugin_exists(plugin_id):
                 continue
             # if the plugin is active for the Cheshire Cat, then re-activate to incrementally apply the new settings
             ccat.plugin_manager.activate_plugin(plugin_id, dispatch_events=False)
@@ -142,6 +131,8 @@ class BillTheLizard:
         # deactivate plugins in the Cheshire Cats
         for ccat_id in crud.get_agents_plugin_keys(plugin_id):
             ccat = self.get_cheshire_cat(ccat_id)
+            if ccat is None:
+                continue
             ccat.plugin_manager.deactivate_plugin(plugin_id, dispatch_events=False)
 
     def _activate_pending_endpoints(self) -> None:
@@ -158,7 +149,7 @@ class BillTheLizard:
     def initialize_users(self):
         admin_id = str(uuid4())
 
-        crud_users.set_users(self._key, {
+        crud_users.set_users(self.agent_key, {
             admin_id: {
                 "id": admin_id,
                 "username": DEFAULT_ADMIN_USERNAME,
@@ -167,68 +158,6 @@ class BillTheLizard:
                 "permissions": get_full_permissions()
             }
         })
-
-    def load_language_embedder(self):
-        """
-        Hook into the embedder selection. Allows to modify how the Lizard selects the embedder at bootstrap time.
-        """
-        factory = EmbedderFactory(self.plugin_manager)
-
-        # Get embedder size (langchain classes do not store it)
-        self.embedder = get_factory_object(self._key, factory)
-        self.embedder_size = len(self.embedder.embed_query("hello world"))
-
-    async def replace_embedder(self, language_embedder_name: str, settings: Dict) -> Dict:
-        """
-        Replace the current embedder with a new one. This method is used to change the embedder of the lizard.
-
-        Args:
-            language_embedder_name: name of the new embedder
-            settings: settings of the new embedder
-
-        Returns:
-            The dictionary resuming the new name and settings of the embedder
-        """
-        factory = EmbedderFactory(self.plugin_manager)
-        updater = get_updated_factory_object(self._key, factory, language_embedder_name, settings)
-
-        try:
-            # reload the embedder of the lizard
-            self.load_language_embedder()
-
-            for ccat_id in crud.get_agents_main_keys():
-                ccat = self.get_cheshire_cat(ccat_id)
-
-                # inform the Cheshire Cats about the new embedder available in the system
-                await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
-        except Exception as e:  # restore the original Embedder
-            log.error(e)
-
-            # something went wrong: rollback
-            if updater.old_setting is not None:
-                await self.replace_embedder(updater.old_setting["name"], updater.old_setting["value"])
-
-            raise LoadMemoryException(f"Load memory exception: {explicit_error_message(e)}")
-
-        return {"name": language_embedder_name, "value": updater.new_setting["value"]}
-
-    def get_cheshire_cat(self, agent_id: str) -> CheshireCat | None:
-        """
-        Get the Cheshire Cat with the given id, directly from db.
-
-        Args:
-            agent_id: The id of the agent to get
-
-        Returns:
-            The Cheshire Cat with the given id, or None if it doesn't exist
-        """
-        if agent_id == DEFAULT_SYSTEM_KEY:
-            raise ValueError(f"`{DEFAULT_SYSTEM_KEY}` is a reserved name for agents")
-
-        if agent_id not in crud.get_agents_main_keys():
-            raise ValueError(f"`{agent_id}` is not a valid agent id")
-
-        return CheshireCat(agent_id)
 
     async def create_cheshire_cat(self, agent_id: str) -> CheshireCat:
         """
@@ -247,11 +176,12 @@ class BillTheLizard:
             return self.get_cheshire_cat(agent_id)
 
         ccat = CheshireCat(agent_id)
+        ccat.bootstrap_services()
         await ccat.embed_procedures()
 
         return ccat
 
-    def get_cheshire_cat_from_db(self, agent_id: str) -> CheshireCat | None:
+    def get_cheshire_cat(self, agent_id: str) -> CheshireCat | None:
         """
         Gets the Cheshire Cat with the given id, directly from db.
 
@@ -261,11 +191,17 @@ class BillTheLizard:
         Returns:
             The Cheshire Cat with the given id, or None if it doesn't exist
         """
+        if agent_id == DEFAULT_SYSTEM_KEY:
+            raise ValueError(f"`{DEFAULT_SYSTEM_KEY}` is a reserved name for agents")
+
+        if agent_id not in crud.get_agents_main_keys():
+            raise ValueError(f"`{agent_id}` is not a valid agent id")
+
         agent_settings = crud_settings.get_settings(agent_id)
         if not agent_settings:
             return None
 
-        return self.get_cheshire_cat(agent_id)
+        return CheshireCat(agent_id)
 
     async def shutdown(self) -> None:
         """
@@ -284,8 +220,6 @@ class BillTheLizard:
         self.core_auth_handler = None
         self.plugin_manager = None
         self.rabbit_hole = None
-        self.embedder = None
-        self.embedder_size = None
         self.websocket_manager = None
         self.fastapi_app = None
 
@@ -302,14 +236,8 @@ class BillTheLizard:
 
     @property
     def config_key(self):
-        return self._key
+        return self.agent_key
 
     @property
     def agent_key(self):
-        return self._key
-
-    @property
-    def embedder_name(self) -> str | None:
-        if self.embedder is None:
-            return None
-        return get_nlp_object_name(self.embedder, "default_embedder")
+        return DEFAULT_SYSTEM_KEY

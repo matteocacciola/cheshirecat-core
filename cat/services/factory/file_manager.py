@@ -5,8 +5,8 @@ from typing import Type, List
 from pydantic import ConfigDict, BaseModel
 
 from cat import utils
-from cat.factory.base_factory import BaseFactory, BaseFactoryConfigModel
 from cat.log import log
+from cat.services.factory.base_factory import BaseFactory, BaseFactoryConfigModel
 
 
 class FileResponse(BaseModel):
@@ -300,11 +300,9 @@ class DummyFileManagerConfig(FileManagerConfig):
 
 
 class FileManagerFactory(BaseFactory):
-    def get_allowed_classes(self) -> List[Type[FileManagerConfig]]:
-        list_file_managers_default = self._hook_manager.execute_hook(
-            "factory_allowed_file_managers", [DummyFileManagerConfig], caller=None
-        )
-        return list_file_managers_default
+    @property
+    def factory_allowed_handler_name(self) -> str:
+        return "factory_allowed_file_managers"
 
     @property
     def setting_category(self) -> str:

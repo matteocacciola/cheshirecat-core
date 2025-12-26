@@ -1,5 +1,4 @@
 from typing import Dict
-from langchain_core.language_models import BaseLanguageModel
 
 from cat.db.cruds import (
     settings as crud_settings,
@@ -7,23 +6,16 @@ from cat.db.cruds import (
     plugins as crud_plugins,
     users as crud_users,
 )
-from cat.factory.auth_handler import AuthHandlerFactory
-from cat.factory.auth_handler import BaseAuthHandler
-from cat.factory.chunker import ChunkerFactory, BaseChunker
-from cat.factory.file_manager import BaseFileManager, FileManagerFactory
-from cat.factory.llm import LLMFactory
-from cat.factory.vector_db import VectorDatabaseFactory, BaseVectorDatabaseHandler
 from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.looking_glass.mad_hatter.decorators.tool import CatTool
 from cat.looking_glass.tweedledee import Tweedledee
-from cat.memory.utils import VectorMemoryType
-from cat.services.mixin import CatMixin
-from cat.utils import get_factory_object, get_updated_factory_object
+from cat.services.memory.utils import VectorMemoryType
+from cat.services.mixin import BotMixin
 
 
 # main class
-class CheshireCat(CatMixin):
+class CheshireCat(BotMixin):
     """
     The Cheshire Cat.
 
@@ -55,14 +47,8 @@ class CheshireCat(CatMixin):
         # allows plugins to do something before cat components are loaded
         self.plugin_manager.execute_hook("before_cat_bootstrap", caller=self)
 
-        self.large_language_model: BaseLanguageModel = get_factory_object(self.id, LLMFactory(self.plugin_manager))
-        self.custom_auth_handler: BaseAuthHandler = get_factory_object(self.id, AuthHandlerFactory(self.plugin_manager))
-        self.file_manager: BaseFileManager = get_factory_object(self.id, FileManagerFactory(self.plugin_manager))
-        self.chunker: BaseChunker = get_factory_object(self.id, ChunkerFactory(self.plugin_manager))
-        self.vector_memory_handler: BaseVectorDatabaseHandler = get_factory_object(
-            self.id, VectorDatabaseFactory(self.plugin_manager)
-        )
-        self.vector_memory_handler.agent_id = self.id
+        # bootstrap cat
+        super().__init__()
 
         # Initialize the default user if not present
         if not crud_users.get_users(self.id):
@@ -87,14 +73,13 @@ class CheshireCat(CatMixin):
         """Cat destructor."""
         self.shutdown()
 
+    def bootstrap_services(self):
+        self.service_provider.bootstrap_services_bot()
+
     def shutdown(self) -> None:
         self.dispatcher.unsubscribe_from(self)
 
-        self.custom_auth_handler = None
         self.plugin_manager = None
-        self.large_language_model = None
-        self.file_manager = None
-        self.chunker = None
 
     async def destroy_memory(self):
         """Destroy all data from the cat's memory."""
@@ -106,8 +91,12 @@ class CheshireCat(CatMixin):
     async def destroy(self):
         """Destroy all data from the cat."""
         log.info(f"Agent id: {self.id}. Destroying all data from the cat")
+
         # destroy all memories
         await self.destroy_memory()
+
+        # remove the folder from storage
+        self.file_manager.remove_folder_from_storage(self.id)
 
         self.shutdown()
 
@@ -115,130 +104,6 @@ class CheshireCat(CatMixin):
         crud_conversations.destroy_all(self.id)
         crud_plugins.destroy_all(self.id)
         crud_users.destroy_all(self.id)
-
-        # remove the folder from storage
-        if self.file_manager is not None:
-            self.file_manager.remove_folder_from_storage(self.id)
-
-    async def send_ws_message(self, content: str, msg_type = "notification"):
-        log.error(f"Agent id: {self.id}. No websocket connection open")
-
-    def replace_llm(self, language_model_name: str, settings: Dict) -> Dict:
-        """
-        Replace the current LLM with a new one. This method is used to change the LLM of the cat.
-
-        Args:
-            language_model_name: name of the new LLM
-            settings: settings of the new LLM
-
-        Returns:
-            The dictionary resuming the new name and settings of the LLM
-        """
-        factory = LLMFactory(self.plugin_manager)
-        updater = get_updated_factory_object(self.id, factory, language_model_name, settings)
-
-        try:
-            # try to reload the llm of the cat
-            self.large_language_model = get_factory_object(self.id, factory)
-        except Exception as e:
-            log.error(f"Agent id: {self.id}. Error while loading the new LLM: {e}")
-
-            # something went wrong: rollback
-            if updater.old_setting is not None:
-                self.replace_llm(updater.old_setting["name"], updater.old_setting["value"])  # type: ignore
-
-            raise e
-
-        return {"name": language_model_name, "value": updater.new_setting["value"]}  # type: ignore
-
-    def replace_auth_handler(self, auth_handler_name: str, settings: Dict) -> Dict:
-        """
-        Replace the current Auth Handler with a new one.
-
-        Args:
-            auth_handler_name: name of the new Auth Handler
-            settings: settings of the new Auth Handler
-
-        Returns:
-            The dictionary resuming the new name and settings of the Auth Handler
-        """
-        factory = AuthHandlerFactory(self.plugin_manager)
-        updater = get_updated_factory_object(self.id, factory, auth_handler_name, settings)
-
-        self.custom_auth_handler = get_factory_object(self.id, factory)
-
-        return {"name": auth_handler_name, "value": updater.new_setting["value"]}  # type: ignore
-
-    def replace_file_manager(self, file_manager_name: str, settings: Dict) -> Dict:
-        """
-        Replace the current file manager with a new one. This method is used to change the file manager of the lizard.
-
-        Args:
-            file_manager_name: name of the new file manager
-            settings: settings of the new file manager
-
-        Returns:
-            The dictionary resuming the new name and settings of the file manager
-        """
-        factory = FileManagerFactory(self.plugin_manager)
-        updater = get_updated_factory_object(self.id, factory, file_manager_name, settings)
-
-        try:
-            old_filemanager = self.file_manager
-
-            # reload the file manager of the lizard
-            self.file_manager = get_factory_object(self.id, factory)
-
-            self.file_manager.transfer(old_filemanager, self.id)
-        except Exception as e:
-            log.error(f"Error while loading the new File Manager: {e}")
-
-            # something went wrong: rollback
-            if updater.old_setting is not None:
-                self.replace_file_manager(updater.old_setting["name"], updater.old_setting["value"])  # type: ignore
-
-            raise e
-
-        return {"name": file_manager_name, "value": updater.new_setting["value"]}  # type: ignore
-
-    def replace_chunker(self, chunker_name: str, settings: Dict) -> Dict:
-        """
-        Replace the current Auth Handler with a new one.
-
-        Args:
-            chunker_name: name of the new chunker
-            settings: settings of the new chunker
-
-        Returns:
-            The dictionary resuming the new name and settings of the Auth Handler
-        """
-        factory = ChunkerFactory(self.plugin_manager)
-        updater = get_updated_factory_object(self.id, factory, chunker_name, settings)
-
-        self.chunker = get_factory_object(self.id, ChunkerFactory(self.plugin_manager))
-
-        return {"name": chunker_name, "value": updater.new_setting["value"]}  # type: ignore
-
-    async def replace_vector_memory_handler(
-        self, vector_memory_name: str, settings: Dict
-    ) -> Dict:
-        """
-        Replace the current Vector Memory Handler with a new one.
-
-        Args:
-            vector_memory_name: name of the new Vector Memory Handler
-            settings: settings of the new Vector Memory Handler
-
-        Returns:
-            The dictionary resuming the new name and settings of the Vector Memory Handler
-        """
-        factory = VectorDatabaseFactory(self.plugin_manager)
-        updater = get_updated_factory_object(self.id, factory, vector_memory_name, settings)
-
-        self.vector_memory_handler = get_factory_object(self.id, factory)
-        await self.embed_procedures()
-
-        return {"name":vector_memory_name, "value": updater.new_setting["value"]}  # type: ignore
 
     async def embed_procedures(self):
         log.info(f"Agent id: {self.id}. Embedding procedures in vector memory")
@@ -259,7 +124,7 @@ class CheshireCat(CatMixin):
 
             for t in ap.to_document_recall():
                 payloads.append(t.document.model_dump())
-                vectors.append(self.embedder.embed_query(t.document.page_content))
+                vectors.append(self.lizard.embedder.embed_query(t.document.page_content))
 
         await self.vector_memory_handler.add_points_to_tenant(collection_name=collection_name, payloads=payloads, vectors=vectors)
         log.info(f"Agent id: {self.id}. Embedded {len(payloads)} triggers in {collection_name} vector memory")

@@ -7,7 +7,7 @@ from urllib.parse import urlencode
 from cat.auth.permissions import get_base_permissions, AuthResource, AuthPermission
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
-from cat.memory.utils import VectorMemoryType
+from cat.services.memory.utils import VectorMemoryType
 
 agent_id = "agent_test"
 chat_id = "a1157e2d-ca3d-4f21-a4a5-b57a64dd01c9"

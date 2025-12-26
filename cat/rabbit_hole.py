@@ -11,28 +11,27 @@ from langchain_community.document_loaders.parsers.generic import MimeTypeBasedPa
 from langchain_core.documents.base import Document, Blob
 from starlette.datastructures import UploadFile
 
-from cat.factory.chunker import BaseChunker
 from cat.log import log
-from cat.memory.utils import PointStruct, VectorMemoryType
-from cat.utils import singleton
+from cat.services.factory.chunker import BaseChunker
+from cat.services.memory.utils import PointStruct, VectorMemoryType
 
 
-@singleton
 class RabbitHole:
     def __init__(self):
         self.cat = None
         self.stray = None
+        self.embedder = None
 
-    def setup(self, cat):
+    def setup(self, _cat: "BotMixin"):
         from cat.looking_glass import CheshireCat, StrayCat
 
-        if isinstance(cat, CheshireCat):
-            self.cat = cat
+        if isinstance(_cat, CheshireCat):
+            self.cat = _cat
             return
 
-        if isinstance(cat, StrayCat):
-            self.stray = cat
-            self.cat = cat.cheshire_cat
+        if isinstance(_cat, StrayCat):
+            self.stray = _cat
+            self.cat = _cat.lizard.get_cheshire_cat(_cat.agent_key)
             return
 
         raise ValueError("RabbitHole can only be setup with CheshireCat or StrayCat instances.")
@@ -54,6 +53,7 @@ class RabbitHole:
         The method also performs a check on the dimensionality of the embeddings (i.e. length of each vector).
         """
         self.setup(cat)
+        lizard = self.cat.lizard
 
         # Get file bytes
         file_bytes = file.file.read()
@@ -63,7 +63,7 @@ class RabbitHole:
 
         # Check the embedder used for the uploaded memories is the same the Cat is using now
         upload_embedder = memories["embedder"]
-        cat_embedder = str(self.cat.embedder.__class__.__name__)
+        cat_embedder = str(lizard.embedder.__class__.__name__)
 
         if upload_embedder != cat_embedder:
             raise Exception(
@@ -84,7 +84,7 @@ class RabbitHole:
         log.info(f"Agent id: {self.cat.id}. Preparing to load {len(vectors)} vector memories")
 
         # Check embedding size is correct
-        embedder_size = self.cat.lizard.embedder_size
+        embedder_size = lizard.embedder_size
         len_mismatch = [len(v) == embedder_size for v in vectors]
 
         if not any(len_mismatch):
@@ -97,7 +97,7 @@ class RabbitHole:
             collection_name=str(VectorMemoryType.DECLARATIVE), ids=ids, payloads=payloads, vectors=vectors
         )
 
-    async def ingest_file(self, cat, file: str | UploadFile, metadata: Dict = None):
+    async def ingest_file(self, cat: "BotMixin", file: str | UploadFile, metadata: Dict = None):
         """Load a file in the Cat's declarative memory.
 
         The method splits and converts the file in Langchain `Document`. Then, it stores the `Document` in the Cat's
@@ -204,14 +204,14 @@ class RabbitHole:
 
         # Parse the content
         if self.stray:
-            await self.stray.send_ws_message(
+            await self.stray.notifier.send_ws_message(
                 "I'm parsing the content. Big content could require some minutes..."
             )
         super_docs = parser.parse(blob)
 
         # Split
         if self.stray:
-            await self.stray.send_ws_message("Parsing completed. Now let's go with reading process...")
+            await self.stray.notifier.send_ws_message("Parsing completed. Now let's go with reading process...")
         docs = self._split_text(docs=super_docs)
         return file_bytes, content_type, docs
 
@@ -244,7 +244,7 @@ class RabbitHole:
         """
         log.info(f"Agent id: {self.cat.agent_key}. Preparing to memorize {len(docs)} vectors")
 
-        embedder = self.cat.embedder
+        embedder = self.cat.lizard.embedder
         plugin_manager = self.cat.plugin_manager
 
         # hook the docs before they are stored in the vector memory
@@ -263,7 +263,7 @@ class RabbitHole:
                 perc_read = int(d / len(docs) * 100)
                 read_message = f"Read {perc_read}% of {source}"
                 if self.stray:
-                    await self.stray.send_ws_message(read_message)
+                    await self.stray.notifier.send_ws_message(read_message)
 
                 log.info(read_message)
 
@@ -305,7 +305,7 @@ class RabbitHole:
         )
 
         if self.stray:
-            await self.stray.send_ws_message(finished_reading_message)
+            await self.stray.notifier.send_ws_message(finished_reading_message)
 
         log.warning(f"Agent id: {self.cat.agent_key}. Done uploading {source}")
 

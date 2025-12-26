@@ -2,9 +2,9 @@ from typing import List, Any, Literal, Dict, Set
 from pydantic import Field, field_validator
 
 from cat.db.cruds import conversations as crud_conversations
-from cat.memory.interactions import ModelInteraction
-from cat.memory.messages import BaseMessage, UserMessage, ConversationMessage
-from cat.memory.utils import DocumentRecall
+from cat.services.memory.interactions import ModelInteraction
+from cat.services.memory.messages import BaseMessage, UserMessage, ConversationMessage
+from cat.services.memory.utils import DocumentRecall
 from cat.utils import BaseModelDict
 
 

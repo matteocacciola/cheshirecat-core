@@ -3,15 +3,8 @@ from fastapi import APIRouter, Body
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
-from cat.factory.vector_db import VectorDatabaseFactory
-from cat.routes.routes_utils import (
-    GetSettingsResponse,
-    GetSettingResponse,
-    UpsertSettingResponse,
-    get_factory_settings,
-    get_factory_setting,
-    on_upsert_factory_setting,
-)
+from cat.services.factory.base_factory import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
+from cat.services.factory.vector_db import VectorDatabaseFactory
 
 router = APIRouter(tags=["Vector Database"], prefix="/vector_database")
 
@@ -23,7 +16,7 @@ async def get_vector_databases_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Vector Databases settings and their configuration schemas"""
     ccat = info.cheshire_cat
-    return get_factory_settings(ccat.id, VectorDatabaseFactory(ccat.plugin_manager))
+    return VectorDatabaseFactory(ccat.plugin_manager).get_factory_settings(ccat.id)
 
 
 @router.get(
@@ -35,7 +28,7 @@ async def get_vector_database_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Vector Database"""
     ccat = info.cheshire_cat
-    return get_factory_setting(ccat.id, vector_database_name, VectorDatabaseFactory(ccat.plugin_manager))
+    return VectorDatabaseFactory(ccat.plugin_manager).get_factory_setting(ccat.id, vector_database_name)
 
 
 @router.put(
@@ -48,7 +41,6 @@ async def upsert_vector_database_setting(
 ) -> UpsertSettingResponse:
     """Upsert the Vector Database setting"""
     ccat = info.cheshire_cat
-    on_upsert_factory_setting(vector_database_name, VectorDatabaseFactory(ccat.plugin_manager))
 
-    res = await ccat.replace_vector_memory_handler(vector_database_name, payload)
-    return UpsertSettingResponse(**res)
+    result = VectorDatabaseFactory(ccat.plugin_manager).upsert_service(ccat.agent_key, vector_database_name, payload)
+    return UpsertSettingResponse(**result)

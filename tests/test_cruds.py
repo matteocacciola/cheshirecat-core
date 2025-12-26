@@ -6,7 +6,7 @@ from cat.auth.permissions import get_full_permissions
 from cat.db import models
 from cat.db.cruds import settings as crud_settings, users as crud_users
 from cat.db.database import DEFAULT_SYSTEM_KEY
-from cat.factory.auth_handler import AuthHandlerFactory
+from cat.services.factory.auth_handler import AuthHandlerFactory
 
 from tests.utils import agent_id
 

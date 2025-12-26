@@ -11,8 +11,8 @@ from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.db.crud import get_db_connection_string
 from cat.exceptions import CustomUnauthorizedException, CustomNotFoundException
 from cat.looking_glass import StrayCat, ChatResponse
-from cat.memory.messages import UserMessage
 from cat.routes.routes_utils import HealthCheckLocal
+from cat.services.memory.messages import UserMessage
 
 router = APIRouter()
 

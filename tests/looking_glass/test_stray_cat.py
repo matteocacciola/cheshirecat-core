@@ -3,9 +3,9 @@ from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplat
 
 from cat.agent import run_agent
 from cat.looking_glass import StrayCat
-from cat.memory.messages import CatMessage, UserMessage, MessageWhy
-from cat.memory.utils import recall, VectorMemoryType
-from cat.memory.working_memory import WorkingMemory
+from cat.services.memory.messages import CatMessage, UserMessage, MessageWhy
+from cat.services.memory.utils import recall, VectorMemoryType
+from cat.services.memory.working_memory import WorkingMemory
 
 from tests.utils import api_key, create_mock_plugin_zip, send_file
 
@@ -41,15 +41,6 @@ async def test_stray_call(stray_no_memory):
     assert "You did not configure" in reply.text
     assert reply.type == "chat"
     assert isinstance(reply.why, MessageWhy)
-
-
-@pytest.mark.asyncio
-async def test_stray_classify(stray_no_memory):
-    label = await stray_no_memory.classify("I feel good", labels=["positive", "negative"])
-    assert label is None
-
-    label = await stray_no_memory.classify("I feel bad", labels={"positive": ["I'm happy"], "negative": ["I'm sad"]})
-    assert label is None
 
 
 @pytest.mark.asyncio
@@ -90,8 +81,7 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
 
 @pytest.mark.asyncio
 async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray):
-    ccat = stray.cheshire_cat
-    ccat_headers = {"X-Agent-ID": ccat.id, "Authorization": f"Bearer {api_key}"}
+    ccat_headers = {"X-Agent-ID": stray.agent_key, "Authorization": f"Bearer {api_key}"}
 
     # manually install the plugin
     zip_path = create_mock_plugin_zip(flat=True, plugin_id="mock_plugin_fast_reply")

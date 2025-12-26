@@ -10,7 +10,7 @@ from cat.core_plugins.factories.chunker.custom import (
     TokenSpacyChunker,
     TokenNLTKChunker,
 )
-from cat.factory.chunker import ChunkerSettings
+from cat.services.factory.chunker import ChunkerSettings
 
 
 class SemanticChunkerSettings(ChunkerSettings):

@@ -26,10 +26,8 @@ async def verify_memory_point_existence(cheshire_cat: CheshireCat, collection_id
 async def upsert_memory_point(
     collection_id: str, point: MemoryPointBase, info: AuthorizedInfo, point_id: str = None
 ) -> MemoryPoint:
-    ccat = info.cheshire_cat
-
     # embed content
-    embedding = ccat.embedder.embed_query(point.content)
+    embedding = info.lizard.embedder.embed_query(point.content)
 
     # ensure source is set
     if not point.metadata.get("source"):
@@ -40,7 +38,7 @@ async def upsert_memory_point(
         point.metadata["when"] = time.time()  # if when is not in the metadata set the current time
 
     # create point
-    qdrant_point = await ccat.vector_memory_handler.add_point_to_tenant(
+    qdrant_point = await info.cheshire_cat.vector_memory_handler.add_point_to_tenant(
         collection_name=collection_id,
         content=point.content,
         vector=embedding,

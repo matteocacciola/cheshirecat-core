@@ -5,7 +5,7 @@ import requests
 from pydantic import ConfigDict
 import httpx
 
-from cat.factory.embedder import MultimodalEmbeddings, EmbedderMultimodalSettings
+from cat.services.factory.embedder import MultimodalEmbeddings, EmbedderMultimodalSettings
 from cat.utils import retrieve_image
 
 

@@ -395,7 +395,7 @@ class WhiteRabbit:
 
         # Schedule the job
         self.scheduler.add_job(
-            cat.send_ws_message,
+            cat.notifier.send_ws_message,
             "date",
             id=job_id,
             run_date=schedule,

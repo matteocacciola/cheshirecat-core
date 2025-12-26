@@ -17,7 +17,7 @@ from cat.core_plugins.factories.embedder.custom import (
     Qwen3DeepInfraEmbeddings,
     Qwen3TEIEmbeddings,
 )
-from cat.factory.embedder import EmbedderSettings
+from cat.services.factory.embedder import EmbedderSettings
 from cat.utils import Enum
 
 

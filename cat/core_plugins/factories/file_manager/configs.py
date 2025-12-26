@@ -8,7 +8,7 @@ from cat.core_plugins.factories.file_manager.custom import (
     LocalFileManager,
     DigitalOceanFileManager,
 )
-from cat.factory.file_manager import FileManagerConfig
+from cat.services.factory.file_manager import FileManagerConfig
 
 
 class LocalFileManagerConfig(FileManagerConfig):

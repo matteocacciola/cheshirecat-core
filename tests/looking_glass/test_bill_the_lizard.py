@@ -1,8 +1,8 @@
 import pytest
 
-from cat.factory.auth_handler import CoreAuthHandler
 from cat.looking_glass import Tweedledum
 from cat.rabbit_hole import RabbitHole
+from cat.services.factory.auth_handler import CoreAuthHandler
 from cat.services.websocket_manager import WebSocketManager
 
 from tests.utils import get_class_from_decorated_singleton
@@ -22,5 +22,4 @@ async def test_shutdown(lizard):
     assert lizard.plugin_manager is None
     assert lizard.rabbit_hole is None
     assert lizard.core_auth_handler is None
-    assert lizard.embedder is None
     assert lizard.websocket_manager is None

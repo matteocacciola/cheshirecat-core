@@ -6,12 +6,12 @@ from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
 
 from cat.core_plugins.multimodality.unstructured_parser import UnstructuredParser
 from cat.db.database import DEFAULT_SYSTEM_KEY
-from cat.factory.chunker import BaseChunker
-from cat.factory.file_manager import BaseFileManager
-from cat.factory.vector_db import BaseVectorDatabaseHandler
-from cat.factory.embedder import DumbEmbedder
-from cat.factory.llm import LLMDefault
 from cat.looking_glass import Tweedledee
+from cat.services.factory.chunker import BaseChunker
+from cat.services.factory.file_manager import BaseFileManager
+from cat.services.factory.vector_db import BaseVectorDatabaseHandler
+from cat.services.factory.embedder import DumbEmbedder
+from cat.services.factory.llm import LLMDefault
 
 
 def test_main_modules_loaded(cheshire_cat):

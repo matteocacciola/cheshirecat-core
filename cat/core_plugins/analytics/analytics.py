@@ -13,7 +13,7 @@ from cat import (
 )
 import cat.core_plugins.analytics.cruds.embeddings as crud_embeddings
 import cat.core_plugins.analytics.cruds.llm as crud_llm
-from cat.memory.utils import PointStruct
+from cat.services.memory.utils import PointStruct
 
 
 @hook(priority=1)
@@ -59,7 +59,7 @@ def after_rabbithole_stored_documents(source: str, stored_points: List[PointStru
         return
 
     agent_id = cat.agent_key
-    embedder_id = cat.embedder_name
+    embedder_id = cat.lizard.embedder_name
 
     crud_embeddings.update_analytics(agent_id, embedder_id, source, total_tokens)
 

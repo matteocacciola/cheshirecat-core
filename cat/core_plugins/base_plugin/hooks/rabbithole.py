@@ -16,7 +16,7 @@ from langchain_core.documents import Document
 
 from cat import hook
 from cat.core_plugins.base_plugin.parsers import YoutubeParser, TableParser, JSONParser, PowerPointParser
-from cat.memory.utils import PointStruct
+from cat.services.memory.utils import PointStruct
 
 
 @hook(priority=999)

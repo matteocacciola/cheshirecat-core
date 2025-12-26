@@ -5,25 +5,23 @@ from ast import literal_eval
 from copy import deepcopy
 from typing import Dict, List, Any, Type
 import tomli
-from fastapi import Query, UploadFile, BackgroundTasks, Request
+from fastapi import Query, UploadFile, BackgroundTasks
 from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
-from pydantic import BaseModel, model_serializer
+from pydantic import BaseModel
 from fastapi_healthz import HealthCheckStatusEnum, HealthCheckAbstract
 
 from cat import utils
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission
-from cat.db.cruds import settings as crud_settings
-from cat.db.database import DEFAULT_AGENT_KEY
 from cat.exceptions import CustomValidationException
-from cat.factory.base_factory import BaseFactory
 from cat.log import log
 from cat.looking_glass import BillTheLizard
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.plugin import Plugin
 from cat.looking_glass.mad_hatter.plugin_manifest import PluginManifest
 from cat.looking_glass.mad_hatter.registry import registry_search_plugins
+from cat.services.factory.base_factory import GetSettingResponse
 
 
 class Plugins(BaseModel):
@@ -39,41 +37,6 @@ class UserCredentials(BaseModel):
 class JWTResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-
-
-class UpsertSettingResponse(BaseModel):
-    name: str
-    value: Dict
-
-    @model_serializer
-    def serialize_model(self) -> Dict[str, Any]:
-        """Custom serializer that will be used by FastAPI"""
-        value = self.value.copy()  # Create a copy to avoid modifying the original value
-        value = {
-            k: "********" if isinstance(v, str) and any(suffix in k for suffix in ["_key", "_secret"]) else v
-            for k, v in value.items()
-        }
-
-        return {
-            "name": self.name,
-            "value": value
-        }
-
-
-class GetSettingResponse(UpsertSettingResponse):
-    scheme: Dict[str, Any] | None = None
-
-    @model_serializer
-    def serialize_model(self) -> Dict[str, Any]:
-        """Custom serializer that will be used by FastAPI"""
-        serialized = super().serialize_model()
-        serialized["scheme"] = self.scheme
-        return serialized
-
-
-class GetSettingsResponse(BaseModel):
-    settings: List[GetSettingResponse]
-    selected_configuration: str | None
 
 
 class GetAvailablePluginsFilter(BaseModel):
@@ -107,7 +70,6 @@ class GetPluginDetailsResponse(BaseModel):
 
 class DeletePluginResponse(BaseModel):
     deleted: str
-
 
 
 class HealthCheckLocal(HealthCheckAbstract):
@@ -270,9 +232,8 @@ async def startup_app(app):
     utils.pod_id()
 
     bill_the_lizard = BillTheLizard()
+    bill_the_lizard.bootstrap_services()
     bill_the_lizard.fastapi_app = app
-
-    await bill_the_lizard.create_cheshire_cat(DEFAULT_AGENT_KEY)
 
     # load the Manager and the Job Handler
     app.state.lizard = bill_the_lizard
@@ -286,51 +247,13 @@ async def shutdown_app(app):
     del app.state.lizard
 
 
-def get_factory_settings(agent_id: str, factory: BaseFactory) -> GetSettingsResponse:
-    saved_settings = crud_settings.get_settings_by_category(agent_id, factory.setting_category)
-
-    settings = [GetSettingResponse(
-        name=class_name,
-        value=saved_settings["value"] if class_name == saved_settings["name"] else {},
-        scheme=scheme
-    ) for class_name, scheme in factory.get_schemas().items()]
-
-    return GetSettingsResponse(settings=settings, selected_configuration=saved_settings["name"])
-
-
-def get_factory_setting(agent_id: str, configuration_name: str, factory: BaseFactory) -> GetSettingResponse:
-    schemas = factory.get_schemas()
-
-    allowed_configurations = list(schemas.keys())
-    if configuration_name not in allowed_configurations:
-        raise CustomValidationException(f"{configuration_name} not supported. Must be one of {allowed_configurations}")
-
-    setting = crud_settings.get_setting_by_name(agent_id, configuration_name)
-    setting = {} if setting is None else setting["value"]
-
-    scheme = schemas[configuration_name]
-
-    return GetSettingResponse(name=configuration_name, value=setting, scheme=scheme)
-
-
-def on_upsert_factory_setting(configuration_name: str, factory: BaseFactory):
-    schemas = factory.get_schemas()
-
-    allowed_configurations = list(schemas.keys())
-    if configuration_name not in allowed_configurations:
-        raise CustomValidationException(f"{configuration_name} not supported. Must be one of {allowed_configurations}")
-
-
 def on_upload_single_file(
-    request: Request,
     info: AuthorizedInfo,
     file: UploadFile,
     background_tasks: BackgroundTasks,
     metadata: str | None = None,
 ):
-    from cat.looking_glass import BillTheLizard
-
-    lizard: BillTheLizard = request.app.state.lizard
+    lizard = info.lizard
     cat = info.stray_cat or info.cheshire_cat
 
     # Check the file format is supported

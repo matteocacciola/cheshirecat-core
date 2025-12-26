@@ -8,10 +8,8 @@ from cat.log import log
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.plugin import Plugin
 from cat.looking_glass.mad_hatter.plugin_extractor import PluginExtractor
-from cat.utils import singleton
 
 
-@singleton
 class Tweedledum(MadHatter):
     """
     Tweedledum is the plugin manager of the Lizard. It is responsible for:

@@ -16,8 +16,8 @@ from cat.core_plugins.memory.routes_utils import (
     verify_memory_point_existence,
 )
 from cat.exceptions import CustomValidationException
-from cat.memory.utils import DocumentRecall, UpdateResult, Record, VectorMemoryType
 from cat.routes.routes_utils import create_dict_parser
+from cat.services.memory.utils import DocumentRecall, UpdateResult, Record, VectorMemoryType
 
 
 class RecallResponseQuery(BaseModel):
@@ -99,12 +99,12 @@ async def recall_memory_points_from_text(
         memory_dict["vector"] = document_recall.vector
         return memory_dict
 
-    ccat = info.cheshire_cat
+    lizard = info.lizard
 
     # Embed the query to plot it in the Memory page
-    query_embedding = ccat.embedder.embed_query(text)
+    query_embedding = lizard.embedder.embed_query(text)
 
-    dm = await ccat.vector_memory_handler.recall_tenant_memory_from_embedding(
+    dm = await info.cheshire_cat.vector_memory_handler.recall_tenant_memory_from_embedding(
         str(VectorMemoryType.DECLARATIVE),
         query_embedding,
         k=k,
@@ -114,7 +114,7 @@ async def recall_memory_points_from_text(
     return RecallResponse(
         query=RecallResponseQuery(text=text, vector=query_embedding),
         vectors=RecallResponseVectors(
-            embedder=info.cheshire_cat.lizard.embedder_name,
+            embedder=lizard.embedder_name,
             collections={
                 str(VectorMemoryType.DECLARATIVE): [build_memory_dict(document_recall) for document_recall in dm]
             }

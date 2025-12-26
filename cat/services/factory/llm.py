@@ -4,7 +4,7 @@ from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackMana
 from langchain_core.language_models import BaseLanguageModel, LLM
 from pydantic import ConfigDict
 
-from cat.factory.base_factory import BaseFactory, BaseFactoryConfigModel
+from cat.services.factory.base_factory import BaseFactory, BaseFactoryConfigModel
 from cat.utils import default_llm_answer_prompt
 
 
@@ -63,9 +63,9 @@ class LLMDefaultConfig(LLMSettings):
 
 
 class LLMFactory(BaseFactory):
-    def get_allowed_classes(self) -> List[Type[LLMSettings]]:
-        list_llms = self._hook_manager.execute_hook("factory_allowed_llms", [LLMDefaultConfig], caller=None)
-        return list_llms
+    @property
+    def factory_allowed_handler_name(self) -> str:
+        return "factory_allowed_llms"
 
     @property
     def setting_category(self) -> str:

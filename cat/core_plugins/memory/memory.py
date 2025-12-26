@@ -3,7 +3,7 @@ from pydantic import Field
 import tiktoken
 
 from cat import hook, get_caller_info
-from cat.memory.interactions import ModelInteraction
+from cat.services.memory.interactions import ModelInteraction
 
 
 class EmbedderModelInteraction(ModelInteraction):

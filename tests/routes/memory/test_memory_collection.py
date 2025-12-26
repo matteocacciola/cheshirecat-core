@@ -1,5 +1,5 @@
 from cat.auth.permissions import get_base_permissions
-from cat.memory.utils import VectorMemoryType
+from cat.services.memory.utils import VectorMemoryType
 
 from tests.utils import (
     send_websocket_message,

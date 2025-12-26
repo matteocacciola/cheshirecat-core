@@ -3,7 +3,8 @@ from pydantic import ConfigDict
 from langchain_community.chat_models.fake import FakeListChatModel
 
 from cat import hook
-from cat.factory.llm import LLMSettings
+from cat.services.factory.llm import LLMSettings
+
 
 class FakeLLMConfig(LLMSettings):
     """Fake LLM for testing purposes."""

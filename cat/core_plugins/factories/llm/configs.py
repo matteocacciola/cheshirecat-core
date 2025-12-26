@@ -15,7 +15,7 @@ from langchain_openai import ChatOpenAI, OpenAI
 from pydantic import ConfigDict
 
 from cat.core_plugins.factories.llm.custom import CustomOpenAI, CustomOllama
-from cat.factory.llm import LLMSettings
+from cat.services.factory.llm import LLMSettings
 
 
 class LLMOpenAICompatibleConfig(LLMSettings):

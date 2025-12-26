@@ -17,16 +17,13 @@ class ModelInteractionHandler(BaseCallbackHandler):
     """
     Langchain callback handler for tracking model interactions.
     """
-    def __init__(self, stray: "StrayCat", source: str):
+    def __init__(self, source: str):
         """
         Args:
-            stray: StrayCat instance
             source: Source of the model interaction
         """
         # Store the stray ID to survive serialization
-        self.stray_id = id(stray)
-        _stray_registry[self.stray_id] = stray
-
+        self.stray_id = None
         self.interaction = LLMModelInteraction(
             source=source,
             prompt=[],
@@ -35,6 +32,11 @@ class ModelInteractionHandler(BaseCallbackHandler):
             output_tokens=0,
             ended_at=0,
         )
+
+    def inject_stray(self, stray: "StrayCat") -> None:
+        """Inject the stray for registry lookup."""
+        self.stray_id = id(stray)
+        _stray_registry[self.stray_id] = stray
 
     def _count_tokens(self, text: str) -> int:
         # cl100k_base is the most common encoding for OpenAI models such as GPT-3.5, GPT-4 - what about other providers?
@@ -159,6 +161,9 @@ class ModelInteractionHandler(BaseCallbackHandler):
 
     def on_llm_end(self, response: LLMResult, **kwargs) -> None:
         """Track output tokens and response content."""
+        if self.stray_id is None:
+            return
+
         generation = response.generations[0][0]
 
         if hasattr(generation, "message"):
@@ -179,4 +184,5 @@ class ModelInteractionHandler(BaseCallbackHandler):
     def on_llm_error(self, error: Exception, **kwargs) -> None:
         """Handle LLM errors and clean up."""
         log.error(f"LLM error in ModelInteractionHandler: {error}")
-        _stray_registry.pop(self.stray_id, None)
+        if self.stray_id is not None:
+            _stray_registry.pop(self.stray_id, None)

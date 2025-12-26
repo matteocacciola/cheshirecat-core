@@ -1,20 +1,20 @@
 from langchain_core.callbacks import BaseCallbackHandler
 
 from cat.env import get_env_bool
+from cat.services.notifier import NotifierService
 from cat.utils import colored_text
 
 
 class NewTokenHandler(BaseCallbackHandler):
-    def __init__(self, stray: "StrayCat"):
+    def __init__(self, notifier: NotifierService):
         """
         Args:
-            stray: StrayCat instance
+            notifier: NotifierService instance
         """
-        self.stray = stray
+        self.notifier = notifier
 
     async def on_llm_new_token(self, token: str, **kwargs) -> None:
-        if self.stray.websocket_manager.get_connection(self.stray.user.id):
-            await self.stray.send_ws_message(token, msg_type="chat_token")
+        await self.notifier.send_ws_message(token, msg_type="chat_token")
 
 
 class LoggingCallbackHandler(BaseCallbackHandler):

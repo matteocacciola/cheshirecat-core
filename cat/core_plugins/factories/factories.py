@@ -50,10 +50,10 @@ from cat.core_plugins.factories.llm.configs import (
     LLMGroqChatConfig,
     # LLMLiteLLMChatConfig,
 )
-from cat.factory.chunker import ChunkerSettings
-from cat.factory.embedder import EmbedderSettings
-from cat.factory.file_manager import FileManagerConfig
-from cat.factory.llm import LLMSettings
+from cat.services.factory.chunker import ChunkerSettings
+from cat.services.factory.embedder import EmbedderSettings
+from cat.services.factory.file_manager import FileManagerConfig
+from cat.services.factory.llm import LLMSettings
 
 
 @hook(priority=1)

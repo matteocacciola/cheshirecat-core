@@ -3,15 +3,8 @@ from fastapi import APIRouter, Body
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
-from cat.factory.llm import LLMFactory
-from cat.routes.routes_utils import (
-    GetSettingsResponse,
-    GetSettingResponse,
-    UpsertSettingResponse,
-    get_factory_settings,
-    get_factory_setting,
-    on_upsert_factory_setting,
-)
+from cat.services.factory.base_factory import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
+from cat.services.factory.llm import LLMFactory
 
 router = APIRouter(tags=["Large Language Model"], prefix="/llm")
 
@@ -23,7 +16,7 @@ async def get_llms_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Large Language Models"""
     ccat = info.cheshire_cat
-    return get_factory_settings(ccat.id, LLMFactory(ccat.plugin_manager))
+    return LLMFactory(ccat.plugin_manager).get_factory_settings(ccat.id)
 
 
 @router.get("/settings/{language_model_name}", response_model=GetSettingResponse, summary="Get LLM Settings")
@@ -33,7 +26,7 @@ async def get_llm_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Large Language Model"""
     ccat = info.cheshire_cat
-    return get_factory_setting(ccat.id, language_model_name, LLMFactory(ccat.plugin_manager))
+    return LLMFactory(ccat.plugin_manager).get_factory_setting(ccat.id, language_model_name)
 
 
 @router.put("/settings/{language_model_name}", response_model=UpsertSettingResponse, summary="Upsert LLM Settings")
@@ -44,6 +37,6 @@ async def upsert_llm_setting(
 ) -> UpsertSettingResponse:
     """Upsert the Large Language Model setting"""
     ccat = info.cheshire_cat
-    on_upsert_factory_setting(language_model_name, LLMFactory(ccat.plugin_manager))
 
-    return UpsertSettingResponse(**ccat.replace_llm(language_model_name, payload))
+    result = LLMFactory(ccat.plugin_manager).upsert_service(ccat.agent_key, language_model_name, payload)
+    return UpsertSettingResponse(**result)

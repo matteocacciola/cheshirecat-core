@@ -1,9 +1,8 @@
 import uuid
-from typing import Literal, List, Dict, Any, get_args, Final, Tuple
+from typing import List, Dict, Final, Tuple
 from langchain_core.documents import Document
-from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import BaseMessage
-from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
 from langchain_core.tools import StructuredTool
 from pydantic import Field, BaseModel
 from websockets.exceptions import ConnectionClosedOK
@@ -15,13 +14,12 @@ from cat.log import log
 from cat.looking_glass.callbacks import NewTokenHandler
 from cat.looking_glass.mad_hatter.procedures import CatProcedure
 from cat.looking_glass.tweedledee import Tweedledee
-from cat.memory.messages import CatMessage, UserMessage
-from cat.memory.utils import recall_relevant_memories_to_working_memory, VectorMemoryType
-from cat.memory.working_memory import WorkingMemory
-from cat.services.mixin import CatMixin
+from cat.services.memory.messages import CatMessage, UserMessage
+from cat.services.memory.utils import recall_relevant_memories_to_working_memory, VectorMemoryType
+from cat.services.memory.working_memory import WorkingMemory
+from cat.services.mixin import BotMixin
+from cat.services.notifier import NotifierService
 from cat.templates import prompts
-
-MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
 
 
 class AgentInput(BaseModel):
@@ -68,7 +66,7 @@ class ChatResponse(BaseModel):
 
 
 # The Stray cat goes around tools and hook, making troubles
-class StrayCat(CatMixin):
+class StrayCat(BotMixin):
     """Session object containing user data, conversation state and many utility pointers.
     The framework creates an instance for every http request and websocket connection, making it available for plugins.
 
@@ -106,142 +104,25 @@ class StrayCat(CatMixin):
     """
     def __init__(self, agent_id: str, user_data: AuthUserInfo, stray_id: str | None = None):
         self.id = stray_id or str(uuid.uuid4())
-        self.agent_id: Final[str] = agent_id
+        self._agent_id: Final[str] = agent_id
         self.user: Final[AuthUserInfo] = user_data
+        self.notifier: Final[NotifierService] = NotifierService(self.user, self.agent_key, self.id)
 
-        self.working_memory = WorkingMemory(agent_id=self.agent_id, user_id=self.user.id, chat_id=self.id)
+        # bootstrap stray cat
+        super().__init__()
+
+        self.working_memory = WorkingMemory(agent_id=self.agent_key, user_id=self.user.id, chat_id=self.id)
         self.latest_n_history = 1
 
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""
-        return self.user.id == other.user.id and self.agent_id == other.agent_id and self.id == other.id
+        return self.user.id == other.user.id and self.agent_key == other.agent_key and self.id == other.id
 
     def __hash__(self):
         return hash(self.id)
 
     def __repr__(self):
-        return f"StrayCat(id={self.id}, user_id={self.user.id}, agent_id={self.agent_id})"
-
-    async def _send_ws_json(self, data: Any):
-        ws_connection = self.websocket_manager.get_connection(self.user.id)
-        if not ws_connection:
-            log.debug(f"No websocket connection is open for user {self.user.id}")
-            return
-
-        try:
-            await ws_connection.send_json(data)
-        except RuntimeError as e:
-            log.error(f"Runtime error occurred while sending data: {e}")
-
-    async def send_ws_message(self, content: str, msg_type: MSG_TYPES = "notification"):
-        """
-        Send a message via websocket.
-
-        This method is useful for sending a message via websocket directly without passing through the LLM.
-        In case there is no connection, the message is skipped and a warning is logged.
-
-        Args:
-            content (str): The content of the message.
-            msg_type (str): The type of the message. Should be either `notification` (default), `chat`, `chat_token` or `error`
-
-        Examples
-        --------
-        Send a notification via websocket
-        >> cat.send_ws_message("Hello, I'm a notification!")
-        Send a chat message via websocket
-        >> cat.send_ws_message("Meooow!", msg_type="chat")
-
-        Send an error message via websocket
-        >> cat.send_ws_message("Something went wrong", msg_type="error")
-        Send custom data
-        >> cat.send_ws_message({"What day it is?": "It's my unbirthday"})
-        """
-        options = get_args(MSG_TYPES)
-
-        if msg_type not in options:
-            raise ValueError(
-                f"The message type `{msg_type}` is not valid. Valid types: {', '.join(options)}"
-            )
-
-        if msg_type == "error":
-            await self._send_ws_json(
-                {"type": msg_type, "name": "GenericError", "description": str(content)}
-            )
-            return
-        await self._send_ws_json({"type": msg_type, "content": content})
-
-    async def send_chat_message(self, message: str | CatMessage):
-        """
-        Sends a chat message to the user using the active WebSocket connection.
-        In case there is no connection, the message is skipped and a warning is logged
-
-        Args:
-            message (str | CatMessage): message to send
-
-        Examples
-        --------
-        Send a chat message during conversation from a hook, tool or form
-        >> cat.send_chat_message("Hello, dear!")
-        Using a `CatMessage` object
-        >> message = CatMessage(text="Hello, dear!", user_id=cat.user.id)
-        ... cat.send_chat_message(message)
-        """
-        if isinstance(message, str):
-            message = CatMessage(text=message)
-
-        response = ChatResponse(
-            agent_id=self.agent_key,
-            user_id=self.user.id,
-            chat_id=self.id,
-            message=message,
-        )
-
-        await self._send_ws_json(response.model_dump())
-
-    async def send_notification(self, content: str):
-        """
-        Sends a notification message to the user using the active WebSocket connection.
-        In case there is no connection, the message is skipped and a warning is logged.
-
-        Args:
-            content (str): message to send
-
-        Examples
-        --------
-        Send a notification to the user
-        >> cat.send_notification("It's late!")
-        """
-        await self.send_ws_message(content=content, msg_type="notification")
-
-    async def send_error(self, error: str | Exception):
-        """
-        Sends an error message to the user using the active WebSocket connection.
-        In case there is no connection, the message is skipped and a warning is logged.
-
-        Args:
-            error (Union[str, Exception]): message to send
-
-        Examples
-        --------
-        Send an error message to the user
-        >> cat.send_error("Something went wrong!")
-        or
-        >> cat.send_error(CustomException("Something went wrong!"))
-        """
-        if isinstance(error, str):
-            error_message = {
-                "type": "error",
-                "name": "GenericError",
-                "description": str(error),
-            }
-        else:
-            error_message = {
-                "type": "error",
-                "name": error.__class__.__name__,
-                "description": str(error),
-            }
-
-        await self._send_ws_json(error_message)
+        return f"StrayCat(id={self.id}, user_id={self.user.id}, agent_id={self.agent_key})"
 
     async def get_procedures(self) -> List[StructuredTool]:
         memories = await recall_relevant_memories_to_working_memory(
@@ -294,7 +175,7 @@ class StrayCat(CatMixin):
 
         # if the agent is set to fast reply, skip everything and return the output
         agent_fast_reply = utils.restore_original_model(
-            self.plugin_manager.execute_hook("agent_fast_reply", {}, caller=self),
+            plugin_manager.execute_hook("agent_fast_reply", {}, caller=self),
             AgentOutput
         )
         if agent_fast_reply and agent_fast_reply.output:
@@ -303,7 +184,7 @@ class StrayCat(CatMixin):
         # usual flow: prepare agent input with context, input and history
         latest_n_history = self.latest_n_history * 2  # each interaction has user + cat message
         agent_input = utils.restore_original_model(
-            self.plugin_manager.execute_hook(
+            plugin_manager.execute_hook(
                 "before_agent_starts",
                 AgentInput(
                     context=[m.document for m in self.working_memory.declarative_memories],
@@ -316,9 +197,9 @@ class StrayCat(CatMixin):
         )
 
         # obtain prompt parts from plugins
-        prompt_prefix = self.plugin_manager.execute_hook("agent_prompt_prefix", prompts.MAIN_PROMPT, caller=self)
-        prompt_suffix = self.plugin_manager.execute_hook("agent_prompt_suffix", "", caller=self)
-        prompt_variables = self.plugin_manager.execute_hook(
+        prompt_prefix = plugin_manager.execute_hook("agent_prompt_prefix", prompts.MAIN_PROMPT, caller=self)
+        prompt_suffix = plugin_manager.execute_hook("agent_prompt_suffix", "", caller=self)
+        prompt_variables = plugin_manager.execute_hook(
             "agent_prompt_variables",
             {"context": agent_input.context, "input": agent_input.input},
             caller=self,
@@ -336,13 +217,15 @@ class StrayCat(CatMixin):
                 ]),
                 tools=tools,
                 prompt_variables=prompt_variables,
-                callbacks=self.plugin_manager.execute_hook("llm_callbacks", [NewTokenHandler(self)], caller=self),
+                callbacks=plugin_manager.execute_hook(
+                    "llm_callbacks", [NewTokenHandler(self.notifier)], caller=self
+                ),
             )
 
             if agent_output.output == utils.default_llm_answer_prompt():
                 agent_output.with_llm_error = True
         except Exception as e:
-            log.error(f"Agent id: {self.agent_id}. Error: {e}")
+            log.error(f"Agent id: {self.agent_key}. Error: {e}")
             agent_output = AgentOutput(
                 output=f"An error occurred: {e}. Please, contact your support service.", with_llm_error=True
             )
@@ -352,7 +235,7 @@ class StrayCat(CatMixin):
 
         # run a message through plugins
         final_output = utils.restore_original_model(
-            self.plugin_manager.execute_hook(
+            plugin_manager.execute_hook(
                 "before_cat_sends_message", final_output, agent_output, caller=self
             ),
             CatMessage,
@@ -365,7 +248,7 @@ class StrayCat(CatMixin):
             message = await self(user_message)
         except Exception as e:
             # Log any unexpected errors
-            log.error(f"Agent id: {self.agent_id}. Error {e}")
+            log.error(f"Agent id: {self.agent_key}. Error {e}")
             message = CatMessage(text="", error=str(e))
 
         return ChatResponse(
@@ -379,125 +262,23 @@ class StrayCat(CatMixin):
         try:
             cat_message = await self(user_message)
             # send a message back to a client via WS
-            await self.send_chat_message(cat_message)
+            await self.notifier.send_chat_message(cat_message)
         except Exception as e:
             # Log any unexpected errors
-            log.error(f"Agent id: {self.agent_id}. Error {e}")
+            log.error(f"Agent id: {self.agent_key}. Error {e}")
             try:
                 # Send error as a websocket message
-                await self.send_error(e)
+                await self.notifier.send_error(e)
             except ConnectionClosedOK as ex:
-                log.warning(f"Agent id: {self.agent_id}. Warning {ex}")
-
-    async def classify(
-        self, sentence: str, labels: List[str] | Dict[str, List[str]], score_threshold: float = 0.5
-    ) -> str | None:
-        """
-        Classify a sentence.
-
-        Args:
-            sentence (str): Sentence to be classified.
-            labels (List[str] | Dict[str, List[str]]): Possible output categories and optional examples.
-            score_threshold (float): Threshold for the classification score. If the best match is below this threshold, returns None.
-
-        Returns:
-            label (str): Sentence category.
-
-        Examples
-        -------
-        >> await cat.classify("I feel good", labels=["positive", "negative"])
-        "positive"
-
-        Or giving examples for each category:
-
-        >> example_labels = {
-        ...     "positive": ["I feel nice", "happy today"],
-        ...     "negative": ["I feel bad", "not my best day"],
-        ... }
-        ... await cat.classify("it is a bad day", labels=example_labels)
-        "negative"
-        """
-        if isinstance(labels, Dict):
-            labels_names = labels.keys()
-            examples_list = "\n\nExamples:"
-            examples_list += "".join([
-                f'\n"{ex}" -> "{label}"' for label, examples in labels.items() for ex in examples
-            ])
-        else:
-            labels_names = labels
-            examples_list = ""
-
-        labels_list = '"' + '", "'.join(labels_names) + '"'
-
-        prompt = f"""Classify the provided sentence.
-
-Allowed classes are:
-{labels_list}{examples_list}
-
-Just output the class, nothing else."""
-        response = await run_agent(
-            llm=self.large_language_model,
-            prompt=ChatPromptTemplate.from_messages([
-                HumanMessagePromptTemplate.from_template(template=prompt)
-            ]),
-            prompt_variables={"input": sentence},
-        )
-
-        # find the closest match and its score with levenshtein distance
-        best_label, score = min(
-            ((label, utils.levenshtein_distance(response.output, label)) for label in labels_names),
-            key=lambda x: x[1],
-        )
-
-        return best_label if score < score_threshold else None
-
-    @property
-    def cheshire_cat(self) -> "CheshireCat":
-        """
-        Instance of langchain `CheshireCat`. Use it to access the main components of the chatbot.
-
-        Returns:
-            cheshire_cat: CheshireCat
-                Instance of `CheshireCat`.
-        """
-        return self.lizard.get_cheshire_cat(self.agent_id)
-
-    @property
-    def large_language_model(self) -> BaseLanguageModel:
-        """
-        Instance of langchain `LLM`.
-        Only use it if you directly want to deal with langchain, prefer method `stray.agent.run(prompt)` otherwise.
-        """
-        return self.cheshire_cat.large_language_model
-
-    @property
-    def plugin_manager(self) -> Tweedledee:
-        """
-        Gives access to the `Tweedledee` plugin manager. Use it to manage plugins and hooks.
-
-        Returns:
-            plugin_manager (Tweedledee): Plugin manager of the Cat.
-        """
-        return self.cheshire_cat.plugin_manager
-
-    # each time we access the file handlers, plugins can intervene
-    @property
-    def file_handlers(self) -> Dict:
-        return self.cheshire_cat.file_handlers
-
-    # each time we access the text splitter, plugins can intervene
-    @property
-    def chunker(self):
-        return self.cheshire_cat.chunker
-
-    @property
-    def file_manager(self):
-        return self.cheshire_cat.file_manager
-
-    @property
-    def vector_memory_handler(self):
-        return self.cheshire_cat.vector_memory_handler
+                log.warning(f"Agent id: {self.agent_key}. Warning {ex}")
 
     @property
     def agent_key(self):
-        return self.agent_id
+        return self._agent_id
+
+    @property
+    def plugin_manager(self) -> Tweedledee:
+        ccat = self.lizard.get_cheshire_cat(self.agent_key)
+        if ccat is not None:
+            return ccat.plugin_manager
+        raise ValueError(f"Agent id: {self.agent_key}. Cannot get plugin manager for non-existing cat")

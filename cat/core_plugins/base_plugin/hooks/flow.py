@@ -5,9 +5,9 @@ Here is a collection of methods to hook into the Cat execution pipeline.
 """
 from typing import Dict, List
 
-from cat.exceptions import VectorMemoryError
 from cat import hook, log, run_sync_or_async, UserMessage
-from cat.memory.utils import VectorMemoryType, recall_relevant_memories_to_working_memory
+from cat.exceptions import VectorMemoryError
+from cat.services.memory.utils import VectorMemoryType, recall_relevant_memories_to_working_memory
 
 
 @hook(priority=0)

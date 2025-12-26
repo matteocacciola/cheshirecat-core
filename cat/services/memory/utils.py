@@ -140,7 +140,7 @@ async def recall(
 
     Args:
         cat (StrayCat): The StrayCat instance.
-        query (List[float]): The search query, passed as embedding vector. Please first run cheshire_cat.embedder.embed_query(query) if you have a string query to pass here.
+        query (List[float]): The search query, passed as embedding vector.
         collection (VectorMemoryType): The name of the vector memory collection to retrieve memories from.
         k (int | None): The number of memories to retrieve. If `None` retrieves all the available memories.
         threshold (float | None): The minimum similarity to retrieve a memory. Memories with lower similarity are ignored.
@@ -149,15 +149,14 @@ async def recall(
     Returns:
         memories (List[DocumentRecall]): List of retrieved memories.
     """
-    cheshire_cat = cat.cheshire_cat
-
+    vector_memory_handler = cat.vector_memory_handler
     if k:
-        memories = await cheshire_cat.vector_memory_handler.recall_tenant_memory_from_embedding(
+        memories = await vector_memory_handler.recall_tenant_memory_from_embedding(
             str(collection), query, metadata, k, threshold
         )
         return memories
 
-    memories = await cheshire_cat.vector_memory_handler.recall_tenant_memory(str(collection))
+    memories = await vector_memory_handler.recall_tenant_memory(str(collection))
     return memories
 
 
@@ -189,7 +188,6 @@ async def recall_relevant_memories_to_working_memory(
     The user's message is used as a query to make a similarity search in the Cat's vector memories.
     Five hooks allow customizing the recall pipeline before and after it is done.
     """
-    cheshire_cat = cat.cheshire_cat
     plugin_manager = cat.plugin_manager
 
     # We may want to search in memory. If a query is not provided, use the user's message as the query
@@ -201,7 +199,7 @@ async def recall_relevant_memories_to_working_memory(
 
     # Setting default recall configs for each memory + hooks to change recall configs for each memory
     config = RecallSettings(
-        embedding=cheshire_cat.embedder.embed_query(recall_query),
+        embedding=cat.lizard.embedder.embed_query(recall_query),
         metadata=cat.working_memory.user_message.get("metadata", {}),
     )
 

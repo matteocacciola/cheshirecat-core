@@ -10,8 +10,8 @@ from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException
 from cat.log import log
-from cat.memory.utils import VectorMemoryType
 from cat.routes.routes_utils import on_upload_single_file
+from cat.services.memory.utils import VectorMemoryType
 
 router = APIRouter(tags=["Rabbit Hole"], prefix="/rabbithole")
 
@@ -46,7 +46,6 @@ class AllowedMimeTypesResponse(BaseModel):
 @router.post("/batch", response_model=Dict[str, UploadSingleFileResponse])
 @router.post("/batch/{chat_id}", response_model=UploadSingleFileResponse)
 async def upload_files(
-    request: Request,
     files: List[UploadFile],
     background_tasks: BackgroundTasks,
     metadata: str = Form(
@@ -112,7 +111,7 @@ async def upload_files(
     for file in files:
         # if file.filename in dictionary pass the stringified metadata, otherwise pass empty dictionary-like string
         metadata_dict_current = json.dumps(metadata_dict[file.filename]) if file.filename in metadata_dict else "{}"
-        on_upload_single_file(request, info, file, background_tasks, metadata_dict_current)
+        on_upload_single_file(info, file, background_tasks, metadata_dict_current)
 
         response[file.filename] = UploadSingleFileResponse(
             filename=file.filename, content_type=file.content_type, info="File is being ingested asynchronously"
@@ -124,7 +123,6 @@ async def upload_files(
 @router.post("/web", response_model=UploadUrlResponse)
 @router.post("/web/{chat_id}", response_model=UploadUrlResponse)
 async def upload_url(
-    request: Request,
     background_tasks: BackgroundTasks,
     upload_config: UploadURLConfig,
     info: AuthorizedInfo = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
@@ -142,7 +140,7 @@ async def upload_url(
         if response.status_code == 200:
             # upload file to long term memory, in the background
             background_tasks.add_task(
-                request.app.state.lizard.rabbit_hole.ingest_file,
+                info.lizard.rabbit_hole.ingest_file,
                 cat=info.stray_cat or info.cheshire_cat,
                 file=upload_config.url,
                 **upload_config.model_dump(exclude={"url"})
@@ -156,7 +154,6 @@ async def upload_url(
 
 @router.post("/memory", response_model=UploadSingleFileResponse)
 async def upload_memory(
-    request: Request,
     file: UploadFile,
     background_tasks: BackgroundTasks,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
@@ -172,7 +169,7 @@ async def upload_memory(
 
     # Ingest memories in background and notify client
     background_tasks.add_task(
-        request.app.state.lizard.rabbit_hole.ingest_memory, cat=info.cheshire_cat, file=deepcopy(file)
+        info.lizard.rabbit_hole.ingest_memory, cat=info.cheshire_cat, file=deepcopy(file)
     )
 
     # reply to client
@@ -215,7 +212,6 @@ async def get_source_urls(
 @router.post("/", response_model=UploadSingleFileResponse)
 @router.post("/{chat_id}", response_model=UploadSingleFileResponse)
 async def upload_file(
-    request: Request,
     file: UploadFile,
     background_tasks: BackgroundTasks,
     metadata: str = Form(
@@ -259,7 +255,7 @@ async def upload_file(
         )
     ```
     """
-    on_upload_single_file(request, info, file, background_tasks, metadata)
+    on_upload_single_file(info, file, background_tasks, metadata)
 
     # reply to client
     return UploadSingleFileResponse(

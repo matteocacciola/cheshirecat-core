@@ -3,15 +3,9 @@ from fastapi import APIRouter, Body
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
-from cat.factory.embedder import EmbedderFactory
-from cat.routes.routes_utils import (
-    GetSettingsResponse,
-    GetSettingResponse,
-    UpsertSettingResponse,
-    get_factory_settings,
-    get_factory_setting,
-    on_upsert_factory_setting,
-)
+from cat.db import crud
+from cat.services.factory.base_factory import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
+from cat.services.factory.embedder import EmbedderFactory
 
 router = APIRouter(tags=["Embedder"], prefix="/embedder")
 
@@ -23,7 +17,7 @@ async def get_embedders_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Embedders"""
     lizard = info.lizard
-    return get_factory_settings(lizard.config_key, EmbedderFactory(lizard.plugin_manager))
+    return EmbedderFactory(lizard.plugin_manager).get_factory_settings(lizard.config_key)
 
 
 @router.get("/settings/{embedder_name}", response_model=GetSettingResponse)
@@ -33,7 +27,7 @@ async def get_embedder_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Embedder"""
     lizard = info.lizard
-    return get_factory_setting(lizard.config_key, embedder_name, EmbedderFactory(lizard.plugin_manager))
+    return EmbedderFactory(lizard.plugin_manager).get_factory_setting(lizard.config_key, embedder_name)
 
 
 @router.put("/settings/{embedder_name}", response_model=UpsertSettingResponse)
@@ -44,7 +38,14 @@ async def upsert_embedder_setting(
 ) -> UpsertSettingResponse:
     """Upsert the Embedder setting"""
     lizard = info.lizard
-    on_upsert_factory_setting(embedder_name, EmbedderFactory(lizard.plugin_manager))
 
-    response = await lizard.replace_embedder(embedder_name, payload)
-    return UpsertSettingResponse(**response)
+    result = EmbedderFactory(lizard.plugin_manager).upsert_service(lizard.agent_key, embedder_name, payload)
+
+    # inform the Cheshire Cats about the new embedder available in the system
+    for ccat_id in crud.get_agents_main_keys():
+        ccat = lizard.get_cheshire_cat(ccat_id)
+        if ccat is None:
+            continue
+        await ccat.vector_memory_handler.initialize(embedder_name, lizard.embedder_size)
+
+    return UpsertSettingResponse(**result)

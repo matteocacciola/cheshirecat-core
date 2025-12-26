@@ -1,5 +1,5 @@
 from typing import Dict
-from fastapi import Body, APIRouter, Request
+from fastapi import Body, APIRouter
 from pydantic import ValidationError
 from slugify import slugify
 
@@ -7,7 +7,6 @@ from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.db.cruds import plugins as crud_plugins
 from cat.exceptions import CustomValidationException, CustomNotFoundException
-from cat.looking_glass import BillTheLizard
 from cat.routes.routes_utils import (
     GetAvailablePluginsResponse,
     GetSettingResponse,
@@ -112,7 +111,6 @@ async def upsert_cheshirecat_plugin_settings(
 
 @router.post("/settings/{plugin_id}", response_model=GetSettingResponse)
 async def reset_cheshirecat_plugin_settings(
-    request: Request,
     plugin_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.EDIT),
 ) -> GetSettingResponse:
@@ -120,8 +118,7 @@ async def reset_cheshirecat_plugin_settings(
     plugin_id = slugify(plugin_id, separator="_")
 
     # Get the factory settings of the plugin
-    lizard: BillTheLizard = request.app.state.lizard
-    factory_settings = crud_plugins.get_setting(lizard.config_key, plugin_id)
+    factory_settings = crud_plugins.get_setting(info.lizard.config_key, plugin_id)
     if factory_settings is None:
         raise CustomNotFoundException("Plugin not found.")
 

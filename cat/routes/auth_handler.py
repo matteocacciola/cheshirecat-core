@@ -3,15 +3,8 @@ from fastapi import APIRouter, Body
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
-from cat.factory.auth_handler import AuthHandlerFactory
-from cat.routes.routes_utils import (
-    GetSettingsResponse,
-    GetSettingResponse,
-    UpsertSettingResponse,
-    get_factory_settings,
-    get_factory_setting,
-    on_upsert_factory_setting,
-)
+from cat.services.factory.auth_handler import AuthHandlerFactory
+from cat.services.factory.base_factory import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
 
 router = APIRouter(tags=["Auth Handler"], prefix="/auth_handler")
 
@@ -22,7 +15,7 @@ async def get_auth_handler_settings(
 ) -> GetSettingsResponse:
     """Get the list of the AuthHandlers"""
     ccat = info.cheshire_cat
-    return get_factory_settings(ccat.id, AuthHandlerFactory(ccat.plugin_manager))
+    return AuthHandlerFactory(ccat.plugin_manager).get_factory_settings(ccat.agent_key)
 
 
 @router.get("/settings/{auth_handler_name}", response_model=GetSettingResponse)
@@ -32,7 +25,7 @@ async def get_auth_handler_setting(
 ) -> GetSettingResponse:
     """Get the settings of a specific AuthHandler"""
     ccat = info.cheshire_cat
-    return get_factory_setting(ccat.id, auth_handler_name, AuthHandlerFactory(ccat.plugin_manager))
+    return AuthHandlerFactory(ccat.plugin_manager).get_factory_setting(ccat.agent_key, auth_handler_name)
 
 
 @router.put("/settings/{auth_handler_name}", response_model=UpsertSettingResponse)
@@ -43,6 +36,6 @@ async def upsert_authenticator_setting(
 ) -> UpsertSettingResponse:
     """Upsert the settings of a specific AuthHandler"""
     ccat = info.cheshire_cat
-    on_upsert_factory_setting(auth_handler_name, AuthHandlerFactory(ccat.plugin_manager))
 
-    return UpsertSettingResponse(**ccat.replace_auth_handler(auth_handler_name, payload))
+    result = AuthHandlerFactory(ccat.plugin_manager).upsert_service(ccat.agent_key, auth_handler_name, payload)
+    return UpsertSettingResponse(**result)

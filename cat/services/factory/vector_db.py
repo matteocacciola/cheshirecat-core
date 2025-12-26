@@ -35,9 +35,9 @@ from qdrant_client.http.models import (
     Prefetch,
 )
 
-from cat.factory.base_factory import BaseFactoryConfigModel, BaseFactory
 from cat.log import log
-from cat.memory.utils import (
+from cat.services.factory.base_factory import BaseFactoryConfigModel, BaseFactory
+from cat.services.memory.utils import (
     Document,
     DocumentRecall,
     Payload,
@@ -1204,13 +1204,9 @@ class QdrantConfig(VectorDatabaseSettings):
 
 
 class VectorDatabaseFactory(BaseFactory):
-    def get_allowed_classes(self) -> List[Type[VectorDatabaseSettings]]:
-        list_vector_db_default = [QdrantConfig]
-
-        list_vector_dbs = self._hook_manager.execute_hook(
-            "factory_allowed_vector_databases", list_vector_db_default, caller=None
-        )
-        return list_vector_dbs
+    @property
+    def factory_allowed_handler_name(self) -> str:
+        return "factory_allowed_vector_databases"
 
     @property
     def setting_category(self) -> str:

@@ -8,8 +8,8 @@ from cat.auth.auth_utils import is_jwt, extract_user_info_on_api_key, extract_to
 from cat.auth.permissions import AuthResource, AuthPermission, AuthUserInfo
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
-from cat.factory.base_factory import BaseFactory, BaseFactoryConfigModel
 from cat.log import log
+from cat.services.factory.base_factory import BaseFactory, BaseFactoryConfigModel
 
 
 class BaseAuthHandler(ABC):
@@ -257,16 +257,9 @@ class CoreAuthConfig(AuthHandlerConfig):
 
 
 class AuthHandlerFactory(BaseFactory):
-    def get_allowed_classes(self) -> list[Type[AuthHandlerConfig]]:
-        list_auth_handler_default = [
-            CoreAuthConfig,
-        ]
-
-        list_auth_handler = self._hook_manager.execute_hook(
-            "factory_allowed_auth_handlers", list_auth_handler_default, caller=None
-        )
-
-        return list_auth_handler
+    @property
+    def factory_allowed_handler_name(self) -> str:
+        return "factory_allowed_auth_handlers"
 
     @property
     def setting_category(self) -> str:
