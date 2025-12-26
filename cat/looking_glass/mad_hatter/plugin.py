@@ -343,8 +343,6 @@ class Plugin:
             if os.path.exists(tmp_name):
                 os.unlink(tmp_name)
 
-            # Clean uv and pip cache, and __pycache__ folders
-            subprocess.run(["uv", "cache", "clean"], check=True)
             # Clean __pycache__ directories (cross-platform approach)
             for pycache in Path("/app").rglob("__pycache__"):
                 shutil.rmtree(pycache, ignore_errors=True)

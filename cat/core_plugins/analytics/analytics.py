@@ -28,7 +28,7 @@ def before_cat_sends_message(message, agent_output, cat) -> Dict:
     if not agent_output.with_llm_error:
         for interaction in cat.working_memory.model_interactions:
             input_tokens += interaction.input_tokens
-            output_tokens += interaction.output_tokens * int(hasattr(interaction, "output_tokens"))
+            output_tokens += getattr(interaction, "output_tokens", 0)
 
     tokens = crud_llm.LLMUsedTokens(input=input_tokens, output=output_tokens)
     crud_llm.update_analytics(agent_id, user_id, chat_id, llm_id, tokens)

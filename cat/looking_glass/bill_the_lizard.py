@@ -192,7 +192,7 @@ class BillTheLizard(OrchestratorMixin):
             The Cheshire Cat with the given id, or None if it doesn't exist
         """
         if agent_id == DEFAULT_SYSTEM_KEY:
-            raise ValueError(f"`{DEFAULT_SYSTEM_KEY}` is a reserved name for agents")
+            return None
 
         if agent_id not in crud.get_agents_main_keys():
             raise ValueError(f"`{agent_id}` is not a valid agent id")
