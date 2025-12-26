@@ -2,17 +2,19 @@ import pytest
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
 from cat.agent import run_agent
+from cat.db.cruds import users as crud_users
 from cat.looking_glass import StrayCat
-from cat.services.memory.messages import CatMessage, UserMessage, MessageWhy
+from cat.services.memory.messages import MessageWhy
 from cat.services.memory.utils import recall, VectorMemoryType
 from cat.services.memory.working_memory import WorkingMemory
 
-from tests.utils import api_key, create_mock_plugin_zip, send_file
+from tests.utils import api_key, create_mock_plugin_zip, send_file, http_message
 
 
 def test_stray_initialization(stray_no_memory):
     assert isinstance(stray_no_memory, StrayCat)
-    assert stray_no_memory.user.id == "user_alice"
+    # check that stray_no_memory.user.id is uuid4
+    assert len(stray_no_memory.user.id) == 36
     assert isinstance(stray_no_memory.working_memory, WorkingMemory)
 
 
@@ -32,15 +34,41 @@ async def test_stray_nlp(lizard, stray_no_memory):
 
 
 @pytest.mark.asyncio
-async def test_stray_call(stray_no_memory):
-    msg = {"text": "Where do I go?"}
+async def test_stray_call(secure_client, stray_no_memory):
+    crud_users.create_user(
+        stray_no_memory.agent_key,
+        {
+            "id": stray_no_memory.user.id,
+            "username": stray_no_memory.user.name,
+            "password": "password123",
+            "permissions": stray_no_memory.user.permissions
+        },
+    )
 
-    reply = await stray_no_memory(UserMessage(**msg))
+    ccat_headers = {
+        "X-Agent-ID": stray_no_memory.agent_key,
+        "Authorization": f"Bearer {api_key}",
+        "X-Chat-ID": stray_no_memory.id,
+        "X-User-ID": stray_no_memory.user.id,
+    }
 
-    assert isinstance(reply, CatMessage)
-    assert "You did not configure" in reply.text
-    assert reply.type == "chat"
-    assert isinstance(reply.why, MessageWhy)
+    # send message
+    status_code, response_json = http_message(secure_client,{"text": "Where do I go?"}, ccat_headers)
+
+    assert status_code == 200
+    assert response_json["agent_id"] == stray_no_memory.agent_key
+    assert response_json["user_id"] == stray_no_memory.user.id
+    assert response_json["chat_id"] == stray_no_memory.id
+    assert response_json["message"]["type"] == "chat"
+    assert "You did not configure" in response_json["message"]["text"]
+    assert "You did not configure" in response_json["message"]["content"]
+
+    assert response_json["message"]["why"]["input"] == "Where do I go?"
+    assert response_json["message"]["why"]["intermediate_steps"] == []
+    assert response_json["message"]["why"]["memory"] == {'declarative': []}
+
+    why = MessageWhy(**response_json["message"]["why"])
+    assert isinstance(why, MessageWhy)
 
 
 @pytest.mark.asyncio
@@ -81,6 +109,16 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
 
 @pytest.mark.asyncio
 async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray):
+    crud_users.create_user(
+        stray.agent_key,
+        {
+            "id": stray.user.id,
+            "username": stray.user.name,
+            "password": "password123",
+            "permissions": stray.user.permissions
+        },
+    )
+
     ccat_headers = {"X-Agent-ID": stray.agent_key, "Authorization": f"Bearer {api_key}"}
 
     # manually install the plugin
@@ -96,14 +134,23 @@ async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray
     # activate for the new agent
     secure_client.put("/plugins/toggle/mock_plugin_fast_reply", headers=ccat_headers)
 
-    msg = {"text": "hello", "user_id": stray.user.id, "agent_id": stray.agent_key}
-
     # send message
-    res = await stray(msg)
-
-    assert isinstance(res, CatMessage)
-    assert res.text == "This is a fast reply"
+    status_code, response_json = http_message(
+        secure_client, {"text": "hello"}, ccat_headers | {"X-Chat-ID": stray.id, "X-User-ID": stray.user.id},
+    )
+    assert status_code == 200
+    assert response_json["agent_id"] == stray.agent_key
+    assert response_json["user_id"] == stray.user.id
+    assert response_json["chat_id"] == stray.id
+    assert response_json["message"]["type"] == "chat"
+    assert response_json["message"]["text"] == "This is a fast reply"
+    assert response_json["message"]["content"] == "This is a fast reply"
 
     # there should be NO side effects
-    assert stray.working_memory.user_message.text == "hello"
-    assert len(stray.working_memory.history) == 0
+    upd_stray = StrayCat(
+        user_data=stray.user,
+        agent_id=stray.agent_key,
+        stray_id=stray.id,
+        plugin_manager_generator=lambda: stray.plugin_manager,
+    )
+    assert len(upd_stray.working_memory.history) == 0

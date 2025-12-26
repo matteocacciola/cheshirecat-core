@@ -26,7 +26,11 @@ async def websocket_chat(
     websocket_manager = info.lizard.websocket_manager
     websocket_manager.add_connection(info.user.id, websocket)
 
-    stray_cat = info.stray_cat or StrayCat(user_data=info.user, agent_id=info.cheshire_cat.id)
+    stray_cat = info.stray_cat or StrayCat(
+        user_data=info.user,
+        agent_id=info.cheshire_cat.id,
+        plugin_manager_generator=lambda: info.cheshire_cat.plugin_manager,
+    )
     try:
         # Process messages
         while True:

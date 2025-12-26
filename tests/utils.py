@@ -2,6 +2,7 @@ import shutil
 import time
 import uuid
 import random
+from typing import Dict
 from urllib.parse import urlencode
 
 from cat.auth.permissions import get_base_permissions, AuthResource, AuthPermission
@@ -200,3 +201,9 @@ def just_installed_plugin(client, headers, activate = False, plugin_id = "mock_p
             assert response.status_code == 200
 
     return response
+
+
+# utility to make http requests with some headers
+def http_message(client, message: Dict, headers = None):
+    response = client.post("/message", headers=headers, json=message)
+    return response.status_code, response.json()

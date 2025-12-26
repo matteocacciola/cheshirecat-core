@@ -79,7 +79,12 @@ class ConnectionAuth(ABC):
             self._not_allowed(connection)
 
         if ccat is not None and (chat_id := extract_chat_id_from_request(connection)):
-            stray_cat = StrayCat(user_data=user, agent_id=ccat.id, stray_id=chat_id)
+            stray_cat = StrayCat(
+                user_data=user,
+                agent_id=ccat.id,
+                stray_id=chat_id,
+                plugin_manager_generator=lambda: ccat.plugin_manager,
+            )
 
         return AuthorizedInfo(lizard=lizard, cheshire_cat=ccat, user=user, stray_cat=stray_cat, agent_id=agent_id)
 

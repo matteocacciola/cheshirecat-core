@@ -6,13 +6,7 @@ from cat.auth.permissions import get_base_permissions
 from cat.env import get_env
 
 from tests.conftest import api_key
-from tests.utils import send_websocket_message, agent_id, create_new_user, new_user_password
-
-
-# utility to make http requests with some headers
-def http_message(client, headers = None):
-    response = client.post("/message", headers=headers, json={"text": "hey"})
-    return response.status_code, response.json()
+from tests.utils import send_websocket_message, agent_id, create_new_user, new_user_password, http_message
 
 
 def set_api_key(key: str, value: str) -> str | None:
@@ -52,7 +46,7 @@ def test_api_key_http(secure_client, client):
 
     # all the previous headers result in a 403
     for headers in wrong_headers:
-        status_code, json = http_message(secure_client, headers | {"X-Agent-ID": agent_id})
+        status_code, json = http_message(secure_client, {"text": "hey"}, headers | {"X-Agent-ID": agent_id})
         assert status_code == 401
         assert json["detail"] == "Unauthorized"
 
@@ -63,7 +57,7 @@ def test_api_key_http(secure_client, client):
     received_token = res.json()["access_token"]
 
     headers = {header_name: f"{key_prefix} {received_token}"}
-    status_code, json = http_message(client, headers | {"X-Agent-ID": agent_id})
+    status_code, json = http_message(client, {"text": "hey"}, headers | {"X-Agent-ID": agent_id})
     assert status_code == 200
     assert json["chat_id"] is not None
     assert "You did not configure" in json["message"]["text"]

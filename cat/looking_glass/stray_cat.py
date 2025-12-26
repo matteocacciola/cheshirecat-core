@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Dict, Final, Tuple
+from typing import List, Dict, Final, Tuple, Callable
 from langchain_core.documents import Document
 from langchain_core.messages import BaseMessage
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
@@ -82,12 +82,16 @@ class StrayCat(BotMixin):
         Unique identifier of the cat session.
     user: AuthUserInfo
         User data object containing user information.
-    agent_id: str
-        The ID of the agent associated with this cat.
+    plugin_manager_generator: Callable[[], Tweedledee]
+        Function that generates the plugin manager for this cat.
+    notifier: NotifierService
+        Notifier service to send messages/updates to the client via Websocket.
     working_memory: WorkingMemory
         State machine containing the conversation state, persisted across conversation turns, acting as a simple
         dictionary / object. It can be used in plugins to store and retrieve data to drive the conversation or do
         anything else.
+    latest_n_history: int
+        Number of latest interactions (user + cat messages) to include in the agent's context.
 
         Examples
         --------
@@ -102,10 +106,17 @@ class StrayCat(BotMixin):
         >> cat.working_memory.location
         "Rome"
     """
-    def __init__(self, agent_id: str, user_data: AuthUserInfo, stray_id: str | None = None):
+    def __init__(
+        self,
+        agent_id: str,
+        user_data: AuthUserInfo,
+        plugin_manager_generator: Callable[[], Tweedledee],
+        stray_id: str | None = None,
+    ):
         self.id = stray_id or str(uuid.uuid4())
         self._agent_id: Final[str] = agent_id
         self.user: Final[AuthUserInfo] = user_data
+        self.plugin_manager_generator: Final[Callable[[], Tweedledee]] = plugin_manager_generator
         self.notifier: Final[NotifierService] = NotifierService(self.user, self.agent_key, self.id)
 
         # bootstrap stray cat
@@ -278,7 +289,4 @@ class StrayCat(BotMixin):
 
     @property
     def plugin_manager(self) -> Tweedledee:
-        ccat = self.lizard.get_cheshire_cat(self.agent_key)
-        if ccat is not None:
-            return ccat.plugin_manager
-        raise ValueError(f"Agent id: {self.agent_key}. Cannot get plugin manager for non-existing cat")
+        return self.plugin_manager_generator()

@@ -35,7 +35,12 @@ def test_session_creation_from_websocket(
 
     # verify session
     user = AuthUserInfo(id=user_id, name=data["username"], permissions=data["permissions"])
-    stray_cat = StrayCat(user_data=user, agent_id=agent_id, stray_id=chat_id)
+    stray_cat = StrayCat(
+        user_data=user,
+        agent_id=agent_id,
+        stray_id=chat_id,
+        plugin_manager_generator=lambda: cheshire_cat.plugin_manager,
+    )
 
     convo = stray_cat.working_memory.history
     assert len(convo) == 2
@@ -67,7 +72,9 @@ def test_session_creation_from_http(secure_client, secure_client_headers, cheshi
 
     # verify session
     user = AuthUserInfo(id=user_id, name=data["username"], permissions=data["permissions"])
-    stray_cat = StrayCat(user_data=user, agent_id=agent_id)
+    stray_cat = StrayCat(
+        user_data=user, agent_id=agent_id, plugin_manager_generator=lambda: cheshire_cat.plugin_manager,
+    )
 
     convo = stray_cat.working_memory.history
     assert len(convo) == 0  # no ws message sent from Alice

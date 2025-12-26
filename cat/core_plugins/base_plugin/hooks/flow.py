@@ -251,7 +251,7 @@ def before_cat_sends_message(message, agent_output, cat) -> Dict:
 
     Args:
         message (Dict): JSON dictionary to be sent to the WebSocket client.
-        agent_output (AgentOutput | None): The output of the agent if an agent is used, None otherwise.
+        agent_output (AgentOutput): The output of the agent.
         cat (StrayCat): Stray Cat instance.
 
     Returns:

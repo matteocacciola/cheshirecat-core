@@ -18,22 +18,19 @@ from cat.services.memory.utils import PointStruct
 
 @hook(priority=1)
 def before_cat_sends_message(message, agent_output, cat) -> Dict:
-    input_tokens = 0
-    output_tokens = 0
-    for interaction in cat.working_memory.model_interactions:
-        input_tokens += interaction.input_tokens
-        if hasattr(interaction, "output_tokens"):
-            output_tokens += interaction.output_tokens
-
-    if input_tokens == 0 and output_tokens == 0:
-        return message
-
     agent_id = cat.agent_key
     user_id = cat.user.id
     chat_id = cat.id
     llm_id = cat.large_language_model_name
-    tokens = crud_llm.LLMUsedTokens(input=input_tokens, output=output_tokens)
 
+    input_tokens = 0
+    output_tokens = 0
+    if not agent_output.with_llm_error:
+        for interaction in cat.working_memory.model_interactions:
+            input_tokens += interaction.input_tokens
+            output_tokens += interaction.output_tokens * int(hasattr(interaction, "output_tokens"))
+
+    tokens = crud_llm.LLMUsedTokens(input=input_tokens, output=output_tokens)
     crud_llm.update_analytics(agent_id, user_id, chat_id, llm_id, tokens)
 
     return message

@@ -72,13 +72,14 @@ def test_websocket(secure_client, secure_client_headers):
     assert llm_id == "default_llm"
     assert isinstance(analytics[agent_id][user_id][chat_id][llm_id], dict)
 
+    # no tokens used since no valid LLM was configured and, then, no LLM call was made
     info = analytics[agent_id][user_id][chat_id][llm_id]
     assert "input_tokens" in info.keys()
-    assert info["input_tokens"] >= 0
+    assert info["input_tokens"] == 0
     assert "output_tokens" in info.keys()
-    assert info["output_tokens"] >= 0
+    assert info["output_tokens"] == 0
     assert "total_tokens" in info.keys()
-    assert info["total_tokens"] >= 0
+    assert info["total_tokens"] == 0
     assert "total_calls" in info.keys()
     assert info["total_calls"] == 1
 
