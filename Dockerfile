@@ -32,7 +32,7 @@ COPY ./pyproject.toml ./uv.lock ./LICENSE ./
 ### INSTALL CORE DEPENDENCIES ###
 RUN pip install -U pip && \
     pip install uv && \
-    uv sync --frozen --locked --no-install-project
+    uv sync --frozen --no-install-project
 
 FROM libraries AS build-dev
 
