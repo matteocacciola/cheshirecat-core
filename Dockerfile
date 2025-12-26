@@ -2,8 +2,8 @@ FROM python:3.13-slim-bullseye AS system
 
 ### ENVIRONMENT VARIABLES ###
 ENV PYTHONUNBUFFERED=1
-ENV WATCHFILES_FORCE_POLLING=true
 ENV UV_LINK_MODE=copy
+ENV UV_NO_CACHE=1
 
 ### SYSTEM SETUP ###
 # Install system dependencies in a single layer with cleanup
@@ -28,25 +28,30 @@ FROM system AS libraries
 WORKDIR /app
 
 COPY ./pyproject.toml ./uv.lock ./LICENSE ./
-COPY ./data ./data
-COPY ./cat ./cat
 
 ### INSTALL CORE DEPENDENCIES ###
 RUN pip install -U pip && \
     pip install uv && \
-    uv sync --no-cache
+    uv sync --frozen --locked --no-install-project
 
 FROM libraries AS build-dev
+
+COPY ./cat ./cat
+COPY ./data ./data
 
 ### INSTALL PLUGIN DEPENDENCIES ###
 RUN find /app/cat/core_plugins -name requirements.txt -exec uv pip install --no-cache -r {} \; && \
     uv cache clean && \
-    find /app -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+    find /app -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
+    pip cache purge
 
 ### FINISH ###
 CMD ["uv", "run", "python", "-m", "cat.main"]
 
 FROM libraries AS build-prod
+
+COPY ./cat ./cat
+COPY ./data ./data
 
 ### FINISH ###
 CMD ["uv", "run", "python", "-m", "cat.main"]

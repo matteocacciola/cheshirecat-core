@@ -2,10 +2,12 @@ import glob
 import importlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
 from inspect import getmembers, isclass
+from pathlib import Path
 from typing import Dict, List, Tuple
 from packaging.requirements import Requirement
 from pydantic import BaseModel, ValidationError
@@ -325,7 +327,7 @@ class Plugin:
 
         try:
             subprocess.run(
-                ["uv", "pip", "install", "--no-cache", "--link-mode=copy", "-r", tmp_name],
+                ["uv", "pip", "install", "--no-cache", "-r", tmp_name],
                 check=True
             )
         except subprocess.CalledProcessError as e:
@@ -340,6 +342,12 @@ class Plugin:
             # Clean up the temporary file
             if os.path.exists(tmp_name):
                 os.unlink(tmp_name)
+
+            # Clean uv and pip cache, and __pycache__ folders
+            subprocess.run(["uv", "cache", "clean"], check=True)
+            # Clean __pycache__ directories (cross-platform approach)
+            for pycache in Path("/app").rglob("__pycache__"):
+                shutil.rmtree(pycache, ignore_errors=True)
 
     # lists of hooks and tools
     def _load_decorated_functions(self):

@@ -36,9 +36,10 @@ test:  ## Run tests.
 
 install: ## Update the local virtual environment with the latest requirements.
 	@# install the requirements
-	@uv sync --link-mode=copy
+	@uv sync --link-mode=copy --frozen --locked --no-install-project
 	@# look for requirements.txt in subdirectories of core_plugins and install them
 	@find $(PWD)/cat/core_plugins -name requirements.txt -exec uv pip install --link-mode=copy -r {} \;
+	@pip cache purge
 
 update: ## Update and compile requirements for the local virtual environment.
 	@# upgrade the requirements

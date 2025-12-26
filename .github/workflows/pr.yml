@@ -22,16 +22,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Free Disk Space
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: false # Keep false so we don't delete base images like redis/rabbitmq
       - name: Clean Docker system before build
         run: |
           docker system prune -f
       - name: Build and test
         run: |
-          # Build with --no-cache to ensure clean state
-          docker compose build --no-cache
-          docker compose run --rm cheshire-cat-core uv run python -m pytest --color=yes -W ignore --disable-warnings .
+          docker compose build --pull --no-cache
+          docker compose run --rm -V cheshire-cat-core uv run python -m pytest --color=yes -W ignore --disable-warnings .
       - name: Cleanup after tests
         if: always()
         run: |
-          docker compose down --remove-orphans
-          docker system prune -f
+          docker compose down --volumes --remove-orphans
+          docker system prune -af
