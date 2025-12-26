@@ -3,7 +3,7 @@ import mimetypes
 from copy import deepcopy
 from typing import Dict, List
 import httpx
-from fastapi import Form, APIRouter, UploadFile, BackgroundTasks, Request
+from fastapi import Form, APIRouter, UploadFile, BackgroundTasks
 from pydantic import BaseModel, Field, ConfigDict
 
 from cat.auth.connection import AuthorizedInfo
