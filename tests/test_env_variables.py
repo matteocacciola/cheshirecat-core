@@ -6,7 +6,8 @@ from cat.env import get_supported_env_variables, get_env
 def test_get_env():
     # container envs
     assert get_env("PYTHONUNBUFFERED") == "1"
-    assert get_env("WATCHFILES_FORCE_POLLING") == "true"
+    assert get_env("UV_LINK_MODE") == "copy"
+    assert get_env("UV_NO_CACHE") == "1"
 
     # unexisting
     assert get_env("UNEXISTING_ENV") is None
