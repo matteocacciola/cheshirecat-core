@@ -31,7 +31,7 @@ def test_session_creation_from_websocket(
     # check response
     assert res["user_id"] == user_id
     assert res["chat_id"] == chat_id
-    assert "You did not configure" in res["message"]["content"]
+    assert "You did not configure" in res["message"]["text"]
 
     # verify session
     user = AuthUserInfo(id=user_id, name=data["username"], permissions=data["permissions"])

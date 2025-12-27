@@ -3,8 +3,8 @@ from fastapi import APIRouter, Body
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
-from cat.services.factory.base_factory import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
-from cat.services.factory.vector_db import VectorDatabaseFactory
+from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
+from cat.services.service_factory import ServiceFactory
 
 router = APIRouter(tags=["Vector Database"], prefix="/vector_database")
 
@@ -16,7 +16,12 @@ async def get_vector_databases_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Vector Databases settings and their configuration schemas"""
     ccat = info.cheshire_cat
-    return VectorDatabaseFactory(ccat.plugin_manager).get_factory_settings(ccat.id)
+    return ServiceFactory(
+        ccat.plugin_manager,
+        factory_allowed_handler_name="factory_allowed_vector_databases",
+        setting_category="vector_database",
+        schema_name="vectorDatabaseName",
+    ).get_factory_settings(ccat.id)
 
 
 @router.get(
@@ -28,7 +33,12 @@ async def get_vector_database_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Vector Database"""
     ccat = info.cheshire_cat
-    return VectorDatabaseFactory(ccat.plugin_manager).get_factory_setting(ccat.id, vector_database_name)
+    return ServiceFactory(
+        ccat.plugin_manager,
+        factory_allowed_handler_name="factory_allowed_vector_databases",
+        setting_category="vector_database",
+        schema_name="vectorDatabaseName",
+    ).get_factory_setting(ccat.id, vector_database_name)
 
 
 @router.put(
@@ -42,5 +52,10 @@ async def upsert_vector_database_setting(
     """Upsert the Vector Database setting"""
     ccat = info.cheshire_cat
 
-    result = VectorDatabaseFactory(ccat.plugin_manager).upsert_service(ccat.agent_key, vector_database_name, payload)
+    result = ServiceFactory(
+        ccat.plugin_manager,
+        factory_allowed_handler_name="factory_allowed_vector_databases",
+        setting_category="vector_database",
+        schema_name="vectorDatabaseName",
+    ).upsert_service(ccat.agent_key, vector_database_name, payload)
     return UpsertSettingResponse(**result)

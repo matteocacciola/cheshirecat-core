@@ -61,7 +61,6 @@ async def test_stray_call(secure_client, stray_no_memory):
     assert response_json["chat_id"] == stray_no_memory.id
     assert response_json["message"]["type"] == "chat"
     assert "You did not configure" in response_json["message"]["text"]
-    assert "You did not configure" in response_json["message"]["content"]
 
     assert response_json["message"]["why"]["input"] == "Where do I go?"
     assert response_json["message"]["why"]["intermediate_steps"] == []
@@ -144,7 +143,6 @@ async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray
     assert response_json["chat_id"] == stray.id
     assert response_json["message"]["type"] == "chat"
     assert response_json["message"]["text"] == "This is a fast reply"
-    assert response_json["message"]["content"] == "This is a fast reply"
 
     # there should be NO side effects
     upd_stray = StrayCat(

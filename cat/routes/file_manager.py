@@ -9,9 +9,10 @@ from starlette.responses import StreamingResponse
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
 from cat.exceptions import CustomNotFoundException, CustomValidationException
-from cat.services.factory.base_factory import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
-from cat.services.factory.file_manager import FileManagerFactory, FileManagerAttributes
+from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
+from cat.services.factory.file_manager import FileManagerAttributes
 from cat.services.memory.utils import VectorMemoryType
+from cat.services.service_factory import ServiceFactory
 
 router = APIRouter(tags=["File Manager"], prefix="/file_manager")
 
@@ -27,7 +28,12 @@ async def get_file_managers_settings(
 ) -> GetSettingsResponse:
     """Get the list of the File Managers and their settings"""
     ccat = info.cheshire_cat
-    return FileManagerFactory(ccat.plugin_manager).get_factory_settings(ccat.id)
+    return ServiceFactory(
+        ccat.plugin_manager,
+        factory_allowed_handler_name="factory_allowed_file_managers",
+        setting_category="file_manager",
+        schema_name="fileManagerName",
+    ).get_factory_settings(ccat.id)
 
 
 @router.get("/settings/{file_manager_name}", response_model=GetSettingResponse)
@@ -37,7 +43,12 @@ async def get_file_manager_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified File Manager"""
     ccat = info.cheshire_cat
-    return FileManagerFactory(ccat.plugin_manager).get_factory_setting(ccat.id, file_manager_name)
+    return ServiceFactory(
+        ccat.plugin_manager,
+        factory_allowed_handler_name="factory_allowed_file_managers",
+        setting_category="file_manager",
+        schema_name="fileManagerName",
+    ).get_factory_setting(ccat.id, file_manager_name)
 
 
 @router.put("/settings/{file_manager_name}", response_model=UpsertSettingResponse)
@@ -49,7 +60,12 @@ async def upsert_file_manager_setting(
     """Upsert the File Manager setting"""
     ccat = info.cheshire_cat
 
-    result = FileManagerFactory(ccat.plugin_manager).upsert_service(ccat.agent_key, file_manager_name, payload)
+    result = ServiceFactory(
+        ccat.plugin_manager,
+        factory_allowed_handler_name="factory_allowed_file_managers",
+        setting_category="file_manager",
+        schema_name="fileManagerName",
+    ).upsert_service(ccat.agent_key, file_manager_name, payload)
     return UpsertSettingResponse(**result)
 
 

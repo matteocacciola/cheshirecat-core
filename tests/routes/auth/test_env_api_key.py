@@ -96,6 +96,6 @@ def test_api_key_ws(secure_client, secure_client_headers, client):
 
     res = send_websocket_message(mex, secure_client, received_token)
     assert res["chat_id"] is not None
-    assert "You did not configure" in res["message"]["content"]
+    assert "You did not configure" in res["message"]["text"]
 
     reset_api_key("CCAT_API_KEY", old_api_key)

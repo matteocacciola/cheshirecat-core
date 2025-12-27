@@ -1,20 +1,51 @@
 import json
 from typing import Dict, List
 import jwt
+import tomli
 from fastapi import APIRouter, Body, Request
-from fastapi_healthz import HealthCheckRegistry, HealthCheckRedis, health_check_route
+from fastapi_healthz import (
+    HealthCheckRegistry,
+    HealthCheckRedis,
+    HealthCheckStatusEnum,
+    HealthCheckAbstract,
+    health_check_route,
+)
 from pydantic import BaseModel, Field
 
+from cat import utils
 from cat.auth.auth_utils import is_jwt, extract_token_from_request
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.db.crud import get_db_connection_string
 from cat.exceptions import CustomUnauthorizedException, CustomNotFoundException
 from cat.looking_glass import StrayCat, ChatResponse
-from cat.routes.routes_utils import HealthCheckLocal
 from cat.services.memory.messages import UserMessage
 
 router = APIRouter()
+
+
+class HealthCheckLocal(HealthCheckAbstract):
+    @property
+    def service(self) -> str:
+        return "cheshire-cat"
+
+    @property
+    def connection_uri(self) -> str:
+        return utils.get_base_url()
+
+    @property
+    def tags(self) -> List[str]:
+        return ["cheshire-cat", "local"]
+
+    @property
+    def comments(self) -> list[str]:
+        with open("pyproject.toml", "rb") as f:
+            project_toml = tomli.load(f)["project"]
+            return [f"version: {project_toml['version']}"]
+
+    def check_health(self) -> HealthCheckStatusEnum:
+        return HealthCheckStatusEnum.HEALTHY
+
 
 # Add Health Checks
 _healthChecks = HealthCheckRegistry()

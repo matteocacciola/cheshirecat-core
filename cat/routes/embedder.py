@@ -4,8 +4,9 @@ from fastapi import APIRouter, Body
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
 from cat.db import crud
-from cat.services.factory.base_factory import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
-from cat.services.factory.embedder import EmbedderFactory
+from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
+from cat.services.service_factory import ServiceFactory
+
 
 router = APIRouter(tags=["Embedder"], prefix="/embedder")
 
@@ -17,7 +18,12 @@ async def get_embedders_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Embedders"""
     lizard = info.lizard
-    return EmbedderFactory(lizard.plugin_manager).get_factory_settings(lizard.config_key)
+    return ServiceFactory(
+        lizard.plugin_manager,
+        factory_allowed_handler_name="factory_allowed_embedders",
+        setting_category="embedder",
+        schema_name="languageEmbedderName",
+    ).get_factory_settings(lizard.config_key)
 
 
 @router.get("/settings/{embedder_name}", response_model=GetSettingResponse)
@@ -27,7 +33,12 @@ async def get_embedder_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Embedder"""
     lizard = info.lizard
-    return EmbedderFactory(lizard.plugin_manager).get_factory_setting(lizard.config_key, embedder_name)
+    return ServiceFactory(
+        lizard.plugin_manager,
+        factory_allowed_handler_name="factory_allowed_embedders",
+        setting_category="embedder",
+        schema_name="languageEmbedderName",
+    ).get_factory_setting(lizard.config_key, embedder_name)
 
 
 @router.put("/settings/{embedder_name}", response_model=UpsertSettingResponse)
@@ -39,7 +50,12 @@ async def upsert_embedder_setting(
     """Upsert the Embedder setting"""
     lizard = info.lizard
 
-    result = EmbedderFactory(lizard.plugin_manager).upsert_service(lizard.agent_key, embedder_name, payload)
+    result = ServiceFactory(
+        lizard.plugin_manager,
+        factory_allowed_handler_name="factory_allowed_embedders",
+        setting_category="embedder",
+        schema_name="languageEmbedderName",
+    ).upsert_service(lizard.agent_key, embedder_name, payload)
 
     # inform the Cheshire Cats about the new embedder available in the system
     for ccat_id in crud.get_agents_main_keys():

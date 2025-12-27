@@ -6,7 +6,7 @@ from pydantic import ConfigDict, BaseModel
 
 from cat import utils
 from cat.log import log
-from cat.services.factory.base_factory import BaseFactory, BaseFactoryConfigModel
+from cat.services.factory.models import BaseFactoryConfigModel
 
 
 class FileResponse(BaseModel):
@@ -297,21 +297,3 @@ class DummyFileManagerConfig(FileManagerConfig):
     @classmethod
     def pyclass(cls) -> Type[DummyFileManager]:
         return DummyFileManager
-
-
-class FileManagerFactory(BaseFactory):
-    @property
-    def factory_allowed_handler_name(self) -> str:
-        return "factory_allowed_file_managers"
-
-    @property
-    def setting_category(self) -> str:
-        return "file_manager"
-
-    @property
-    def default_config_class(self) -> Type[BaseFactoryConfigModel]:
-        return DummyFileManagerConfig
-
-    @property
-    def schema_name(self) -> str:
-        return "fileManagerName"

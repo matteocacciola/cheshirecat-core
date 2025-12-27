@@ -9,7 +9,7 @@ from cat.auth.permissions import AuthResource, AuthPermission, AuthUserInfo
 from cat.db.cruds import users as crud_users
 from cat.env import get_env
 from cat.log import log
-from cat.services.factory.base_factory import BaseFactory, BaseFactoryConfigModel
+from cat.services.factory.models import BaseFactoryConfigModel
 
 
 class BaseAuthHandler(ABC):
@@ -254,21 +254,3 @@ class CoreAuthConfig(AuthHandlerConfig):
     @classmethod
     def pyclass(cls) -> Type[CoreAuthHandler]:
         return CoreAuthHandler
-
-
-class AuthHandlerFactory(BaseFactory):
-    @property
-    def factory_allowed_handler_name(self) -> str:
-        return "factory_allowed_auth_handlers"
-
-    @property
-    def setting_category(self) -> str:
-        return "auth_handler"
-
-    @property
-    def default_config_class(self) -> Type[BaseFactoryConfigModel]:
-        return CoreAuthConfig
-
-    @property
-    def schema_name(self) -> str:
-        return "authorizatorName"

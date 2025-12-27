@@ -71,13 +71,25 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
     assert "history" in json
     assert len(json["history"]) == 2  # mex and reply
 
-    picked_history = json["history"][0]
+    for item in json["history"]:
+        assert "who" in item
+        assert item["who"] in ["user", "assistant"]
 
-    assert picked_history["who"] == "user"
-    assert picked_history["message"] == message
-    assert picked_history["content"]["text"] == message
-    assert picked_history["why"] is None
-    assert isinstance(picked_history["when"], float)  # timestamp
+        assert "content" in item
+        assert "text" in item["content"]
+
+        if item["who"] == "user":
+            assert item["content"]["text"] == message
+            assert "why" not in item["content"]
+        else:
+            assert "You did not configure" in item["content"]["text"]
+            assert "why" in item["content"]
+            assert isinstance(item["content"]["why"], dict)
+            assert item["content"]["why"]["input"] == message
+            assert len(item["content"]["why"]) > 0
+
+        assert "when" in item
+        assert isinstance(item["when"], float)  # timestamp
 
 
 def test_convo_delete(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
@@ -170,13 +182,11 @@ def test_convo_history_by_user(secure_client, secure_client_headers, client, moc
         assert len(json["history"]) == n_messages * 2  # mex and reply
         for m_idx, m in enumerate(json["history"]):
             assert "who" in m
-            assert "message" in m
             assert "content" in m
             assert "text" in m["content"]
             if m_idx % 2 == 0:  # even message
                 m_number_from_user = int(m_idx / 2)
                 assert m["who"] == "user"
-                assert m["message"] == f"Mex n.{m_number_from_user} from {username}"
                 assert m["content"]["text"] == f"Mex n.{m_number_from_user} from {username}"
             else:
                 assert m["who"] == "assistant"

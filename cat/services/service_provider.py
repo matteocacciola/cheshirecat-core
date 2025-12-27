@@ -5,13 +5,11 @@ from langchain_core.language_models import BaseLanguageModel
 from cat.db import models
 from cat.db.cruds import settings as crud_settings
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
-from cat.services.factory.auth_handler import BaseAuthHandler, AuthHandlerFactory
-from cat.services.factory.base_factory import BaseFactory
-from cat.services.factory.chunker import BaseChunker, ChunkerFactory
-from cat.services.factory.embedder import EmbedderFactory
-from cat.services.factory.file_manager import BaseFileManager, FileManagerFactory
-from cat.services.factory.llm import LLMFactory
-from cat.services.factory.vector_db import BaseVectorDatabaseHandler, VectorDatabaseFactory
+from cat.services.factory.auth_handler import BaseAuthHandler
+from cat.services.service_factory import ServiceFactory
+from cat.services.factory.chunker import BaseChunker
+from cat.services.factory.file_manager import BaseFileManager
+from cat.services.factory.vector_db import BaseVectorDatabaseHandler
 
 
 class ServiceProvider:
@@ -19,7 +17,7 @@ class ServiceProvider:
         self._agent_key = agent_key
         self._plugin_manager = plugin_manager
 
-    def get_factory_object(self, factory: BaseFactory) -> Any:
+    def get_factory_object(self, factory: ServiceFactory) -> Any:
         if not (selected_config := crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)):
             # if no config is saved, use default one and save to db
             # create the settings for the factory
@@ -55,24 +53,52 @@ class ServiceProvider:
         return name.lower()
 
     def get_embedder(self) -> Embeddings:
-        return self.get_factory_object(EmbedderFactory(self._plugin_manager))
+        return self.get_factory_object(ServiceFactory(
+            self._plugin_manager,
+            factory_allowed_handler_name="factory_allowed_embedders",
+            setting_category="embedder",
+            schema_name="languageEmbedderName",
+        ))
 
     def get_large_language_model(self) -> BaseLanguageModel:
-        return self.get_factory_object(LLMFactory(self._plugin_manager))
+        return self.get_factory_object(ServiceFactory(
+            self._plugin_manager,
+            factory_allowed_handler_name="factory_allowed_llms",
+            setting_category="llm",
+            schema_name="languageModelName",
+        ))
 
     def get_custom_auth_handler(self) -> BaseAuthHandler:
-        return self.get_factory_object(AuthHandlerFactory(self._plugin_manager))
+        return self.get_factory_object(ServiceFactory(
+            self._plugin_manager,
+            factory_allowed_handler_name="factory_allowed_auth_handlers",
+            setting_category="auth_handler",
+            schema_name="authorizatorName",
+        ))
 
     def get_file_manager(self) -> BaseFileManager:
-        return self.get_factory_object(FileManagerFactory(self._plugin_manager))
+        return self.get_factory_object(ServiceFactory(
+            self._plugin_manager,
+            factory_allowed_handler_name="factory_allowed_file_managers",
+            setting_category="file_manager",
+            schema_name="fileManagerName",
+        ))
 
     def get_chunker(self) -> BaseChunker:
-        return self.get_factory_object(ChunkerFactory(self._plugin_manager))
+        return self.get_factory_object(ServiceFactory(
+            self._plugin_manager,
+            factory_allowed_handler_name="factory_allowed_chunkers",
+            setting_category="chunker",
+            schema_name="chunkerName",
+        ))
 
     def get_vector_memory_handler(self) -> BaseVectorDatabaseHandler:
-        vector_memory_handler: BaseVectorDatabaseHandler = self.get_factory_object(
-            VectorDatabaseFactory(self._plugin_manager)
-        )
+        vector_memory_handler: BaseVectorDatabaseHandler = self.get_factory_object(ServiceFactory(
+            self._plugin_manager,
+            factory_allowed_handler_name="factory_allowed_vector_databases",
+            setting_category="vector_database",
+            schema_name="vectorDatabaseName",
+        ))
         vector_memory_handler.agent_id = self._agent_key
         return vector_memory_handler
 

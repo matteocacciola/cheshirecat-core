@@ -35,11 +35,9 @@ def test_update_history():
         assert isinstance(message.content, (UserMessage, CatMessage))
 
     assert wm.history[0].who == "user"
-    assert wm.history[0].role == "user"
     assert wm.history[0].content.text == "Hi"
 
     assert wm.history[1].who == "assistant"
-    assert wm.history[1].role == "assistant"
     assert wm.history[1].content.text == "Meow"
 
 

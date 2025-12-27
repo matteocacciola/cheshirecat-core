@@ -6,7 +6,7 @@ from cat.auth.permissions import get_full_permissions
 from cat.db import models
 from cat.db.cruds import settings as crud_settings, users as crud_users
 from cat.db.database import DEFAULT_SYSTEM_KEY
-from cat.services.factory.auth_handler import AuthHandlerFactory
+from cat.services.service_factory import ServiceFactory
 
 from tests.utils import agent_id
 
@@ -27,7 +27,12 @@ def test_get_settings(cheshire_cat):
     crud_settings.create_setting(agent_id, models.Setting(**{
         "name": "CoreAuthConfig2",
         "value": {},
-        "category": AuthHandlerFactory(cheshire_cat.plugin_manager).setting_category,
+        "category": ServiceFactory(
+            cheshire_cat.plugin_manager,
+            factory_allowed_handler_name="factory_allowed_auth_handlers",
+            setting_category="auth_handler",
+            schema_name="authorizatorName",
+        ).setting_category,
         "setting_id": "96f4c9d4-b58d-41c5-88e2-c87b94fe012c",
         "updated_at": 1729169367
     }))
@@ -37,7 +42,12 @@ def test_get_settings(cheshire_cat):
 
 
 def test_get_setting_by_category(cheshire_cat):
-    factory = AuthHandlerFactory(cheshire_cat.plugin_manager)
+    factory = ServiceFactory(
+        cheshire_cat.plugin_manager,
+        factory_allowed_handler_name="factory_allowed_auth_handlers",
+        setting_category="auth_handler",
+        schema_name="authorizatorName",
+    )
 
     value = crud_settings.get_settings_by_category(agent_id, "")
     assert value is None
@@ -47,7 +57,15 @@ def test_get_setting_by_category(cheshire_cat):
 
 
 def test_get_setting_by_name(cheshire_cat):
-    value = crud_settings.get_settings_by_category(agent_id, AuthHandlerFactory(cheshire_cat.plugin_manager).setting_category)
+    value = crud_settings.get_settings_by_category(
+        agent_id,
+        ServiceFactory(
+            cheshire_cat.plugin_manager,
+            factory_allowed_handler_name="factory_allowed_auth_handlers",
+            setting_category="auth_handler",
+            schema_name="authorizatorName",
+        ).setting_category
+    )
     assert isinstance(value, dict)
     assert value["name"] == "CoreAuthConfig"
 
@@ -57,7 +75,12 @@ def test_get_setting_by_id(cheshire_cat):
     expected = {
         "name": "CoreAuthConfig2",
         "value": {},
-        "category": AuthHandlerFactory(cheshire_cat.plugin_manager).setting_category,
+        "category": ServiceFactory(
+            cheshire_cat.plugin_manager,
+            factory_allowed_handler_name="factory_allowed_auth_handlers",
+            setting_category="auth_handler",
+            schema_name="authorizatorName",
+        ).setting_category,
         "setting_id": setting_id,
         "updated_at": 1729169367
     }
@@ -74,7 +97,12 @@ def test_delete_setting_by_id(cheshire_cat):
     add = {
         "name": "CoreAuthConfig2",
         "value": {},
-        "category": AuthHandlerFactory(cheshire_cat.plugin_manager).setting_category,
+        "category": ServiceFactory(
+            cheshire_cat.plugin_manager,
+            factory_allowed_handler_name="factory_allowed_auth_handlers",
+            setting_category="auth_handler",
+            schema_name="authorizatorName",
+        ).setting_category,
         "setting_id": setting_id,
         "updated_at": 1729169367
     }
@@ -88,7 +116,12 @@ def test_delete_setting_by_id(cheshire_cat):
 
 
 def test_delete_settings_by_category(cheshire_cat):
-    category = AuthHandlerFactory(cheshire_cat.plugin_manager).setting_category
+    category = ServiceFactory(
+        cheshire_cat.plugin_manager,
+        factory_allowed_handler_name="factory_allowed_auth_handlers",
+        setting_category="auth_handler",
+        schema_name="authorizatorName",
+    ).setting_category
     value = crud_settings.get_settings_by_category(agent_id, category)
     assert isinstance(value, dict)
 
@@ -101,7 +134,12 @@ def test_create_setting_with_empty_name(cheshire_cat):
     add = {
         "name": "",
         "value": {},
-        "category": AuthHandlerFactory(cheshire_cat.plugin_manager).setting_category,
+        "category": ServiceFactory(
+            cheshire_cat.plugin_manager,
+            factory_allowed_handler_name="factory_allowed_auth_handlers",
+            setting_category="auth_handler",
+            schema_name="authorizatorName",
+        ).setting_category,
         "setting_id": "96f4c9d4-b58d-41c5-88e2-c87b94fe012c",
         "updated_at": 1729169367
     }
@@ -115,7 +153,12 @@ def test_update_setting_by_id(cheshire_cat):
     add = {
         "name": "CoreAuthConfig2",
         "value": {},
-        "category": AuthHandlerFactory(cheshire_cat.plugin_manager).setting_category,
+        "category": ServiceFactory(
+            cheshire_cat.plugin_manager,
+            factory_allowed_handler_name="factory_allowed_auth_handlers",
+            setting_category="auth_handler",
+            schema_name="authorizatorName",
+        ).setting_category,
         "setting_id": setting_id,
         "updated_at": 1729169367
     }
@@ -135,7 +178,12 @@ def test_upsert_setting_by_name(cheshire_cat):
     add = {
         "name": name,
         "value": {},
-        "category": AuthHandlerFactory(cheshire_cat.plugin_manager).setting_category,
+        "category": ServiceFactory(
+            cheshire_cat.plugin_manager,
+            factory_allowed_handler_name="factory_allowed_auth_handlers",
+            setting_category="auth_handler",
+            schema_name="authorizatorName",
+        ).setting_category,
         "setting_id": "96f4c9d4-b58d-41c5-88e2-c87b94fe012c",
         "updated_at": 1729169367
     }

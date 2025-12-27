@@ -3,13 +3,13 @@ from typing import Dict
 from cat.db import models
 from cat.db.cruds import settings as crud_settings
 from cat.log import log
-from cat.services.factory.base_factory import BaseFactory
+from cat.services.service_factory import ServiceFactory
 from cat.services.string_crypto import StringCrypto
 from cat.utils import UpdaterFactory
 
 
 class ServiceUpdater:
-    def __init__(self, agent_key: str, factory: BaseFactory):
+    def __init__(self, agent_key: str, factory: ServiceFactory):
         self._agent_key = agent_key
         self._factory = factory
 

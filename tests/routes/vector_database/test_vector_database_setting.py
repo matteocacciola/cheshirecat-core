@@ -1,13 +1,18 @@
 from json import dumps
 from fastapi.encoders import jsonable_encoder
 
-from cat.services.factory.vector_db import VectorDatabaseFactory
+from cat.services.service_factory import ServiceFactory
 
 from tests.utils import create_new_user, new_user_password, agent_id
 
 
 def test_get_all_vector_databases_settings(secure_client, secure_client_headers, cheshire_cat):
-    vector_dbs_schemas = VectorDatabaseFactory(cheshire_cat.plugin_manager).get_schemas()
+    vector_dbs_schemas = ServiceFactory(
+        cheshire_cat.plugin_manager,
+        factory_allowed_handler_name="factory_allowed_vector_databases",
+        setting_category="vector_database",
+        schema_name="vectorDatabaseName",
+    ).get_schemas()
 
     response = secure_client.get("/vector_database/settings", headers=secure_client_headers)
     json = response.json()

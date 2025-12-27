@@ -1,3 +1,4 @@
+import io
 import json
 import mimetypes
 from copy import deepcopy
@@ -10,7 +11,6 @@ from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException
 from cat.log import log
-from cat.routes.routes_utils import on_upload_single_file
 from cat.services.memory.utils import VectorMemoryType
 
 router = APIRouter(tags=["Rabbit Hole"], prefix="/rabbithole")
@@ -40,6 +40,46 @@ class UploadUrlResponse(BaseModel):
 
 class AllowedMimeTypesResponse(BaseModel):
     allowed: List[str]
+
+
+def _format_uploaded_file(uploaded_file: UploadFile) -> UploadFile:
+    file_content = uploaded_file.file.read()
+    return UploadFile(filename=uploaded_file.filename, file=io.BytesIO(file_content))
+
+
+def _on_upload_single_file(
+    info: AuthorizedInfo,
+    file: UploadFile,
+    background_tasks: BackgroundTasks,
+    metadata: str | None = None,
+):
+    lizard = info.lizard
+    cat = info.stray_cat or info.cheshire_cat
+
+    # Check the file format is supported
+    admitted_types = cat.file_handlers.keys()
+
+    # Get file mime type
+    content_type, _ = mimetypes.guess_type(file.filename)
+    log.info(f"Uploaded {content_type} down the rabbit hole")
+
+    # check if MIME type of uploaded file is supported
+    if content_type not in admitted_types:
+        CustomValidationException(
+            f'MIME type {content_type} not supported. Admitted types: {" - ".join(admitted_types)}'
+        )
+
+    # upload file to long term memory, in the background
+    uploaded_file = deepcopy(_format_uploaded_file(file))
+    # we deepcopy the file because FastAPI does not keep the file in memory after the response returns to the client
+    # https://github.com/tiangolo/fastapi/discussions/10936
+    background_tasks.add_task(
+        lizard.rabbit_hole.ingest_file,
+        cat=cat,
+        file=uploaded_file,
+        metadata=json.loads(metadata)
+    )
+
 
 
 # receive files via http endpoint
@@ -111,7 +151,7 @@ async def upload_files(
     for file in files:
         # if file.filename in dictionary pass the stringified metadata, otherwise pass empty dictionary-like string
         metadata_dict_current = json.dumps(metadata_dict[file.filename]) if file.filename in metadata_dict else "{}"
-        on_upload_single_file(info, file, background_tasks, metadata_dict_current)
+        _on_upload_single_file(info, file, background_tasks, metadata_dict_current)
 
         response[file.filename] = UploadSingleFileResponse(
             filename=file.filename, content_type=file.content_type, info="File is being ingested asynchronously"
@@ -255,7 +295,7 @@ async def upload_file(
         )
     ```
     """
-    on_upload_single_file(info, file, background_tasks, metadata)
+    _on_upload_single_file(info, file, background_tasks, metadata)
 
     # reply to client
     return UploadSingleFileResponse(

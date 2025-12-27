@@ -7,7 +7,7 @@ from langchain_core.embeddings import Embeddings
 from pydantic import ConfigDict
 from sklearn.feature_extraction.text import CountVectorizer
 
-from cat.services.factory.base_factory import BaseFactory, BaseFactoryConfigModel
+from cat.services.factory.models import BaseFactoryConfigModel
 
 
 class MultimodalEmbeddings(Embeddings, ABC):
@@ -95,21 +95,3 @@ class EmbedderDumbConfig(EmbedderSettings):
     @classmethod
     def pyclass(cls) -> Type:
         return DumbEmbedder
-
-
-class EmbedderFactory(BaseFactory):
-    @property
-    def factory_allowed_handler_name(self) -> str:
-        return "factory_allowed_embedders"
-
-    @property
-    def setting_category(self) -> str:
-        return "embedder"
-
-    @property
-    def default_config_class(self) -> Type[BaseFactoryConfigModel]:
-        return EmbedderDumbConfig
-
-    @property
-    def schema_name(self) -> str:
-        return "languageEmbedderName"

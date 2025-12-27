@@ -1,84 +1,43 @@
-from abc import ABC, abstractmethod
-from typing import Type, Dict, Any, ClassVar, List
-from pydantic import BaseModel, model_serializer
+from typing import Type, Dict, Any, List, Literal
 
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomValidationException
 from cat.log import log
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
-from cat.services.string_crypto import StringCrypto
+from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse
+from cat.services.factory.auth_handler import CoreAuthConfig
+from cat.services.factory.chunker import RecursiveTextChunkerSettings
+from cat.services.factory.embedder import EmbedderDumbConfig
+from cat.services.factory.file_manager import DummyFileManagerConfig
+from cat.services.factory.llm import LLMDefaultConfig
+from cat.services.factory.models import BaseFactoryConfigModel
+from cat.services.factory.vector_db import QdrantConfig
 
 
-class UpsertSettingResponse(BaseModel):
-    name: str
-    value: Dict
-
-    @model_serializer
-    def serialize_model(self) -> Dict[str, Any]:
-        """Custom serializer that will be used by FastAPI"""
-        value = self.value.copy()  # Create a copy to avoid modifying the original value
-        value = {
-            k: "********" if isinstance(v, str) and any(suffix in k for suffix in ["_key", "_secret"]) else v
-            for k, v in value.items()
-        }
-
-        return {
-            "name": self.name,
-            "value": value
-        }
-
-
-class GetSettingResponse(UpsertSettingResponse):
-    scheme: Dict[str, Any] | None = None
-
-    @model_serializer
-    def serialize_model(self) -> Dict[str, Any]:
-        """Custom serializer that will be used by FastAPI"""
-        serialized = super().serialize_model()
-        serialized["scheme"] = self.scheme
-        return serialized
-
-class GetSettingsResponse(BaseModel):
-    settings: List[GetSettingResponse]
-    selected_configuration: str | None
-
-
-class BaseFactoryConfigModel(ABC, BaseModel):
-    crypto: ClassVar[StringCrypto] = StringCrypto()
-
-    @classmethod
-    def _parse_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:
-        return {
-            k: cls.crypto.decrypt(v)
-            if isinstance(v, str) and any(suffix in k for suffix in ["_key", "_secret"])
-            else v
-            for k, v in config.items()
-        }
-
-    @classmethod
-    def get_from_config(cls, config) -> Type:
-        obj = cls.pyclass()
-        base_obj = cls.base_class()
-        if obj is None or base_obj is None:
-            raise Exception("Configuration class is invalid. It should define both pyclass and base_class methods")
-        if issubclass(obj, base_obj):
-            return obj(**cls._parse_config(config))
-        raise Exception(f"Configuration class is invalid. It should be a valid {base_obj.__name__} class")
-
-    @classmethod
-    @abstractmethod
-    def pyclass(cls) -> Type:
-        pass
-
-    @classmethod
-    @abstractmethod
-    def base_class(cls) -> Type:
-        pass
-
-
-class BaseFactory(ABC):
-    def __init__(self, hook_manager: MadHatter):
+class ServiceFactory:
+    def __init__(
+        self,
+        hook_manager: MadHatter,
+        factory_allowed_handler_name: str,
+        setting_category: Literal["auth_handler", "chunker", "embedder", "file_manager", "llm", "vector_database"],
+        schema_name: str,
+    ):
         self._hook_manager = hook_manager
+        self.factory_allowed_handler_name = factory_allowed_handler_name
+        self.setting_category = setting_category
+        self.default_config_class = self.default_config_classes[setting_category]
+        self.schema_name = schema_name
+
+    @property
+    def default_config_classes(self) -> Dict[str, Type[BaseFactoryConfigModel]]:
+        return {
+            "auth_handler": CoreAuthConfig,
+            "chunker": RecursiveTextChunkerSettings,
+            "embedder": EmbedderDumbConfig,
+            "file_manager": DummyFileManagerConfig,
+            "llm": LLMDefaultConfig,
+            "vector_database": QdrantConfig,
+        }
 
     def get_schemas(self) -> Dict:
         # schemas contains metadata to let any client know which fields are required to create the class.
@@ -156,23 +115,3 @@ class BaseFactory(ABC):
     @property
     def default_config(self) -> Dict:
         return {k: v.default for k, v in self.default_config_class.model_fields.items()}
-
-    @property
-    @abstractmethod
-    def factory_allowed_handler_name(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def setting_category(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def default_config_class(self) -> Type[BaseFactoryConfigModel]:
-        pass
-
-    @property
-    @abstractmethod
-    def schema_name(self) -> str:
-        pass

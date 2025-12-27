@@ -18,12 +18,12 @@ from tests.utils import (
 
 
 def check_correct_websocket_reply(reply):
-    for k in ["type", "content", "why"]:
+    for k in ["type", "text", "why"]:
         assert k in reply.keys()
 
     assert reply["type"] != "error"
-    assert isinstance(reply["content"], str)
-    assert "You did not configure" in reply["content"]
+    assert isinstance(reply["text"], str)
+    assert "You did not configure" in reply["text"]
 
     # why
     why = reply["why"]

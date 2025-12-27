@@ -1,27 +1,18 @@
-import io
-import json
-import mimetypes
 from ast import literal_eval
 from copy import deepcopy
 from typing import Dict, List, Any, Type
-import tomli
-from fastapi import Query, UploadFile, BackgroundTasks
+from fastapi import Query
 from langchain_core.caches import InMemoryCache
 from langchain_core.globals import set_llm_cache
-from pydantic import BaseModel
-from fastapi_healthz import HealthCheckStatusEnum, HealthCheckAbstract
+from pydantic import BaseModel, model_serializer
 
 from cat import utils
-from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission
 from cat.exceptions import CustomValidationException
-from cat.log import log
-from cat.looking_glass import BillTheLizard
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.plugin import Plugin
 from cat.looking_glass.mad_hatter.plugin_manifest import PluginManifest
 from cat.looking_glass.mad_hatter.registry import registry_search_plugins
-from cat.services.factory.base_factory import GetSettingResponse
 
 
 class Plugins(BaseModel):
@@ -60,6 +51,41 @@ class InstallPluginFromRegistryResponse(TogglePluginResponse):
     url: str
 
 
+class UpsertSettingResponse(BaseModel):
+    name: str
+    value: Dict
+
+    @model_serializer
+    def serialize_model(self) -> Dict[str, Any]:
+        """Custom serializer that will be used by FastAPI"""
+        value = self.value.copy()  # Create a copy to avoid modifying the original value
+        value = {
+            k: "********" if isinstance(v, str) and any(suffix in k for suffix in ["_key", "_secret"]) else v
+            for k, v in value.items()
+        }
+
+        return {
+            "name": self.name,
+            "value": value
+        }
+
+
+class GetSettingResponse(UpsertSettingResponse):
+    scheme: Dict[str, Any] | None = None
+
+    @model_serializer
+    def serialize_model(self) -> Dict[str, Any]:
+        """Custom serializer that will be used by FastAPI"""
+        serialized = super().serialize_model()
+        serialized["scheme"] = self.scheme
+        return serialized
+
+
+class GetSettingsResponse(BaseModel):
+    settings: List[GetSettingResponse]
+    selected_configuration: str | None
+
+
 class PluginsSettingsResponse(BaseModel):
     settings: List[GetSettingResponse]
 
@@ -70,29 +96,6 @@ class GetPluginDetailsResponse(BaseModel):
 
 class DeletePluginResponse(BaseModel):
     deleted: str
-
-
-class HealthCheckLocal(HealthCheckAbstract):
-    @property
-    def service(self) -> str:
-        return "cheshire-cat"
-
-    @property
-    def connection_uri(self) -> str:
-        return utils.get_base_url()
-
-    @property
-    def tags(self) -> List[str]:
-        return ["cheshire-cat", "local"]
-
-    @property
-    def comments(self) -> list[str]:
-        with open("pyproject.toml", "rb") as f:
-            project_toml = tomli.load(f)["project"]
-            return [f"version: {project_toml['version']}"]
-
-    def check_health(self) -> HealthCheckStatusEnum:
-        return HealthCheckStatusEnum.HEALTHY
 
 
 def create_plugin_manifest(
@@ -222,12 +225,9 @@ def create_dict_parser(param_name: str, description: str | None = None):
     return parser
 
 
-def format_upload_file(upload_file: UploadFile) -> UploadFile:
-    file_content = upload_file.file.read()
-    return UploadFile(filename=upload_file.filename, file=io.BytesIO(file_content))
-
-
 async def startup_app(app):
+    from cat.looking_glass import BillTheLizard
+
     set_llm_cache(InMemoryCache())
     utils.pod_id()
 
@@ -245,40 +245,6 @@ async def shutdown_app(app):
     # shutdown Manager
     await app.state.lizard.shutdown()
     del app.state.lizard
-
-
-def on_upload_single_file(
-    info: AuthorizedInfo,
-    file: UploadFile,
-    background_tasks: BackgroundTasks,
-    metadata: str | None = None,
-):
-    lizard = info.lizard
-    cat = info.stray_cat or info.cheshire_cat
-
-    # Check the file format is supported
-    admitted_types = cat.file_handlers.keys()
-
-    # Get file mime type
-    content_type, _ = mimetypes.guess_type(file.filename)
-    log.info(f"Uploaded {content_type} down the rabbit hole")
-
-    # check if MIME type of uploaded file is supported
-    if content_type not in admitted_types:
-        CustomValidationException(
-            f'MIME type {content_type} not supported. Admitted types: {" - ".join(admitted_types)}'
-        )
-
-    # upload file to long term memory, in the background
-    uploaded_file = deepcopy(format_upload_file(file))
-    # we deepcopy the file because FastAPI does not keep the file in memory after the response returns to the client
-    # https://github.com/tiangolo/fastapi/discussions/10936
-    background_tasks.add_task(
-        lizard.rabbit_hole.ingest_file,
-        cat=cat,
-        file=uploaded_file,
-        metadata=json.loads(metadata)
-    )
 
 
 def validate_permissions(permissions: Dict[str, List[str]], resources: Type[utils.Enum]):

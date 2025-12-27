@@ -4,7 +4,7 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import ConfigDict
 
-from cat.services.factory.base_factory import BaseFactory, BaseFactoryConfigModel
+from cat.services.factory.models import BaseFactoryConfigModel
 
 
 class BaseChunker(ABC):
@@ -87,21 +87,3 @@ class RecursiveTextChunkerSettings(ChunkerSettings):
     @classmethod
     def pyclass(cls) -> Type[RecursiveTextChunker]:
         return RecursiveTextChunker
-
-
-class ChunkerFactory(BaseFactory):
-    @property
-    def factory_allowed_handler_name(self) -> str:
-        return "factory_allowed_chunkers"
-
-    @property
-    def setting_category(self) -> str:
-        return "chunker"
-
-    @property
-    def default_config_class(self) -> Type[BaseFactoryConfigModel]:
-        return RecursiveTextChunkerSettings
-
-    @property
-    def schema_name(self) -> str:
-        return "chunkerName"

@@ -36,7 +36,7 @@ from qdrant_client.http.models import (
 )
 
 from cat.log import log
-from cat.services.factory.base_factory import BaseFactoryConfigModel, BaseFactory
+from cat.services.factory.models import BaseFactoryConfigModel
 from cat.services.memory.utils import (
     Document,
     DocumentRecall,
@@ -1201,21 +1201,3 @@ class QdrantConfig(VectorDatabaseSettings):
     @classmethod
     def pyclass(cls) -> Type[QdrantHandler]:
         return QdrantHandler
-
-
-class VectorDatabaseFactory(BaseFactory):
-    @property
-    def factory_allowed_handler_name(self) -> str:
-        return "factory_allowed_vector_databases"
-
-    @property
-    def setting_category(self) -> str:
-        return "vector_database"
-
-    @property
-    def default_config_class(self) -> Type[BaseFactoryConfigModel]:
-        return QdrantConfig
-
-    @property
-    def schema_name(self) -> str:
-        return "vectorDatabaseName"

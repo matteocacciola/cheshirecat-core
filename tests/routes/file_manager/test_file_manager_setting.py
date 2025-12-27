@@ -1,11 +1,16 @@
 from json import dumps
 from fastapi.encoders import jsonable_encoder
 
-from cat.services.factory.file_manager import FileManagerFactory
+from cat.services.service_factory import ServiceFactory
 
 
 def test_get_all_file_manager_settings(secure_client, secure_client_headers, cheshire_cat):
-    file_manager_schemas = FileManagerFactory(cheshire_cat.plugin_manager).get_schemas()
+    file_manager_schemas = ServiceFactory(
+        cheshire_cat.plugin_manager,
+        factory_allowed_handler_name="factory_allowed_file_managers",
+        setting_category="file_manager",
+        schema_name="fileManagerName",
+    ).get_schemas()
     response = secure_client.get("/file_manager/settings", headers=secure_client_headers)
     json = response.json()
 

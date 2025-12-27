@@ -1,13 +1,18 @@
 from json import dumps
 from fastapi.encoders import jsonable_encoder
 
-from cat.services.factory.chunker import ChunkerFactory
+from cat.services.service_factory import ServiceFactory
 
 from tests.utils import create_new_user, new_user_password, agent_id
 
 
 def test_get_all_chunker_settings(secure_client, secure_client_headers, cheshire_cat):
-    chunkers_schemas = ChunkerFactory(cheshire_cat.plugin_manager).get_schemas()
+    chunkers_schemas = ServiceFactory(
+        cheshire_cat.plugin_manager,
+        factory_allowed_handler_name="factory_allowed_chunkers",
+        setting_category="chunker",
+        schema_name="chunkerName",
+    ).get_schemas()
 
     response = secure_client.get("/chunking/settings", headers=secure_client_headers)
     json = response.json()
