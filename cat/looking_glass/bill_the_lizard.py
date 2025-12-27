@@ -9,6 +9,7 @@ from cat.db import crud
 from cat.db.cruds import settings as crud_settings, users as crud_users
 from cat.db.database import DEFAULT_SYSTEM_KEY, UNALLOWED_AGENT_KEYS
 from cat.env import get_env
+from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.mad_hatter.decorators.endpoint import CatEndpoint
@@ -192,13 +193,16 @@ class BillTheLizard(OrchestratorMixin):
             The Cheshire Cat with the given id, or None if it doesn't exist
         """
         if agent_id == DEFAULT_SYSTEM_KEY:
+            log.debug("The system agent has been requested: returning null value.")
             return None
 
         if agent_id not in crud.get_agents_main_keys():
-            raise ValueError(f"`{agent_id}` is not a valid agent id")
+            log.debug(f"Requested not existing `{agent_id}`")
+            raise ValueError("Bad Request")
 
         agent_settings = crud_settings.get_settings(agent_id)
         if not agent_settings:
+            log.debug(f"Agent `{agent_id}` has no settings")
             return None
 
         return CheshireCat(agent_id)
