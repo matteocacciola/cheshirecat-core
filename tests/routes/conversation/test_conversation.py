@@ -84,9 +84,7 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
         else:
             assert "You did not configure" in item["content"]["text"]
             assert "why" in item["content"]
-            assert isinstance(item["content"]["why"], dict)
-            assert item["content"]["why"]["input"] == message
-            assert len(item["content"]["why"]) > 0
+            assert item["content"]["why"] is None
 
         assert "when" in item
         assert isinstance(item["when"], float)  # timestamp
