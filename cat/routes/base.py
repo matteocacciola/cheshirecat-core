@@ -76,6 +76,16 @@ class User(BaseModel):
     username: str
     permissions: Dict[str, List[str]]
 
+    def __init__(self, **data):
+        permissions = data.get("permissions")
+        if not permissions:
+            data["permissions"] = {}
+        for key, value in data["permissions"].items():
+            if isinstance(value, dict):
+                data["permissions"][key] = list(value.keys())
+
+        super().__init__(**data)
+
 
 class AgentMatch(BaseModel):
     agent_id: str
