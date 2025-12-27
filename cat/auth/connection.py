@@ -48,7 +48,6 @@ class ConnectionAuth(ABC):
         url_path = connection.url.path
         is_custom_endpoint = lizard.plugin_manager.is_custom_endpoint(url_path)
         is_triggered_by_cat = ccat is not None
-        print(f"Auth check for path '{url_path}': is_custom_endpoint={is_custom_endpoint}, is_triggered_by_cat={is_triggered_by_cat}", agent_id)
 
         # if the request comes from a custom endpoint, and it is not available in the picked CheshireCat, block it and
         # return a 404-HTTP error

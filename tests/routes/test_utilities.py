@@ -258,7 +258,8 @@ async def test_clone_agent(secure_client, secure_client_headers, lizard, cheshir
         if "active_plugins" in cs:
             cs["active_plugins"] = sorted(cs["active_plugins"])
 
-    assert settings == cloned_settings
+        assert s == cs
+
     # check that the users were cloned
     users = crud_users.get_users(cheshire_cat.agent_key)
     cloned_users = crud_users.get_users(new_agent_id)
