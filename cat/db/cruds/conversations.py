@@ -58,7 +58,7 @@ def get_conversation(agent_id: str, user_id: str, chat_id: str) -> Dict[str, Any
         raise
 
 
-def get_conversations_attributes(agent_id: str, user_id: str) -> List[Dict[str, str]]:
+def get_conversations_attributes(agent_id: str, user_id: str) -> List[Dict[str, Any]]:
     """
     Retrieve conversations parameters from Redis. It returns the list of the chat IDs, their names and the messages
     count.
@@ -88,12 +88,21 @@ def get_conversations_attributes(agent_id: str, user_id: str) -> List[Dict[str, 
                 continue
             agent_id, _, user_id, chat_id = parts
 
+            messages = get_messages(agent_id, user_id, chat_id)
+            num_messages = len(messages)
+
+            # Extract created_at (first message) and updated_at (last message)
+            created_at = messages[0]["when"] if num_messages > 0 else None
+            updated_at = messages[-1]["when"] if num_messages > 0 else None
+
             # Retrieve the conversation name for the specific key
             conversation_name = get_name(agent_id, user_id, chat_id)
             results.append({
                 "chat_id": chat_id,
                 "name": conversation_name or chat_id,
-                "num_messages": len(get_messages(agent_id, user_id, chat_id))
+                "num_messages": num_messages,
+                "created_at": created_at,
+                "updated_at": updated_at,
             })
 
         return results

@@ -1,4 +1,3 @@
-import time
 from abc import ABC
 from typing import Literal, List, Dict
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage as BaseLangChainMessage
@@ -92,20 +91,19 @@ class ConversationMessage(BaseModel):
 
     Variables:
         who (str): who is the author of the message (`assistant` or `user`)
-        when (float): when the message was sent in seconds since epoch (default: time.time())
+        when (float): when the message was sent in seconds since epoch (default: current timestamp in UTC)
         content (BaseMessage): content of the message
     """
     who: Literal["user", "assistant"]
-    when: float | None = time.time()
+    when: float
     content: CatMessage | UserMessage
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        content_dict = self.content.model_dump()
-        self.content = CatMessage(**content_dict) if self.who == "assistant" else UserMessage(**content_dict)
+    def __init__(self, **data):
+        content = data.get("content")
+        who = data.get("who")
+        data["content"] = CatMessage(**content) if who == "assistant" else UserMessage(**content)
 
-    def __str__(self):
-        return f"{str(self.who)}: {self.content.text}"
+        super().__init__(**data)
 
     @computed_field
     @property

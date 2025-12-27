@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import List, Any, Literal, Dict, Set
 from pydantic import Field, field_validator
 
@@ -75,7 +76,7 @@ class WorkingMemory(BaseModelDict):
 
         return self
 
-    def update_history(self, who: Literal["user", "assistant"], content: BaseMessage):
+    def update_history(self, who: Literal["user", "assistant"], content: BaseMessage) -> "WorkingMemory":
         """
         Update the conversation history.
 
@@ -84,7 +85,9 @@ class WorkingMemory(BaseModelDict):
             content: BaseMessage, the message said.
         """
         # we are sure that who is not change in the current call
-        conversation_history_item = ConversationMessage(who=who, content=content)
+        conversation_history_item = ConversationMessage(
+            who=who, content=content, when=datetime.now(timezone.utc).timestamp()
+        )
 
         # append the latest message in conversation
         self.history = [
@@ -93,16 +96,17 @@ class WorkingMemory(BaseModelDict):
                 self.agent_id, self.user_id, self.chat_id, conversation_history_item
             )
         ]
+        return self
 
-    def pop_last_message_if_human(self) -> None:
+    def pop_last_message_if_human(self) -> "WorkingMemory":
         """
         Pop the last message if it was said by the human.
         """
-        if not self.history or self.history[-1].who != "user":
-            return
+        if self.history and self.history[-1].who == "user":
+            self.history.pop()
+            crud_conversations.set_messages(self.agent_id, self.user_id, self.chat_id, self.history)
 
-        self.history.pop()
-        crud_conversations.set_messages(self.agent_id, self.user_id, self.chat_id, self.history)
+        return self
 
     @property
     def user_message_json(self) -> Dict | None:

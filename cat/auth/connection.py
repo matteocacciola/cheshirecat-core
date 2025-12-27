@@ -52,6 +52,7 @@ class ConnectionAuth(ABC):
         # return a 404-HTTP error
         if (
                 is_custom_endpoint
+                and agent_id != DEFAULT_SYSTEM_KEY
                 and (ccat is None or not ccat.plugin_manager.has_custom_endpoint(url_path))
         ):
             raise CustomNotFoundException("Not Found")
