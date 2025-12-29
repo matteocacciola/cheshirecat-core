@@ -10,7 +10,7 @@ This is possible by using the [LangChain](https://www.langchain.com/) framework,
 The original version was designed to be a single-tenant application, meaning that it could only manage one chatbot at a time.
 This version is designed to be multi-tenant, meaning that it can manage multiple chatbots at the same time, each with its own settings, plugins, LLMs, etc.
 **The way of "injecting" the identification of the Chatbot (RAG) is simple**:
-  - **in case of the HTTP API endpoints, use the `agent_id` key into the request headers or as a querystring parameter;**
+  - **in case of the HTTP API endpoints, use the `X-Agent-ID` key into the request headers or as a querystring parameter;**
   - **in case of the WebSocket API, use the `agent_id` into the URL, e.g., `/ws/{agent_id}`.**
 
 ## Cloud ready
