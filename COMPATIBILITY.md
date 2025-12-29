@@ -1,6 +1,6 @@
 # Code compatibility
-The `procedural_memories` and `episodic_memories` properties have been removed from the `StrayCat`'s working memory.
-The `declarative_memories` property is still available.
+The `episodic_memories` has been removed from the `StrayCat`'s working memory.
+The `declarative_memories` and `procedural_memories` are still available.
 
 # Compatibility with plugins
 This new version is no more completely compatible with the original version, since the architecture has been deeply changed.
