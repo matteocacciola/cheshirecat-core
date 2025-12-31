@@ -88,7 +88,7 @@ def test_forbidden_access_no_auth(client):
 
 def test_granted_access_on_permissions(secure_client, secure_client_headers, client):
     # create user
-    data = create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"LLM": ["LIST"]})
+    data = create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"LLM": ["READ"]})
     res = client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 
@@ -109,7 +109,7 @@ def test_forbidden_access_no_permission(secure_client, secure_client_headers, cl
 
 def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client):
     # create user
-    data = create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"LLM": ["READ"]})
+    data = create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"LLM": ["DELETE"]})
     res = client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 
