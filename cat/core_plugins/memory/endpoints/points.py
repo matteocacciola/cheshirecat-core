@@ -265,7 +265,7 @@ async def get_points_in_collection(
         description="Flat dictionary where each key-value pair represents a filter."
                     "The memory points returned will match the specified metadata criteria."
     )),
-    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> GetPointsInCollectionResponse:
     """Retrieve all the points from a single collection
 

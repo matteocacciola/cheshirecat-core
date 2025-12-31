@@ -6,6 +6,7 @@ from cat.utils import Enum
 
 
 class AuthResource(Enum):
+    SYSTEM = "SYSTEM"
     ADMIN = "ADMIN"
     CHESHIRE_CAT = "CHESHIRE_CAT"
     EMBEDDER = "EMBEDDER"

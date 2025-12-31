@@ -71,7 +71,7 @@ async def upsert_file_manager_setting(
 
 @router.get("/", response_model=FileManagerAttributes)
 async def get_attributes(
-    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> FileManagerAttributes:
     ccat = info.cheshire_cat
     return ccat.file_manager.get_attributes(ccat.id)
@@ -80,7 +80,7 @@ async def get_attributes(
 @router.get("/files/{source_name}")
 async def download_file(
     source_name: str,
-    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> StreamingResponse:
     ccat = info.cheshire_cat
 
@@ -136,7 +136,7 @@ async def download_file(
 @router.delete("/files/{source_name}")
 async def delete_file(
     source_name: str,
-    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> FileManagerDeletedFiles:
     """Delete a file"""
     ccat = info.cheshire_cat
@@ -157,7 +157,7 @@ async def delete_file(
 
 @router.delete("/files")
 async def delete_files(
-    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> FileManagerDeletedFiles:
     """Delete all files"""
     ccat = info.cheshire_cat

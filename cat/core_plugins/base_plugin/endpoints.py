@@ -5,7 +5,7 @@ from cat import AuthResource, AuthPermission, AuthorizedInfo, check_permissions,
 
 @endpoint.get("/", prefix="/admins/core_plugins", tags=["Admins - Plugins"])
 async def get_core_plugins(
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.READ),
 ) -> List[str]:
     """Get list of available core plugins"""
     return info.lizard.plugin_manager.get_core_plugins_ids
