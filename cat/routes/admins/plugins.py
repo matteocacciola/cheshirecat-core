@@ -32,7 +32,7 @@ router = APIRouter(tags=["Admins - Plugins"], prefix="/plugins")
 @router.get("/", response_model=GetAvailablePluginsResponse)
 async def get_lizard_available_plugins(
     query: str = None,
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.SYSTEM, AuthPermission.READ),
     # author: str = None, to be activated in case of more granular search
     # tag: str = None, to be activated in case of more granular search
 ) -> GetAvailablePluginsResponse:
@@ -46,7 +46,7 @@ async def get_lizard_available_plugins(
 @router.post("/upload", response_model=InstallPluginResponse)
 async def install_plugin(
     file: UploadFile,
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.SYSTEM, AuthPermission.WRITE),
 ) -> InstallPluginResponse:
     """Install a new plugin from a zip file"""
     allowed_mime_types = get_allowed_plugins_mime_types()
@@ -78,7 +78,7 @@ async def install_plugin(
 @router.post("/upload/registry", response_model=InstallPluginFromRegistryResponse)
 async def install_plugin_from_registry(
     payload: Dict = Body({"url": "https://github.com/plugin-dev-account/plugin-repo"}),
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.WRITE),
+    info: AuthorizedInfo = check_permissions(AuthResource.SYSTEM, AuthPermission.WRITE),
 ) -> InstallPluginFromRegistryResponse:
     """Install a new plugin from registry"""
     # download zip from registry
@@ -93,7 +93,7 @@ async def install_plugin_from_registry(
 
 @router.get("/settings", response_model=PluginsSettingsResponse)
 async def get_lizard_plugins_settings(
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.SYSTEM, AuthPermission.READ),
 ) -> PluginsSettingsResponse:
     """Returns the default settings of all the plugins"""
     lizard = info.lizard
@@ -103,7 +103,7 @@ async def get_lizard_plugins_settings(
 @router.get("/settings/{plugin_id}", response_model=GetSettingResponse)
 async def get_lizard_plugin_settings(
     plugin_id: str,
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.SYSTEM, AuthPermission.READ),
 ) -> GetSettingResponse:
     """Returns the default settings of a specific plugin"""
     lizard = info.lizard
@@ -117,7 +117,7 @@ async def get_lizard_plugin_settings(
 @router.get("/{plugin_id}", response_model=GetPluginDetailsResponse)
 async def get_plugin_details(
     plugin_id: str,
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.READ),
+    info: AuthorizedInfo = check_permissions(AuthResource.SYSTEM, AuthPermission.READ),
 ) -> GetPluginDetailsResponse:
     """Returns information on a single plugin, at a system level"""
     plugin_manager = info.lizard.plugin_manager
@@ -136,7 +136,7 @@ async def get_plugin_details(
 @router.delete("/{plugin_id}", response_model=DeletePluginResponse)
 async def uninstall_plugin(
     plugin_id: str,
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.SYSTEM, AuthPermission.DELETE),
 ) -> DeletePluginResponse:
     """Physically remove plugin at a system level."""
     plugin_manager = info.lizard.plugin_manager
@@ -154,7 +154,7 @@ async def uninstall_plugin(
 @router.put("/toggle/{plugin_id}", status_code=200, response_model=TogglePluginResponse)
 async def toggle_plugin_admin(
     plugin_id: str,
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.DELETE),
+    info: AuthorizedInfo = check_permissions(AuthResource.SYSTEM, AuthPermission.DELETE),
 ) -> TogglePluginResponse:
     """Enable or disable a single plugin"""
     plugin_manager = info.lizard.plugin_manager
