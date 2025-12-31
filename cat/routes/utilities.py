@@ -37,7 +37,7 @@ class AgentClonedResponse(BaseModel):
 @router.post("/factory/reset", response_model=ResetResponse)
 async def factory_reset(
     request: Request,
-    info: AuthorizedInfo = check_permissions(AuthResource.ADMIN, AuthPermission.DESTROY),
+    info: AuthorizedInfo = check_permissions(AuthResource.ADMIN, AuthPermission.DELETE),
 ) -> ResetResponse:
     """
     Factory reset the entire application. This will delete all settings, memories, and metadata.
@@ -89,7 +89,7 @@ async def factory_reset(
     )
 
 
-@router.get("/agents", dependencies=[check_permissions(AuthResource.CHESHIRE_CAT, AuthPermission.LIST)])
+@router.get("/agents", dependencies=[check_permissions(AuthResource.CHESHIRE_CAT, AuthPermission.READ)])
 async def get_agents() -> List[str]:
     """
     Get all agents.

@@ -12,7 +12,7 @@ router = APIRouter(tags=["Auth Handler"], prefix="/auth_handler")
 
 @router.get("/settings", response_model=GetSettingsResponse)
 async def get_auth_handler_settings(
-    info: AuthorizedInfo = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.READ),
 ) -> GetSettingsResponse:
     """Get the list of the AuthHandlers"""
     ccat = info.cheshire_cat
@@ -42,7 +42,7 @@ async def get_auth_handler_setting(
 @router.put("/settings/{auth_handler_name}", response_model=UpsertSettingResponse)
 async def upsert_authenticator_setting(
     auth_handler_name: str,
-    info: AuthorizedInfo = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.WRITE),
     payload: Dict = Body(...),
 ) -> UpsertSettingResponse:
     """Upsert the settings of a specific AuthHandler"""

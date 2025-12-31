@@ -24,7 +24,7 @@ class FileManagerDeletedFiles(BaseModel):
 # get configured Plugin File Managers and configuration schemas
 @router.get("/settings", response_model=GetSettingsResponse)
 async def get_file_managers_settings(
-    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.READ),
 ) -> GetSettingsResponse:
     """Get the list of the File Managers and their settings"""
     ccat = info.cheshire_cat
@@ -55,7 +55,7 @@ async def get_file_manager_settings(
 async def upsert_file_manager_setting(
     file_manager_name: str,
     payload: Dict = Body(default={}),
-    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.WRITE),
 ) -> UpsertSettingResponse:
     """Upsert the File Manager setting"""
     ccat = info.cheshire_cat
@@ -71,7 +71,7 @@ async def upsert_file_manager_setting(
 
 @router.get("/", response_model=FileManagerAttributes)
 async def get_attributes(
-    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.READ),
 ) -> FileManagerAttributes:
     ccat = info.cheshire_cat
     return ccat.file_manager.get_attributes(ccat.id)
@@ -80,7 +80,7 @@ async def get_attributes(
 @router.get("/files/{source_name}")
 async def download_file(
     source_name: str,
-    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.READ),
 ) -> StreamingResponse:
     ccat = info.cheshire_cat
 
@@ -136,7 +136,7 @@ async def download_file(
 @router.delete("/files/{source_name}")
 async def delete_file(
     source_name: str,
-    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.READ),
 ) -> FileManagerDeletedFiles:
     """Delete a file"""
     ccat = info.cheshire_cat
@@ -157,7 +157,7 @@ async def delete_file(
 
 @router.delete("/files")
 async def delete_files(
-    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.READ),
 ) -> FileManagerDeletedFiles:
     """Delete all files"""
     ccat = info.cheshire_cat

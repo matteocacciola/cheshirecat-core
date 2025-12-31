@@ -12,7 +12,7 @@ router = APIRouter(tags=["Large Language Model"], prefix="/llm")
 # get configured LLMs and configuration schemas
 @router.get("/settings", response_model=GetSettingsResponse, summary="Get LLMs Settings")
 async def get_llms_settings(
-    info: AuthorizedInfo = check_permissions(AuthResource.LLM, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.LLM, AuthPermission.READ),
 ) -> GetSettingsResponse:
     """Get the list of the Large Language Models"""
     ccat = info.cheshire_cat
@@ -43,7 +43,7 @@ async def get_llm_settings(
 async def upsert_llm_setting(
     language_model_name: str,
     payload: Dict = Body({"openai_api_key": "your-key-here"}),
-    info: AuthorizedInfo = check_permissions(AuthResource.LLM, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.LLM, AuthPermission.WRITE),
 ) -> UpsertSettingResponse:
     """Upsert the Large Language Model setting"""
     ccat = info.cheshire_cat

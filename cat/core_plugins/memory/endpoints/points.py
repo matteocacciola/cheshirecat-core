@@ -147,7 +147,7 @@ async def edit_memory_point(
     collection_id: str,
     point_id: str,
     point: MemoryPointBase,
-    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
 ) -> MemoryPoint:
     """Edit a point in memory
 

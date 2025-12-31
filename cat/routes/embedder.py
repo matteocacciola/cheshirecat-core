@@ -14,7 +14,7 @@ router = APIRouter(tags=["Embedder"], prefix="/embedder")
 # get configured Embedders and configuration schemas
 @router.get("/settings", response_model=GetSettingsResponse)
 async def get_embedders_settings(
-    info: AuthorizedInfo = check_permissions(AuthResource.EMBEDDER, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.EMBEDDER, AuthPermission.READ),
 ) -> GetSettingsResponse:
     """Get the list of the Embedders"""
     lizard = info.lizard
@@ -45,7 +45,7 @@ async def get_embedder_settings(
 async def upsert_embedder_setting(
     embedder_name: str,
     payload: Dict = Body({"openai_api_key": "your-key-here"}),
-    info: AuthorizedInfo = check_permissions(AuthResource.EMBEDDER, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.EMBEDDER, AuthPermission.WRITE),
 ) -> UpsertSettingResponse:
     """Upsert the Embedder setting"""
     lizard = info.lizard

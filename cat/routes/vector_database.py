@@ -12,7 +12,7 @@ router = APIRouter(tags=["Vector Database"], prefix="/vector_database")
 # get configured LLMs and configuration schemas
 @router.get("/settings", response_model=GetSettingsResponse, summary="Get Vector Databases Settings")
 async def get_vector_databases_settings(
-    info: AuthorizedInfo = check_permissions(AuthResource.VECTOR_DATABASE, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.VECTOR_DATABASE, AuthPermission.READ),
 ) -> GetSettingsResponse:
     """Get the list of the Vector Databases settings and their configuration schemas"""
     ccat = info.cheshire_cat
@@ -47,7 +47,7 @@ async def get_vector_database_settings(
 async def upsert_vector_database_setting(
     vector_database_name: str,
     payload: Dict = Body(...),
-    info: AuthorizedInfo = check_permissions(AuthResource.VECTOR_DATABASE, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.VECTOR_DATABASE, AuthPermission.WRITE),
 ) -> UpsertSettingResponse:
     """Upsert the Vector Database setting"""
     ccat = info.cheshire_cat

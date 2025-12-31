@@ -55,7 +55,7 @@ async def create_user(
 async def read_users(
     skip: int = 0,
     limit: int = 100,
-    info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.READ),
 ) -> List[UserResponse]:
     users_db = crud_users.get_users(info.cheshire_cat.id)
 
@@ -79,7 +79,7 @@ async def read_user(
 async def update_user(
     user_id: str,
     user: UserUpdate,
-    info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.WRITE),
 ) -> UserResponse:
     agent_id = info.cheshire_cat.id
     stored_user = crud_users.get_user(agent_id, user_id, full=True)

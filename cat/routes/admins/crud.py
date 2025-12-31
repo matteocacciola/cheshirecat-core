@@ -53,7 +53,7 @@ async def create_admin(
 async def read_admins(
     skip: int = Query(default=0, description="How many admins to skip."),
     limit: int = Query(default=100, description="How many admins to return."),
-    info: AuthorizedInfo = check_permissions(AuthResource.ADMIN, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.ADMIN, AuthPermission.READ),
 ):
     users_db = crud_users.get_users(info.lizard.config_key)
 
@@ -77,7 +77,7 @@ async def read_admin(
 async def update_admin(
     user_id: str,
     user: AdminUpdate,
-    info: AuthorizedInfo = check_permissions(AuthResource.ADMIN, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.ADMIN, AuthPermission.WRITE),
 ):
     config_key = info.lizard.config_key
     stored_user = crud_users.get_user(config_key, user_id, full=True)

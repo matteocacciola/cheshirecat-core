@@ -32,7 +32,7 @@ router = APIRouter(tags=["Admins - Plugins"], prefix="/plugins")
 @router.get("/", response_model=GetAvailablePluginsResponse)
 async def get_lizard_available_plugins(
     query: str = None,
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.READ),
     # author: str = None, to be activated in case of more granular search
     # tag: str = None, to be activated in case of more granular search
 ) -> GetAvailablePluginsResponse:

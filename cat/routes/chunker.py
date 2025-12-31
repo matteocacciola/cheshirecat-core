@@ -11,7 +11,7 @@ router = APIRouter(tags=["Chunking"], prefix="/chunking")
 
 @router.get("/settings", response_model=GetSettingsResponse)
 async def get_chunker_settings(
-    info: AuthorizedInfo = check_permissions(AuthResource.CHUNKER, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.CHUNKER, AuthPermission.READ),
 ) -> GetSettingsResponse:
     """Get the list of the Chunkers"""
     ccat = info.cheshire_cat
@@ -41,7 +41,7 @@ async def get_chunker_setting(
 @router.put("/settings/{chunker_name}", response_model=UpsertSettingResponse)
 async def upsert_chunker_setting(
     chunker_name: str,
-    info: AuthorizedInfo = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.WRITE),
     payload: Dict = Body(...),
 ) -> UpsertSettingResponse:
     """Upsert the settings of a specific Chunker"""

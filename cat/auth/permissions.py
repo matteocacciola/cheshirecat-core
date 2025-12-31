@@ -24,12 +24,9 @@ class AuthResource(Enum):
 
 
 class AuthPermission(Enum):
-    WRITE = "WRITE"
-    EDIT = "EDIT"
-    LIST = "LIST"
     READ = "READ"
+    WRITE = "WRITE"
     DELETE = "DELETE"
-    DESTROY = "DESTROY"
 
 
 def get_full_permissions() -> Dict[str, List[str]]:
@@ -45,7 +42,6 @@ def get_base_permissions() -> Dict[str, List[str]]:
     """
     return {
         str(AuthResource.MEMORY): [
-            str(AuthPermission.LIST),
             str(AuthPermission.READ),
         ],
         str(AuthResource.CHAT): [str(p) for p in AuthPermission],

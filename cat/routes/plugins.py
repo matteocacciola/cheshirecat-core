@@ -24,7 +24,7 @@ router = APIRouter(tags=["Plugins"], prefix="/plugins")
 @router.get("/", response_model=GetAvailablePluginsResponse)
 async def get_cheshirecat_available_plugins(
     query: str = None,
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.LIST),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.READ),
     # author: str = None, to be activated in case of more granular search
     # tag: str = None, to be activated in case of more granular search
 ) -> GetAvailablePluginsResponse:
@@ -84,7 +84,7 @@ async def get_cheshirecat_plugin_settings(
 async def upsert_cheshirecat_plugin_settings(
     plugin_id: str,
     payload: Dict = Body({"setting_a": "some value", "setting_b": "another value"}),
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.WRITE),
 ) -> GetSettingResponse:
     """Updates the settings of a specific plugin"""
     plugin_id = slugify(plugin_id, separator="_")
@@ -112,7 +112,7 @@ async def upsert_cheshirecat_plugin_settings(
 @router.post("/settings/{plugin_id}", response_model=GetSettingResponse)
 async def reset_cheshirecat_plugin_settings(
     plugin_id: str,
-    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.EDIT),
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.WRITE),
 ) -> GetSettingResponse:
     """Resets the settings of a specific plugin"""
     plugin_id = slugify(plugin_id, separator="_")

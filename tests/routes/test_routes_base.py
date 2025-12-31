@@ -21,7 +21,7 @@ def test_ping_success(client):
 
 def test_ping_non_admin_endpoint_with_admin(secure_client, secure_client_headers, client):
     permissions = get_full_permissions()
-    permissions[str(AuthResource.PLUGIN)].append(str(AuthPermission.LIST))
+    permissions[str(AuthResource.PLUGIN)].append(str(AuthPermission.READ))
 
     new_admin = create_new_user(
         client, "/admins/users", headers=get_client_admin_headers(client), permissions=permissions
