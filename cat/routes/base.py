@@ -16,7 +16,8 @@ from cat import utils
 from cat.auth.auth_utils import is_jwt, extract_token_from_request
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
-from cat.db.crud import get_db_connection_string
+from cat.db import crud
+from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.exceptions import CustomUnauthorizedException, CustomNotFoundException
 from cat.looking_glass import StrayCat, ChatResponse
 from cat.services.memory.messages import UserMessage
@@ -51,7 +52,7 @@ class HealthCheckLocal(HealthCheckAbstract):
 _healthChecks = HealthCheckRegistry()
 _healthChecks.add_many([
     HealthCheckLocal(),
-    HealthCheckRedis(get_db_connection_string())
+    HealthCheckRedis(crud.get_db_connection_string())
 ])
 
 router.add_api_route(
@@ -75,6 +76,8 @@ class User(BaseModel):
     id: str
     username: str
     permissions: Dict[str, List[str]]
+    created_at: float
+    updated_at: float
 
     def __init__(self, **data):
         permissions = data.get("permissions")
@@ -88,9 +91,7 @@ class User(BaseModel):
 
 
 class AgentMatch(BaseModel):
-    agent_id: str
     agent_name: str
-    agent_description: str | None = None
     user: User
 
 
@@ -138,15 +139,28 @@ async def me(request: Request) -> MeResponse:
         return MeResponse(success=True, agents=[], auto_selected=False)
 
     valid_agents = []
+    has_matching_system = False
+    valid_agents_names = set()
     for match_str in matches_raw:
         match = json.loads(match_str)
 
+        if DEFAULT_SYSTEM_KEY == match["agent_name"]:
+            has_matching_system = True
+
         valid_agents.append(AgentMatch(
-            agent_id=match["agent_id"],
             agent_name=match["agent_name"],
-            agent_description=match.get("agent_description"),
             user=User(**match["user"])
         ))
+        valid_agents_names.add(match["agent_name"])
+
+    if has_matching_system:
+        system_agent = [agent for agent in valid_agents if agent.agent_name == DEFAULT_SYSTEM_KEY][0]
+        missing_agents = [
+            AgentMatch(agent_name=agent_name, user=system_agent.user)
+            for agent_name in crud.get_agents_main_keys()
+            if agent_name not in valid_agents_names
+        ]
+        valid_agents.extend(missing_agents)
 
     return MeResponse(
         success=True,

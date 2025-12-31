@@ -31,7 +31,6 @@ def test_get_me_success(secure_client, secure_client_headers, client):
     assert data["auto_selected"] if len(data.get("agents", [])) == 1 else False
 
     match = data["agents"][0]
-    assert match["agent_id"] == agent_id
     assert match["agent_name"] == agent_id
     assert match["user"]["id"] == user["id"]
     assert match["user"]["username"] == user["username"]

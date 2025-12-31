@@ -6,6 +6,8 @@ from cat.auth.permissions import AuthResource, AuthPermission, get_base_permissi
 from cat.auth.auth_utils import is_jwt, DEFAULT_JWT_ALGORITHM
 from cat.db.database import DEFAULT_SYSTEM_KEY
 
+from tests.utils import api_key
+
 
 def test_is_jwt():
     assert not is_jwt("not_a_jwt.not_a_jwt.not_a_jwt")
@@ -79,7 +81,9 @@ def test_issue_jwt_for_new_admin(client, secure_client, secure_client_headers):
 
     # let's create the user
     res = secure_client.post(
-        "/admins/users", json=creds | {"permissions": get_base_permissions()}, headers=secure_client_headers
+        "/admins/users",
+        json=creds | {"permissions": get_base_permissions()},
+        headers={"Authorization": f"Bearer {api_key}"}
     )
     assert res.status_code == 200
 

@@ -23,19 +23,29 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    id: str | None = None
     password: str = Field(min_length=5)
     # no additional fields allowed
     model_config = ConfigDict(extra="forbid")
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.password = hash_password(self.password)
 
 
 class UserUpdate(UserBase):
     password: str = Field(default=None, min_length=5)
     model_config = ConfigDict(extra="forbid")
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        if self.password:
+            self.password = hash_password(self.password)
+
 
 class UserResponse(UserBase):
     id: str
+    created_at: float
+    updated_at: float
 
 
 @router.post("/", response_model=UserResponse)
@@ -57,7 +67,7 @@ async def read_users(
     limit: int = 100,
     info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.READ),
 ) -> List[UserResponse]:
-    users_db = crud_users.get_users(info.cheshire_cat.id)
+    users_db = crud_users.get_users(info.cheshire_cat.id, with_timestamps=True)
 
     users = list(users_db.values())[skip: skip + limit]
     return [UserResponse(**u) for u in users]
@@ -68,7 +78,7 @@ async def read_user(
     user_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.READ),
 ) -> UserResponse:
-    users_db = crud_users.get_users(info.cheshire_cat.id)
+    users_db = crud_users.get_users(info.cheshire_cat.id, with_timestamps=True)
 
     if user_id not in users_db:
         raise CustomNotFoundException("User not found")

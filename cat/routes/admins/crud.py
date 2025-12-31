@@ -27,14 +27,25 @@ class AdminCreate(AdminBase):
     # no additional fields allowed
     model_config = ConfigDict(extra="forbid")
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        self.password = hash_password(self.password)
+
 
 class AdminUpdate(AdminBase):
     password: str = Field(default=None, min_length=5)
     model_config = ConfigDict(extra="forbid")
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        if self.password:
+            self.password = hash_password(self.password)
+
 
 class AdminResponse(AdminBase):
     id: str
+    created_at: float
+    updated_at: float
 
 
 @router.post("/", response_model=AdminResponse)
@@ -55,7 +66,7 @@ async def read_admins(
     limit: int = Query(default=100, description="How many admins to return."),
     info: AuthorizedInfo = check_permissions(AuthResource.ADMIN, AuthPermission.READ),
 ):
-    users_db = crud_users.get_users(info.lizard.config_key)
+    users_db = crud_users.get_users(info.lizard.config_key, with_timestamps=True)
 
     users = list(users_db.values())[skip:(skip + limit)]
     return users
@@ -66,7 +77,7 @@ async def read_admin(
     user_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.ADMIN, AuthPermission.READ),
 ):
-    users_db = crud_users.get_users(info.lizard.config_key)
+    users_db = crud_users.get_users(info.lizard.config_key, with_timestamps=True)
 
     if user_id not in users_db:
         raise CustomNotFoundException("User not found")

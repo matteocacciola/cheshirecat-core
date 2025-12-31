@@ -293,12 +293,12 @@ def test_get_user_by_credentials(lizard):
     # create
     new_user = {
         "username": "admin2",
-        "password": "admin2",
+        "password": hash_password("admin2"),
         "permissions": get_full_permissions()
     }
     crud_users.create_user(lizard.config_key, new_user)
 
-    user = crud_users.get_user_by_credentials(lizard.config_key, new_user["username"], new_user["password"])
+    user = crud_users.get_user_by_credentials(lizard.config_key, new_user["username"], "admin2")
     assert user is not None
     assert user["username"] == new_user["username"]
     assert user["permissions"] == new_user["permissions"]

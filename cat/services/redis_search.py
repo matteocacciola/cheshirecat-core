@@ -27,24 +27,11 @@ repeat
 
             for user_id, user in pairs(users_obj) do
                 if user.username == username then
-                    local agent_id = string.match(key, "(.+):users")
-
-                    -- Get agent metadata
-                    local agent_info = redis.call("JSON.GET", agent_id .. ":info")
-                    local agent_name = agent_id
-                    local agent_description = nil
-
-                    if agent_info then
-                        local info = cjson.decode(agent_info)
-                        agent_name = info.name or agent_id
-                        agent_description = info.description
-                    end
+                    local agent_name = string.match(key, "(.+):users")
 
                     table.insert(matches, cjson.encode({
                         user = user,
-                        agent_id = agent_id,
                         agent_name = agent_name,
-                        agent_description = agent_description
                     }))
                 end
             end

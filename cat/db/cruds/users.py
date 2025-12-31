@@ -1,9 +1,9 @@
-import time
+from datetime import datetime, timezone
 from typing import Dict
 from uuid import uuid4
 from redis.exceptions import RedisError
 
-from cat.auth.auth_utils import hash_password, check_password
+from cat.auth.auth_utils import check_password
 from cat.db import crud
 from cat.log import log
 
@@ -20,7 +20,7 @@ def _extract_user_data(user_data: Dict, excluded_keys: Dict | None = None) -> Di
         Filtered user data dictionary without excluded keys.
     """
     if excluded_keys is None:
-        excluded_keys = ["created_at", "updated_at", "password"]
+        excluded_keys = ["password"]
     return {k: v for k, v in user_data.items() if k not in excluded_keys}
 
 
@@ -75,6 +75,24 @@ def get_users(key_id: str, with_password: bool = False, with_timestamps: bool = 
         raise
 
 
+def initialize_empty_users(key_id: str):
+    """
+    Store users dictionary in Redis.
+
+    Args:
+        key_id: Agent ID.
+
+    Raises:
+        RedisError: If Redis connection fails.
+        ValueError: If serialization fails.
+    """
+    try:
+        crud.store(format_key(key_id), {})
+    except (RedisError, ValueError) as e:
+        log.error(f"Error storing empty user for {key_id}: {e}")
+        raise
+
+
 def create_user(key_id: str, new_user: Dict) -> Dict | None:
     """
     Create a new user in Redis atomically.
@@ -106,16 +124,11 @@ def create_user(key_id: str, new_user: Dict) -> Dict | None:
         new_id = existing_id or str(uuid4())
         new_user_copy = new_user.copy()
         new_user_copy["id"] = new_id
-        new_user_copy["created_at"] = time.time()
+        new_user_copy["created_at"] = datetime.now(timezone.utc).timestamp()
         new_user_copy["updated_at"] = new_user_copy["created_at"]
 
-        # hash password
-        password = hash_password(new_user_copy["password"])
-        del new_user_copy["password"]
-
         # create user
-        user_data = {"password": password, **new_user_copy}
-        crud.store(format_key(key_id), user_data, path=f"$.{new_id}")
+        crud.store(format_key(key_id), new_user_copy, path=f"$.{new_id}")
         log.debug(f"Created user {new_id} for {key_id}")
 
         return _extract_user_data(new_user_copy)
@@ -186,9 +199,9 @@ def update_user(key_id: str, user_id: str, updated_info: Dict) -> Dict | None:
             return None
 
         updated_info_copy = updated_info.copy()
-        updated_info_copy["updated_at"] = time.time()
+        updated_info_copy["updated_at"] = datetime.now(timezone.utc).timestamp()
         updated_info_copy["password"] = (
-            hash_password(updated_info_copy["password"])
+            updated_info_copy["password"]
             if "password" in updated_info_copy
             else existing_user.get("password")
         )
@@ -227,31 +240,6 @@ def delete_user(key_id: str, user_id: str) -> Dict | None:
         return user
     except RedisError as e:
         log.error(f"Redis error deleting user {user_id} for {key_id}: {e}")
-        raise
-
-
-def set_users(key_id: str, users: Dict[str, Dict]) -> Dict:
-    """
-    Store users dictionary in Redis.
-
-    Args:
-        key_id: Agent ID.
-        users: Dictionary of users.
-
-    Returns:
-        Stored users dictionary, or None if operation fails.
-
-    Raises:
-        RedisError: If Redis connection fails.
-        ValueError: If serialization fails.
-    """
-    try:
-        crud.store(format_key(key_id), users)
-        log.debug(f"Stored users for {key_id}")
-
-        return users
-    except (RedisError, ValueError) as e:
-        log.error(f"Error storing users for {key_id}: {e}")
         raise
 
 

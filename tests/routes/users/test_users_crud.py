@@ -49,7 +49,7 @@ def test_cannot_create_duplicate_user_by_id(secure_client, secure_client_headers
 
     # create user with same username
     response = secure_client.post(
-        "/users", json={"id": data["id"], "username": "Alice2", "password": "2ecilA"}, headers=secure_client_headers
+        "/users", json={"username": data["username"], "password": "2ecilA"}, headers=secure_client_headers
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Cannot duplicate user"

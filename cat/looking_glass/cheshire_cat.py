@@ -52,7 +52,7 @@ class CheshireCat(BotMixin):
 
         # Initialize the default user if not present
         if not crud_users.get_users(self.id):
-            crud_users.set_users(self.id, {})
+            crud_users.initialize_empty_users(self.id)
 
         # allows plugins to do something after the cat bootstrap is complete
         self.plugin_manager.execute_hook("after_cat_bootstrap", caller=self)

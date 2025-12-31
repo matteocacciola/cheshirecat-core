@@ -126,7 +126,9 @@ def create_new_user(client, route: str, username = "Alice", headers = None, perm
 
 
 def check_user_fields(u):
-    assert set(u.keys()) == {"id", "username", "permissions"}
+    for k in ["id", "username", "permissions"]:
+        assert k in u.keys()
+
     assert isinstance(u["username"], str)
     assert isinstance(u["permissions"], dict)
     try:

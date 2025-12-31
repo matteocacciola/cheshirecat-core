@@ -1,6 +1,5 @@
 from copy import deepcopy
 from typing import List
-from uuid import uuid4
 from fastapi import FastAPI
 
 from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
@@ -148,16 +147,12 @@ class BillTheLizard(OrchestratorMixin):
         self._pending_endpoints.clear()
 
     def initialize_users(self):
-        admin_id = str(uuid4())
-
-        crud_users.set_users(self.agent_key, {
-            admin_id: {
-                "id": admin_id,
-                "username": DEFAULT_ADMIN_USERNAME,
-                "password": hash_password(get_env("CCAT_ADMIN_DEFAULT_PASSWORD")),
-                # base admin has all permissions
-                "permissions": get_full_permissions()
-            }
+        crud_users.initialize_empty_users(self.agent_key)
+        crud_users.create_user(self.agent_key, {
+            "username": DEFAULT_ADMIN_USERNAME,
+            "password": hash_password(get_env("CCAT_ADMIN_DEFAULT_PASSWORD")),
+            # base admin has all permissions
+            "permissions": get_full_permissions(),
         })
 
     async def create_cheshire_cat(self, agent_id: str) -> CheshireCat:
