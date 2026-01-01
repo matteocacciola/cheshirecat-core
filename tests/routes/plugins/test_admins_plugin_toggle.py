@@ -35,7 +35,7 @@ def _check_not_installed_in_cat(lizard, secure_client, secure_client_headers):
 def test_toggle_non_existent_plugin(secure_client, secure_client_headers):
     just_installed_plugin(secure_client, secure_client_headers)
 
-    response = secure_client.put("/admins/plugins/toggle/no_plugin", headers=secure_client_headers)
+    response = secure_client.put("/plugins/system/toggle/no_plugin", headers=secure_client_headers)
     response_json = response.json()
 
     assert response.status_code == 404
@@ -53,7 +53,7 @@ def test_toggle_plugin(lizard, secure_client, secure_client_headers):
     _check_installed_in_cat(secure_client, secure_client_headers, True)
 
     # toggle plugin (deactivate) on a system level
-    response = secure_client.put("/admins/plugins/toggle/mock_plugin", headers=secure_client_headers)
+    response = secure_client.put("/plugins/system/toggle/mock_plugin", headers=secure_client_headers)
     response_json = response.json()
 
     assert response.status_code == 200
@@ -67,7 +67,7 @@ def test_toggle_plugin(lizard, secure_client, secure_client_headers):
     _check_not_installed_in_cat(lizard, secure_client, secure_client_headers)
 
     # toggle plugin (reactivate) on a system level
-    response = secure_client.put("/admins/plugins/toggle/mock_plugin", headers=secure_client_headers)
+    response = secure_client.put("/plugins/system/toggle/mock_plugin", headers=secure_client_headers)
     response_json = response.json()
 
     assert response.status_code == 200
@@ -84,4 +84,4 @@ def test_toggle_plugin(lizard, secure_client, secure_client_headers):
 
 def test_untoggle_base_plugin(lizard, secure_client, secure_client_headers):
     with pytest.raises(Exception):
-        secure_client.put("/admins/plugins/toggle/base_plugin", headers=secure_client_headers)
+        secure_client.put("/plugins/system/toggle/base_plugin", headers=secure_client_headers)

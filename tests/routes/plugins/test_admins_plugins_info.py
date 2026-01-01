@@ -1,5 +1,5 @@
 def test_list_plugins(lizard, secure_client, secure_client_headers):
-    response = secure_client.get("/admins/plugins", headers=secure_client_headers)
+    response = secure_client.get("/plugins/installed", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -26,7 +26,7 @@ def test_list_plugins(lizard, secure_client, secure_client_headers):
 
 
 def test_get_plugin_id(secure_client, secure_client_headers):
-    response = secure_client.get("/admins/plugins/base_plugin", headers=secure_client_headers)
+    response = secure_client.get("/plugins/system/details/base_plugin", headers=secure_client_headers)
 
     json = response.json()
 
@@ -38,7 +38,7 @@ def test_get_plugin_id(secure_client, secure_client_headers):
 
 
 def test_get_non_existent_plugin(secure_client, secure_client_headers):
-    response = secure_client.get("/admins/plugins/no_plugin", headers=secure_client_headers)
+    response = secure_client.get("/plugins/system/details/no_plugin", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 404

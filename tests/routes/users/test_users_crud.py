@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
+from cat.auth.permissions import AuthResource, AuthPermission
 from cat.routes.users import UserBase, UserUpdate
 
 from tests.utils import agent_id, api_key, create_new_user, check_user_fields, new_user_password
@@ -29,6 +30,19 @@ def test_create_user(secure_client, secure_client_headers):
 
     assert data["username"] == "Alice"
     assert len(data["permissions"]) == 1
+
+
+def test_cannot_create_user_because_of_wrong_resource(client, secure_client, secure_client_headers):
+    # create new user
+    creds = {"username": "Alice", "password": "Alice"}
+
+    # let's create the user
+    res = secure_client.post(
+        "/users",
+        json=creds | {"permissions": {str(AuthResource.CHESHIRE_CAT): [str(AuthPermission.WRITE)]}},
+        headers=secure_client_headers,
+    )
+    assert res.status_code == 400
 
 
 def test_cannot_create_duplicate_user(secure_client, secure_client_headers):

@@ -7,7 +7,7 @@ from tests.mocks.mock_plugin.mock_plugin_overrides import MockPluginSettings
 # endpoint to get settings and settings schema
 def test_get_all_plugin_settings(lizard, secure_client, secure_client_headers):
     just_installed_plugin(secure_client, secure_client_headers)
-    response = secure_client.get("/admins/plugins/settings", headers=secure_client_headers)
+    response = secure_client.get("/plugins/system/settings", headers=secure_client_headers)
     json = response.json()
 
     installed_plugins = lizard.plugin_manager.get_core_plugins_ids + ["mock_plugin"]
@@ -40,7 +40,7 @@ def test_get_plugin_settings_non_existent(secure_client, secure_client_headers):
     just_installed_plugin(secure_client, secure_client_headers)
 
     non_existent_plugin = "ghost_plugin"
-    response = secure_client.get(f"/admins/plugins/settings/{non_existent_plugin}", headers=secure_client_headers)
+    response = secure_client.get(f"/plugins/system/settings/{non_existent_plugin}", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 404
@@ -51,7 +51,7 @@ def test_get_plugin_settings_non_existent(secure_client, secure_client_headers):
 def test_get_plugin_settings(secure_client, secure_client_headers):
     just_installed_plugin(secure_client, secure_client_headers)
 
-    response = secure_client.get("/admins/plugins/settings/mock_plugin", headers=secure_client_headers)
+    response = secure_client.get("/plugins/system/settings/mock_plugin", headers=secure_client_headers)
     response_json = response.json()
 
     assert response.status_code == 200

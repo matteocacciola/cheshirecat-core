@@ -94,7 +94,7 @@ def test_issue_jwt_for_new_user(client, secure_client, secure_client_headers):
     # let's create the user
     res = secure_client.post(
         "/users",
-        json=creds | {"permissions": {str(AuthResource.CHESHIRE_CAT): [str(AuthPermission.WRITE)]}},
+        json=creds | {"permissions": {str(AuthResource.LLM): [str(AuthPermission.WRITE)]}},
         headers=secure_client_headers,
     )
     assert res.status_code == 200

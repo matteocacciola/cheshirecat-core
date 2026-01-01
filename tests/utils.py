@@ -186,7 +186,7 @@ def just_installed_plugin(client, headers, activate = False, plugin_id = "mock_p
     # upload plugin via endpoint
     with open(zip_path, "rb") as f:
         response = client.post(
-            "/admins/plugins/upload/",
+            "/plugins/install/upload/",
             files={"file": (zip_file_name, f, "application/zip")},
             headers=headers
         )

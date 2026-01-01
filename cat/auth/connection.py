@@ -64,7 +64,7 @@ class ConnectionAuth(ABC):
             # is that an admin able to manage agents?
             user = lizard.core_auth_handler.authorize(
                 connection,
-                AuthResource.SYSTEM,
+                self.resource,
                 self.permission,
                 lizard.config_key,
             )
@@ -82,6 +82,7 @@ class ConnectionAuth(ABC):
         if not user:
             self._not_authorized(connection)
 
+        # if user has no permissions, raise forbidden exception
         if user and user.permissions is None:
             self._not_allowed(connection)
 

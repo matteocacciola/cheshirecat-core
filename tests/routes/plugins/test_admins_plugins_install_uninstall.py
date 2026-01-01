@@ -18,7 +18,7 @@ def test_plugin_install_from_zip(lizard, secure_client, secure_client_headers, c
     mock_plugin_final_folder = "tests/mocks/mock_plugin_folder/mock_plugin"
 
     # GET plugin endpoint responds
-    response = secure_client.get("/admins/plugins/mock_plugin", headers=secure_client_headers)
+    response = secure_client.get("/plugins/system/details/mock_plugin", headers=secure_client_headers)
     assert response.status_code == 200
     json = response.json()
     assert json["data"]["id"] == "mock_plugin"
@@ -26,9 +26,9 @@ def test_plugin_install_from_zip(lizard, secure_client, secure_client_headers, c
     assert json["data"]["local_info"]["active"]
 
     # GET plugins endpoint lists the plugin
-    response = secure_client.get("/admins/plugins", headers=secure_client_headers)
+    response = secure_client.get("/plugins/installed", headers=secure_client_headers)
     installed_plugins = response.json()["installed"]
-    installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
+    installed_plugins_names = list(map(lambda p_: p_["id"], installed_plugins))
     assert "mock_plugin" in installed_plugins_names
     # core plugins and mock_plugin are active
     for p in installed_plugins:
@@ -40,7 +40,7 @@ def test_plugin_install_from_zip(lizard, secure_client, secure_client_headers, c
         "/plugins", headers={"X-Agent-ID": cheshire_cat.id, "Authorization": f"Bearer {api_key}"}
     )
     installed_plugins = response.json()["installed"]
-    installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
+    installed_plugins_names = list(map(lambda p_: p_["id"], installed_plugins))
     assert "mock_plugin" in installed_plugins_names
     assert len(installed_plugins_names) == len(core_plugins) + 1  # all
     # core plugins are active, mock_plugin is not at an agent level
@@ -52,7 +52,7 @@ def test_plugin_install_from_zip(lizard, secure_client, secure_client_headers, c
     assert os.path.exists(mock_plugin_final_folder)
 
     # GET single plugin info, plugin is active
-    response = secure_client.get("/admins/plugins/mock_plugin", headers=secure_client_headers)
+    response = secure_client.get("/plugins/system/details/mock_plugin", headers=secure_client_headers)
     assert isinstance(response.json()["data"]["local_info"]["active"], bool)
     assert response.json()["data"]["local_info"]["active"]
 
@@ -68,7 +68,7 @@ async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client,
         "/plugins", headers={"X-Agent-ID": ccat.id, "Authorization": f"Bearer {api_key}"}
     )
     installed_plugins = response.json()["installed"]
-    installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
+    installed_plugins_names = list(map(lambda p_: p_["id"], installed_plugins))
     assert "mock_plugin" not in installed_plugins_names
 
     # now, manually install the plugin
@@ -78,7 +78,7 @@ async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client,
     # upload plugin via endpoint
     with open(zip_path, "rb") as f:
         response = secure_client.post(
-            "/admins/plugins/upload/",
+            "/plugins/install/upload/",
             files={"file": (zip_file_name, f, "application/zip")},
             headers=secure_client_headers
         )
@@ -92,7 +92,7 @@ async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client,
         "/plugins", headers={"X-Agent-ID": ccat.id, "Authorization": f"Bearer {api_key}"}
     )
     installed_plugins = response.json()["installed"]
-    installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
+    installed_plugins_names = list(map(lambda p_: p_["id"], installed_plugins))
     assert "mock_plugin" in installed_plugins_names
     assert len(installed_plugins_names) == len(core_plugins) + 1
     # core plugins are active, mock_plugin is not at an agent level
@@ -110,7 +110,7 @@ async def test_create_cheshire_cat_after_plugin_install(lizard, secure_client, s
     # upload plugin via endpoint
     with open(zip_path, "rb") as f:
         response = secure_client.post(
-            "/admins/plugins/upload/",
+            "/plugins/install/upload/",
             files={"file": (zip_file_name, f, "application/zip")},
             headers=secure_client_headers
         )
@@ -128,7 +128,7 @@ async def test_create_cheshire_cat_after_plugin_install(lizard, secure_client, s
         "/plugins", headers={"X-Agent-ID": ccat.id, "Authorization": f"Bearer {api_key}"}
     )
     installed_plugins = response.json()["installed"]
-    installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
+    installed_plugins_names = list(map(lambda p_: p_["id"], installed_plugins))
     assert "mock_plugin" in installed_plugins_names
     assert len(installed_plugins_names) == len(core_plugins) + 1
     # core plugins are active, mock_plugin is not at an agent level
@@ -152,17 +152,17 @@ def test_plugin_uninstall(secure_client, secure_client_headers):
     mock_plugin_final_folder = "tests/mocks/mock_plugin_folder/mock_plugin"
 
     # remove plugin via endpoint (will delete also plugin folder in mock_plugin_folder)
-    response = secure_client.delete("/admins/plugins/mock_plugin", headers=secure_client_headers)
+    response = secure_client.delete("/plugins/uninstall/mock_plugin", headers=secure_client_headers)
     assert response.status_code == 200
 
     # mock_plugin is not installed in the cat (check both via endpoint and filesystem)
-    response = secure_client.get("/admins/plugins", headers=secure_client_headers)
+    response = secure_client.get("/plugins/installed", headers=secure_client_headers)
     installed_plugins_names = list(map(lambda p: p["id"], response.json()["installed"]))
     assert "mock_plugin" not in installed_plugins_names
     assert not os.path.exists(mock_plugin_final_folder)  # plugin folder removed from disk
 
     # GET single plugin info, plugin is not active
-    response = secure_client.get("/admins/plugins/mock_plugin", headers=secure_client_headers)
+    response = secure_client.get("/plugins/system/details/mock_plugin", headers=secure_client_headers)
     assert response.json()["detail"] == "Plugin not found"
 
     agent_settings = crud.read(crud_plugins.format_key(agent_id, "mock_plugin"))
@@ -183,7 +183,7 @@ async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_he
     zip_file_name = zip_path.split("/")[-1]  # mock_plugin.zip in tests/mocks folder
     with open(zip_path, "rb") as f:
         secure_client.post(
-            "/admins/plugins/upload/",
+            "/plugins/install/upload/",
             files={"file": (zip_file_name, f, "application/zip")},
             headers=secure_client_headers
         )
@@ -192,7 +192,7 @@ async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_he
     secure_client.put("/plugins/toggle/mock_plugin", headers=ccat_headers)
     response = secure_client.get("/plugins", headers=ccat_headers)
     installed_plugins = response.json()["installed"]
-    installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
+    installed_plugins_names = list(map(lambda p_: p_["id"], installed_plugins))
     assert "mock_plugin" in installed_plugins_names
 
     for p in installed_plugins:
@@ -202,7 +202,7 @@ async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_he
     # re-install the plugin
     with open(zip_path, "rb") as f:
         secure_client.post(
-            "/admins/plugins/upload/",
+            "/plugins/install/upload/",
             files={"file": (zip_file_name, f, "application/zip")},
             headers=secure_client_headers
         )
@@ -210,7 +210,7 @@ async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_he
     # now, re-list the plugins as an agent: all the plugins should be still active
     response = secure_client.get("/plugins", headers=ccat_headers)
     installed_plugins = response.json()["installed"]
-    installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
+    installed_plugins_names = list(map(lambda p_: p_["id"], installed_plugins))
     assert "mock_plugin" in installed_plugins_names
 
     for p in installed_plugins:
@@ -229,7 +229,7 @@ async def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_
     zip_file_name = zip_path.split("/")[-1]  # mock_plugin.zip in tests/mocks folder
     with open(zip_path, "rb") as f:
         secure_client.post(
-            "/admins/plugins/upload/",
+            "/plugins/install/upload/",
             files={"file": (zip_file_name, f, "application/zip")},
             headers=secure_client_headers
         )
@@ -260,7 +260,7 @@ async def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_
     zip_file_name = zip_path.split("/")[-1]  # mock_plugin.zip in tests/mocks folder
     with open(zip_path, "rb") as f:
         secure_client.post(
-            "/admins/plugins/upload/",
+            "/plugins/install/upload/",
             files={"file": (zip_file_name, f, "application/zip")},
             headers=secure_client_headers
         )
@@ -283,11 +283,13 @@ def test_plugin_install_from_zip_with_missing_dependencies(lizard, secure_client
     plugin_name = "mock_plugin_with_dependencies"
 
     # check that "missing dependencies" and "mock_plugin" is within the error message
-    response = just_installed_plugin(secure_client, secure_client_headers, plugin_id=plugin_name, expected_status_code=400)
+    response = just_installed_plugin(
+        secure_client, secure_client_headers, plugin_id=plugin_name, expected_status_code=400
+    )
 
     assert "missing dependencies" in response.json()["detail"]
     assert plugin_name in response.json()["detail"]
 
     # GET plugin endpoint responds
-    response = secure_client.get(f"/admins/plugins/{plugin_name}", headers=secure_client_headers)
+    response = secure_client.get(f"/plugins/system/details/{plugin_name}", headers=secure_client_headers)
     assert response.status_code == 404

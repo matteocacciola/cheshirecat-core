@@ -24,7 +24,7 @@ def test_ping_non_admin_endpoint_with_admin(secure_client, secure_client_headers
     permissions[str(AuthResource.PLUGIN)].append(str(AuthPermission.READ))
 
     new_admin = create_new_user(
-        client, "/admins/users", headers=get_client_admin_headers(client), permissions=permissions
+        client, "/users", headers=get_client_admin_headers(client), permissions=permissions
     )
 
     creds = {

@@ -5,9 +5,13 @@ from pydantic import Field, BaseModel
 from cat.utils import Enum
 
 
+class AuthAdminResource(Enum):
+    SYSTEM = "SYSTEM"
+    CHESHIRE_CAT = "CHESHIRE_CAT"
+
+
 class AuthResource(Enum):
     SYSTEM = "SYSTEM"
-    ADMIN = "ADMIN"
     CHESHIRE_CAT = "CHESHIRE_CAT"
     EMBEDDER = "EMBEDDER"
     MEMORY = "MEMORY"

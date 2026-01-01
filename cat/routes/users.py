@@ -7,7 +7,7 @@ from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions, check_permissions
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomValidationException
-from cat.routes.routes_utils import validate_permissions as fnc_validate_permissions
+from cat.routes.routes_utils import validate_permissions as fnc_validate_permissions, sanitize_permissions
 
 router = APIRouter(tags=["Users"], prefix="/users")
 
@@ -53,7 +53,11 @@ async def create_user(
     new_user: UserCreate,
     info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.WRITE),
 ) -> UserResponse:
-    agent_id = info.cheshire_cat.id
+    agent_id = info.cheshire_cat.agent_key if info.cheshire_cat else info.lizard.agent_key
+    new_user.permissions = sanitize_permissions(new_user.permissions, agent_id)
+    if len(new_user.permissions) == 0:
+        raise CustomValidationException("User must have at least one permission")
+
     created_user = crud_users.create_user(agent_id, new_user.model_dump())
     if not created_user:
         raise CustomValidationException("Cannot duplicate user")
@@ -67,7 +71,8 @@ async def read_users(
     limit: int = 100,
     info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.READ),
 ) -> List[UserResponse]:
-    users_db = crud_users.get_users(info.cheshire_cat.id, with_timestamps=True)
+    agent_id = info.cheshire_cat.agent_key if info.cheshire_cat else info.lizard.agent_key
+    users_db = crud_users.get_users(agent_id, with_timestamps=True)
 
     users = list(users_db.values())[skip: skip + limit]
     return [UserResponse(**u) for u in users]
@@ -78,7 +83,8 @@ async def read_user(
     user_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.READ),
 ) -> UserResponse:
-    users_db = crud_users.get_users(info.cheshire_cat.id, with_timestamps=True)
+    agent_id = info.cheshire_cat.agent_key if info.cheshire_cat else info.lizard.agent_key
+    users_db = crud_users.get_users(agent_id, with_timestamps=True)
 
     if user_id not in users_db:
         raise CustomNotFoundException("User not found")
@@ -91,13 +97,19 @@ async def update_user(
     user: UserUpdate,
     info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.WRITE),
 ) -> UserResponse:
-    agent_id = info.cheshire_cat.id
+    agent_id = info.cheshire_cat.agent_key if info.cheshire_cat else info.lizard.agent_key
+    user.permissions = sanitize_permissions(user.permissions, agent_id)
+
     stored_user = crud_users.get_user(agent_id, user_id, full=True)
     if not stored_user:
         raise CustomNotFoundException("User not found")
     
     if user.password:
         user.password = hash_password(user.password)
+
+    if len(user.permissions) == 0:
+        user.permissions = stored_user["permissions"]
+
     updated_info = {**stored_user, **user.model_dump(exclude_unset=True)}
 
     crud_users.update_user(agent_id, user_id, updated_info)
@@ -109,7 +121,7 @@ async def delete_user(
     user_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.DELETE),
 ) -> UserResponse:
-    agent_id = info.cheshire_cat.id
+    agent_id = info.cheshire_cat.agent_key if info.cheshire_cat else info.lizard.agent_key
     deleted_user = crud_users.delete_user(agent_id, user_id)
     if not deleted_user:
         raise CustomNotFoundException("User not found")

@@ -125,7 +125,7 @@ async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray
     zip_file_name = zip_path.split("/")[-1]  # mock_plugin.zip in tests/mocks folder
     with open(zip_path, "rb") as f:
         secure_client.post(
-            "/admins/plugins/upload/",
+            "/plugins/install/upload/",
             files={"file": (zip_file_name, f, "application/zip")},
             headers=secure_client_headers
         )

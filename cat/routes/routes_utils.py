@@ -1,5 +1,8 @@
+import asyncio
+import json
 from ast import literal_eval
 from copy import deepcopy
+from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Any, Type
 from fastapi import Query
 from langchain_core.caches import InMemoryCache
@@ -7,12 +10,15 @@ from langchain_core.globals import set_llm_cache
 from pydantic import BaseModel, model_serializer
 
 from cat import utils
-from cat.auth.permissions import AuthPermission
-from cat.exceptions import CustomValidationException
+from cat.auth.permissions import AuthAdminResource, AuthPermission
+from cat.db.database import DEFAULT_SYSTEM_KEY
+from cat.env import get_env
+from cat.exceptions import CustomValidationException, CustomUnauthorizedException
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.plugin import Plugin
 from cat.looking_glass.mad_hatter.plugin_manifest import PluginManifest
 from cat.looking_glass.mad_hatter.registry import registry_search_plugins
+from cat.services.redis_search import RedisSearchService
 
 
 class Plugins(BaseModel):
@@ -264,3 +270,49 @@ def validate_permissions(permissions: Dict[str, List[str]], resources: Type[util
             raise ValueError(f"Invalid permissions for {k_}")
 
     return permissions
+
+
+def sanitize_permissions(permissions: Dict[str, List[str]], agent_key: str) -> Dict[str, List[str]]:
+    sanitized_permissions = {}
+    for resource, perms in permissions.items():
+        sanitized_perms = [perm for perm in list(set(perms)) if perm in AuthPermission]  # Remove duplicates
+
+        # non-system users cannot have AuthAdminResource permissions
+        if agent_key == DEFAULT_SYSTEM_KEY or resource not in AuthAdminResource:
+            sanitized_permissions[resource] = sanitized_perms
+
+    return sanitized_permissions
+
+
+async def create_jwt_content(credentials: UserCredentials, redis_search_service: RedisSearchService) -> Dict[str, Any]:
+    username = credentials.username
+    password = credentials.password
+
+    # search for user across all agents
+    valid_matches = redis_search_service.search_user_by_credentials(username, password)
+    if not valid_matches:
+        # Invalid username or password
+        # wait a little to avoid brute force attacks
+        await asyncio.sleep(1)
+        raise CustomUnauthorizedException("Invalid Credentials")
+
+    final_valid_matches = []
+    for valid_match in valid_matches:
+        valid_match_json = json.loads(valid_match)
+        # remove sensitive info
+        if valid_match_json.get("user", {}).get("password"):
+            del valid_match_json["user"]["password"]
+        final_valid_matches.append(json.dumps(valid_match_json))
+
+    # using seconds for easier testing
+    expire_delta_in_seconds = float(get_env("CCAT_JWT_EXPIRE_MINUTES")) * 60
+    now = datetime.now(timezone.utc)
+
+    expires = now + timedelta(seconds=expire_delta_in_seconds)
+
+    return {
+        "sub": username,  # Subject (the Username)
+        "exp": expires,  # Expiry date as a Unix timestamp
+        "iat": now,
+        "agents": final_valid_matches,
+    }

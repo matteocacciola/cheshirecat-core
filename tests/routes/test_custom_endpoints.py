@@ -115,7 +115,7 @@ def test_custom_endpoints_on_plugin_deactivation_or_uninstall(switch_type, secur
         assert response.status_code == 200
     else:
         # uninstall plugin
-        response = secure_client.delete("/admins/plugins/mock_plugin", headers=secure_client_headers)
+        response = secure_client.delete("/plugins/uninstall/mock_plugin", headers=secure_client_headers)
         assert response.status_code == 200
 
     # no more custom endpoints
