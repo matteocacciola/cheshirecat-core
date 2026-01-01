@@ -35,7 +35,7 @@ async def get_cheshirecat_available_plugins(
     return await get_available_plugins(info.cheshire_cat.plugin_manager, query)
 
 
-@router.put("/toggle/{plugin_id}", status_code=200, response_model=TogglePluginResponse)
+@router.put("/toggle/{plugin_id}", response_model=TogglePluginResponse)
 async def toggle_plugin(
     plugin_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.WRITE),
