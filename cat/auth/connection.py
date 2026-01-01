@@ -64,7 +64,7 @@ class ConnectionAuth(ABC):
             # is that an admin able to manage agents?
             user = lizard.core_auth_handler.authorize(
                 connection,
-                AuthResource.CHESHIRE_CAT,
+                AuthResource.SYSTEM,
                 self.permission,
                 lizard.config_key,
             )
