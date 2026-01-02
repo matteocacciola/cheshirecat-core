@@ -26,7 +26,7 @@ async def auth_token(
     """Endpoint called from client to get a JWT from local identity provider.
     This endpoint receives username and password as form-data, validates credentials and issues a JWT.
     """
-    jwt_content = create_jwt_content(credentials, redis_search_service)
+    jwt_content = await create_jwt_content(credentials, redis_search_service)
 
     access_token = jwt.encode(jwt_content, get_env("CCAT_JWT_SECRET"), algorithm=DEFAULT_JWT_ALGORITHM)
     return JWTResponse(access_token=access_token)
