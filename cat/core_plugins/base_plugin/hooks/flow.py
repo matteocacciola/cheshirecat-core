@@ -7,7 +7,7 @@ from typing import Dict, List
 
 from cat import hook, log, run_sync_or_async, UserMessage
 from cat.exceptions import VectorMemoryError
-from cat.services.memory.utils import VectorMemoryType, recall_relevant_memories_to_working_memory
+from cat.services.memory.utils import VectorMemoryType, recall_relevant_memories_to_working_memory, RecallSettings
 
 
 @hook(priority=0)
@@ -205,7 +205,7 @@ def cat_recall_query(user_message: str, cat) -> str:
 
 # Called just before the cat recalls memories.
 @hook(priority=0)
-def before_cat_recalls_memories(config: Dict, cat) -> Dict:
+def before_cat_recalls_memories(config: RecallSettings, cat) -> Dict:
     """
     Hook into semantic search in memories.
 

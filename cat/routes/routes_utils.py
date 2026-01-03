@@ -10,8 +10,7 @@ from langchain_core.globals import set_llm_cache
 from pydantic import BaseModel, model_serializer
 
 from cat import utils
-from cat.auth.permissions import AuthAdminResource, AuthPermission
-from cat.db.database import DEFAULT_SYSTEM_KEY
+from cat.auth.permissions import AuthPermission
 from cat.env import get_env
 from cat.exceptions import CustomValidationException, CustomUnauthorizedException
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
@@ -270,18 +269,6 @@ def validate_permissions(permissions: Dict[str, List[str]], resources: Type[util
             raise ValueError(f"Invalid permissions for {k_}")
 
     return permissions
-
-
-def sanitize_permissions(permissions: Dict[str, List[str]], agent_key: str) -> Dict[str, List[str]]:
-    sanitized_permissions = {}
-    for resource, perms in permissions.items():
-        sanitized_perms = [perm for perm in list(set(perms)) if perm in AuthPermission]  # Remove duplicates
-
-        # non-system users cannot have AuthAdminResource permissions
-        if agent_key == DEFAULT_SYSTEM_KEY or resource not in AuthAdminResource:
-            sanitized_permissions[resource] = sanitized_perms
-
-    return sanitized_permissions
 
 
 async def create_jwt_content(credentials: UserCredentials, redis_search_service: RedisSearchService) -> Dict[str, Any]:

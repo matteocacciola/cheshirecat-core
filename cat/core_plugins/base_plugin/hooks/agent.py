@@ -5,11 +5,11 @@ Here is a collection of methods to hook into the *Agent* execution pipeline.
 """
 from typing import List, Dict
 
-from cat import hook
+from cat import hook, AgentInput, AgentOutput
 
 
 @hook(priority=0)
-def before_agent_starts(agent_input: Dict, cat) -> Dict:
+def before_agent_starts(agent_input: AgentInput, cat) -> AgentInput:
     """
     Hook to read and edit the agent input
 
@@ -24,18 +24,18 @@ def before_agent_starts(agent_input: Dict, cat) -> Dict:
 
 
 @hook(priority=0)
-def agent_fast_reply(ag_fast_reply: Dict, cat) -> Dict | None:
+def agent_fast_reply(ag_fast_reply: AgentOutput, cat) -> AgentOutput | None:
     """
     This hook allows for a custom response after memory recall, skipping default agent execution.
     It's useful for custom agent logic or when you want to use recalled memories but avoid the main agent.
 
     Args:
-        ag_fast_reply (Dict): Input is a dictionary (initially empty), which can be enriched with an "output" key with the shortcut response.
+        ag_fast_reply (AgentOutput): Input is a dictionary (initially empty), which can be enriched with an "output" key with the shortcut response.
         cat (StrayCat): Stray Cat instance.
 
     Returns:
-        response (Dict | None): If you want to bypass the main agent, return a Dict with a valid `output` key.
-            Return None or an empty Dict or a Dict without a valid `output` key to continue with normal execution.
+        response (AgentOutput | None): If you want to bypass the main agent, return an AgentOutput with a valid `output` key.
+            Return None or an empty AgentOutput or an AgentOutput without a valid `output` key to continue with normal execution.
             See below for examples of Cat response
 
     Examples
@@ -45,9 +45,7 @@ def agent_fast_reply(ag_fast_reply: Dict, cat) -> Dict | None:
     ```python
     num_declarative_memories = len( cat.working_memory.declarative_memories )
     if num_declarative_memories == 0:
-        return {
-           "output": "Sorry, I have no memories about that."
-        }
+        return AgentOutput(output="Sorry, I have no memories about that.")
     ```
     """
     return ag_fast_reply

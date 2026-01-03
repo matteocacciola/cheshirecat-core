@@ -17,7 +17,7 @@ from cat.rabbit_hole import RabbitHole
 from cat.services.factory.auth_handler import CoreAuthHandler
 from cat.services.mixin import OrchestratorMixin
 from cat.services.websocket_manager import WebSocketManager
-from cat.utils import singleton
+from cat.utils import singleton, sanitize_permissions
 
 
 @singleton
@@ -148,11 +148,13 @@ class BillTheLizard(OrchestratorMixin):
 
     def initialize_users(self):
         crud_users.initialize_empty_users(self.agent_key)
+
+        permissions = sanitize_permissions(get_full_permissions(), self.agent_key)
+
         crud_users.create_user(self.agent_key, {
             "username": DEFAULT_ADMIN_USERNAME,
             "password": hash_password(get_env("CCAT_ADMIN_DEFAULT_PASSWORD")),
-            # base admin has all permissions
-            "permissions": get_full_permissions(),
+            "permissions": permissions,  # base admin has all permissions, but CHAT
         })
 
     async def create_cheshire_cat(self, agent_id: str) -> CheshireCat:

@@ -7,7 +7,7 @@ from .auth.permissions import (
 )
 
 from .log import log
-from .looking_glass import AgentOutput, BillTheLizard, CheshireCat, StrayCat
+from .looking_glass import AgentInput, AgentOutput, BillTheLizard, CheshireCat, StrayCat
 from .looking_glass.mad_hatter.decorators.experimental.form import form, CatForm
 from .looking_glass.mad_hatter.decorators.experimental.mcp_client import mcp_client, CatMcpClient
 from .looking_glass.mad_hatter.decorators.endpoint import endpoint
@@ -24,6 +24,7 @@ from .services.memory.messages import CatMessage, ConversationMessage, MessageWh
 from .utils import get_caller_info, run_sync_or_async
 
 __all__ = [
+    "AgentInput",
     "AgentOutput",
     "AuthorizedInfo",
     "check_permissions",

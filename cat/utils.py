@@ -493,3 +493,23 @@ def colored_text(text: str, color: str):
 
     color_str = colors[color]
     return f"\u001b[{color_str}m\033[1;3m{text}\u001b[0m"
+
+
+def sanitize_permissions(permissions: Dict[str, List[str]], agent_key: str) -> Dict[str, List[str]]:
+    from cat.auth.permissions import AuthAdminResource, AuthPermission, AuthResource
+    from cat.db.database import DEFAULT_SYSTEM_KEY
+
+    sanitized_permissions = {}
+    is_system = agent_key == DEFAULT_SYSTEM_KEY
+
+    for resource, perms in permissions.items():
+        # Skip chat for system users or admin resources for non-system users
+        if (
+                (is_system and resource == AuthResource.CHAT)
+                or (not is_system and resource in AuthAdminResource)
+        ):
+            continue
+
+        sanitized_permissions[resource] = [perm for perm in list(set(perms)) if perm in AuthPermission]
+
+    return sanitized_permissions

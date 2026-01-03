@@ -110,7 +110,7 @@ class CatProcedure(ABC):
         Returns:
             CatProcedure: Reconstructed CatProcedure instance.
         """
-        obj_data = document.metadata["obj_data"]
+        obj_data = document.document.metadata["obj_data"]
 
         # Import the actual concrete class
         module = importlib.import_module(obj_data["__module__"])

@@ -185,26 +185,20 @@ class StrayCat(BotMixin):
         )
 
         # if the agent is set to fast reply, skip everything and return the output
-        agent_fast_reply = utils.restore_original_model(
-            plugin_manager.execute_hook("agent_fast_reply", {}, caller=self),
-            AgentOutput
-        )
+        agent_fast_reply = plugin_manager.execute_hook("agent_fast_reply", AgentOutput(), caller=self)
         if agent_fast_reply and agent_fast_reply.output:
             return CatMessage(text=agent_fast_reply.output)
 
         # usual flow: prepare agent input with context, input and history
         latest_n_history = self.latest_n_history * 2  # each interaction has user + cat message
-        agent_input = utils.restore_original_model(
-            plugin_manager.execute_hook(
-                "before_agent_starts",
-                AgentInput(
-                    context=[m.document for m in self.working_memory.declarative_memories],
-                    input=self.working_memory.user_message.text,
-                    history=[h.langchainfy() for h in self.working_memory.history[-latest_n_history:]]
-                ),
-                caller=self
+        agent_input = plugin_manager.execute_hook(
+            "before_agent_starts",
+            AgentInput(
+                context=[m.document for m in self.working_memory.declarative_memories],
+                input=self.working_memory.user_message.text,
+                history=[h.langchainfy() for h in self.working_memory.history[-latest_n_history:]]
             ),
-            AgentInput
+            caller=self,
         )
 
         # obtain prompt parts from plugins

@@ -204,10 +204,7 @@ async def recall_relevant_memories_to_working_memory(
     )
 
     # hook to do something before recall begins
-    config = utils.restore_original_model(
-        plugin_manager.execute_hook("before_cat_recalls_memories", config, caller=cat),
-        RecallSettings
-    )
+    config = plugin_manager.execute_hook("before_cat_recalls_memories", config, caller=cat)
     cat.latest_n_history = config.latest_n_history
 
     memories = await recall(

@@ -7,7 +7,8 @@ from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions, check_permissions
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomValidationException
-from cat.routes.routes_utils import validate_permissions as fnc_validate_permissions, sanitize_permissions
+from cat.routes.routes_utils import validate_permissions as fnc_validate_permissions
+from cat.utils import sanitize_permissions
 
 router = APIRouter(tags=["Users"], prefix="/users")
 
