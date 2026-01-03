@@ -3,7 +3,7 @@
 Here is a collection of methods to hook into the *Agent* execution pipeline.
 
 """
-from typing import List, Dict
+from typing import List
 
 from cat import hook, AgentInput, AgentOutput
 
