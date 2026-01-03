@@ -2,8 +2,10 @@ import pytest
 from pydantic import ValidationError
 
 from cat.auth.permissions import get_full_permissions
+from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.env import get_env
 from cat.routes.users import UserBase, UserUpdate
+from cat.utils import sanitize_permissions
 
 from tests.utils import (
     create_new_user,
@@ -28,21 +30,25 @@ def test_validation_errors():
 
 
 def test_create_admin(client):
+    permissions = get_full_permissions()
+
     # create admin
-    data = create_new_user(client, "/users", headers=get_client_admin_headers(client))
+    data = create_new_user(client, "/users", headers=get_client_admin_headers(client), permissions=permissions)
 
     # assertions on admin structure
     check_user_fields(data)
 
     assert data["username"] == "Alice"
-    assert len(data["permissions"]) == 1
+    assert len(data["permissions"]) == len(permissions) - 1
 
 
 def test_cannot_create_duplicate_admin(client):
-    # create admin
-    data = create_new_user(client, "/users", headers=get_client_admin_headers(client))
+    permissions = get_full_permissions()
 
-    # create admin with same username
+    # create admin
+    data = create_new_user(client, "/users", headers=get_client_admin_headers(client), permissions=permissions)
+
+    # create admin with the same username
     response = client.post(
         "/users", json={"username": data["username"], "password": "ecilA"}, headers=get_client_admin_headers(client)
     )
@@ -51,6 +57,8 @@ def test_cannot_create_duplicate_admin(client):
 
 
 def test_get_admins(client):
+    permissions = get_full_permissions()
+
     # get list of admins
     response = client.get("/users", headers=get_client_admin_headers(client))
     assert response.status_code == 200
@@ -59,9 +67,9 @@ def test_get_admins(client):
     assert len(data) == 1
 
     # create admin
-    create_new_user(client, "/users", headers=get_client_admin_headers(client))
+    create_new_user(client, "/users", headers=get_client_admin_headers(client), permissions=permissions)
 
-    # get updated list of admins
+    # get the updated list of admins
     response = client.get("/users", headers=get_client_admin_headers(client))
     assert response.status_code == 200
     data = response.json()
@@ -72,20 +80,21 @@ def test_get_admins(client):
     for idx, d in enumerate(data):
         check_user_fields(d)
         assert d["username"] in ["admin", "Alice"]
-        if d["username"] == "Alice":
-            assert len(d["permissions"]) == 1
-        else:
-            assert d["permissions"] == get_full_permissions()
+        assert len(d["permissions"]) == len(permissions) - 1
 
 
 def test_get_admin(client):
+    permissions = get_full_permissions()
+
     # get unexisting admin
     response = client.get("/users/wrong_admin_id", headers=get_client_admin_headers(client))
     assert response.status_code == 404
     assert response.json()["detail"] == "User not found"
 
     # create admin and obtain id
-    admin_id = create_new_user(client, "/users", headers=get_client_admin_headers(client))["id"]
+    admin_id = create_new_user(
+        client, "/users", headers=get_client_admin_headers(client), permissions=permissions,
+    )["id"]
 
     # get specific existing admin
     response = client.get(f"/users/{admin_id}", headers=get_client_admin_headers(client))
@@ -95,10 +104,12 @@ def test_get_admin(client):
     # check admin integrity and values
     check_user_fields(data)
     assert data["username"] == "Alice"
-    assert len(data["permissions"]) == 1
+    assert len(data["permissions"]) == len(permissions) - 1
 
 
 def test_update_admin(client):
+    permissions = get_full_permissions()
+
     # update unexisting admin
     response = client.put(
         "/users/non_existent_id", json={"username": "Red Queen"}, headers=get_client_admin_headers(client)
@@ -107,7 +118,9 @@ def test_update_admin(client):
     assert response.json()["detail"] == "User not found"
 
     # create admin and obtain id
-    admin_id = create_new_user(client, "/users", headers=get_client_admin_headers(client))["id"]
+    admin_id = create_new_user(
+        client, "/users", headers=get_client_admin_headers(client), permissions=permissions,
+    )["id"]
 
     # update unexisting attribute (bad request)
     updated_admin = {"username": "Alice", "something": 42}
@@ -119,7 +132,7 @@ def test_update_admin(client):
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice"
-    assert len(data["permissions"]) == 1
+    assert len(data["permissions"]) == len(permissions) - 1
 
     # update password
     updated_admin = {"username": data["username"], "password": "12345", "permissions": data["permissions"]}
@@ -128,7 +141,7 @@ def test_update_admin(client):
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice"
-    assert len(data["permissions"]) == 1
+    assert len(data["permissions"]) == len(permissions) - 1
     assert "password" not in data # api will not send passwords around
 
     # change username
@@ -138,7 +151,7 @@ def test_update_admin(client):
     data = response.json()
     check_user_fields(data)
     assert data["username"] == "Alice2"
-    assert len(data["permissions"]) == 1
+    assert len(data["permissions"]) == len(permissions) - 1
 
     # change permissions
     updated_admin = {"username": data["username"], "permissions": {"EMBEDDER": ["READ"]}}
@@ -169,17 +182,21 @@ def test_update_admin(client):
         if d["username"] == "Alice3":
             assert d["permissions"] == {"EMBEDDER": ["WRITE"]}
         else:
-            assert d["permissions"] == get_full_permissions()
+            assert d["permissions"] == sanitize_permissions(get_full_permissions(), DEFAULT_SYSTEM_KEY)
 
 
 def test_delete_admin(client):
+    permissions = get_full_permissions()
+
     # delete not existing admin
     response = client.delete("/users/non_existent_id", headers=get_client_admin_headers(client))
     assert response.status_code == 404
     assert response.json()["detail"] == "User not found"
 
     # create admin and obtain id
-    admin_id = create_new_user(client, "/users", headers=get_client_admin_headers(client))["id"]
+    admin_id = create_new_user(
+        client, "/users", headers=get_client_admin_headers(client), permissions=permissions,
+    )["id"]
 
     # delete admin
     response = client.delete(f"/users/{admin_id}", headers=get_client_admin_headers(client))
@@ -221,7 +238,7 @@ def test_no_access_if_api_keys_active(secure_client):
     )
     assert response.status_code == 401
 
-    # check default list giving the correct CCAT_API_KEY
+    # check the default list giving the correct CCAT_API_KEY
     headers = {"Authorization": f"Bearer {get_env('CCAT_API_KEY')}"}
     response = secure_client.get("/users", headers=headers)
     assert response.status_code == 200
