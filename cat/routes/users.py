@@ -1,4 +1,4 @@
-from typing import List, Dict
+from typing import List, Dict, Any
 from fastapi import APIRouter
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
@@ -16,6 +16,7 @@ router = APIRouter(tags=["Users"], prefix="/users")
 class UserBase(BaseModel):
     username: str = Field(min_length=4)
     permissions: Dict[str, List[str]] = Field(default_factory=get_base_permissions)
+    metadata: Dict[str, Any] | None = Field(default=None)
 
     @field_validator("permissions")
     @classmethod
