@@ -9,9 +9,7 @@ class PluginManifest(BaseModel):
     thumb: str = None
     tags: str = "Unknown"
     description: str = (
-        "Description not found for this plugin."
-        "Please create a plugin.json manifest"
-        " in the plugin folder."
+        "Description not found for this plugin. Please create a plugin.json manifest in the plugin folder."
     )
     author_name: str = "Unknown"
     author_url: str = "Unknown"

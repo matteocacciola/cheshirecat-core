@@ -167,16 +167,14 @@ async def get_available_plugins(
         for p in plugin_manager.available_plugins.values()
     ]
 
-    plugins = Plugins(installed=installed_plugins, registry=list(registry_plugins_index.values()))
-
     return GetAvailablePluginsResponse(
         filters=GetAvailablePluginsFilter(
             query=query,
             # "author": author, to be activated in case of more granular search
             # "tag": tag, to be activated in case of more granular search
         ),
-        installed=plugins.installed,
-        registry=plugins.registry,
+        installed=installed_plugins,
+        registry=list(registry_plugins_index.values()),
     )
 
 
