@@ -1,7 +1,9 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 from redis.exceptions import RedisError
 
 from cat.db import crud
+from cat.db.cruds import settings as crud_settings
+from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.log import log
 
 
@@ -179,3 +181,39 @@ def destroy_plugin(plugin_id: str):
     except RedisError as e:
         log.error(f"Redis error destroying settings for plugin {plugin_id}: {e}")
         raise
+
+
+def get_agents_plugin_keys(plugin_id: str) -> List[str]:
+    """
+    Get all unique agent IDs from Redis keys that have the format *:plugin_id:<plugin_name>.
+
+    Args:
+        plugin_id: The name of the plugin to filter by.
+
+    Returns:
+        List of unique agent IDs that have keys matching the plugin format.
+
+    Raises:
+        RedisError: If Redis connection fails.
+    """
+    try:
+        pattern = format_key("*", plugin_id)
+        return list({ks for k in crud.get_db().scan_iter(pattern) if (ks := k.split(":")[0]) != DEFAULT_SYSTEM_KEY})
+    except RedisError as e:
+        log.error(f"Redis error in get_agents_plugin_keys: {e}")
+        raise
+
+
+def get_active_plugins_from_db(agent_id: str) -> List[str]:
+    """
+    Retrieve the list of active plugins for a specific agent from settings.
+
+    Args:
+        agent_id: ID of the chatbot.
+
+    Returns:
+        List of active plugin IDs.
+    """
+    active_plugins_from_db = crud_settings.get_setting_by_name(agent_id, "active_plugins")
+    active_plugins: List[str] = [] if active_plugins_from_db is None else active_plugins_from_db["value"]
+    return active_plugins

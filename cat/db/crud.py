@@ -163,27 +163,6 @@ def get_agents_main_keys() -> List[str]:
         raise
 
 
-def get_agents_plugin_keys(plugin_name: str) -> List[str]:
-    """
-    Get all unique agent IDs from Redis keys that have the format *:plugin_id:<plugin_name>.
-
-    Args:
-        plugin_name: The name of the plugin to filter by.
-
-    Returns:
-        List of unique agent IDs that have keys matching the plugin format.
-
-    Raises:
-        RedisError: If Redis connection fails.
-    """
-    try:
-        pattern = f"*:plugin:{plugin_name}"
-        return list({ks for k in get_db().scan_iter(pattern) if (ks := k.split(":")[0]) != DEFAULT_SYSTEM_KEY})
-    except RedisError as e:
-        log.error(f"Redis error in get_agents_plugin_keys: {e}")
-        raise
-
-
 def clone_agent(source_prefix: str, target_prefix: str, skip_keys: List[str] | None = None) -> int:
     """
     Clone all keys with source_prefix to target_prefix.

@@ -192,7 +192,7 @@ async def recall_relevant_memories_to_working_memory(
 
     # We may want to search in memory. If a query is not provided, use the user's message as the query
     recall_query = plugin_manager.execute_hook("cat_recall_query", query, caller=cat)
-    log.info(f"Agent id: {cat.agent_key}. Recall query: '{recall_query}'")
+    log.info(f"Agent id: {cat.agent_key}. Recall query: '{recall_query}'. Collection: {collection}.")
 
     # keep track of embedder model usage
     cat.working_memory.recall_query = recall_query

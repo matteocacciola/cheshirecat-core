@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
 from cat.auth.permissions import get_full_permissions
 from cat.db import crud
-from cat.db.cruds import settings as crud_settings, users as crud_users
+from cat.db.cruds import settings as crud_settings, users as crud_users, plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY, UNALLOWED_AGENT_KEYS
 from cat.env import get_env
 from cat.log import log
@@ -118,10 +118,9 @@ class BillTheLizard(OrchestratorMixin):
     @subscriber("on_end_plugin_activate")
     def on_end_plugin_activate(self, plugin_id: str) -> None:
         # migrate plugin settings in the Cheshire Cats
-        for ccat_id in crud.get_agents_plugin_keys(plugin_id):
-            ccat = self.get_cheshire_cat(ccat_id)
+        for ccat_id in crud_plugins.get_agents_plugin_keys(plugin_id):
             # if the plugin is not active for the Cheshire Cat, then skip it
-            if ccat is None or not ccat.plugin_manager.local_plugin_exists(plugin_id):
+            if (ccat := self._get_cheshire_cat_on_plugin_event(ccat_id, plugin_id)) is None:
                 continue
             # if the plugin is active for the Cheshire Cat, then re-activate to incrementally apply the new settings
             ccat.plugin_manager.activate_plugin(plugin_id, dispatch_events=False)
@@ -129,9 +128,9 @@ class BillTheLizard(OrchestratorMixin):
     @subscriber("on_start_plugin_deactivate")
     def on_start_plugin_deactivate(self, plugin_id: str) -> None:
         # deactivate plugins in the Cheshire Cats
-        for ccat_id in crud.get_agents_plugin_keys(plugin_id):
-            ccat = self.get_cheshire_cat(ccat_id)
-            if ccat is None:
+        for ccat_id in crud_plugins.get_agents_plugin_keys(plugin_id):
+            # if the plugin is not active for the Cheshire Cat, then skip it
+            if (ccat := self._get_cheshire_cat_on_plugin_event(ccat_id, plugin_id)) is None:
                 continue
             ccat.plugin_manager.deactivate_plugin(plugin_id, dispatch_events=False)
 
@@ -178,6 +177,24 @@ class BillTheLizard(OrchestratorMixin):
         await ccat.embed_procedures()
 
         return ccat
+
+    def _get_cheshire_cat_on_plugin_event(self, agent_id: str, plugin_id: str) -> CheshireCat | None:
+        """
+        Determines and retrieves the CheshireCat object associated with a specific plugin event for a given agent if the
+        plugin is active.
+
+        Args:
+            agent_id (str): The unique identifier for the agent.
+            plugin_id (str): The unique identifier for the plugin.
+
+        Returns:
+            CheshireCat | None: The CheshireCat object if the plugin is active, otherwise None.
+        """
+        active_plugins = crud_plugins.get_active_plugins_from_db(agent_id)
+        if not active_plugins or plugin_id not in active_plugins:
+            return None
+
+        return self.get_cheshire_cat(agent_id)
 
     def get_cheshire_cat(self, agent_id: str) -> CheshireCat | None:
         """
