@@ -1,7 +1,7 @@
 import pytest
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
-from cat.agent import run_agent
+from cat import AgenticTask
 from cat.db.cruds import users as crud_users
 from cat.looking_glass import StrayCat
 from cat.services.memory.messages import MessageWhy
@@ -20,11 +20,13 @@ def test_stray_initialization(stray_no_memory):
 
 @pytest.mark.asyncio
 async def test_stray_nlp(lizard, stray_no_memory):
-    res = await run_agent(
+    res = await stray_no_memory.agentic_workflow.run(
+        task=AgenticTask(
+            prompt=ChatPromptTemplate.from_messages([
+                HumanMessagePromptTemplate.from_template(template="hey")
+            ]),
+        ),
         llm=stray_no_memory.large_language_model,
-        prompt=ChatPromptTemplate.from_messages([
-            HumanMessagePromptTemplate.from_template(template="hey")
-        ]),
     )
     assert "You did not configure" in res.output
 

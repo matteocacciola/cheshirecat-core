@@ -136,8 +136,9 @@ class MadHatter(ABC):
 
         if plugin_id in self.active_plugins:
             self.deactivate_plugin(plugin_id)
-        else:
-            self.activate_plugin(plugin_id)
+            return
+
+        self.activate_plugin(plugin_id)
 
     def _on_finish_discovering_plugins(self):
         # store active plugins in db

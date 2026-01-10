@@ -164,15 +164,11 @@ def set_messages(
 
         if existing_data is None:
             # Key doesn't exist - create the entire structure at root
-            initial_structure = {
-                "name": chat_id,
-                "messages": formatted
-            }
-            crud.store(key, initial_structure, expire=expiration)
-        else:
-            # Key exists - update only the messages path
-            crud.store(key, formatted, path="$.messages", expire=expiration)
+            crud.store(key, {"name": chat_id, "messages": formatted}, expire=expiration)
+            return formatted
 
+        # Key exists - update only the messages path
+        crud.store(key, formatted, path="$.messages", expire=expiration)
         return formatted
     except RedisError as e:
         log.error(f"Redis error storing conversation '{chat_id}' for '{agent_id}:{user_id}': {e}")

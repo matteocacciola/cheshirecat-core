@@ -38,6 +38,7 @@ FROM libraries AS build-dev
 
 COPY ./cat ./cat
 COPY ./data ./data
+COPY ./migrations ./migrations
 
 ### INSTALL PLUGIN DEPENDENCIES ###
 RUN find /app/cat/core_plugins -name requirements.txt -exec uv pip install --no-cache -r {} \; && \
@@ -52,6 +53,7 @@ FROM libraries AS build-prod
 
 COPY ./cat ./cat
 COPY ./data ./data
+COPY ./migrations ./migrations
 
 ### FINISH ###
 CMD ["uv", "run", "python", "-m", "cat.main"]

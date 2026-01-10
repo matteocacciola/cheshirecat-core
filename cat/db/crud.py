@@ -6,6 +6,7 @@ from cat.db.database import (
     get_db as get_db_base,
     get_db_connection_string as get_db_connection_string_base,
     DEFAULT_SYSTEM_KEY,
+    DEFAULT_SCHEMA_KEY,
 )
 from cat.log import log
 
@@ -103,7 +104,7 @@ def store(
         raise
 
 
-def delete(key: str, path: str = "$"):
+def delete(key: str, path: str | None = "$"):
     """
     Delete a JSON value or path from Redis.
 
@@ -146,9 +147,12 @@ def destroy(key_pattern: str):
         raise
 
 
-def get_agents_main_keys() -> List[str]:
+def get_agents_main_keys(pattern: str | None = "*") -> List[str]:
     """
     Get all unique agent IDs from Redis keys, excluding DEFAULT_SYSTEM_KEY.
+
+    Args:
+        pattern: Pattern to match keys (default: "*").
 
     Returns:
         List of unique agent IDs.
@@ -157,7 +161,11 @@ def get_agents_main_keys() -> List[str]:
         RedisError: If Redis connection fails.
     """
     try:
-        return list({ks for k in get_db().scan_iter("*") if (ks := k.split(":")[0]) != DEFAULT_SYSTEM_KEY})
+        return list({
+            ks
+            for k in get_db().scan_iter(pattern)
+            if (ks := k.split(":")[0]) not in [DEFAULT_SYSTEM_KEY, DEFAULT_SCHEMA_KEY]
+        })
     except RedisError as e:
         log.error(f"Redis error in get_agents_main_keys: {e}")
         raise

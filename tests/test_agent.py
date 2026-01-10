@@ -2,7 +2,7 @@ import json
 import pytest
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
-from cat import agent
+from cat import AgenticTask
 from cat.looking_glass import AgentOutput
 from cat.looking_glass.mad_hatter.decorators.experimental.form import CatFormState
 from cat.utils import default_llm_answer_prompt
@@ -13,11 +13,13 @@ from tests.utils import just_installed_plugin
 @pytest.mark.asyncio
 async def test_execute_agent(stray):
     # empty agent execution
-    out = await agent.run_agent(
+    out = await stray.agentic_workflow.run(
+        task=AgenticTask(
+            prompt=ChatPromptTemplate.from_messages([
+                HumanMessagePromptTemplate.from_template(template="hey")
+            ]),
+        ),
         llm=stray.large_language_model,
-        prompt=ChatPromptTemplate.from_messages([
-            HumanMessagePromptTemplate.from_template(template="hey")
-        ]),
     )
     assert isinstance(out, AgentOutput)
     assert out.intermediate_steps == []
@@ -33,13 +35,14 @@ async def test_execute_agent_with_form_submit(secure_client, secure_client_heade
 
     intermediate_steps = [(("pizza_order", {}, {}), mocked_output)]
 
-    # mock the method stray.llm
+    # mock the method running the LLM
     async def mock_llm(*args, **kwargs) -> AgentOutput:
         return AgentOutput(
             output=mocked_output,
             intermediate_steps=intermediate_steps
         )
-    monkeypatch.setattr("cat.agent.run_agent", mock_llm)
+    monkeypatch.setattr("cat.looking_glass.mad_hatter.decorators.experimental.form.CatForm._run_agent", mock_llm)
+    monkeypatch.setattr("cat.services.factory.agentic_workflow.CoreAgenticWorkflow.run", mock_llm)
 
     async def mock_func(self, *args, **kwargs):
         self._state = CatFormState.COMPLETE
@@ -51,13 +54,15 @@ async def test_execute_agent_with_form_submit(secure_client, secure_client_heade
 
     # empty agent execution with form
     tools = await stray.get_procedures()
-    out = await agent.run_agent(
+    out = await stray.agentic_workflow.run(
+        task=AgenticTask(
+            prompt=ChatPromptTemplate.from_messages([
+                HumanMessagePromptTemplate.from_template(template="{input}"),
+            ]),
+            prompt_variables={"input": "I want to order a pizza"},
+            tools=tools,
+        ),
         llm=stray.large_language_model,
-        prompt=ChatPromptTemplate.from_messages([
-            HumanMessagePromptTemplate.from_template(template="{input}"),
-        ]),
-        prompt_variables={"input": "I want to order a pizza"},
-        tools=tools,
     )
     assert isinstance(out, AgentOutput)
     assert len(out.intermediate_steps) == 1
@@ -70,23 +75,26 @@ async def test_execute_main_agent_with_tool(stray, monkeypatch):
     mocked_output = "The current time is 12:00 PM."
     intermediate_steps = [(("get_the_time", {}, {}), mocked_output)]
 
-    # mock the method stray.llm
+    # mock the method running the LLM
     async def mock_llm(*args, **kwargs) -> AgentOutput:
         return AgentOutput(
             output=mocked_output,
             intermediate_steps=intermediate_steps
         )
-    monkeypatch.setattr("cat.agent.run_agent", mock_llm)
+    monkeypatch.setattr("cat.looking_glass.mad_hatter.decorators.experimental.form.CatForm._run_agent", mock_llm)
+    monkeypatch.setattr("cat.services.factory.agentic_workflow.CoreAgenticWorkflow.run", mock_llm)
 
     # empty agent execution with tool
     tools = await stray.get_procedures()
-    out = await agent.run_agent(
+    out = await stray.agentic_workflow.run(
+        task=AgenticTask(
+            prompt=ChatPromptTemplate.from_messages([
+                HumanMessagePromptTemplate.from_template(template="{input}"),
+            ]),
+            prompt_variables={"input": "What is the current time?"},
+            tools=tools,
+        ),
         llm=stray.large_language_model,
-        prompt=ChatPromptTemplate.from_messages([
-            HumanMessagePromptTemplate.from_template(template="{input}"),
-        ]),
-        prompt_variables={"input": "What is the current time?"},
-        tools=tools,
     )
     assert isinstance(out, AgentOutput)
     assert len(out.intermediate_steps) == 1
@@ -103,23 +111,26 @@ async def test_execute_main_agent_with_mcp_client_tool(stray, secure_client, sec
 
     intermediate_steps = [(("mock_mcp_client", {}, {}), mocked_output)]
 
-    # mock the method stray.llm
+    # mock the method running the LLM
     async def mock_llm(*args, **kwargs) -> AgentOutput:
         return AgentOutput(
             output=mocked_output,
             intermediate_steps=intermediate_steps
         )
-    monkeypatch.setattr("cat.agent.run_agent", mock_llm)
+    monkeypatch.setattr("cat.looking_glass.mad_hatter.decorators.experimental.form.CatForm._run_agent", mock_llm)
+    monkeypatch.setattr("cat.services.factory.agentic_workflow.CoreAgenticWorkflow.run", mock_llm)
 
     # empty agent execution with tool
     tools = await stray.get_procedures()
-    out = await agent.run_agent(
+    out = await stray.agentic_workflow.run(
+        task=AgenticTask(
+            prompt=ChatPromptTemplate.from_messages([
+                HumanMessagePromptTemplate.from_template(template="{input}"),
+            ]),
+            prompt_variables={"input": "Call mock_procedure with param1='test', param2=42"},
+            tools=tools,
+        ),
         llm=stray.large_language_model,
-        prompt=ChatPromptTemplate.from_messages([
-            HumanMessagePromptTemplate.from_template(template="{input}"),
-        ]),
-        prompt_variables={"input": "Call mock_procedure with param1='test', param2=42"},
-        tools=tools,
     )
     assert isinstance(out, AgentOutput)
     assert len(out.intermediate_steps) == 1

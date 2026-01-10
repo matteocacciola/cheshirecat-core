@@ -5,7 +5,18 @@ from cat.utils import singleton
 
 DEFAULT_AGENT_KEY = "agent"  # default agent_id for backward compatibility
 DEFAULT_SYSTEM_KEY = "system"
-UNALLOWED_AGENT_KEYS = [DEFAULT_SYSTEM_KEY, "agent_id", "chat_id", "user_id", "session_id", "message_id", "web", "batch"]
+DEFAULT_SCHEMA_KEY = "schema"
+UNALLOWED_AGENT_KEYS = [
+    DEFAULT_SYSTEM_KEY,
+    DEFAULT_SCHEMA_KEY,
+    "agent_id",
+    "chat_id",
+    "user_id",
+    "session_id",
+    "message_id",
+    "web",
+    "batch",
+]
 
 
 @singleton
@@ -49,7 +60,12 @@ class Database:
         port = get_env("CCAT_REDIS_PORT")
         db = get_env("CCAT_REDIS_DB")
 
-        return f"redis{secure}://{host}:{port}/{db}"
+        password = get_env("CCAT_REDIS_PASSWORD")
+
+        return (
+            f"redis{secure}://{host}:{port}/{db}"
+            if not password else f"redis{secure}://:{password}@{host}:{port}/{db}"
+        )
 
 
 def get_db() -> redis.Redis:

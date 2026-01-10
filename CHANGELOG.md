@@ -1,6 +1,13 @@
 # Key differences of this version
 The current version is a multi-tenant fork of the original [Cheshire Cat](https://www.github.com/cheshire-cat-ai/core). Here are the main differences:
 
+## Customizable Agentic Workflows
+The original version had a fixed set of agentic workflows, meaning that it could only use a specific set of workflows.
+This version allows you to configure the agentic workflows per chatbot, meaning that you can use your own agentic workflows.
+**The current version supports**:
+- **multiple agentic workflows**, such as RAG, Code Interpreter, etc.
+- **the extension of the list of allowed agentic workflows**, so you can use your own agentic workflows.
+
 ## Multimodal RAG
 The original version was designed to work with text documents only.
 This version is designed to work with any kind of documents, such as PDFs, Word documents, images, audio files, etc.

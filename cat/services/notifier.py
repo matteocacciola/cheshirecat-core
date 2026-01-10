@@ -122,17 +122,14 @@ class NotifierService:
         or
         >> cat.send_error(CustomException("Something went wrong!"))
         """
-        if isinstance(error, str):
-            error_message = {
-                "type": "error",
-                "name": "GenericError",
-                "description": str(error),
-            }
-        else:
-            error_message = {
-                "type": "error",
-                "name": error.__class__.__name__,
-                "description": str(error),
-            }
+        error_message = {
+            "type": "error",
+            "name": "GenericError",
+            "description": error,
+        } if isinstance(error, str) else {
+            "type": "error",
+            "name": error.__class__.__name__,
+            "description": str(error),
+        }
 
         await self._send_ws_json(error_message)

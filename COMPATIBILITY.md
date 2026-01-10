@@ -32,6 +32,7 @@ The current version introduces also the following additional hooks:
 - `factory_allowed_file_managers`: to extend the list of allowed file managers
 - `factory_allowed_chunkers`: to extend the list of allowed chunkers
 - `factory_allowed_vector_databases`: to extend the list of allowed vector databases (so allowing to use your own vector database)
+- `factory_allowed_agentic_workflows`: to extend the list of allowed agentic workflows (so allowing to use your own agentic workflow)
 
 ### Callbacks:
 - `llm_callbacks`: add custom callbacks to the LangChain LLM/ChatModel

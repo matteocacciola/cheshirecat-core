@@ -29,8 +29,8 @@ def before_cat_sends_message(message, agent_output, cat) -> Dict:
     """
     if agent_output.with_llm_error:
         cat.working_memory.pop_last_message_if_human()
-    else:
-        # update conversation history (AI turn)
-        cat.working_memory.update_history(who="assistant", content=message)
+        return message
 
+    # update conversation history (AI turn)
+    cat.working_memory.update_history(who="assistant", content=message)
     return message

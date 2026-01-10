@@ -2,14 +2,15 @@ import json
 from typing import List
 from redis import RedisError
 
-from cat import log
 from cat.auth.auth_utils import check_password
 from cat.db.crud import get_db
+from cat.db.database import DEFAULT_SCHEMA_KEY
+from cat.log import log
 from cat.utils import singleton
 
 
-USERNAME_SEARCH_SCRIPT = """
-local matches = {}
+USERNAME_SEARCH_SCRIPT = f"""
+local matches = {{}}
 local cursor = "0"
 local pattern = "*:users"
 local username = ARGV[1]
@@ -29,10 +30,12 @@ repeat
                 if user.username == username then
                     local agent_name = string.match(key, "(.+):users")
 
-                    table.insert(matches, cjson.encode({
-                        user = user,
-                        agent_name = agent_name,
-                    }))
+                    if agent_name ~= '{DEFAULT_SCHEMA_KEY}' then
+                        table.insert(matches, cjson.encode({{
+                            user = user,
+                            agent_name = agent_name,
+                        }}))
+                    end
                 end
             end
         end

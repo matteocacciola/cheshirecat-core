@@ -17,6 +17,7 @@ from cat.exceptions import (
 )
 from cat.log import log
 from cat.routes import (
+    agentic_workflow,
     auth,
     auth_handler,
     base,
@@ -86,6 +87,7 @@ if cors_enabled == "true":
 
 # Add routers to the middleware stack.
 cheshire_cat_api.include_router(base.router)
+cheshire_cat_api.include_router(agentic_workflow.router)
 cheshire_cat_api.include_router(auth_handler.router)
 cheshire_cat_api.include_router(embedder.router)
 cheshire_cat_api.include_router(chunker.router)

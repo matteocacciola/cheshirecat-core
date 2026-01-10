@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List
 from uuid import uuid4
 from pydantic import BaseModel, Field, field_validator
@@ -9,7 +9,7 @@ def generate_uuid():
 
 
 def generate_timestamp():
-    return int(datetime.now().timestamp())
+    return datetime.now(timezone.utc).timestamp()
 
 
 # base class for crud setting
@@ -20,7 +20,7 @@ class CrudSettingBody(BaseModel):
 
 # actual crud setting class, with additional auto generated id and update time
 class CrudSetting(CrudSettingBody):
-    updated_at: int = Field(default_factory=generate_timestamp)
+    updated_at: float = Field(default_factory=generate_timestamp)
 
 
 # base class for setting, used to annotate fastAPI endpoints
@@ -40,4 +40,4 @@ class SettingBody(BaseModel):
 # actual setting class, with additional auto generated id and update time
 class Setting(SettingBody):
     setting_id: str = Field(default_factory=generate_uuid)
-    updated_at: int = Field(default_factory=generate_timestamp)
+    updated_at: float = Field(default_factory=generate_timestamp)

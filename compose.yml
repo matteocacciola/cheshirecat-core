@@ -24,6 +24,7 @@ services:
       - ./cat:/app/cat
       - ./data:/app/data
       - ./tests:/app/tests
+      - ./migrations:/app/migrations
       - uv-cache:/app/.venv
     restart: unless-stopped
     depends_on:

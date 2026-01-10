@@ -146,6 +146,8 @@ class RabbitHole:
         This method is used by both `/rabbithole/` and `/rabbithole/web` endpoints.
         Currently supported files are `.txt`, `.pdf`, `.md` and web pages.
         """
+        source = None
+        content_type = None
         file_bytes = None
 
         # Check type of incoming file.
@@ -162,19 +164,20 @@ class RabbitHole:
             is_url = all([parsed_file.scheme, parsed_file.netloc])
 
             if is_url:
-                # Make a request with a fake browser name
-                request = httpx.get(file, headers={"User-Agent": "Magic Browser"})
-
-                # Define mime type and source of url
-                # Add fallback for empty/None content_type
-                content_type = request.headers.get(
-                    "Content-Type", "text/html" if file.startswith("http") else "text/plain"
-                ).split(";")[0]
-                source = file
-
                 try:
+                    # Make a request with a fake browser name
+                    response = httpx.get(file, headers={"User-Agent": "Magic Browser"})
+                    response.raise_for_status()
+
+                    # Define mime type and source of url
+                    # Add fallback for empty/None content_type
+                    content_type = response.headers.get(
+                        "Content-Type", "text/html" if file.startswith("http") else "text/plain"
+                    ).split(";")[0]
+                    source = file
+
                     # Get binary content of url
-                    file_bytes = request.content
+                    file_bytes = response.content
                 except HTTPError as e:
                     log.error(f"Agent id: {self.cat.agent_key}. Error: {e}")
             else:

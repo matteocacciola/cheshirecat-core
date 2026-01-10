@@ -15,15 +15,12 @@ class PluginExtractor:
         allowed_mime_types = get_allowed_plugins_mime_types()
 
         content_type = mimetypes.guess_type(path)[0]
-        if content_type == "application/x-tar":
-            self._extension = "tar"
-        elif content_type == "application/zip":
-            self._extension = "zip"
-        else:
+        if content_type not in allowed_mime_types:
             raise Exception(
                 f"Invalid package extension. Valid extensions are: {allowed_mime_types}"
             )
 
+        self._extension = "tar" if content_type == "application/x-tar" else "zip"
         self._path = path
 
         # this will be plugin folder name (its id for the mad hatter)

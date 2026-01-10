@@ -168,8 +168,10 @@ class CatLogEngine:
         if handler_func in self._plugin_log_handlers:
             self._plugin_log_handlers.remove(handler_func)
             self.info(f"Unregistered plugin log handler: {handler_func.__name__}")
-        else:
-            self.warning(f"Attempted to unregister a log handler that was not registered: {handler_func}")
+
+            return
+
+        self.warning(f"Attempted to unregister a log handler that was not registered: {handler_func}")
 
     def welcome(self):
         from cat.utils import get_base_path, get_base_url

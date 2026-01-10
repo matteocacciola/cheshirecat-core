@@ -5,6 +5,7 @@ from cat.exceptions import CustomValidationException
 from cat.log import log
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse
+from cat.services.factory.agentic_workflow import CoreAgenticWorkflowConfig
 from cat.services.factory.auth_handler import CoreAuthConfig
 from cat.services.factory.chunker import RecursiveTextChunkerSettings
 from cat.services.factory.embedder import EmbedderDumbConfig
@@ -19,7 +20,9 @@ class ServiceFactory:
         self,
         hook_manager: MadHatter,
         factory_allowed_handler_name: str,
-        setting_category: Literal["auth_handler", "chunker", "embedder", "file_manager", "llm", "vector_database"],
+        setting_category: Literal[
+            "auth_handler", "chunker", "embedder", "file_manager", "llm", "vector_database", "agentic_workflow"
+        ],
         schema_name: str,
     ):
         self._hook_manager = hook_manager
@@ -31,6 +34,7 @@ class ServiceFactory:
     @property
     def default_config_classes(self) -> Dict[str, Type[BaseFactoryConfigModel]]:
         return {
+            "agentic_workflow": CoreAgenticWorkflowConfig,
             "auth_handler": CoreAuthConfig,
             "chunker": RecursiveTextChunkerSettings,
             "embedder": EmbedderDumbConfig,

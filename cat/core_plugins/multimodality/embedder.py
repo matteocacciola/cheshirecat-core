@@ -110,13 +110,12 @@ class JinaCLIPEmbeddings(MultimodalEmbeddings):
                     prepared_inputs.append({"text": inp["text"]})
                 elif "image" in inp:
                     # Handle image bytes or URL
+                    tmp = inp["image"]
                     if isinstance(inp["image"], bytes):
                         img_b64 = base64.b64encode(inp["image"]).decode()
-                        prepared_inputs.append({
-                            "image": f"data:image/png;base64,{img_b64}"
-                        })
-                    else:
-                        prepared_inputs.append({"image": inp["image"]})
+                        tmp = f"data:image/png;base64,{img_b64}"
+
+                    prepared_inputs.append({"image": tmp})
 
             response = requests.post(
                 self.base_url,

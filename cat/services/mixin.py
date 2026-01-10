@@ -5,6 +5,7 @@ from langchain_core.language_models import BaseLanguageModel
 
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.rabbit_hole import RabbitHole
+from cat.services.factory.agentic_workflow import BaseAgenticWorkflowHandler
 from cat.services.factory.auth_handler import BaseAuthHandler
 from cat.services.factory.chunker import BaseChunker
 from cat.services.factory.file_manager import BaseFileManager
@@ -121,6 +122,10 @@ class BotMixin(ContextMixin, ABC):
     @property
     def vector_memory_handler(self) -> BaseVectorDatabaseHandler:
         return self.service_provider.get_vector_memory_handler()
+
+    @property
+    def agentic_workflow(self) -> BaseAgenticWorkflowHandler:
+        return self.service_provider.get_agentic_workflow()
 
     @property
     def large_language_model_name(self) -> str | None:

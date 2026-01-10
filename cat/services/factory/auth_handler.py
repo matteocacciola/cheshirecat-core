@@ -44,17 +44,12 @@ class BaseAuthHandler(ABC):
         """
         # get protocol from Starlette request
         protocol = request.scope.get("type")
+        if protocol not in ["http", "websocket"]:
+            log.error(f"Unsupported protocol: {protocol}")
+            return None
 
         # extract token from request
         token = extract_token_from_request(request)
-        if protocol == "http":
-            user_id = self.extract_user_id_http(request)
-        elif protocol == "websocket":
-            user_id = self.extract_user_id_websocket(request)
-        else:
-            log.error(f"Unknown protocol: {protocol}")
-            return None
-
         if not token:
             return None
 
@@ -63,6 +58,7 @@ class BaseAuthHandler(ABC):
             return self.authorize_user_from_jwt(token, auth_resource, auth_permission, key_id)
 
         # API_KEY auth
+        user_id = self.extract_user_id_http(request) if protocol == "http" else self.extract_user_id_websocket(request)
         return self.authorize_user_from_key(protocol, token, auth_resource, auth_permission, key_id, user_id)
 
     @abstractmethod

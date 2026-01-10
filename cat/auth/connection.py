@@ -48,14 +48,11 @@ class ConnectionAuth(ABC):
         url_path = connection.url.path
         is_custom_endpoint = lizard.plugin_manager.is_custom_endpoint(url_path)
         is_triggered_by_cat = ccat is not None
+        has_cat_custom_endpoint = ccat.plugin_manager.has_custom_endpoint(url_path) if ccat is not None else False
 
         # if the request comes from a custom endpoint, and it is not available in the picked CheshireCat, block it and
         # return a 404-HTTP error
-        if (
-                is_custom_endpoint
-                and is_triggered_by_cat
-                and not ccat.plugin_manager.has_custom_endpoint(url_path)
-        ):
+        if is_custom_endpoint and is_triggered_by_cat and not has_cat_custom_endpoint:
             raise CustomNotFoundException("Not Found")
 
         # always try core auth first (less costly, in general)

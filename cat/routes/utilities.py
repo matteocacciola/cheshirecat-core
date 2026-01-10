@@ -213,10 +213,5 @@ async def agent_clone(
     except Exception as e:
         log.error(f"Error cloning agent {ccat.agent_key}: {e}")
 
-        # rollback
-        if cloned_ccat:
-            await cloned_ccat.destroy()
-        else:
-            crud.delete(agent_id)
-
+        await info.lizard.rollback_cheshire_cat_creation(agent_id, cloned_ccat)
         return AgentClonedResponse(cloned=False)

@@ -172,11 +172,36 @@ class BillTheLizard(OrchestratorMixin):
         if agent_id in crud.get_agents_main_keys():
             return self.get_cheshire_cat(agent_id)
 
-        ccat = CheshireCat(agent_id)
-        ccat.bootstrap_services()
-        await ccat.embed_procedures()
+        ccat = None
+        try:
+            ccat = CheshireCat(agent_id)
+            ccat.bootstrap_services()
+            await ccat.embed_procedures()
 
-        return ccat
+            return ccat
+        except Exception as e:
+            log.error(f"Error creating Cheshire Cat `{agent_id}`: {e}")
+            await self.rollback_cheshire_cat_creation(agent_id, ccat)
+
+            raise
+
+    async def rollback_cheshire_cat_creation(self, agent_id: str, cat: CheshireCat | None) -> None:
+        """
+        Rollback the creation of a Cheshire Cat with the given id.
+
+        Args:
+            agent_id: The id of the agent to rollback
+            cat: The Cheshire Cat to rollback
+
+        Returns:
+            None
+        """
+        # rollback
+        if cat:
+            await cat.destroy()
+            return
+
+        crud.delete(agent_id)
 
     def _get_cheshire_cat_on_plugin_event(self, agent_id: str, plugin_id: str) -> CheshireCat | None:
         """

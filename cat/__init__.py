@@ -14,6 +14,7 @@ from .looking_glass.mad_hatter.decorators.endpoint import endpoint
 from .looking_glass.mad_hatter.decorators.hook import hook
 from .looking_glass.mad_hatter.decorators.plugin_decorator import plugin
 from .looking_glass.mad_hatter.decorators.tool import tool
+from .services.factory.agentic_workflow import AgenticWorkflowConfig, BaseAgenticWorkflowHandler, AgenticTask
 from .services.factory.auth_handler import AuthHandlerConfig, BaseAuthHandler
 from .services.factory.chunker import BaseChunker, ChunkerSettings
 from .services.factory.embedder import EmbedderSettings, MultimodalEmbeddings
@@ -39,6 +40,9 @@ __all__ = [
     "CatForm",
     "mcp_client",
     "CatMcpClient",
+    "AgenticWorkflowConfig",
+    "BaseAgenticWorkflowHandler",
+    "AgenticTask",
     "AuthHandlerConfig",
     "BaseAuthHandler",
     "BaseChunker",

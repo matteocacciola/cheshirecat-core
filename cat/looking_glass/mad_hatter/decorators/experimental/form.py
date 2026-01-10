@@ -1,14 +1,15 @@
 import json
 from abc import ABC, abstractmethod
-from typing import List, Dict
+from typing import List, Dict, Type
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, ValidationError
 from slugify import slugify
 
-from cat.agent import run_agent
 from cat.log import log
 from cat.looking_glass.mad_hatter.procedures import CatProcedure, CatProcedureType
+from cat.looking_glass.models import AgentOutput
+from cat.services.factory.agentic_workflow import AgenticTask, CoreAgenticWorkflow
 from cat.utils import Enum, parse_json
 
 
@@ -21,7 +22,7 @@ class CatFormState(Enum):
 
 
 class CatForm(CatProcedure, ABC):  # base model of forms
-    model_class: BaseModel
+    model_class: Type[BaseModel]
     stop_examples: List[str] = []
     ask_confirm: bool = False
     _autopilot = False
@@ -37,6 +38,8 @@ class CatForm(CatProcedure, ABC):  # base model of forms
         self._errors: List[str] = []
         self._missing_fields: List[str] = []
 
+        self._agent = CoreAgenticWorkflow()
+
     @property
     def cat(self):
         """
@@ -44,9 +47,6 @@ class CatForm(CatProcedure, ABC):  # base model of forms
             StrayCat: StrayCat instance
         """
         return self.stray
-
-    def _model_getter(self) -> BaseModel:
-        return self.model_class
 
     @property
     def state(self) -> CatFormState:
@@ -107,13 +107,7 @@ JSON must be in this format:
 ```"""
 
         # Queries the LLM and check if user agrees or not
-        response = await run_agent(
-            llm=self.stray.large_language_model,
-            prompt=ChatPromptTemplate.from_messages([
-                HumanMessagePromptTemplate.from_template(template=confirm_prompt)
-            ]),
-            prompt_variables={"input": user_message},
-        )
+        response = await self._run_agent(prompt_template=confirm_prompt, prompt_variables={"input": user_message})
         return "true" in response.output.lower()
 
     # Check if the user wants to exit the form
@@ -145,13 +139,7 @@ JSON:
 """
 
         # Queries the LLM and check if user agrees or not
-        response = await run_agent(
-            llm=self.stray.large_language_model,
-            prompt=ChatPromptTemplate.from_messages([
-                HumanMessagePromptTemplate.from_template(template=check_exit_prompt)
-            ]),
-            prompt_variables={"input": user_message},
-        )
+        response = await self._run_agent(prompt_template=check_exit_prompt, prompt_variables={"input": user_message})
         return "true" in response.output.lower()
 
     # Updates the form with the information extracted from the user's response
@@ -204,12 +192,7 @@ JSON:
 
     # Extract model information from user message
     async def _extract(self):
-        json_str = await run_agent(
-            llm=self.stray.large_language_model,
-            prompt=ChatPromptTemplate.from_messages([
-                HumanMessagePromptTemplate.from_template(template=self._extraction_prompt())
-            ]),
-        )
+        json_str = await self._run_agent(prompt_template=self._extraction_prompt())
 
         # json parser
         try:
@@ -229,7 +212,7 @@ JSON:
         json_structure = "{"
         json_structure += "".join([
             f'\n\t"{field_name}": // {field.description if field.description else ""} Must be of type `{field.annotation.__name__}` or `null`'
-            for field_name, field in self._model_getter().model_fields.items()
+            for field_name, field in self.model_class().model_fields.items()
         ])  # field.required?
         json_structure += "\n}"
 
@@ -272,7 +255,7 @@ Updated JSON:
 
         try:
             # Attempts to create the model object to update the default values and validate it
-            self._model_getter()(**self._model).model_dump(mode="json")
+            self.model_class(**self._model).model_dump(mode="json")
 
             # If model is valid change state to COMPLETE
             self._state = CatFormState.COMPLETE
@@ -330,6 +313,17 @@ Updated JSON:
             log.error(f"Error while executing form: {e}")
             return ""
 
+    async def _run_agent(self, prompt_template: str, prompt_variables: Dict | None = None) -> AgentOutput:
+        response = await self._agent.run(
+            task=AgenticTask(
+                prompt=ChatPromptTemplate.from_messages([
+                    HumanMessagePromptTemplate.from_template(template=prompt_template)
+                ]),
+                prompt_variables=prompt_variables,
+            ),
+            llm=self.stray.large_language_model,
+        )
+        return response
 
 # form decorator
 def form(this_form: CatForm) -> CatForm:

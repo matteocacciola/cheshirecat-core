@@ -3,7 +3,6 @@ from redis.exceptions import RedisError
 
 from cat.db import crud
 from cat.db.cruds import settings as crud_settings
-from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.log import log
 
 
@@ -196,12 +195,8 @@ def get_agents_plugin_keys(plugin_id: str) -> List[str]:
     Raises:
         RedisError: If Redis connection fails.
     """
-    try:
-        pattern = format_key("*", plugin_id)
-        return list({ks for k in crud.get_db().scan_iter(pattern) if (ks := k.split(":")[0]) != DEFAULT_SYSTEM_KEY})
-    except RedisError as e:
-        log.error(f"Redis error in get_agents_plugin_keys: {e}")
-        raise
+    pattern = format_key("*", plugin_id)
+    return crud.get_agents_main_keys(pattern)
 
 
 def get_active_plugins_from_db(agent_id: str) -> List[str]:

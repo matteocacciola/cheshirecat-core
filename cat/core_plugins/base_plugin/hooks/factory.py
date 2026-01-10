@@ -1,6 +1,7 @@
 from typing import List
 
 from cat import (
+    AgenticWorkflowConfig,
     AuthHandlerConfig,
     ChunkerSettings,
     EmbedderSettings,
@@ -14,7 +15,7 @@ from cat import (
 @hook(priority=0)
 def factory_allowed_llms(allowed: List[LLMSettings], cat) -> List:
     """
-    Hook to extend support of llms.
+    Hook to extend support of LLMs.
 
     Args:
         allowed: List of LLMSettings classes
@@ -42,7 +43,7 @@ def factory_allowed_embedders(allowed: List[EmbedderSettings], lizard) -> List:
 
 @hook(priority=0)
 def factory_allowed_auth_handlers(allowed: List[AuthHandlerConfig], cat) -> List:
-    """Hook to extend list of supported auth_handlers.
+    """Hook to extend list of supported auth handlers.
 
     Args:
         allowed: List of AuthHandlerConfig classes
@@ -92,5 +93,19 @@ def factory_allowed_vector_databases(allowed: List[VectorDatabaseSettings], cat)
 
     Returns:
         supported: List of VectorDatabaseSettings classes for the allowed vector databases
+    """
+    return allowed
+
+
+@hook(priority=0)
+def factory_allowed_agentic_workflows(allowed: List[AgenticWorkflowConfig], cat) -> List:
+    """Hook to extend list of supported agentic workflows.
+
+    Args:
+        allowed: List of AgenticWorkflowConfig classes
+        cat: Cheshire Cat instance
+
+    Returns:
+        supported: List of AgenticWorkflowConfig classes for the allowed agentic_workflows
     """
     return allowed

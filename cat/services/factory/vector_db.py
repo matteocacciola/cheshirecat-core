@@ -612,12 +612,14 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         if isinstance(value, dict):
             for k, v in value.items():
                 out.extend(self.build_condition(f"{key}.{k}", v))
-        elif isinstance(value, list):
+            return out
+
+        if isinstance(value, list):
             for v in value:
                 out.extend(self.build_condition(f"{key}[]" if isinstance(v, dict) else f"{key}", v))
-        else:
-            out.append(FieldCondition(key=f"metadata.{key}", match=MatchValue(value=value)))
+            return out
 
+        out.append(FieldCondition(key=f"metadata.{key}", match=MatchValue(value=value)))
         return out
 
     def _build_metadata_conditions(self, metadata: Dict | None = None) -> List[FieldCondition]:
@@ -773,9 +775,9 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         port = self._client._client._port
 
         if os.path.isdir(folder):
-            log.debug("Directory dormouse exists")
+            log.debug(f"Directory {folder} exists")
         else:
-            log.info("Directory dormouse does NOT exists, creating it.")
+            log.debug(f"Directory {folder} does NOT exists, creating it.")
             os.mkdir(folder)
 
         snapshot_info = await self._client.create_snapshot(collection_name=collection_name)

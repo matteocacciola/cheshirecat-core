@@ -80,10 +80,11 @@ class WhiteRabbit:
             log.error(
                 f"WhiteRabbit: error during the execution of job {event.job_id} started at {event.scheduled_run_time}. Error: {event.traceback}"
             )
-        else:
-            log.info(
-                f"WhiteRabbit: executed job {event.job_id} started at {event.scheduled_run_time}. Value returned: {event.retval}"
-            )
+            return
+
+        log.info(
+            f"WhiteRabbit: executed job {event.job_id} started at {event.scheduled_run_time}. Value returned: {event.retval}"
+        )
 
     def shutdown(self):
         for job_id in self.jobs.copy():
