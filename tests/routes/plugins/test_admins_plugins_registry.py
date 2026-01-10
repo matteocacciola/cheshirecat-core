@@ -2,8 +2,7 @@ import os
 import shutil
 import pytest
 
-from cat import BillTheLizard
-from tests.utils import create_mock_plugin_zip, get_class_from_decorated_singleton
+from tests.utils import create_mock_plugin_zip
 
 
 async def mock_registry_download_plugin(url: str):
