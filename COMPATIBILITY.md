@@ -60,5 +60,5 @@ The current version introduces also the following additional hooks:
 ## Code changes
 Since the Vector Database could be specific for each instance of the Cheshire Cat, the syntax `cat.memory.vectors.vector_db`
 is no more available. Use `cat.vector_memory_handler` instead. In case of missing methods in the Vector Database, you can
-create your own Vector Handler extending `cat.factory.vector_db.BaseVectorDatabaseHandler`, or you can extend the existing
-Qdrant-based Vector Handler, `cat.factory.vector_db.QdrantHandler`.
+create your own Vector Handler extending `BaseVectorDatabaseHandler`, or you can extend the existing
+Qdrant-based Vector Handler, `QdrantHandler`.
