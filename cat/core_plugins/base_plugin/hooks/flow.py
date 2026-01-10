@@ -6,6 +6,7 @@ Here is a collection of methods to hook into the Cat execution pipeline.
 from typing import Dict, List
 
 from cat import hook, log, run_sync_or_async, UserMessage
+from cat.core_plugins.base_plugin.registry import CheshireCatPluginRegistry
 from cat.exceptions import VectorMemoryError
 from cat.services.memory.utils import VectorMemoryType, recall_relevant_memories_to_working_memory, RecallSettings
 
@@ -24,7 +25,7 @@ def before_lizard_bootstrap(lizard) -> None:
     pass
 
 
-@hook(priority=0)
+@hook(priority=999)
 def after_lizard_bootstrap(lizard) -> None:
     """
     Executes actions that need to be performed after the lizard bootstrap process.
@@ -35,7 +36,7 @@ def after_lizard_bootstrap(lizard) -> None:
     Args:
         lizard: An object that provides context or data needed during the bootstrap preparation process. The exact usage and required attributes of the object depend on the implementation details of the bootstrap logic.
     """
-    pass
+    lizard.plugin_registry = CheshireCatPluginRegistry()
 
 
 @hook(priority=0)
@@ -47,7 +48,7 @@ def before_lizard_shutdown(lizard) -> None:
     Args:
         lizard: The object or parameter related to a cat that might need specific operations to be performed before the shutdown.
     """
-    pass
+    lizard.plugin_registry = None
 
 
 @hook(priority=0)

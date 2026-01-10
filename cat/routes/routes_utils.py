@@ -16,7 +16,7 @@ from cat.exceptions import CustomValidationException, CustomUnauthorizedExceptio
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.plugin import Plugin
 from cat.looking_glass.mad_hatter.plugin_manifest import PluginManifest
-from cat.looking_glass.mad_hatter.registry import registry_search_plugins
+from cat.looking_glass.mad_hatter.registry import PluginRegistry
 from cat.services.redis_search import RedisSearchService
 
 
@@ -139,6 +139,7 @@ def create_plugin_manifest(
 
 
 async def get_available_plugins(
+    plugin_registry: PluginRegistry,
     plugin_manager: MadHatter,
     query: str = None,
     # author: str = None, to be activated in case of more granular search
@@ -146,7 +147,9 @@ async def get_available_plugins(
 ) -> GetAvailablePluginsResponse:
     """
     Get the plugins related to the passed plugin manager instance and the query.
+
     Args:
+        plugin_registry: the instance of PluginRegistry
         plugin_manager: the instance of MadHatter
         query: the query to look for
 
@@ -154,7 +157,7 @@ async def get_available_plugins(
         The list of plugins
     """
     # retrieve plugins from official repo
-    registry_plugins = await registry_search_plugins(query)
+    registry_plugins = await plugin_registry.search_plugins(query)
     # index registry plugins by url
     registry_plugins_index = {p.plugin_url: p for p in registry_plugins if p.plugin_url is not None}
 

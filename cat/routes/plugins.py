@@ -10,7 +10,6 @@ from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.db.cruds import plugins as crud_plugins
 from cat.exceptions import CustomValidationException, CustomNotFoundException
-from cat.looking_glass.mad_hatter.registry import registry_download_plugin
 from cat.routes.routes_utils import (
     GetAvailablePluginsResponse,
     GetSettingResponse,
@@ -42,7 +41,7 @@ async def get_cheshirecat_available_plugins(
     if query is not None:
         query = slugify(query, separator="_")
 
-    return await get_available_plugins(info.cheshire_cat.plugin_manager, query)
+    return await get_available_plugins(info.lizard.plugin_registry, info.cheshire_cat.plugin_manager, query)
 
 
 @router.put("/toggle/{plugin_id}", response_model=TogglePluginResponse)
@@ -154,7 +153,7 @@ async def get_lizard_available_plugins(
     if query is not None:
         query = slugify(query, separator="_")
 
-    return await get_available_plugins(info.lizard.plugin_manager, query)
+    return await get_available_plugins(info.lizard.plugin_registry, info.lizard.plugin_manager, query)
 
 
 @router.post("/install/upload", response_model=InstallPluginResponse)
@@ -197,7 +196,7 @@ async def install_plugin_from_registry(
     """Install a new plugin from registry"""
     # download zip from registry
     try:
-        tmp_plugin_path = await registry_download_plugin(payload["url"])
+        tmp_plugin_path = await info.lizard.plugin_registry.download_plugin(payload["url"])
         info.lizard.plugin_manager.install_plugin(tmp_plugin_path)
     except Exception as e:
         raise CustomValidationException(f"Could not install plugin from registry: {e}")

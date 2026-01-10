@@ -2,9 +2,9 @@ import os
 import shutil
 import pytest
 
-from tests.utils import create_mock_plugin_zip
+from cat import BillTheLizard
+from tests.utils import create_mock_plugin_zip, get_class_from_decorated_singleton
 
-# TODO: registry responses here should be mocked, at the moment we are actually calling the service
 
 async def mock_registry_download_plugin(url: str):
     return create_mock_plugin_zip(True)
@@ -41,11 +41,9 @@ def test_list_registry_plugins_by_query(secure_client, secure_client_headers):
         assert params["query"] in plugin_text  # verify searched text
 
 
-def test_plugin_install_from_registry(secure_client, secure_client_headers, monkeypatch):
+def test_plugin_install_from_registry(secure_client, secure_client_headers, monkeypatch, lizard):
     # Mock the download from the registry creating a zip on-the-fly
-    monkeypatch.setattr(
-        "cat.routes.plugins.registry_download_plugin", mock_registry_download_plugin
-    )
+    monkeypatch.setattr(lizard.plugin_registry, "download_plugin", mock_registry_download_plugin)
 
     # during tests, the cat uses a different folder for plugins
     new_plugin_final_folder = "tests/mocks/mock_plugin_folder/mock_plugin"

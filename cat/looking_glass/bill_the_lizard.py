@@ -12,6 +12,7 @@ from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.mad_hatter.decorators.endpoint import CatEndpoint
+from cat.looking_glass.mad_hatter.registry import PluginRegistry
 from cat.looking_glass.tweedledum import Tweedledum
 from cat.rabbit_hole import RabbitHole
 from cat.services.factory.auth_handler import CoreAuthHandler
@@ -46,6 +47,8 @@ class BillTheLizard(OrchestratorMixin):
         """
         self.dispatcher = HumptyDumpty()
         self.dispatcher.subscribe_from(self)
+
+        self._plugin_registry = None
 
         self._fastapi_app = None
         self._pending_endpoints = []
@@ -276,6 +279,14 @@ class BillTheLizard(OrchestratorMixin):
         # Activate any pending endpoints
         if app is not None:
             self._activate_pending_endpoints()
+
+    @property
+    def plugin_registry(self) -> PluginRegistry:
+        return self._plugin_registry
+
+    @plugin_registry.setter
+    def plugin_registry(self, registry: PluginRegistry):
+        self._plugin_registry = registry
 
     @property
     def config_key(self):
