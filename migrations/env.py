@@ -207,7 +207,7 @@ class MigrationEnvironment:
                 revision.upgrade(self.context)
                 self.set_current_head(revision.revision)
                 self.add_to_history(revision.revision, "upgrade")
-                print(f"  ✓ Success\n")
+                print("  ✓ Success\n")
             except Exception as e:
                 print(f"  ✗ Failed: {e}\n")
                 raise
@@ -260,7 +260,7 @@ class MigrationEnvironment:
                 revision.downgrade(self.context)
                 self.set_current_head(revision.down_revision)
                 self.add_to_history(revision.revision, "downgrade")
-                print(f"  ✓ Success\n")
+                print("  ✓ Success\n")
             except Exception as e:
                 print(f"  ✗ Failed: {e}\n")
                 raise

@@ -71,7 +71,7 @@ def create_revision(message: str, migrations_dir: Path) -> None:
     head = get_current_head(migrations_dir)
 
     # Create filename
-    filename = f"{revision_id}_{message.lower().replace(" ", "_")}.py"
+    filename = f"{revision_id}_{message.lower().replace(' ', '_')}.py"
     filepath = migrations_dir / filename
 
     # Load template
@@ -110,8 +110,8 @@ def create_revision(message: str, migrations_dir: Path) -> None:
 
     print(f"Generated migration: {filename}")
     print(f"  Revision ID: {revision_id}")
-    print(f"  Revises: {head or "base"}")
-    print(f"\nPlease edit the file to implement upgrade() and downgrade() functions")
+    print(f"  Revises: {head or 'base'}")
+    print("\nPlease edit the file to implement upgrade() and downgrade() functions")
 
 
 def main():
