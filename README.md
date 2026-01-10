@@ -105,11 +105,8 @@ When implementing custom endpoints, you can use the `@endpoint` decorator to cre
 [documentation](https://deepwiki.com/matteocacciola/cheshirecat-core) for more information.
 
 > [!IMPORTANT]
-> **Each endpoint implemented for chatbots must use the `check_permissions` method to authenticate**. See this
-[`example`](https://github.com/matteocacciola/cheshirecat-core/blob/main/core/tests/mocks/mock_plugin/mock_endpoint.py#L30).
-> 
-> **Each endpoint implemented at a system level must use the `check_admin_permissions` method to authenticate**. See this
-[`example`](https://github.com/matteocacciola/cheshirecat-core/blob/main/core/tests/mocks/mock_plugin/mock_endpoint.py#L35).
+> **Each implemented custom endpoint must use the `check_permissions` method to authenticate**. See this
+[`example`](https://github.com/matteocacciola/cheshirecat-core/blob/main/tests/mocks/mock_plugin/mock_endpoint.py#L28).
 
 ## Minimal plugin example
 
