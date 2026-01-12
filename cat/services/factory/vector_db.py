@@ -363,23 +363,6 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def update_metadata_to_tenant_points(
-        self, collection_name: str, points: List[PointStruct], metadata: Dict
-    ) -> UpdateResult:
-        """
-        Update the metadata of a point in the collection.
-
-        Args:
-            collection_name: The name of the collection to update points in.
-            points: The points to update.
-            metadata: The metadata to update.
-
-        Returns:
-            UpdateResult: The result of the update operation.
-        """
-        pass
-
-    @abstractmethod
     async def create_collection(self, embedder_name: str, embedder_size: int, collection_name: str):
         """
         Create a new collection in the vector database.
@@ -984,7 +967,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
                 # No more pages
                 break
 
-            # Set offset for next iteration
+            # Set offset for the next iteration
             offset = next_offset
 
             # Optional: Add a small delay to avoid overwhelming the system
@@ -1071,20 +1054,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         except Exception as e:
             log.error(f"Error deleting collection `{collection_name}`, agent `{self.agent_id}`: {e}")
             return False
-
-    async def update_metadata_to_tenant_points(
-        self, collection_name: str, points: List[PointStruct], metadata: Dict
-    ) -> UpdateResult:
-        qdrant_points = []
-        for point in points:
-            point.payload["metadata"] = {**point.payload["metadata"], **metadata}
-            point.payload["tenant_id"] = self.agent_id
-            qdrant_points.append(QdrantPointStruct(**point.model_dump()))
-        res = await self._client.upsert(collection_name=collection_name, points=qdrant_points)
-        return UpdateResult(
-            status=res.status,
-            operation_id=res.operation_id,
-        )
 
     def is_db_remote(self) -> bool:
         return True

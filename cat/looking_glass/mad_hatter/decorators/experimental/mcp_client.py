@@ -61,11 +61,6 @@ class CatMcpClient(Client, CatProcedure, ABC):
             "picked_tool": self.picked_tool,
         }
 
-    def parsify_input_params(self, input_params: Dict) -> Dict:
-        self.picked_tool = input_params["picked_tool"]
-
-        return input_params
-
     @classmethod
     def reconstruct_from_params(cls, input_params: Dict) -> "CatMcpClient":
         obj = cls()

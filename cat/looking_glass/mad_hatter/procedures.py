@@ -1,6 +1,6 @@
 import importlib
 from abc import ABC, abstractmethod
-from typing import List, Dict, Callable, Optional
+from typing import List, Dict, Callable
 from langchain_core.documents import Document as LangChainDocument
 from langchain_core.tools import StructuredTool
 from pydantic import Field
@@ -27,7 +27,7 @@ class CatProcedure(ABC):
     stray = None
 
     @abstractmethod
-    def langchainfy(self) -> Optional[StructuredTool]:
+    def langchainfy(self) -> StructuredTool | None:
         """
         Provides an abstract method interface to define the `langchainfy` method for
         generating a list of `StructuredTool` instances.
@@ -52,25 +52,6 @@ class CatProcedure(ABC):
 
         Returns:
             Dict: A dictionary representation of the input parameters.
-        """
-        pass
-
-    @abstractmethod
-    def parsify_input_params(self, input_params: Dict) -> Dict:
-        """
-        Parses the input parameters into a specific format.
-
-        This method is abstract and must be implemented in derived subclasses. The
-        input parameters are taken as a dictionary and returned as a formatted
-        dictionary. The exact details of parsing depend on the specific
-        implementation in derived classes.
-
-        Args:
-            input_params (Dict): A dictionary containing input parameters to be
-                parsed.
-
-        Returns:
-            Dict: A dictionary containing the parsed parameters.
         """
         pass
 

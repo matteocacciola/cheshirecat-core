@@ -34,7 +34,7 @@ def _check_on_file_upload(response, file_name, content_type, secure_client, secu
     assert "File is being ingested" in json_res["info"]
 
     # check memory contents
-    # check declarative memory is empty
+    # check declarative memory is not empty
     declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
 

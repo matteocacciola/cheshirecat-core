@@ -69,12 +69,39 @@ class BaseFileManager(ABC):
         file_path = os.path.join(self._root_dir, file_path)
         return self._download(file_path)
 
+    def read_file(self, remote_filename: str, remote_root_dir: str | None = None) -> bytes | None:
+        """
+        Retrieves the content of a specified file from a remote directory as bytes.
+
+        This method constructs the complete path to the file based on the specified remote filename and the provided
+        root directory, or the class's default root directory if none is given. It then retrieves the file content in
+        binary format.
+
+        Args:
+            remote_filename (str): The name of the file to retrieve.
+            remote_root_dir (str | None): The root directory of the remote file system where the file is stored. If None, the class's default root directory is used.
+
+        Returns:
+            bytes: The binary content of the specified file, or None if the file does not exist.
+        """
+        remote_root_dir = os.path.join(self._root_dir, remote_root_dir) if remote_root_dir else self._root_dir
+        destination_path = os.path.join(remote_root_dir, remote_filename)
+
+        if not self.file_exists(destination_path):
+            return None
+
+        return self._read_file(destination_path)
+
     @abstractmethod
     def _download(self, file_path: str) -> bytes | None:
         pass
 
     @abstractmethod
     def _upload_file_to_storage(self, file_path: str, destination_path: str) -> str:
+        pass
+
+    @abstractmethod
+    def _read_file(self, destination_path: str) -> bytes:
         pass
 
     def download_file_from_storage(self, file_path: str, local_dir: str) -> str | None:
@@ -153,6 +180,9 @@ class BaseFileManager(ABC):
 
         return FileManagerAttributes(files=final_list, size=sum(file.size for file in final_list))
 
+    def list_files(self, remote_root_dir: str) -> List[FileResponse]:
+        return self.get_attributes(remote_root_dir).files
+
     @abstractmethod
     def _list_files(self, remote_root_dir: str) -> List[FileResponse]:
         pass
@@ -214,7 +244,7 @@ class BaseFileManager(ABC):
         """
         return [
             self.download_file_from_storage(file.path, local_dir)
-            for file in self.get_attributes(remote_root_dir).files
+            for file in self.list_files(remote_root_dir)
         ]
 
     def transfer(self, file_manager_from: "BaseFileManager", remote_root_dir: str) -> bool:
@@ -254,7 +284,7 @@ class BaseFileManager(ABC):
             remote_root_dir = os.path.dirname(filename)
             filename = os.path.basename(filename)
 
-        return filename in [file.name for file in self.get_attributes(remote_root_dir).files]
+        return filename in [file.name for file in self.list_files(remote_root_dir)]
 
 
 class DummyFileManager(BaseFileManager):
@@ -278,6 +308,9 @@ class DummyFileManager(BaseFileManager):
 
     def _list_files(self, remote_root_dir: str) -> List[FileResponse]:
         return []
+
+    def _read_file(self, destination_path: str) -> bytes:
+        pass
 
 
 class FileManagerConfig(BaseFactoryConfigModel, ABC):

@@ -59,9 +59,6 @@ class CatForm(CatProcedure, ABC):  # base model of forms
     def dictify_input_params(self) -> Dict:
         return {}
 
-    def parsify_input_params(self, input_params: Dict) -> Dict:
-        return input_params
-
     @classmethod
     def reconstruct_from_params(cls, input_params: Dict) -> "CatForm":
         # CatForm has no constructor params

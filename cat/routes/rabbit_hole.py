@@ -1,11 +1,10 @@
-import io
 import json
 import mimetypes
-from copy import deepcopy
+from io import BytesIO
 from typing import Dict, List
 import httpx
 from fastapi import Form, APIRouter, UploadFile, BackgroundTasks
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
@@ -16,7 +15,7 @@ from cat.services.memory.utils import VectorMemoryType
 router = APIRouter(tags=["Rabbit Hole"], prefix="/rabbithole")
 
 
-class UploadURLConfig(BaseModel):
+class UploadURLConfig(BaseModel, extra="forbid"):
     url: str = Field(
         description="URL of the website to which you want to save the content"
     )
@@ -24,7 +23,6 @@ class UploadURLConfig(BaseModel):
         default={},
         description="Metadata to be stored with each chunk (e.g. author, category, etc.)"
     )
-    model_config = ConfigDict(extra="forbid")
 
 
 class UploadSingleFileResponse(BaseModel):
@@ -40,11 +38,6 @@ class UploadUrlResponse(BaseModel):
 
 class AllowedMimeTypesResponse(BaseModel):
     allowed: List[str]
-
-
-def _format_uploaded_file(uploaded_file: UploadFile) -> UploadFile:
-    file_content = uploaded_file.file.read()
-    return UploadFile(filename=uploaded_file.filename, file=io.BytesIO(file_content))
 
 
 def _on_upload_single_file(
@@ -69,17 +62,15 @@ def _on_upload_single_file(
             f'MIME type {content_type} not supported. Admitted types: {" - ".join(admitted_types)}'
         )
 
-    # upload file to long term memory, in the background
-    uploaded_file = deepcopy(_format_uploaded_file(file))
-    # we deepcopy the file because FastAPI does not keep the file in memory after the response returns to the client
+    # upload file to long-term memory, in the background
     # https://github.com/tiangolo/fastapi/discussions/10936
     background_tasks.add_task(
         lizard.rabbit_hole.ingest_file,
         cat=cat,
-        file=uploaded_file,
+        file=BytesIO(file.file.read()),
+        filename=file.filename,
         metadata=json.loads(metadata)
     )
-
 
 
 # receive files via http endpoint
@@ -178,12 +169,12 @@ async def upload_url(
             )
 
         if response.status_code == 200:
-            # upload file to long term memory, in the background
+            # upload file to long-term memory, in the background
             background_tasks.add_task(
                 info.lizard.rabbit_hole.ingest_file,
                 cat=info.stray_cat or info.cheshire_cat,
                 file=upload_config.url,
-                **upload_config.model_dump(exclude={"url"})
+                metadata=upload_config.metadata,
             )
             return UploadUrlResponse(url=upload_config.url, info="URL is being ingested asynchronously")
 
@@ -209,7 +200,7 @@ async def upload_memory(
 
     # Ingest memories in background and notify client
     background_tasks.add_task(
-        info.lizard.rabbit_hole.ingest_memory, cat=info.cheshire_cat, file=deepcopy(file)
+        info.lizard.rabbit_hole.ingest_memory, cat=info.cheshire_cat, file=BytesIO(file.file.read())
     )
 
     # reply to client

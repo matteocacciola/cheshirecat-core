@@ -105,7 +105,7 @@ class ScoredPoint(BaseModel):
 
 
 class PointStruct(BaseModel, extra="forbid"):
-    id: int | str = Field(..., description="")
+    id: int | str | None = Field(..., description="")
     vector: VectorStruct = Field(..., description="")
     payload: Payload | None = Field(default=None, description="Payload values (optional)")
 

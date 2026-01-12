@@ -87,6 +87,10 @@ class LocalFileManager(BaseFileManager):
                 cloned_files.append(destination_file)
         return cloned_files
 
+    def _read_file(self, destination_path: str) -> bytes:
+        with open(destination_path, "rb") as f:
+            return f.read()
+
 
 class AWSFileManager(BaseFileManager):
     def __init__(self, bucket_name: str, aws_access_key: str, aws_secret_key: str):
@@ -126,7 +130,7 @@ class AWSFileManager(BaseFileManager):
 
     def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
         try:
-            files_to_delete = [file.name for file in self.get_attributes(remote_root_dir).files]
+            files_to_delete = [file.name for file in self.list_files(remote_root_dir)]
             if files_to_delete:
                 objects_to_delete = [{"Key": key} for key in files_to_delete]
                 self.s3.delete_objects(
@@ -173,6 +177,9 @@ class AWSFileManager(BaseFileManager):
                     cloned_files.append(destination_key)
         return cloned_files
 
+    def _read_file(self, destination_path: str) -> bytes:
+        return self.s3.get_object(Bucket=self.bucket_name, Key=destination_path)["Body"].read()
+
 
 class AzureFileManager(BaseFileManager):
     def __init__(self, connection_string: str, container_name: str):
@@ -215,7 +222,7 @@ class AzureFileManager(BaseFileManager):
 
     def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
         try:
-            for file_path in [file.name for file in self.get_attributes(remote_root_dir).files]:
+            for file_path in [file.name for file in self.list_files(remote_root_dir)]:
                 blob_client = self.container.get_blob_client(file_path)
                 blob_client.delete_blob()
             return True
@@ -243,6 +250,10 @@ class AzureFileManager(BaseFileManager):
             destination_blob_client.start_copy_from_url(source_blob_client.url)
             cloned_files.append(destination_blob)
         return cloned_files
+
+    def _read_file(self, destination_path: str) -> bytes:
+        blob_client = self.container.get_blob_client(destination_path)
+        return blob_client.download_blob().readall()
 
 
 class GoogleCloudFileManager(BaseFileManager):
@@ -284,7 +295,7 @@ class GoogleCloudFileManager(BaseFileManager):
 
     def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
         try:
-            for file_path in [file.name for file in self.get_attributes(remote_root_dir).files]:
+            for file_path in [file.name for file in self.list_files(remote_root_dir)]:
                 blob = self.bucket.blob(file_path)
                 blob.delete()
             return True
@@ -311,6 +322,10 @@ class GoogleCloudFileManager(BaseFileManager):
             new_blob.rewrite(blob)
             cloned_files.append(destination_blob)
         return cloned_files
+
+    def _read_file(self, destination_path: str) -> bytes:
+        blob = self.bucket.blob(destination_path)
+        return blob.download_as_bytes()
 
 
 class DigitalOceanFileManager(AWSFileManager):

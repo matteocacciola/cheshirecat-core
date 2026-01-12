@@ -16,6 +16,7 @@ from cat.looking_glass.mad_hatter.registry import PluginRegistry
 from cat.looking_glass.tweedledum import Tweedledum
 from cat.rabbit_hole import RabbitHole
 from cat.services.factory.auth_handler import CoreAuthHandler
+from cat.services.memory.utils import VectorMemoryType
 from cat.services.mixin import OrchestratorMixin
 from cat.services.websocket_manager import WebSocketManager
 from cat.utils import singleton, sanitize_permissions
@@ -179,6 +180,7 @@ class BillTheLizard(OrchestratorMixin):
         try:
             ccat = CheshireCat(agent_id)
             ccat.bootstrap_services()
+            await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
             await ccat.embed_procedures()
 
             return ccat
@@ -248,6 +250,43 @@ class BillTheLizard(OrchestratorMixin):
             return None
 
         return CheshireCat(agent_id)
+
+    async def clone_cheshire_cat(self, ccat: CheshireCat, new_agent_id: str) -> CheshireCat:
+        """
+        Clone a Cheshire Cat into a new one.
+
+        Args:
+            ccat: The Cheshire Cat to clone.
+            new_agent_id: The new agent id to clone into.
+
+        Returns:
+            The cloned Cheshire Cat.
+        """
+        # clone the settings from the provided agent
+        log.info(f"Cloning settings from agent {ccat.agent_key} to agent {new_agent_id}")
+        crud.clone_agent(ccat.agent_key, new_agent_id, ["analytics"])
+
+        # clone the vector points from the ccat to the provided agent
+        cloned_ccat = self.get_cheshire_cat(new_agent_id)
+        await cloned_ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
+
+        log.info(f"Cloning vector memory from agent {ccat.agent_key} to agent {new_agent_id}")
+        points, _ = await ccat.vector_memory_handler.get_all_tenant_points(
+            str(VectorMemoryType.DECLARATIVE), with_vectors=True
+        )
+        if points:
+            await cloned_ccat.vector_memory_handler.add_points_to_tenant(
+                collection_name=str(VectorMemoryType.DECLARATIVE),
+                payloads=[p.payload for p in points],
+                vectors=[p.vector for p in points],
+            )
+        await cloned_ccat.embed_procedures()
+
+        # clone the files from the ccat to the provided agent
+        log.info(f"Cloning files from agent {ccat.agent_key} to agent {new_agent_id}")
+        ccat.file_manager.clone_folder(ccat.agent_key, new_agent_id)
+
+        return cloned_ccat
 
     async def shutdown(self) -> None:
         """

@@ -83,19 +83,6 @@ class CatTool(CatProcedure):
             "examples": self.examples,
         }
 
-    def parsify_input_params(self, input_params: Dict) -> Dict:
-        func_module_path = input_params["func"]["module"]
-        func_name = input_params["func"]["name"]
-
-        # Import the module where the function is defined
-        func_module = importlib.import_module(func_module_path)
-
-        # Get the function from the module
-        func = getattr(func_module, func_name, None)
-        input_params["func"] = func
-
-        return input_params
-
     @classmethod
     def reconstruct_from_params(cls, input_params: Dict) -> "CatTool":
         # Parse the function reference

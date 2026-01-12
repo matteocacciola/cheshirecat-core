@@ -1,4 +1,5 @@
-from typing import Dict
+from io import BytesIO
+from typing import Dict, Any
 
 from cat.db.cruds import (
     settings as crud_settings,
@@ -10,6 +11,7 @@ from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.looking_glass.mad_hatter.decorators.tool import CatTool
 from cat.looking_glass.tweedledee import Tweedledee
+from cat.services.factory.file_manager import FileResponse
 from cat.services.memory.utils import VectorMemoryType
 from cat.services.mixin import BotMixin
 
@@ -108,13 +110,6 @@ class CheshireCat(BotMixin):
     async def embed_procedures(self):
         log.info(f"Agent id: {self.id}. Embedding procedures in vector memory")
 
-        lizard = self.lizard
-        await self.vector_memory_handler.initialize(lizard.embedder_name, lizard.embedder_size)
-
-        # Destroy all procedural embeddings
-        collection_name = str(VectorMemoryType.PROCEDURAL)
-        await self.vector_memory_handler.destroy_all_tenant_points(collection_name)
-
         # Easy access to active procedures in plugin_manager (source of truth!)
         payloads = []
         vectors = []
@@ -126,15 +121,55 @@ class CheshireCat(BotMixin):
                 payloads.append(t.document.model_dump())
                 vectors.append(self.lizard.embedder.embed_query(t.document.page_content))
 
-        await self.vector_memory_handler.add_points_to_tenant(collection_name=collection_name, payloads=payloads, vectors=vectors)
+        collection_name = str(VectorMemoryType.PROCEDURAL)
+        await self.vector_memory_handler.add_points_to_tenant(
+            collection_name=collection_name, payloads=payloads, vectors=vectors,
+        )
         log.info(f"Agent id: {self.id}. Embedded {len(payloads)} triggers in {collection_name} vector memory")
+
+    async def embed_stored_files(self):
+        """Embeds stored files in the vector memory"""
+        async def get_stored_file(file: FileResponse) -> Dict[str, Any] | None:
+            file_content = self.file_manager.read_file(file.name, self.agent_key)
+            if not file_content:
+                return None
+            points, _ = await self.vector_memory_handler.get_all_tenant_points(
+                str(VectorMemoryType.DECLARATIVE),
+                with_vectors=False,
+                metadata={"source": file.name},
+                limit=1,
+            )
+            return {
+                "name": file.name, "content": file_content, "metadata": points[0].payload["metadata"]
+            } if points else None
+
+        stored_files = [
+            stored_file for file in self.file_manager.list_files(self.agent_key)
+            if (stored_file := (await get_stored_file(file))) is not None
+        ]
+
+        # re-initialize the vector memory handler
+        await self.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
+
+        if not stored_files:
+            return
+
+        rabbit_hole = self.rabbit_hole
+        for file in stored_files:
+            await rabbit_hole.ingest_file(
+                self, BytesIO(file["content"]), file["name"], file["metadata"], store_file=False
+            )
 
     @subscriber("on_end_plugin_activate")
     async def on_end_plugin_activate(self, plugin_id: str) -> None:
+        # Destroy all procedural embeddings
+        await self.vector_memory_handler.destroy_all_tenant_points(str(VectorMemoryType.PROCEDURAL))
         await self.embed_procedures()
 
     @subscriber("on_end_plugin_deactivate")
     async def on_end_plugin_deactivate(self, plugin_id: str) -> None:
+        # Destroy all procedural embeddings
+        await self.vector_memory_handler.destroy_all_tenant_points(str(VectorMemoryType.PROCEDURAL))
         await self.embed_procedures()
 
     # each time we access the file handlers, plugins can intervene

@@ -166,7 +166,7 @@ async def delete_files(
 
     try:
         # get the list of files
-        files = ccat.file_manager.get_attributes(ccat.id).files
+        files = ccat.file_manager.list_files(ccat.id)
 
         # delete all the files from the file storage
         res = ccat.file_manager.remove_folder_from_storage(ccat.id)

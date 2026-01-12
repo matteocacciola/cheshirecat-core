@@ -186,29 +186,7 @@ async def agent_clone(
 
     cloned_ccat = None
     try:
-        # clone the settings from the provided agent
-        log.info(f"Cloning settings from agent {ccat.agent_key} to agent {agent_id}")
-        crud.clone_agent(ccat.agent_key, agent_id, ["analytics"])
-
-        # clone the vector points from the ccat to the provided agent
-        cloned_ccat = info.lizard.get_cheshire_cat(agent_id)
-        await cloned_ccat.embed_procedures()
-
-        log.info(f"Cloning vector memory from agent {ccat.agent_key} to agent {agent_id}")
-        points, _ = await ccat.vector_memory_handler.get_all_tenant_points(
-            str(VectorMemoryType.DECLARATIVE), with_vectors=True
-        )
-        if points:
-            await cloned_ccat.vector_memory_handler.add_points_to_tenant(
-                collection_name=str(VectorMemoryType.DECLARATIVE),
-                payloads=[p.payload for p in points],
-                vectors=[p.vector for p in points],
-            )
-
-        # clone the files from the ccat to the provided agent
-        log.info(f"Cloning files from agent {ccat.agent_key} to agent {agent_id}")
-        ccat.file_manager.clone_folder(ccat.agent_key, agent_id)
-
+        cloned_ccat = await info.lizard.clone_cheshire_cat(ccat, agent_id)
         return AgentClonedResponse(cloned=True)
     except Exception as e:
         log.error(f"Error cloning agent {ccat.agent_key}: {e}")
