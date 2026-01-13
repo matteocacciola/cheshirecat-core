@@ -9,7 +9,7 @@ def llm_callbacks(callbacks: List, cat) -> List:
     caller = get_caller_info(skip=1)
 
     callback = ModelInteractionHandler(caller)
-    callback.inject_stray(cat)
+    callback.inject_stray_cat(cat)
     callbacks.append(callback)
 
     return callbacks

@@ -155,7 +155,7 @@ async def delete_file(
         # delete points
         collection_id = VectorMemoryType.DECLARATIVE
         metadata = {"source": source_name}
-        await ccat.vector_memory_handler.delete_tenant_points_by_metadata_filter(str(collection_id), metadata)
+        await ccat.vector_memory_handler.delete_tenant_points(str(collection_id), metadata)
 
         return FileManagerDeletedFiles(deleted=res)
     except Exception as e:
@@ -181,7 +181,7 @@ async def delete_files(
         # delete points
         for file in files:
             metadata = {"source": file.name}
-            await ccat.vector_memory_handler.delete_tenant_points_by_metadata_filter(str(collection_id), metadata)
+            await ccat.vector_memory_handler.delete_tenant_points(str(collection_id), metadata)
 
         return FileManagerDeletedFiles(deleted=res)
     except Exception as e:

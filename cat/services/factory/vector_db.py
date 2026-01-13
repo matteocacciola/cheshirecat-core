@@ -199,11 +199,9 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def delete_tenant_points_by_metadata_filter(
-        self, collection_name: str, metadata: Dict | None = None
-    ) -> UpdateResult:
+    async def delete_tenant_points(self, collection_name: str, metadata: Dict | None = None) -> UpdateResult:
         """
-        Delete points from the collection by metadata filter.
+        Delete points from the collection, by eventual metadata filter if provided.
 
         Args:
             collection_name: Name of the collection to delete points from.
@@ -215,7 +213,7 @@ class BaseVectorDatabaseHandler(ABC):
         pass
 
     @abstractmethod
-    async def delete_tenant_points(self, collection_name: str, points_ids: List) -> UpdateResult:
+    async def delete_tenant_points_by_ids(self, collection_name: str, points_ids: List) -> UpdateResult:
         """
         Delete points from the collection by their ids.
 
@@ -346,19 +344,6 @@ class BaseVectorDatabaseHandler(ABC):
 
         Returns:
             int: The number of vectors in the collection.
-        """
-        pass
-
-    @abstractmethod
-    async def destroy_all_tenant_points(self, collection_name: str) -> bool:
-        """
-        Destroy all points in the specified collection.
-
-        Args:
-            collection_name: The name of the collection to destroy points in.
-
-        Returns:
-            bool: True if the operation was successful, False otherwise.
         """
         pass
 
@@ -871,7 +856,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             operation_id=res.operation_id,
         )
 
-    async def delete_tenant_points_by_metadata_filter(self, collection_name: str, metadata: Dict | None = None) -> UpdateResult:
+    async def delete_tenant_points(self, collection_name: str, metadata: Dict | None = None) -> UpdateResult:
         conditions = self._build_metadata_conditions(metadata=metadata)
 
         res = await self._client.delete(collection_name=collection_name, points_selector=Filter(must=conditions))
@@ -881,7 +866,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         )
 
     # delete point in collection
-    async def delete_tenant_points(self, collection_name: str, points_ids: List) -> UpdateResult:
+    async def delete_tenant_points_by_ids(self, collection_name: str, points_ids: List) -> UpdateResult:
         res = await self._client.delete(collection_name=collection_name, points_selector=points_ids)
         return UpdateResult(
             status=res.status,
@@ -1043,17 +1028,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             collection_name=collection_name,
             count_filter=Filter(must=[self.tenant_field_condition()]),
         )).count
-
-    async def destroy_all_tenant_points(self, collection_name: str) -> bool:
-        try:
-            await self._client.delete(
-                collection_name=collection_name,
-                points_selector=Filter(must=[self.tenant_field_condition()]),
-            )
-            return True
-        except Exception as e:
-            log.error(f"Error deleting collection `{collection_name}`, agent `{self.agent_id}`: {e}")
-            return False
 
     def is_db_remote(self) -> bool:
         return True

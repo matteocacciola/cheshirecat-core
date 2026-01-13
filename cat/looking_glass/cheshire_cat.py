@@ -1,5 +1,5 @@
 from io import BytesIO
-from typing import Dict, Any
+from typing import Dict, List
 
 from cat.db.cruds import (
     settings as crud_settings,
@@ -9,8 +9,8 @@ from cat.db.cruds import (
 )
 from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
-from cat.looking_glass.mad_hatter.decorators.experimental.mcp_client import CatMcpClient
-from cat.looking_glass.mad_hatter.decorators.tool import CatTool
+from cat.looking_glass.mad_hatter.procedures import CatProcedureType, CatProcedure
+from cat.looking_glass.models import StoredFileWithMetadata
 from cat.looking_glass.tweedledee import Tweedledee
 from cat.services.factory.file_manager import FileResponse
 from cat.services.memory.utils import VectorMemoryType
@@ -89,7 +89,8 @@ class CheshireCat(BotMixin):
         log.info(f"Agent id: {self.id}. Destroying all data from the cat's memory")
 
         # destroy all memories
-        await self.vector_memory_handler.destroy_all_tenant_points(str(VectorMemoryType.DECLARATIVE))
+        for collection_name in await self.vector_memory_handler.get_collection_names():
+            await self.vector_memory_handler.delete_tenant_points(collection_name)
 
     async def destroy(self):
         """Destroy all data from the cat."""
@@ -108,73 +109,111 @@ class CheshireCat(BotMixin):
         crud_plugins.destroy_all(self.id)
         crud_users.destroy_all(self.id)
 
-    async def embed_procedures(self):
-        log.info(f"Agent id: {self.id}. Embedding procedures in vector memory")
+    async def get_stored_files_with_metadata(self) -> List[StoredFileWithMetadata]:
+        """Get all stored files with their metadata."""
+        async def get_stored_file(file: FileResponse) -> StoredFileWithMetadata | None:
+            file_content = self.file_manager.read_file(file.name, self.agent_key)
+            if not file_content:
+                return None
+            points, _ = await self.vector_memory_handler.get_all_tenant_points(
+                collection_name,
+                with_vectors=False,
+                metadata={"source": file.name},
+                limit=1,
+            )
+            return StoredFileWithMetadata(
+                name=file.name, content=BytesIO(file_content), metadata=points[0].payload["metadata"]
+            ) if points else None
 
+        collection_name = str(VectorMemoryType.DECLARATIVE)
+        return [
+            stored_file for file in self.file_manager.list_files(self.agent_key)
+            if (stored_file := (await get_stored_file(file))) is not None
+        ]
+
+    async def embed_procedures(self):
         # Easy access to active procedures in plugin_manager (source of truth!)
         payloads = []
         vectors = []
         for ap in self.plugin_manager.procedures:
-            # we don't want to embed MCP clients' procedures, because we want to always use the latest version
-            if isinstance(ap, CatMcpClient):
-                continue
-
-            if not isinstance(ap, CatTool):
+            if not isinstance(ap, CatProcedure):
                 ap = ap()
+
+            # we don't want to embed MCP clients' procedures, because we want to always use the latest version
+            if ap.type == CatProcedureType.MCP:
+                continue
 
             for t in ap.to_document_recall():
                 payloads.append(t.document.model_dump())
                 vectors.append(self.lizard.embedder.embed_query(t.document.page_content))
 
+        if not payloads:
+            return
+
+        log.info(f"Agent id: {self.id}. Embedding procedures in vector memory")
         collection_name = str(VectorMemoryType.PROCEDURAL)
+
+        # first, clear all existing procedural embeddings
+        await self.vector_memory_handler.delete_tenant_points(collection_name)
+
         await self.vector_memory_handler.add_points_to_tenant(
             collection_name=collection_name, payloads=payloads, vectors=vectors,
         )
         log.info(f"Agent id: {self.id}. Embedded {len(payloads)} triggers in {collection_name} vector memory")
 
-    async def embed_stored_files(self):
+    async def embed_stored_files(self, stored_files: List[StoredFileWithMetadata]):
         """Embeds stored files in the vector memory"""
-        async def get_stored_file(file: FileResponse) -> Dict[str, Any] | None:
-            file_content = self.file_manager.read_file(file.name, self.agent_key)
-            if not file_content:
-                return None
-            points, _ = await self.vector_memory_handler.get_all_tenant_points(
-                str(VectorMemoryType.DECLARATIVE),
-                with_vectors=False,
-                metadata={"source": file.name},
-                limit=1,
-            )
-            return {
-                "name": file.name, "content": file_content, "metadata": points[0].payload["metadata"]
-            } if points else None
-
-        stored_files = [
-            stored_file for file in self.file_manager.list_files(self.agent_key)
-            if (stored_file := (await get_stored_file(file))) is not None
-        ]
-
-        # re-initialize the vector memory handler
-        await self.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
-
         if not stored_files:
             return
+
+        log.info(f"Agent id: {self.id}. Embedding stored files in vector memory")
+        collection_name = str(VectorMemoryType.DECLARATIVE)
+
+        # first, clear all existing declarative embeddings
+        await self.vector_memory_handler.delete_tenant_points(collection_name)
 
         rabbit_hole = self.rabbit_hole
         for file in stored_files:
             await rabbit_hole.ingest_file(
-                self, BytesIO(file["content"]), file["name"], file["metadata"], store_file=False
+                self, file.content, file.name, file.metadata, store_file=False
             )
+
+        log.info(f"Agent id: {self.id}. Embedded {len(stored_files)} files in {collection_name} vector memory")
+
+    async def embed_all(self, stored_files: List[StoredFileWithMetadata]):
+        """
+        Re-embeds all the stored files and procedures in the vector memory.
+        1. Re-initialize the vector memory handler with the current embedder
+        2. Re-embed all the stored files
+        3. Re-embed all the procedures
+
+        Args:
+            stored_files (List[StoredFileWithMetadata]): The list of stored files with metadata to embed.
+
+        Notes
+        -----
+        This method is typically called when the embedder configuration changes, to ensure that all embeddings are
+        updated to use the new embedder. That's why the `stored_files` is passed as argument, in order to avoid race
+        conditions when multiple agents are updating their embedder at the same time on the same database.
+        """
+        await self.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
+
+        # re-embed all the stored files
+        await self.embed_stored_files(stored_files)
+
+        # re-embed all the procedures
+        await self.embed_procedures()
 
     @subscriber("on_end_plugin_activate")
     async def on_end_plugin_activate(self, plugin_id: str) -> None:
         # Destroy all procedural embeddings
-        await self.vector_memory_handler.destroy_all_tenant_points(str(VectorMemoryType.PROCEDURAL))
+        await self.vector_memory_handler.delete_tenant_points(str(VectorMemoryType.PROCEDURAL))
         await self.embed_procedures()
 
     @subscriber("on_end_plugin_deactivate")
     async def on_end_plugin_deactivate(self, plugin_id: str) -> None:
         # Destroy all procedural embeddings
-        await self.vector_memory_handler.destroy_all_tenant_points(str(VectorMemoryType.PROCEDURAL))
+        await self.vector_memory_handler.delete_tenant_points(str(VectorMemoryType.PROCEDURAL))
         await self.embed_procedures()
 
     # each time we access the file handlers, plugins can intervene

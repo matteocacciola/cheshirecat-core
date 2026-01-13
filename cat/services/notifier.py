@@ -1,6 +1,5 @@
 from typing import Any, Literal, Final, get_args
 
-from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.auth.permissions import AuthUserInfo
 from cat.log import log
 from cat.services.memory.messages import CatMessage
@@ -15,6 +14,8 @@ class NotifierService:
         self.chat_id: Final[str] = chat_id
 
     async def _send_ws_json(self, data: Any):
+        from cat.looking_glass.bill_the_lizard import BillTheLizard
+
         ws_connection = BillTheLizard().websocket_manager.get_connection(self.user.id)
         if not ws_connection:
             log.debug(f"No websocket connection is open for user {self.user.id}")

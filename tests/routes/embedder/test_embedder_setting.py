@@ -1,3 +1,4 @@
+import asyncio
 from json import dumps
 import pytest
 from fastapi.encoders import jsonable_encoder
@@ -103,7 +104,7 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
     )
     assert response.status_code == 200
 
-    # upload a file into the Knowledge Base of the agent
+    # upload a file to the Knowledge Base of the agent
     content_type = "text/plain"
     file_name = "sample.txt"
     response, _ = send_file(file_name, content_type, secure_client, headers)
@@ -127,6 +128,8 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
         "/embedder/settings/EmbedderFakeConfig", json=embedder_config, headers=headers
     )
     assert response.status_code == 200
+
+    await asyncio.sleep(1)  # give some time for the background tasks to complete
 
     embedder_procedures_after = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.PROCEDURAL)

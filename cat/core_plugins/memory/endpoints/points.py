@@ -208,7 +208,7 @@ async def delete_memory_point(
         await verify_memory_point_existence(info.cheshire_cat, collection_id, point_id)
 
         # delete point
-        await info.cheshire_cat.vector_memory_handler.delete_tenant_points(collection_id, [point_id])
+        await info.cheshire_cat.vector_memory_handler.delete_tenant_points_by_ids(collection_id, [point_id])
 
         return DeleteMemoryPointResponse(deleted=point_id)
     except Exception as e:
@@ -232,7 +232,7 @@ async def delete_memory_points_by_metadata(
         metadata = metadata or {}
 
         # delete points
-        ret = await ccat.vector_memory_handler.delete_tenant_points_by_metadata_filter(collection_id, metadata)
+        ret = await ccat.vector_memory_handler.delete_tenant_points(collection_id, metadata)
 
         # delete the file with path `metadata["source"]` from the file storage
         if collection_id == VectorMemoryType.DECLARATIVE and (source := metadata.get("source")):

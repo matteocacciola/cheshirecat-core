@@ -1,5 +1,6 @@
+import asyncio
 from copy import deepcopy
-from typing import List
+from typing import List, Dict
 from fastapi import FastAPI
 
 from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
@@ -287,6 +288,22 @@ class BillTheLizard(OrchestratorMixin):
         ccat.file_manager.clone_folder(ccat.agent_key, new_agent_id)
 
         return cloned_ccat
+
+    async def embed_all_in_cheshire_cats(self) -> None:
+        """Re-embeds all the stored files and procedures in all the Cheshire Cats using the current embedder."""
+        ccat_ids = crud.get_agents_main_keys()
+        stored_files_by_ccat: List[Dict] = []
+        for ccat_id in ccat_ids:
+            if (ccat := self.get_cheshire_cat(ccat_id)) is None:
+                continue
+
+            stored_files_by_ccat.append({
+                "ccat": ccat,
+                "stored_files": await ccat.get_stored_files_with_metadata(),
+            })
+
+        for entry in stored_files_by_ccat:
+            asyncio.create_task(entry["ccat"].embed_all(entry["stored_files"]))
 
     async def shutdown(self) -> None:
         """

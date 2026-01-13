@@ -8,8 +8,6 @@ from slugify import slugify
 
 from cat.log import log
 from cat.looking_glass.mad_hatter.procedures import CatProcedure, CatProcedureType
-from cat.looking_glass.models import AgentOutput
-from cat.services.factory.agentic_workflow import AgenticTask, CoreAgenticWorkflow
 from cat.utils import Enum, parse_json
 
 
@@ -37,6 +35,10 @@ class CatForm(CatProcedure, ABC):  # base model of forms
 
         self._errors: List[str] = []
         self._missing_fields: List[str] = []
+        self._bootstrap_agent()
+
+    def _bootstrap_agent(self):
+        from cat.services.factory.agentic_workflow import CoreAgenticWorkflow
 
         self._agent = CoreAgenticWorkflow()
 
@@ -310,7 +312,9 @@ Updated JSON:
             log.error(f"Error while executing form: {e}")
             return ""
 
-    async def _run_agent(self, prompt_template: str, prompt_variables: Dict | None = None) -> AgentOutput:
+    async def _run_agent(self, prompt_template: str, prompt_variables: Dict | None = None) -> "AgentOutput":
+        from cat.services.factory.agentic_workflow import AgenticTask
+
         response = await self._agent.run(
             task=AgenticTask(
                 prompt=ChatPromptTemplate.from_messages([

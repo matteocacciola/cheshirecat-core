@@ -1,8 +1,8 @@
 from .bill_the_lizard import BillTheLizard
 from .cheshire_cat import CheshireCat
 from .humpty_dumpty import HumptyDumpty
-from .models import AgentInput, AgentOutput
-from .stray_cat import StrayCat, ChatResponse
+from .models import AgentInput, AgentOutput, ChatResponse
+from .stray_cat import StrayCat
 from .tweedledee import Tweedledee
 from .tweedledum import Tweedledum
 

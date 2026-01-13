@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from cat.looking_glass.mad_hatter.plugin_manifest import PluginManifest
+from cat.looking_glass.models import PluginManifest
 
 
 class PluginRegistry(ABC):

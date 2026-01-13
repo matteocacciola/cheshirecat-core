@@ -3,7 +3,6 @@ from fastapi import APIRouter, Body, BackgroundTasks
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
-from cat.db import crud
 from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
 from cat.services.service_factory import ServiceFactory
 
@@ -60,23 +59,14 @@ async def upsert_embedder_setting(
         schema_name="languageEmbedderName",
     ).upsert_service(lizard.agent_key, embedder_name, payload)
 
-    actual_embedder_name = lizard.embedder_name
-    actual_embedder_size = lizard.embedder_size
+    current_embedder_name = lizard.embedder_name
+    current_embedder_size = lizard.embedder_size
 
     # if there is nothing to update, then just return the response
-    if previous_embedder_name == actual_embedder_name and previous_embedder_size == actual_embedder_size:
+    if previous_embedder_name == current_embedder_name and previous_embedder_size == current_embedder_size:
         return UpsertSettingResponse(**result)
 
     # otherwise, inform the Cheshire Cats about the new embedder available in the system
-    for ccat_id in crud.get_agents_main_keys():
-        ccat = lizard.get_cheshire_cat(ccat_id)
-        if ccat is None:
-            continue
-
-        # re-embed all the stored files
-        background_tasks.add_task(ccat.embed_stored_files)
-
-        # re-embed all the procedures
-        background_tasks.add_task(ccat.embed_procedures)
+    background_tasks.add_task(info.lizard.embed_all_in_cheshire_cats)
 
     return UpsertSettingResponse(**result)

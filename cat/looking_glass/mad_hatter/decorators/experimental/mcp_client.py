@@ -9,7 +9,6 @@ from slugify import slugify
 from cat.log import log
 from cat.looking_glass.mad_hatter.decorators.tool import CatTool
 from cat.looking_glass.mad_hatter.procedures import CatProcedure, CatProcedureType
-from cat.looking_glass.stray_cat import StrayCat
 from cat.utils import run_sync_or_async
 
 # Global cache shared across all CatMcpClient instances
@@ -34,15 +33,12 @@ class CatMcpClient(Client, CatProcedure, ABC):
         # Initialize CatProcedure attributes
         self.name = slugify(self.__class__.__name__.strip(), separator="_")
         self.description = self.__class__.__doc__ or "No description provided."
+        self.examples = []
 
         # Caches
         self._cached_tools = None
         self._langchain_tools_cache = {}
         self._relevant_tools = []
-
-    def inject_stray_cat(self, stray: StrayCat) -> "CatMcpClient":
-        self.stray = stray
-        return self
 
     def _get_cache_key(self) -> str:
         """Generate a unique cache key for this MCP client's tools."""
@@ -135,13 +131,13 @@ class CatMcpClient(Client, CatProcedure, ABC):
                 langchain_tools.append(self._langchain_tools_cache[cache_key])
                 continue
 
-            # Conversion logic (using your existing CatTool wrapper)
+            # Conversion logic
             try:
                 cat_tool = CatTool.from_fastmcp(mcp_tool, self.call_tool, self.plugin_id)
 
                 description = cat_tool.description or "No description provided."
-                if hasattr(cat_tool, 'examples') and cat_tool.examples:
-                    description += "\n\nE.g.:\n" + "\n".join(f"- {ex}" for ex in cat_tool.examples)
+                if self.examples:
+                    description += "\n\nE.g.:\n" + "\n".join(f"- {ex}" for ex in self.examples)
 
                 structured_tool = StructuredTool.from_function(
                     name=f"{self.name}_{cat_tool.name}",

@@ -33,7 +33,7 @@ class ModelInteractionHandler(BaseCallbackHandler):
             ended_at=0,
         )
 
-    def inject_stray(self, stray: "StrayCat") -> None:
+    def inject_stray_cat(self, stray: "StrayCat") -> None:
         """Inject the stray for registry lookup."""
         self.stray_id = id(stray)
         _stray_registry[self.stray_id] = stray

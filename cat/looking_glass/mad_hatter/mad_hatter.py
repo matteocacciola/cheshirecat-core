@@ -3,7 +3,7 @@ import os
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 
 from cat import utils
@@ -11,10 +11,10 @@ from cat.db.cruds import settings as crud_settings
 from cat.db.models import Setting
 from cat.log import log
 from cat.looking_glass.mad_hatter.decorators.endpoint import CatEndpoint
-from cat.looking_glass.mad_hatter.decorators.experimental.mcp_client import CatMcpClient
 from cat.looking_glass.mad_hatter.decorators.hook import CatHook
 from cat.looking_glass.mad_hatter.plugin import Plugin
 from cat.looking_glass.mad_hatter.procedures import CatProcedure
+
 
 class LoadedPlugin(BaseModel):
     plugin: Plugin | None = None
@@ -172,7 +172,7 @@ class MadHatter(ABC):
         self.dispatcher.dispatch("on_finish_plugins_sync", self.manage_endpoints)
 
     # execute requested hook
-    def execute_hook(self, hook_name: str, *args, caller: Union["BillTheLizard", "CheshireCat", "StrayCat"]) -> Any:
+    def execute_hook(self, hook_name: str, *args, caller: "ContextMixin") -> Any:
         if hook_name not in self.hooks.keys():
             raise Exception(f"Hook {hook_name} not present in any plugin")
 
@@ -261,10 +261,6 @@ class MadHatter(ABC):
         path = Path(utils.get_core_plugins_path())
         core_plugins = [p.name for p in path.iterdir() if p.is_dir()]
         return core_plugins
-
-    @property
-    def mcp_clients(self) -> List[CatMcpClient]:
-        return [p for p in self.procedures if isinstance(p, type) and issubclass(p, CatMcpClient)]  # type: ignore
 
     @abstractmethod
     def _on_discovering_plugins(self):

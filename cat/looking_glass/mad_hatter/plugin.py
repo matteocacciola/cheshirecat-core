@@ -21,14 +21,9 @@ from cat.looking_glass.mad_hatter.decorators.endpoint import CatEndpoint
 from cat.looking_glass.mad_hatter.decorators.hook import CatHook
 from cat.looking_glass.mad_hatter.decorators.plugin_decorator import CatPluginDecorator
 from cat.looking_glass.mad_hatter.decorators.tool import CatTool
-from cat.looking_glass.mad_hatter.plugin_manifest import PluginManifest
 from cat.looking_glass.mad_hatter.procedures import CatProcedure
+from cat.looking_glass.models import PluginSettingsModel, PluginManifest
 from cat.utils import inspect_calling_agent, get_base_path, to_camel_case
-
-
-# Empty class to represent the basic plugin Settings model
-class PluginSettingsModel(BaseModel):
-    pass
 
 
 class Plugin:

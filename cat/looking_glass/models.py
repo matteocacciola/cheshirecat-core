@@ -1,8 +1,10 @@
+from io import BytesIO
 from typing import List, Tuple, Dict
-
 from langchain_core.documents import Document
 from langchain_core.messages import BaseMessage
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
+
+from cat.services.memory.messages import CatMessage
 
 
 class AgentInput(BaseModel):
@@ -39,3 +41,53 @@ class AgentOutput(BaseModel):
     output: str | None = None
     intermediate_steps: List[Tuple[Tuple[str | None, Dict, Dict] | None, str]] = Field(default_factory=list)
     with_llm_error: bool = False
+
+
+class StoredFileWithMetadata(BaseModel):
+    """
+    Represents a stored file along with its metadata.
+
+    Attributes
+    ----------
+    name: str
+        The unique identifier of the stored file.
+    content: BytesIO
+        The content of the file as a BytesIO stream.
+    metadata: Dict
+        A dictionary containing metadata associated with the file.
+    """
+    name: str
+    content: BytesIO
+    metadata: Dict
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+
+class ChatResponse(BaseModel):
+    agent_id: str
+    user_id: str
+    chat_id: str
+    message: CatMessage
+
+
+# Empty class to represent the basic plugin Settings model
+class PluginSettingsModel(BaseModel):
+    pass
+
+
+class PluginManifest(BaseModel):
+    id: str
+    name: str = "Unknown"
+    version: str = "0.0.0"
+    thumb: str = None
+    tags: str = "Unknown"
+    description: str = (
+        "Description not found for this plugin. Please create a plugin.json manifest in the plugin folder."
+    )
+    author_name: str = "Unknown"
+    author_url: str = "Unknown"
+    plugin_url: str = "Unknown"
+    min_cat_version: str = None
+    max_cat_version: str = "Unknown"
+    local_info: Dict = Field(default_factory=dict)
+    dependencies: List[str] = Field(default_factory=list)

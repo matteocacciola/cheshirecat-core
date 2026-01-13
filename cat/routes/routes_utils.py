@@ -15,8 +15,8 @@ from cat.env import get_env
 from cat.exceptions import CustomValidationException, CustomUnauthorizedException
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.plugin import Plugin
-from cat.looking_glass.mad_hatter.plugin_manifest import PluginManifest
 from cat.looking_glass.mad_hatter.registry import PluginRegistry
+from cat.looking_glass.models import PluginManifest
 from cat.services.redis_search import RedisSearchService
 
 

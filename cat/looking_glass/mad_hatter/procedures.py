@@ -26,6 +26,10 @@ class CatProcedure(ABC):
 
     stray = None
 
+    def inject_stray_cat(self, stray: "StrayCat") -> "CatProcedure":
+        self.stray = stray
+        return self
+
     @abstractmethod
     def langchainfy(self) -> List[StructuredTool]:
         """
@@ -99,7 +103,7 @@ class CatProcedure(ABC):
 
         # Delegate reconstruction to the subclass
         obj = obj_class.reconstruct_from_params(obj_data["input_params"])
-        obj.stray = stray
+        obj.inject_stray_cat(stray)
 
         return obj
 

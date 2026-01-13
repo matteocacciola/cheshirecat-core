@@ -2,15 +2,14 @@ import uuid
 from typing import List, Final, Callable
 from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
 from langchain_core.tools import StructuredTool
-from pydantic import BaseModel
 from websockets.exceptions import ConnectionClosedOK
 
 from cat import utils
 from cat.auth.permissions import AuthUserInfo
 from cat.log import log
 from cat.looking_glass.callbacks import NewTokenHandler
-from cat.looking_glass.mad_hatter.procedures import CatProcedure
-from cat.looking_glass.models import AgentInput, AgentOutput
+from cat.looking_glass.mad_hatter.procedures import CatProcedure, CatProcedureType
+from cat.looking_glass.models import AgentInput, AgentOutput, ChatResponse
 from cat.looking_glass.tweedledee import Tweedledee
 from cat.services.factory.agentic_workflow import AgenticTask
 from cat.services.memory.messages import CatMessage, UserMessage
@@ -19,13 +18,6 @@ from cat.services.memory.working_memory import WorkingMemory
 from cat.services.mixin import BotMixin
 from cat.services.notifier import NotifierService
 from cat.templates import prompts
-
-
-class ChatResponse(BaseModel):
-    agent_id: str
-    user_id: str
-    chat_id: str
-    message: CatMessage
 
 
 # The Stray cat goes around tools and hook, making troubles
@@ -111,12 +103,13 @@ class StrayCat(BotMixin):
         ]
 
         # now, let's add the StructuredTool instances from the MCP clients using lazy loading
-        for mcp_client in self.plugin_manager.mcp_clients:
-            langchain_tools = mcp_client.inject_stray_cat(self).find_relevant_tools(
+        mcp_clients = [p for p in self.plugin_manager.procedures if p.type == CatProcedureType.MCP]
+        for mcp_client in mcp_clients:
+            langchain_mcp_tools = mcp_client.inject_stray_cat(self).find_relevant_tools(
                 query=self.working_memory.user_message.text,
                 top_k=5
             ).langchainfy()
-            procedures.extend(langchain_tools)
+            procedures.extend(langchain_mcp_tools)
 
         return procedures
 

@@ -48,7 +48,7 @@ async def destroy_all_collection_points(
     vector_memory_handler = info.cheshire_cat.vector_memory_handler
 
     to_return = {
-        collection: await vector_memory_handler.destroy_all_tenant_points(collection)
+        collection: bool(await vector_memory_handler.delete_tenant_points(collection))
         for collection in await vector_memory_handler.get_collection_names()
     }
 
@@ -74,8 +74,8 @@ async def destroy_all_single_collection_points(
     if collection_id not in existing_collections:
         raise CustomNotFoundException("Collection does not exist.")
 
-    ret = await vector_memory_handler.destroy_all_tenant_points(collection_id)
-    return WipeCollectionsResponse(deleted={collection_id: ret})
+    ret = await vector_memory_handler.delete_tenant_points(collection_id)
+    return WipeCollectionsResponse(deleted={collection_id: bool(ret)})
 
 
 # CREATE a new collection
