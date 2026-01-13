@@ -9,6 +9,7 @@ from cat.db.cruds import (
 )
 from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
+from cat.looking_glass.mad_hatter.decorators.experimental.mcp_client import CatMcpClient
 from cat.looking_glass.mad_hatter.decorators.tool import CatTool
 from cat.looking_glass.tweedledee import Tweedledee
 from cat.services.factory.file_manager import FileResponse
@@ -114,6 +115,10 @@ class CheshireCat(BotMixin):
         payloads = []
         vectors = []
         for ap in self.plugin_manager.procedures:
+            # we don't want to embed MCP clients' procedures, because we want to always use the latest version
+            if isinstance(ap, CatMcpClient):
+                continue
+
             if not isinstance(ap, CatTool):
                 ap = ap()
 

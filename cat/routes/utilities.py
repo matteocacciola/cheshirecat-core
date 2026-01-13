@@ -10,7 +10,6 @@ from cat.db import crud
 from cat.db.database import get_db
 from cat.log import log
 from cat.routes.routes_utils import startup_app, shutdown_app
-from cat.services.memory.utils import VectorMemoryType
 from cat.utils import get_plugins_path
 
 router = APIRouter(tags=["Utilities"], prefix="/utils")

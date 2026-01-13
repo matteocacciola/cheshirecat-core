@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from typing import Any, List, Dict, Optional
+from typing import Any, List, Dict
+import numpy as np
 from langchain_core.tools import StructuredTool
 from fastmcp import Client
 from mcp.types import Prompt, Resource, Tool
@@ -8,18 +9,20 @@ from slugify import slugify
 from cat.log import log
 from cat.looking_glass.mad_hatter.decorators.tool import CatTool
 from cat.looking_glass.mad_hatter.procedures import CatProcedure, CatProcedureType
+from cat.looking_glass.stray_cat import StrayCat
 from cat.utils import run_sync_or_async
+
+# Global cache shared across all CatMcpClient instances
+_MCP_TOOL_EMBEDDINGS_CACHE = {}
 
 
 class CatMcpClient(Client, CatProcedure, ABC):
     """
-    Abstract base class for a MCP client with elicitation support.
+    Abstract base class for an MCP client with elicitation support.
     Plugin developers can extend this class to implement their own MCP protocol.
 
     Notes:
-        Subclasses must implement:
-        - the `init_args` property to define the input arguments for the MCP client
-        - optionally override `handle_elicitation` to customize elicitation handling
+        Subclasses must implement the `init_args` property to define the input arguments for the MCP client
     """
     def __init__(self):
         init_args = self.init_args
@@ -31,198 +34,138 @@ class CatMcpClient(Client, CatProcedure, ABC):
         # Initialize CatProcedure attributes
         self.name = slugify(self.__class__.__name__.strip(), separator="_")
         self.description = self.__class__.__doc__ or "No description provided."
-        self.input_schema = {}
-        self.output_schema = {}
-        self.examples = []
 
-        # Cache for tools, prompts and resources to avoid repeated connections
+        # Caches
         self._cached_tools = None
-        self._cached_prompts = None
-        self._cached_resources = None
+        self._langchain_tools_cache = {}
+        self._relevant_tools = []
 
-        self._picked_tool = None
+    def inject_stray_cat(self, stray: StrayCat) -> "CatMcpClient":
+        self.stray = stray
+        return self
 
-    @property
-    def picked_tool(self) -> str:
+    def _get_cache_key(self) -> str:
+        """Generate a unique cache key for this MCP client's tools."""
+        # Use class name and a hash of tool names to create a stable cache key
+        tool_ids = sorted([t.name for t in self.mcp_tools])
+        return f"{self.name}_{hash(tuple(tool_ids))}"
+
+    def _ensure_tool_embeddings_cached(self):
+        """Ensure tool embeddings are cached globally. Only embeds once per MCP client configuration."""
+        cache_key = self._get_cache_key()
+        if cache_key in _MCP_TOOL_EMBEDDINGS_CACHE:
+            log.debug(f"{self.name} - Using cached tool embeddings")
+            return
+
+        log.debug(f"MCP Client {self.name} - Embedding {len(self.mcp_tools)} MCP tools (one-time operation)")
+        embedder = self.stray.embedder
+
+        tool_embeddings = []
+        for tool in self.mcp_tools:
+            # Create a searchable text combining tool name and description
+            tool_text = f"{tool.name}: {tool.description or 'No description'}"
+            embedding = embedder.embed_query(tool_text)
+            tool_embeddings.append({
+                "tool": tool,
+                "embedding": embedding,
+            })
+
+        _MCP_TOOL_EMBEDDINGS_CACHE[cache_key] = tool_embeddings
+
+    def find_relevant_tools(self, query: str, top_k: int = 5) -> "CatMcpClient":
         """
-        Fetches the currently selected tool.
-
-        Returns:
-            str: The name of the currently selected tool.
-        """
-        return self._picked_tool
-
-    @picked_tool.setter
-    def picked_tool(self, picked_tool: str):
-        self._picked_tool = picked_tool
-
-    def dictify_input_params(self) -> Dict:
-        return {
-            "picked_tool": self.picked_tool,
-        }
-
-    @classmethod
-    def reconstruct_from_params(cls, input_params: Dict) -> "CatMcpClient":
-        obj = cls()
-        obj.picked_tool = input_params["picked_tool"]
-        return obj
-
-    def handle_elicitation(self, elicitation_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Handle MCP elicitations by storing the request in working memory.
-        Override this method to customize elicitation handling.
+        Get the most relevant MCP tools based on the user query using semantic similarity.
 
         Args:
-            elicitation_data: The elicitation request from the MCP server containing:
-                - id: elicitation identifier
-                - title: human-readable title
-                - fields: list of fields to collect
+            query: The user's query text
+            top_k: Number of top relevant tools to return
 
         Returns:
-            Dictionary mapping field names to user-provided values
-
-        Raises:
-            ElicitationRequiredException: When user input is needed
+            Self for method chaining
         """
-        elicitation_id = elicitation_data.get("id", "unknown")
+        if not query:
+            self._relevant_tools = self.mcp_tools[:top_k]
+            return self
 
-        # Check if we have stored responses in working memory
-        elicitation_key = f"mcp_elicitation_{elicitation_id}"
-        stored_responses = self.stray.working_memory.get(elicitation_key, {})
+        # Ensure embeddings are cached (no-op if already cached)
+        self._ensure_tool_embeddings_cached()
 
-        responses = {}
-        missing_fields = []
+        # Get embeddings from the cache
+        cache_key = self._get_cache_key()
+        tool_embeddings = _MCP_TOOL_EMBEDDINGS_CACHE[cache_key]
 
-        for field in elicitation_data.get("fields", []):
-            field_name = field.get("name")
+        # Embed the query (only thing we do per-message)
+        query_embedding = self.stray.embedder.embed_query(query)
 
-            if field_name in stored_responses:
-                responses[field_name] = stored_responses[field_name]
-            else:
-                missing_fields.append(field)
+        scores = []
+        for item in tool_embeddings:
+            tool_vec = item["embedding"]
+            similarity = np.dot(query_embedding, tool_vec) / (np.linalg.norm(query_embedding) * np.linalg.norm(tool_vec))
+            scores.append(similarity)
 
-        if missing_fields:
-            # Store pending elicitation in working memory
-            self.stray.working_memory["pending_mcp_elicitation"] = {
-                "mcp_client_name": self.name,
-                "elicitation_id": elicitation_id,
-                "elicitation_data": elicitation_data,
-                "missing_fields": missing_fields
-            }
+        # Pick top K indices
+        top_indices = np.argsort(scores)[-top_k:][::-1]
+        self._relevant_tools = [tool_embeddings[i]["tool"] for i in top_indices]
 
-            # Raise exception to signal elicitation is needed
-            raise ElicitationRequiredException(
-                elicitation_id=elicitation_id,
-                missing_fields=missing_fields,
-                elicitation_data=elicitation_data
-            )
+        log.debug(f"MCP {self.name}: Selected {len(self._relevant_tools)} relevant tools.")
+        return self
 
-        # Clear stored responses after successful use
-        if elicitation_key in self.stray.working_memory:
-            del self.stray.working_memory[elicitation_key]
-
-        return responses
-
-    def store_elicitation_response(self, elicitation_id: str, field_name: str, value: Any, stray) -> None:
-        """
-        Store a response for a pending elicitation field in working memory.
-
-        Args:
-            elicitation_id: The ID of the elicitation
-            field_name: The name of the field being provided
-            value: The value for the field
-            stray: StrayCat instance for accessing working memory
-        """
-        elicitation_key = f"mcp_elicitation_{elicitation_id}"
-
-        if elicitation_key not in stray.working_memory:
-            stray.working_memory[elicitation_key] = {}
-
-        stray.working_memory[elicitation_key][field_name] = value
-        log.info(f"{self.name} - Stored elicitation response for {field_name}")
-
-    def langchainfy(self) -> Optional[StructuredTool]:
-        """
-        Converts discovered MCP procedures into a list of LangChain StructuredTools.
-        This allows the LLM to access each individual tool on the remote server.
-        """
-        def build_description(p: CatProcedure) -> str:
-            desc = p.description or "No description provided."
-            if p.examples:
-                desc += "\n\nE.g.:\n" + "\n".join(f"- {ex}" for ex in p.examples)
-            return desc
-
+    def langchainfy(self) -> List[StructuredTool]:
         def create_tool_caller(tool_name: str):
-            """Create a closure that properly calls the MCP tool with elicitation support."""
+            """Create a closure that calls the MCP tool."""
             def tool_caller(**kwargs):
                 async def call_tool_async():
-                    try:
-                        async with self:
-                            result = await self.call_tool(tool_name, **kwargs)
-                            return result
-                    except Exception as ex:
-                        elicitation_data = getattr(ex, "elicitation_data", None)
-                        if not elicitation_data:
-                            raise
-                        log.info(f"{self.name} - Elicitation signaled by exception payload.")
-                        # Handle the elicitation - will raise ElicitationRequiredException if needed
-                        responses = self.handle_elicitation(elicitation_data)
-                        # If we got responses without exception, merge and retry once (internal retry)
-                        kwargs.update(responses)
-                        async with self:
-                            return await self.call_tool(tool_name, **kwargs)
-
+                    async with self:
+                        return await self.call_tool(tool_name, **kwargs)
                 try:
                     return run_sync_or_async(call_tool_async)
-                except ElicitationRequiredException as elx:
-                    # Generate a string representative of the tool call for the elicitation context and retry prompt
-                    joined_kwargs = ", ".join(f'{k}=\"{v}\"' for k, v in kwargs.items())
-                    original_tool_call_str = f"{tool_name}({joined_kwargs})"
-
-                    # Store the necessary context to restart into the hook
-                    pending_data = self.stray.working_memory.get("pending_mcp_elicitation", {})
-                    pending_data.update({
-                        "original_tool_call": original_tool_call_str,
-                        "elicitation_id": elx.elicitation_id,
-                        "elicitation_data": elx.elicitation_data,
-                        "missing_fields": elx.missing_fields,
-                        "mcp_client_name": self.name
-                    })
-                    self.stray.working_memory["pending_mcp_elicitation"] = pending_data
-
-                    first_field = elx.missing_fields[0] if elx.missing_fields else {}
-                    return {
-                        "status": "elicitation_required",
-                        "elicitation_id": elx.elicitation_id,
-                        "message": first_field.get("description", "Additional information is required"),
-                        "field_name": first_field.get("name", "unknown"),
-                        "fields": elx.missing_fields,
-                        "tool_name": tool_name,
-                        "mcp_client_name": self.name
-                    }
                 except Exception as e:
                     log.error(f"{self.name} - Error calling tool {tool_name}: {e}")
-                    return f"Error calling tool {tool_name}: {e}"
-
+                    return {"error": f"Error calling tool {tool_name}: {str(e)}"}
             return tool_caller
 
-        # get the tool with the name from `self.picked_tool` among the self.mcp_tools
-        for tool in self.mcp_tools:
-            if tool.name == self.picked_tool:
-                cat_tool = CatTool.from_fastmcp(tool, self.call_tool, self.plugin_id)
+        # Fallback to all tools if find_relevant_tools wasn't called
+        source_tools = self._relevant_tools if self._relevant_tools else self.mcp_tools
 
-                return StructuredTool.from_function(
-                    name=cat_tool.name,
-                    description=build_description(cat_tool),
+        langchain_tools = []
+        for mcp_tool in source_tools:
+            # Use cached StructuredTool objects if we've created them before
+            cache_key = f"{self.name}_{mcp_tool.name}"
+            if cache_key in self._langchain_tools_cache:
+                langchain_tools.append(self._langchain_tools_cache[cache_key])
+                continue
+
+            # Conversion logic (using your existing CatTool wrapper)
+            try:
+                cat_tool = CatTool.from_fastmcp(mcp_tool, self.call_tool, self.plugin_id)
+
+                description = cat_tool.description or "No description provided."
+                if hasattr(cat_tool, 'examples') and cat_tool.examples:
+                    description += "\n\nE.g.:\n" + "\n".join(f"- {ex}" for ex in cat_tool.examples)
+
+                structured_tool = StructuredTool.from_function(
+                    name=f"{self.name}_{cat_tool.name}",
+                    description=description,
                     func=create_tool_caller(cat_tool.name),
                     args_schema=cat_tool.input_schema,
                 )
 
-        log.warning(f"{self.name} - Tool {self.picked_tool} not found in MCP tools.")
-        return None
+                self._langchain_tools_cache[cache_key] = structured_tool
+                langchain_tools.append(structured_tool)
+            except Exception as e:
+                log.error(f"Failed converting {mcp_tool.name}: {e}")
+
+        return langchain_tools
+
+    def dictify_input_params(self) -> Dict:
+        return {}
+
+    @classmethod
+    def reconstruct_from_params(cls, input_params: Dict) -> "CatProcedure":
+        return cls()
 
     def __repr__(self) -> str:
-        return f"McpClient(name={self.name})"
+        return f"CatMcpClient(name={self.name}, tools={len(self.mcp_tools)})"
 
     async def _get_mcp_tools_async(self) -> List[Tool]:
         """Asynchronously fetch MCP tools using a proper context manager."""
@@ -250,18 +193,6 @@ class CatMcpClient(Client, CatProcedure, ABC):
         return self._cached_tools
 
     @property
-    def mcp_prompts(self) -> List[Prompt]:
-        if self._cached_prompts is None:
-            self._cached_prompts = run_sync_or_async(self._get_mcp_prompts_async)
-        return self._cached_prompts
-
-    @property
-    def mcp_resources(self) -> List[Resource]:
-        if self._cached_resources is None:
-            self._cached_resources = run_sync_or_async(self._get_mcp_resources_async)
-        return self._cached_resources
-
-    @property
     @abstractmethod
     def init_args(self) -> List | Dict[str, Any]:
         """
@@ -273,21 +204,8 @@ class CatMcpClient(Client, CatProcedure, ABC):
         pass
 
 
-class ElicitationRequiredException(Exception):
-    """Exception raised when an MCP tool requires elicitation from the user."""
-
-    def __init__(self, elicitation_id: str, missing_fields: List[Dict[str, Any]], elicitation_data: Dict[str, Any]):
-        self.elicitation_id = elicitation_id
-        self.missing_fields = missing_fields
-        self.elicitation_data = elicitation_data
-
-        field_names = [f.get("name", "unknown") for f in missing_fields]
-        message = f"Elicitation required for fields: {', '.join(field_names)}"
-        super().__init__(message)
-
-
-# mcp_client decorator
 def mcp_client(this_mcp_client: CatMcpClient) -> CatMcpClient:
+    """Decorator for MCP client classes."""
     if this_mcp_client.name is None:
         this_mcp_client.name = this_mcp_client.__name__
 

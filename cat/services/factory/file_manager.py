@@ -17,11 +17,6 @@ class FileResponse(BaseModel):
     last_modified: str
 
 
-class FileManagerAttributes(BaseModel):
-    files: List[FileResponse]
-    size: int
-
-
 class BaseFileManager(ABC):
     """
     Base class for file storage managers. It defines the interface that all storage managers must implement. It is used
@@ -87,7 +82,7 @@ class BaseFileManager(ABC):
         remote_root_dir = os.path.join(self._root_dir, remote_root_dir) if remote_root_dir else self._root_dir
         destination_path = os.path.join(remote_root_dir, remote_filename)
 
-        if not self.file_exists(destination_path):
+        if not self.file_exists(remote_filename, remote_root_dir):
             return None
 
         return self._read_file(destination_path)
@@ -101,7 +96,7 @@ class BaseFileManager(ABC):
         pass
 
     @abstractmethod
-    def _read_file(self, destination_path: str) -> bytes:
+    def _read_file(self, file_path: str) -> bytes:
         pass
 
     def download_file_from_storage(self, file_path: str, local_dir: str) -> str | None:
@@ -160,28 +155,15 @@ class BaseFileManager(ABC):
     def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
         pass
 
-    def get_attributes(self, remote_root_dir: str) -> FileManagerAttributes:
-        """
-        List of all the files contained into the `remote_root_dir` on the storage.
-
-        Args:
-            remote_root_dir: The directory on the storage where the files are contained
-
-        Returns:
-            List of the files on the storage: path, size, last modified date
-        """
+    def list_files(self, remote_root_dir: str) -> List[FileResponse]:
         remote_root_dir = os.path.join(self._root_dir, remote_root_dir) if remote_root_dir else self._root_dir
+
         files = self._list_files(remote_root_dir)
 
         excluded_paths = self._excluded_dirs + self._excluded_files
         file_names = [file.name for file in files]
 
-        final_list = [file for file in files if not any([ex in file_names for ex in excluded_paths])]
-
-        return FileManagerAttributes(files=final_list, size=sum(file.size for file in final_list))
-
-    def list_files(self, remote_root_dir: str) -> List[FileResponse]:
-        return self.get_attributes(remote_root_dir).files
+        return [file for file in files if not any([ex in file_names for ex in excluded_paths])]
 
     @abstractmethod
     def _list_files(self, remote_root_dir: str) -> List[FileResponse]:
@@ -284,7 +266,7 @@ class BaseFileManager(ABC):
             remote_root_dir = os.path.dirname(filename)
             filename = os.path.basename(filename)
 
-        return filename in [file.name for file in self.list_files(remote_root_dir)]
+        return filename in [file.name for file in self._list_files(remote_root_dir)]
 
 
 class DummyFileManager(BaseFileManager):

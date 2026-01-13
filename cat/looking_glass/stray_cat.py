@@ -105,11 +105,20 @@ class StrayCat(BotMixin):
             collection=VectorMemoryType.PROCEDURAL,
         )
 
-        return [
-            lp
-            for m in memories
-            if (lp := CatProcedure.from_document_recall(document=m, stray=self).langchainfy())
+        # these are procedures from embeddings, i.e., only from CatTool or CatForm instances
+        procedures = [
+            lp for m in memories for lp in CatProcedure.from_document_recall(document=m, stray=self).langchainfy()
         ]
+
+        # now, let's add the StructuredTool instances from the MCP clients using lazy loading
+        for mcp_client in self.plugin_manager.mcp_clients:
+            langchain_tools = mcp_client.inject_stray_cat(self).find_relevant_tools(
+                query=self.working_memory.user_message.text,
+                top_k=5
+            ).langchainfy()
+            procedures.extend(langchain_tools)
+
+        return procedures
 
     async def __call__(self, user_message: UserMessage, **kwargs) -> CatMessage:
         """

@@ -1,7 +1,7 @@
 import os
 from io import BytesIO
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 from fastapi import APIRouter, Body
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
@@ -10,7 +10,7 @@ from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
 from cat.exceptions import CustomNotFoundException, CustomValidationException
 from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
-from cat.services.factory.file_manager import FileManagerAttributes
+from cat.services.factory.file_manager import FileResponse
 from cat.services.memory.utils import VectorMemoryType
 from cat.services.service_factory import ServiceFactory
 
@@ -19,6 +19,11 @@ router = APIRouter(tags=["File Manager"], prefix="/file_manager")
 
 class FileManagerDeletedFiles(BaseModel):
     deleted: bool
+
+
+class FileManagerAttributes(BaseModel):
+    files: List[FileResponse]
+    size: int
 
 
 # get configured Plugin File Managers and configuration schemas
@@ -74,7 +79,9 @@ async def get_attributes(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> FileManagerAttributes:
     ccat = info.cheshire_cat
-    return ccat.file_manager.get_attributes(ccat.id)
+
+    list_files = ccat.file_manager.list_files(ccat.id)
+    return FileManagerAttributes(files=list_files, size=sum(file.size for file in list_files))
 
 
 @router.get("/files/{source_name}")

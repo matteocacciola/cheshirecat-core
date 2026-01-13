@@ -27,16 +27,16 @@ class CatProcedure(ABC):
     stray = None
 
     @abstractmethod
-    def langchainfy(self) -> StructuredTool | None:
+    def langchainfy(self) -> List[StructuredTool]:
         """
-        Provides an abstract method interface to define the `langchainfy` method for
-        generating a list of `StructuredTool` instances.
+        Provides an abstract method interface to define the `langchainfy` method for generating a list of
+        `StructuredTool` instances.
 
-        This method must be implemented in any subclass and is designed to facilitate
-        the creation and retrieval of `StructuredTool` objects in a structured manner.
+        This method must be implemented in any subclass and is designed to facilitate the creation and retrieval of
+        `StructuredTool` objects in a structured manner.
 
         Returns:
-            StructuredTool | None: A `StructuredTool` instances, or None if not applicable.
+            List[StructuredTool]: A list of `StructuredTool` instances.
         """
         pass
 

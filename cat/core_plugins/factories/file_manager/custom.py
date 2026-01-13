@@ -87,8 +87,8 @@ class LocalFileManager(BaseFileManager):
                 cloned_files.append(destination_file)
         return cloned_files
 
-    def _read_file(self, destination_path: str) -> bytes:
-        with open(destination_path, "rb") as f:
+    def _read_file(self, file_path: str) -> bytes:
+        with open(file_path, "rb") as f:
             return f.read()
 
 
@@ -177,8 +177,8 @@ class AWSFileManager(BaseFileManager):
                     cloned_files.append(destination_key)
         return cloned_files
 
-    def _read_file(self, destination_path: str) -> bytes:
-        return self.s3.get_object(Bucket=self.bucket_name, Key=destination_path)["Body"].read()
+    def _read_file(self, file_path: str) -> bytes:
+        return self.s3.get_object(Bucket=self.bucket_name, Key=file_path)["Body"].read()
 
 
 class AzureFileManager(BaseFileManager):
@@ -251,8 +251,8 @@ class AzureFileManager(BaseFileManager):
             cloned_files.append(destination_blob)
         return cloned_files
 
-    def _read_file(self, destination_path: str) -> bytes:
-        blob_client = self.container.get_blob_client(destination_path)
+    def _read_file(self, file_path: str) -> bytes:
+        blob_client = self.container.get_blob_client(file_path)
         return blob_client.download_blob().readall()
 
 
@@ -323,8 +323,8 @@ class GoogleCloudFileManager(BaseFileManager):
             cloned_files.append(destination_blob)
         return cloned_files
 
-    def _read_file(self, destination_path: str) -> bytes:
-        blob = self.bucket.blob(destination_path)
+    def _read_file(self, file_path: str) -> bytes:
+        blob = self.bucket.blob(file_path)
         return blob.download_as_bytes()
 
 

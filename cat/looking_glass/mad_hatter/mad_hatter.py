@@ -11,6 +11,7 @@ from cat.db.cruds import settings as crud_settings
 from cat.db.models import Setting
 from cat.log import log
 from cat.looking_glass.mad_hatter.decorators.endpoint import CatEndpoint
+from cat.looking_glass.mad_hatter.decorators.experimental.mcp_client import CatMcpClient
 from cat.looking_glass.mad_hatter.decorators.hook import CatHook
 from cat.looking_glass.mad_hatter.plugin import Plugin
 from cat.looking_glass.mad_hatter.procedures import CatProcedure
@@ -260,6 +261,10 @@ class MadHatter(ABC):
         path = Path(utils.get_core_plugins_path())
         core_plugins = [p.name for p in path.iterdir() if p.is_dir()]
         return core_plugins
+
+    @property
+    def mcp_clients(self) -> List[CatMcpClient]:
+        return [p for p in self.procedures if isinstance(p, type) and issubclass(p, CatMcpClient)]  # type: ignore
 
     @abstractmethod
     def _on_discovering_plugins(self):
