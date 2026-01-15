@@ -3,8 +3,6 @@
 Here is a collection of methods to hook the prompts components that instruct the *Agent*.
 
 """
-from typing import Dict, Any
-
 from cat import hook
 
 
