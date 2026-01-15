@@ -17,11 +17,12 @@ async def get_auth_handler_settings(
     """Get the list of the AuthHandlers"""
     ccat = info.cheshire_cat
     return ServiceFactory(
-        ccat.plugin_manager,
+        agent_key=ccat.agent_key,
+        hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_auth_handlers",
         setting_category="auth_handler",
         schema_name="authorizatorName",
-    ).get_factory_settings(ccat.agent_key)
+    ).get_factory_settings()
 
 
 @router.get("/settings/{auth_handler_name}", response_model=GetSettingResponse)
@@ -32,26 +33,28 @@ async def get_auth_handler_setting(
     """Get the settings of a specific AuthHandler"""
     ccat = info.cheshire_cat
     return ServiceFactory(
-        ccat.plugin_manager,
+        agent_key=ccat.agent_key,
+        hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_auth_handlers",
         setting_category="auth_handler",
         schema_name="authorizatorName",
-    ).get_factory_setting(ccat.agent_key, auth_handler_name)
+    ).get_factory_setting(auth_handler_name)
 
 
 @router.put("/settings/{auth_handler_name}", response_model=UpsertSettingResponse)
 async def upsert_authenticator_setting(
     auth_handler_name: str,
     info: AuthorizedInfo = check_permissions(AuthResource.AUTH_HANDLER, AuthPermission.WRITE),
-    payload: Dict = Body(...),
+    payload: Dict = Body(default={}),
 ) -> UpsertSettingResponse:
     """Upsert the settings of a specific AuthHandler"""
     ccat = info.cheshire_cat
 
     result = ServiceFactory(
-        ccat.plugin_manager,
+        agent_key=ccat.agent_key,
+        hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_auth_handlers",
         setting_category="auth_handler",
         schema_name="authorizatorName",
-    ).upsert_service(ccat.agent_key, auth_handler_name, payload)
+    ).upsert_service(auth_handler_name, payload)
     return UpsertSettingResponse(**result)

@@ -17,7 +17,7 @@ from cat.core_plugins.memory.routes_utils import (
 )
 from cat.exceptions import CustomValidationException
 from cat.routes.routes_utils import create_dict_parser
-from cat.services.memory.utils import DocumentRecall, UpdateResult, Record, VectorMemoryType
+from cat.services.memory.models import DocumentRecall, UpdateResult, Record, VectorMemoryType
 
 
 class RecallResponseQuery(BaseModel):

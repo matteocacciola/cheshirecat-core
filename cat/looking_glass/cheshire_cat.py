@@ -9,11 +9,11 @@ from cat.db.cruds import (
 )
 from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
-from cat.looking_glass.mad_hatter.procedures import CatProcedureType, CatProcedure
+from cat.looking_glass.mad_hatter.procedures import CatProcedureType
 from cat.looking_glass.models import StoredFileWithMetadata
 from cat.looking_glass.tweedledee import Tweedledee
 from cat.services.factory.file_manager import FileResponse
-from cat.services.memory.utils import VectorMemoryType
+from cat.services.memory.models import VectorMemoryType
 from cat.services.mixin import BotMixin
 
 
@@ -136,12 +136,12 @@ class CheshireCat(BotMixin):
         payloads = []
         vectors = []
         for ap in self.plugin_manager.procedures:
-            if not isinstance(ap, CatProcedure):
-                ap = ap()
-
             # we don't want to embed MCP clients' procedures, because we want to always use the latest version
             if ap.type == CatProcedureType.MCP:
                 continue
+
+            if ap.type != CatProcedureType.TOOL:
+                ap = ap()
 
             for t in ap.to_document_recall():
                 payloads.append(t.document.model_dump())
@@ -196,8 +196,6 @@ class CheshireCat(BotMixin):
         updated to use the new embedder. That's why the `stored_files` is passed as argument, in order to avoid race
         conditions when multiple agents are updating their embedder at the same time on the same database.
         """
-        await self.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
-
         # re-embed all the stored files
         await self.embed_stored_files(stored_files)
 

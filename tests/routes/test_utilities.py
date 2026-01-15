@@ -10,7 +10,7 @@ from cat.db.cruds import (
 )
 from cat.db.database import get_db
 from cat.env import get_env
-from cat.services.memory.utils import VectorMemoryType
+from cat.services.memory.models import VectorMemoryType
 
 from tests.utils import create_new_user, get_client_admin_headers, new_user_password, api_key
 
@@ -258,12 +258,7 @@ async def test_clone_agent(secure_client, secure_client_headers, lizard, cheshir
         cs.pop("updated_at", None)
 
         if "active_plugins" in s:
-            s["active_plugins"] = sorted(s["active_plugins"])
-
-        if "active_plugins" in cs:
-            cs["active_plugins"] = sorted(cs["active_plugins"])
-
-        assert s == cs
+            assert s["active_plugins"].sorted() == cs["active_plugins"].sorted()
 
     # check that the users were cloned
     users = crud_users.get_users(cheshire_cat.agent_key)

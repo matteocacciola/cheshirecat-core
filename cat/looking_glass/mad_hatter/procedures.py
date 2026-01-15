@@ -5,7 +5,7 @@ from langchain_core.documents import Document as LangChainDocument
 from langchain_core.tools import StructuredTool
 from pydantic import Field
 
-from cat.services.memory.utils import DocumentRecall
+from cat.services.memory.models import DocumentRecall
 from cat.utils import Enum
 
 

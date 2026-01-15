@@ -5,7 +5,7 @@ from pydantic import Field, field_validator
 from cat.db.cruds import conversations as crud_conversations
 from cat.services.memory.interactions import ModelInteraction
 from cat.services.memory.messages import BaseMessage, UserMessage, ConversationMessage
-from cat.services.memory.utils import DocumentRecall
+from cat.services.memory.models import DocumentRecall
 from cat.utils import BaseModelDict
 
 
@@ -25,8 +25,6 @@ class WorkingMemory(BaseModelDict):
         A list that maintains the conversation history between the Human and the AI.
     user_message: Optional[UserMessage], default=None
         An optional UserMessage object representing the last user message.
-    recall_query: str, default=""
-        A string that stores the last recall query.
     declarative_memories: List
         A list for storing declarative memories.
     model_interactions: List
@@ -39,9 +37,6 @@ class WorkingMemory(BaseModelDict):
     # stores conversation history
     history: List[ConversationMessage] | None = Field(default_factory=list)
     user_message: UserMessage | None = None
-
-    # recalled memories attributes
-    recall_query: str = ""
 
     declarative_memories: List[DocumentRecall] = Field(default_factory=list)
 

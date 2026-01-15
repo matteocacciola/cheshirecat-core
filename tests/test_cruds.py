@@ -28,7 +28,8 @@ def test_get_settings(cheshire_cat):
         "name": "CoreAuthConfig2",
         "value": {},
         "category": ServiceFactory(
-            cheshire_cat.plugin_manager,
+            agent_key=cheshire_cat.agent_key,
+            hook_manager=cheshire_cat.plugin_manager,
             factory_allowed_handler_name="factory_allowed_auth_handlers",
             setting_category="auth_handler",
             schema_name="authorizatorName",
@@ -43,7 +44,8 @@ def test_get_settings(cheshire_cat):
 
 def test_get_setting_by_category(cheshire_cat):
     factory = ServiceFactory(
-        cheshire_cat.plugin_manager,
+        agent_key=cheshire_cat.agent_key,
+        hook_manager=cheshire_cat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_auth_handlers",
         setting_category="auth_handler",
         schema_name="authorizatorName",
@@ -60,7 +62,8 @@ def test_get_setting_by_name(cheshire_cat):
     value = crud_settings.get_settings_by_category(
         agent_id,
         ServiceFactory(
-            cheshire_cat.plugin_manager,
+            agent_key=cheshire_cat.agent_key,
+            hook_manager=cheshire_cat.plugin_manager,
             factory_allowed_handler_name="factory_allowed_auth_handlers",
             setting_category="auth_handler",
             schema_name="authorizatorName",
@@ -76,7 +79,8 @@ def test_get_setting_by_id(cheshire_cat):
         "name": "CoreAuthConfig2",
         "value": {},
         "category": ServiceFactory(
-            cheshire_cat.plugin_manager,
+            agent_key=cheshire_cat.agent_key,
+            hook_manager=cheshire_cat.plugin_manager,
             factory_allowed_handler_name="factory_allowed_auth_handlers",
             setting_category="auth_handler",
             schema_name="authorizatorName",
@@ -98,7 +102,8 @@ def test_delete_setting_by_id(cheshire_cat):
         "name": "CoreAuthConfig2",
         "value": {},
         "category": ServiceFactory(
-            cheshire_cat.plugin_manager,
+            agent_key=cheshire_cat.agent_key,
+            hook_manager=cheshire_cat.plugin_manager,
             factory_allowed_handler_name="factory_allowed_auth_handlers",
             setting_category="auth_handler",
             schema_name="authorizatorName",
@@ -117,7 +122,8 @@ def test_delete_setting_by_id(cheshire_cat):
 
 def test_delete_settings_by_category(cheshire_cat):
     category = ServiceFactory(
-        cheshire_cat.plugin_manager,
+        agent_key=cheshire_cat.agent_key,
+        hook_manager=cheshire_cat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_auth_handlers",
         setting_category="auth_handler",
         schema_name="authorizatorName",
@@ -135,7 +141,8 @@ def test_create_setting_with_empty_name(cheshire_cat):
         "name": "",
         "value": {},
         "category": ServiceFactory(
-            cheshire_cat.plugin_manager,
+            agent_key=cheshire_cat.agent_key,
+            hook_manager=cheshire_cat.plugin_manager,
             factory_allowed_handler_name="factory_allowed_auth_handlers",
             setting_category="auth_handler",
             schema_name="authorizatorName",
@@ -154,7 +161,8 @@ def test_update_setting_by_id(cheshire_cat):
         "name": "CoreAuthConfig2",
         "value": {},
         "category": ServiceFactory(
-            cheshire_cat.plugin_manager,
+            agent_key=cheshire_cat.agent_key,
+            hook_manager=cheshire_cat.plugin_manager,
             factory_allowed_handler_name="factory_allowed_auth_handlers",
             setting_category="auth_handler",
             schema_name="authorizatorName",
@@ -179,7 +187,8 @@ def test_upsert_setting_by_name(cheshire_cat):
         "name": name,
         "value": {},
         "category": ServiceFactory(
-            cheshire_cat.plugin_manager,
+            agent_key=cheshire_cat.agent_key,
+            hook_manager=cheshire_cat.plugin_manager,
             factory_allowed_handler_name="factory_allowed_auth_handlers",
             setting_category="auth_handler",
             schema_name="authorizatorName",

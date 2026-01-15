@@ -1,7 +1,7 @@
 from typing import Dict
 
 from cat import hook, MessageWhy
-from cat.services.memory.utils import VectorMemoryType
+from cat.services.memory.models import VectorMemoryType
 
 
 @hook(priority=1)

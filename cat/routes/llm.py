@@ -17,11 +17,12 @@ async def get_llms_settings(
     """Get the list of the Large Language Models"""
     ccat = info.cheshire_cat
     return ServiceFactory(
-        ccat.plugin_manager,
+        agent_key=ccat.agent_key,
+        hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_llms",
         setting_category="llm",
         schema_name="languageModelName",
-    ).get_factory_settings(ccat.id)
+    ).get_factory_settings()
 
 
 @router.get("/settings/{language_model_name}", response_model=GetSettingResponse, summary="Get LLM Settings")
@@ -32,26 +33,28 @@ async def get_llm_settings(
     """Get settings and scheme of the specified Large Language Model"""
     ccat = info.cheshire_cat
     return ServiceFactory(
-        ccat.plugin_manager,
+        agent_key=ccat.agent_key,
+        hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_llms",
         setting_category="llm",
         schema_name="languageModelName",
-    ).get_factory_setting(ccat.id, language_model_name)
+    ).get_factory_setting(language_model_name)
 
 
 @router.put("/settings/{language_model_name}", response_model=UpsertSettingResponse, summary="Upsert LLM Settings")
 async def upsert_llm_setting(
     language_model_name: str,
-    payload: Dict = Body({"openai_api_key": "your-key-here"}),
+    payload: Dict = Body(default={}),
     info: AuthorizedInfo = check_permissions(AuthResource.LLM, AuthPermission.WRITE),
 ) -> UpsertSettingResponse:
     """Upsert the Large Language Model setting"""
     ccat = info.cheshire_cat
 
     result = ServiceFactory(
-        ccat.plugin_manager,
+        agent_key=ccat.agent_key,
+        hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_llms",
         setting_category="llm",
         schema_name="languageModelName",
-    ).upsert_service(ccat.agent_key, language_model_name, payload)
+    ).upsert_service(language_model_name, payload)
     return UpsertSettingResponse(**result)

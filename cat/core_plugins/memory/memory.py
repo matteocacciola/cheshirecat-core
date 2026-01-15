@@ -2,7 +2,7 @@ from typing import Literal, Dict
 from pydantic import Field
 import tiktoken
 
-from cat import hook, get_caller_info
+from cat import hook, get_caller_info, AgenticWorkflowOutput
 from cat.services.memory.interactions import ModelInteraction
 
 
@@ -25,7 +25,7 @@ class EmbedderModelInteraction(ModelInteraction):
 
 @hook(priority=1)
 def before_cat_recalls_memories(config: Dict, cat) -> None:
-    message = cat.working_memory.recall_query
+    message = cat.working_memory.user_message.text
     cat.working_memory.model_interactions.add(
         EmbedderModelInteraction(
             prompt=[message],
@@ -33,3 +33,16 @@ def before_cat_recalls_memories(config: Dict, cat) -> None:
             input_tokens=len(tiktoken.get_encoding("cl100k_base").encode(message)),
         )
     )
+
+
+@hook(priority=1)
+def agent_fast_reply(cat) -> AgenticWorkflowOutput | None:
+    settings = cat.plugin_manager.get_plugin().load_settings()
+    if settings["enable_llm_knowledge"]:
+        return None
+
+    num_declarative_memories = len(cat.working_memory.declarative_memories)
+    if num_declarative_memories == 0:
+        return AgenticWorkflowOutput(output="Sorry, I have no memories about that.")
+
+    return None

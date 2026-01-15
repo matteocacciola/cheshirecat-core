@@ -1,7 +1,7 @@
 import json
 import pytest
 
-from cat.services.memory.utils import VectorMemoryType
+from cat.services.memory.models import VectorMemoryType
 
 from tests.utils import get_collections_names_and_point_count, get_fake_memory_export
 

@@ -22,12 +22,15 @@ class ContextMixin(ABC):
         self.service_provider = ServiceProvider(self.agent_key, self.mad_hatter)
 
     @property
-    def embedder_name(self) -> str | None:
+    def embedder_name(self) -> str:
         return self.service_provider.get_nlp_object_name(self.embedder, "default_embedder")
 
     @property
-    def embedder_size(self):
-        return len(self.embedder.embed_query("hello world"))
+    def embedder_size(self) -> int | None:
+        try:
+            return len(self.embedder.embed_query("hello world"))
+        except Exception:
+            return 0
 
     @property
     def mad_hatter(self) -> MadHatter:

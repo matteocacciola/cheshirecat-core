@@ -1,55 +1,58 @@
 import re
 from abc import ABC, abstractmethod
-from typing import Type, List, Dict, Any, Tuple
+from typing import Type, List, Dict, Tuple
 from langchain_classic.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models import BaseLanguageModel
-from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
 from langchain_core.runnables import RunnableConfig
-from langchain_core.tools import StructuredTool
-from pydantic import ConfigDict, BaseModel
+from pydantic import ConfigDict
 
 from cat.log import log
-from cat.looking_glass.models import AgentOutput
+from cat.looking_glass.models import AgenticWorkflowOutput, AgenticWorkflowTask
 from cat.services.factory.models import BaseFactoryConfigModel
-
-
-class AgenticTask(BaseModel):
-    prompt: ChatPromptTemplate
-    prompt_variables: Dict[str, Any] | None = None
-    tools: List[StructuredTool] | None = None
+from cat.services.factory.vector_db import BaseVectorDatabaseHandler
+from cat.services.memory.models import VectorMemoryType, DocumentRecall, RecallSettings
 
 
 class BaseAgenticWorkflowHandler(ABC):
     """
-    Base class to build custom Agentic Workflow.
+    Base class to build a custom Agentic Workflow.
     MUST be implemented by subclasses.
+
+    Attributes
+    ----------
+    _vector_memory_handler: BaseVectorDatabaseHandler
+        The vector memory handler to manage vector database operations.
     """
     def __init__(self):
-        self._task: AgenticTask | None = None
+        self._vector_memory_handler = None
+
+        self._task: AgenticWorkflowTask | None = None
+        self._prompt: ChatPromptTemplate| None = None
         self._llm: BaseLanguageModel | None = None
         self._callbacks: List[BaseCallbackHandler] | None = None
         self._can_bind_tools = False
 
-    def _bootstrap(self, task: AgenticTask, llm: BaseLanguageModel, callbacks: List[BaseCallbackHandler] = None):
-        self._task = task
-        self._llm = llm
-        self._callbacks = callbacks or []
+    @property
+    def vector_memory_handler(self) -> BaseVectorDatabaseHandler:
+        return self._vector_memory_handler
 
-        # Intrinsic detection of tool binding support
-        self._can_bind_tools = task.tools and hasattr(llm, "bind_tools")
+    @vector_memory_handler.setter
+    def vector_memory_handler(self, vmh: BaseVectorDatabaseHandler):
+        self._vector_memory_handler = vmh
 
     async def run(
-        self, task: AgenticTask, llm: BaseLanguageModel, callbacks: List[BaseCallbackHandler] = None
-    ) -> AgentOutput:
+        self, task: AgenticWorkflowTask, llm: BaseLanguageModel, callbacks: List[BaseCallbackHandler] = None
+    ) -> AgenticWorkflowOutput:
         """
         Executes the agent with the given prompt and procedures. It processes the LLM output, handles tool
         calls, and generates the final response. It also cleans the response from any tags.
 
         Args:
-            task (AgenticTask): The agentic task containing prompt, variables, and tools.
+            task (AgenticWorkflowTask): The input containing the task details.
             llm (BaseLanguageModel): The language model to use for generating responses.
-            callbacks (List[BaseCallbackHandler], optional):  List of callback handlers for logging and monitoring, by default None.
+            callbacks (List[BaseCallbackHandler], optional): List of callback handlers for logging and monitoring, by default None.
 
         Returns:
             AgentOutput
@@ -60,13 +63,43 @@ class BaseAgenticWorkflowHandler(ABC):
         callbacks = callbacks or []
         callbacks.append(LoggingCallbackHandler())
 
-        self._bootstrap(task, llm, callbacks)
+        self._task = task
+        self._llm = llm
+        self._callbacks = callbacks or []
+
+        self._prompt = ChatPromptTemplate.from_messages([
+            *([SystemMessagePromptTemplate.from_template(template=task.system_prompt)] if task.system_prompt else []),
+            HumanMessagePromptTemplate.from_template(template=task.user_prompt),
+            *self._task.history,
+        ])
+
+        # Intrinsic detection of tool binding support
+        self._can_bind_tools = task.tools and hasattr(llm, "bind_tools")
 
         result = await self._run()
         return result
 
     @abstractmethod
-    async def _run(self) -> AgentOutput:
+    async def context_retrieval(
+        self,
+        collection: VectorMemoryType,
+        params: RecallSettings,
+    ) -> List[DocumentRecall]:
+        """
+        Abstract method to recall relevant documents from a specified vector memory
+        collection based on the given query vector. This method operates asynchronously.
+
+        Args:
+            collection (VectorMemoryType): The collection from which documents will be recalled.
+            params (RecallSettings): The settings containing the query vector and other recall parameters.
+
+        Returns:
+            List[DocumentRecall]: A list of recalled documents along with their similarity scores.
+        """
+        pass
+
+    @abstractmethod
+    async def _run(self) -> AgenticWorkflowOutput:
         """
         The internal run method to be implemented by subclasses.
         Executes the agentic workflow logic.
@@ -75,7 +108,21 @@ class BaseAgenticWorkflowHandler(ABC):
 
 
 class CoreAgenticWorkflow(BaseAgenticWorkflowHandler):
-    async def _run(self) -> AgentOutput:
+    async def context_retrieval(
+        self,
+        collection: VectorMemoryType,
+        params: RecallSettings,
+    ) -> List[DocumentRecall]:
+        if params.k:
+            memories = await self.vector_memory_handler.recall_tenant_memory_from_embedding(
+                str(collection), params.embedding, params.metadata, params.k, params.threshold
+            )
+            return memories
+
+        memories = await self.vector_memory_handler.recall_tenant_memory(str(collection))
+        return memories
+
+    async def _run(self) -> AgenticWorkflowOutput:
         def clean_response(response: str) -> str:
             # parse the `response` string and get the text from <answer></answer> tag
             if "<answer>" in response and "</answer>" in response:
@@ -101,17 +148,17 @@ class CoreAgenticWorkflow(BaseAgenticWorkflowHandler):
         if not self._can_bind_tools:
             prompt_variables = self._task.prompt_variables or {}
 
-            chain = self._task.prompt | self._llm
+            chain = self._prompt | self._llm
             langchain_msg = await chain.ainvoke(prompt_variables, config=RunnableConfig(callbacks=self._callbacks))
 
             output = getattr(langchain_msg, "content", str(langchain_msg))
-            return AgentOutput(output=clean_response(output))
+            return AgenticWorkflowOutput(output=clean_response(output))
 
         try:
-            self._task.prompt.messages.append(HumanMessagePromptTemplate.from_template("{agent_scratchpad}"))
+            self._prompt.messages.append(HumanMessagePromptTemplate.from_template("{agent_scratchpad}"))
 
-            # Create the agent with proper prompt structure
-            agent = create_tool_calling_agent(llm=self._llm, tools=self._task.tools, prompt=self._task.prompt)
+            # Create the agent with a proper prompt structure
+            agent = create_tool_calling_agent(llm=self._llm, tools=self._task.tools, prompt=self._prompt)
             # Create the agent executor
             agent_executor = AgentExecutor.from_agent_and_tools(
                 agent=agent,
@@ -128,7 +175,7 @@ class CoreAgenticWorkflow(BaseAgenticWorkflowHandler):
 
             cleaned_output = clean_response(langchain_msg.get("output", "")).strip()
             extracted_steps = [extract_info(step) for step in langchain_msg.get("intermediate_steps", [])]
-            return AgentOutput(output=cleaned_output, intermediate_steps=extracted_steps)
+            return AgenticWorkflowOutput(output=cleaned_output, intermediate_steps=extracted_steps)
         except Exception as e:
             log.warning(f"Tool binding failed with error: {e}. Falling back to direct LLM invocation.")
             self._can_bind_tools = False

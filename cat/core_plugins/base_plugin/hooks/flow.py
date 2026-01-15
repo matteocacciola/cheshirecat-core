@@ -5,10 +5,8 @@ Here is a collection of methods to hook into the Cat execution pipeline.
 """
 from typing import Dict, List
 
-from cat import hook, log, run_sync_or_async, UserMessage
+from cat import hook, UserMessage, RecallSettings
 from cat.core_plugins.base_plugin.registry import CheshireCatPluginRegistry
-from cat.exceptions import VectorMemoryError
-from cat.services.memory.utils import VectorMemoryType, recall_relevant_memories_to_working_memory, RecallSettings
 
 
 @hook(priority=0)
@@ -130,17 +128,17 @@ def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
     For instance, this hook can be used to translate the user's message before feeding it to the Cat.
     Another use case is to add custom keys to the JSON dictionary.
 
-    The incoming message is a JSON dictionary with keys:
+    The incoming message is a JSON-like variable which can be handled as an object or a dictionary with keys:
         {
             "text": message content
         }
 
     Args:
-        user_message (UserMessage): JSON dictionary with the message received from the chat.
+        user_message (UserMessage): JSON-like variable with the message received from the chat.
         cat (StrayCat): Stray Cat instance.
 
     Returns:
-        user_message (UserMessage): Edited JSON dictionary with the message to be processed by the Cat
+        user_message (UserMessage): Edited JSON-like variable with the message to be processed by the Cat
 
     Notes
     -----
@@ -153,60 +151,12 @@ def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
 
     where "custom_key" is a newly added key to the dictionary to store any data.
     """
-    # recall declarative memory from vector collections and store it in working_memory
-    try:
-        cat.working_memory.declarative_memories = run_sync_or_async(
-            recall_relevant_memories_to_working_memory,
-            cat=cat,
-            collection=VectorMemoryType.DECLARATIVE,
-            query=user_message.text,
-        )
-    except Exception as e:
-        log.error(f"Agent id: {cat.agent_key}. Error during recall {e}")
-
-        raise VectorMemoryError("An error occurred while recalling relevant memories.")
-
-    return user_message
-
-
-# What is the input to recall memories?
-# Here you can do HyDE embedding, condense recent conversation or condition recall query on something else important to your AI
-@hook(priority=0)
-def cat_recall_query(user_message: str, cat) -> str:
-    """
-    Hook the semantic search query.
-
-    This hook allows to edit the user's message used as a query for context retrieval from memories.
-    As a result, the retrieved context can be conditioned editing the user's message.
-
-    Args:
-        user_message (str): String with the text received from the user.
-        cat (StrayCat): Stray Cat instance to exploit the Cat's methods.
-
-    Returns:
-        Edited string to be used for context retrieval in memory. The returned string is further stored in the
-        Working Memory at `cat.working_memory.recall_query`.
-
-    Notes
-    -----
-    For example, this hook is a suitable to perform Hypothetical Document Embedding (HyDE).
-    HyDE [1]_ strategy exploits the user's message to generate a hypothetical answer. This is then used to recall
-    the relevant context from the memory.
-    An official plugin is available to test this technique.
-
-    References
-    ----------
-    [1] Gao, L., Ma, X., Lin, J., & Callan, J. (2022). Precise Zero-Shot Dense Retrieval without Relevance Labels.
-       arXiv preprint arXiv:2212.10496.
-
-    """
-    # here we just return the latest user message as is
     return user_message
 
 
 # Called just before the cat recalls memories.
 @hook(priority=0)
-def before_cat_recalls_memories(config: RecallSettings, cat) -> Dict:
+def before_cat_recalls_memories(config: RecallSettings, cat) -> RecallSettings:
     """
     Hook into semantic search in memories.
 

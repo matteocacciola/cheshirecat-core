@@ -18,11 +18,12 @@ async def get_embedders_settings(
     """Get the list of the Embedders"""
     lizard = info.lizard
     return ServiceFactory(
-        lizard.plugin_manager,
+        agent_key=lizard.agent_key,
+        hook_manager=lizard.plugin_manager,
         factory_allowed_handler_name="factory_allowed_embedders",
         setting_category="embedder",
         schema_name="languageEmbedderName",
-    ).get_factory_settings(lizard.config_key)
+    ).get_factory_settings()
 
 
 @router.get("/settings/{embedder_name}", response_model=GetSettingResponse)
@@ -33,18 +34,19 @@ async def get_embedder_settings(
     """Get settings and scheme of the specified Embedder"""
     lizard = info.lizard
     return ServiceFactory(
-        lizard.plugin_manager,
+        agent_key=lizard.agent_key,
+        hook_manager=lizard.plugin_manager,
         factory_allowed_handler_name="factory_allowed_embedders",
         setting_category="embedder",
         schema_name="languageEmbedderName",
-    ).get_factory_setting(lizard.config_key, embedder_name)
+    ).get_factory_setting(embedder_name)
 
 
 @router.put("/settings/{embedder_name}", response_model=UpsertSettingResponse)
 async def upsert_embedder_setting(
     background_tasks: BackgroundTasks,
     embedder_name: str,
-    payload: Dict = Body({"openai_api_key": "your-key-here"}),
+    payload: Dict = Body(default={}),
     info: AuthorizedInfo = check_permissions(AuthResource.EMBEDDER, AuthPermission.WRITE),
 ) -> UpsertSettingResponse:
     """Upsert the Embedder setting"""
@@ -53,11 +55,12 @@ async def upsert_embedder_setting(
     previous_embedder_size = lizard.embedder_size
 
     result = ServiceFactory(
-        lizard.plugin_manager,
+        agent_key=lizard.agent_key,
+        hook_manager=lizard.plugin_manager,
         factory_allowed_handler_name="factory_allowed_embedders",
         setting_category="embedder",
         schema_name="languageEmbedderName",
-    ).upsert_service(lizard.agent_key, embedder_name, payload)
+    ).upsert_service(embedder_name, payload)
 
     current_embedder_name = lizard.embedder_name
     current_embedder_size = lizard.embedder_size
@@ -67,6 +70,6 @@ async def upsert_embedder_setting(
         return UpsertSettingResponse(**result)
 
     # otherwise, inform the Cheshire Cats about the new embedder available in the system
-    background_tasks.add_task(info.lizard.embed_all_in_cheshire_cats)
+    background_tasks.add_task(info.lizard.embed_all_in_cheshire_cats, current_embedder_name, current_embedder_size)
 
     return UpsertSettingResponse(**result)

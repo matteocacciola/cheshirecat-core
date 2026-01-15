@@ -6,7 +6,8 @@ from cat.services.service_factory import ServiceFactory
 
 def test_get_all_file_manager_settings(secure_client, secure_client_headers, cheshire_cat):
     file_manager_schemas = ServiceFactory(
-        cheshire_cat.plugin_manager,
+        agent_key=cheshire_cat.agent_key,
+        hook_manager=cheshire_cat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_file_managers",
         setting_category="file_manager",
         schema_name="fileManagerName",

@@ -9,12 +9,6 @@ def get_the_time(cat):
     return f"The current time is {str(datetime.now())}"
 
 
-@tool(examples=["log working memory", "show me the contents of working memory"])
-def read_working_memory(cat):
-    """Get the content of the Working Memory."""
-    return str(cat.working_memory)
-
-
 @tool
 def get_weather(city: str, when: str) -> str:
     """Get the weather for a given city and date."""

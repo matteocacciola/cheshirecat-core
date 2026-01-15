@@ -17,11 +17,12 @@ async def get_vector_databases_settings(
     """Get the list of the Vector Databases settings and their configuration schemas"""
     ccat = info.cheshire_cat
     return ServiceFactory(
-        ccat.plugin_manager,
+        agent_key=ccat.agent_key,
+        hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_vector_databases",
         setting_category="vector_database",
         schema_name="vectorDatabaseName",
-    ).get_factory_settings(ccat.id)
+    ).get_factory_settings()
 
 
 @router.get(
@@ -34,11 +35,12 @@ async def get_vector_database_settings(
     """Get settings and scheme of the specified Vector Database"""
     ccat = info.cheshire_cat
     return ServiceFactory(
-        ccat.plugin_manager,
+        agent_key=ccat.agent_key,
+        hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_vector_databases",
         setting_category="vector_database",
         schema_name="vectorDatabaseName",
-    ).get_factory_setting(ccat.id, vector_database_name)
+    ).get_factory_setting(vector_database_name)
 
 
 @router.put(
@@ -46,16 +48,17 @@ async def get_vector_database_settings(
 )
 async def upsert_vector_database_setting(
     vector_database_name: str,
-    payload: Dict = Body(...),
+    payload: Dict = Body(default={}),
     info: AuthorizedInfo = check_permissions(AuthResource.VECTOR_DATABASE, AuthPermission.WRITE),
 ) -> UpsertSettingResponse:
     """Upsert the Vector Database setting"""
     ccat = info.cheshire_cat
 
     result = ServiceFactory(
-        ccat.plugin_manager,
+        agent_key=ccat.agent_key,
+        hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_vector_databases",
         setting_category="vector_database",
         schema_name="vectorDatabaseName",
-    ).upsert_service(ccat.agent_key, vector_database_name, payload)
+    ).upsert_service(vector_database_name, payload)
     return UpsertSettingResponse(**result)

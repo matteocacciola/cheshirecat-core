@@ -1,6 +1,5 @@
 import uuid
-from typing import List, Final, Callable
-from langchain_core.prompts import ChatPromptTemplate, SystemMessagePromptTemplate
+from typing import List, Final, Callable, Tuple
 from langchain_core.tools import StructuredTool
 from websockets.exceptions import ConnectionClosedOK
 
@@ -9,20 +8,18 @@ from cat.auth.permissions import AuthUserInfo
 from cat.log import log
 from cat.looking_glass.callbacks import NewTokenHandler
 from cat.looking_glass.mad_hatter.procedures import CatProcedure, CatProcedureType
-from cat.looking_glass.models import AgentInput, AgentOutput, ChatResponse
+from cat.looking_glass.models import AgenticWorkflowTask, AgenticWorkflowOutput, ChatResponse
 from cat.looking_glass.tweedledee import Tweedledee
-from cat.services.factory.agentic_workflow import AgenticTask
 from cat.services.memory.messages import CatMessage, UserMessage
-from cat.services.memory.utils import recall_relevant_memories_to_working_memory, VectorMemoryType
+from cat.services.memory.models import VectorMemoryType, DocumentRecall, RecallSettings
 from cat.services.memory.working_memory import WorkingMemory
 from cat.services.mixin import BotMixin
 from cat.services.notifier import NotifierService
 from cat.templates import prompts
 
 
-# The Stray cat goes around tools and hook, making troubles
 class StrayCat(BotMixin):
-    """Session object containing user data, conversation state and many utility pointers.
+    """Session object containing user data, conversation state, and many utility pointers.
     The framework creates an instance for every http request and websocket connection, making it available for plugins.
 
     You will be interacting with an instance of this class directly from within your plugins:
@@ -90,17 +87,63 @@ class StrayCat(BotMixin):
     def __repr__(self):
         return f"StrayCat(id={self.id}, user_id={self.user.id}, agent_id={self.agent_key})"
 
+    async def _recall_relevant_memories(
+        self, collection: VectorMemoryType, query: str
+    ) -> Tuple[List[DocumentRecall], RecallSettings]:
+        """
+        Retrieve context from memory.
+        The method retrieves the relevant memories from the vector collections that are given as context to the LLM.
+        Recalled memories are stored in the working memory.
+
+        Args:
+            collection (VectorMemoryType): The name of the vector memory collection to retrieve memories from.
+            query (str): The query used to make a similarity search in the Cat's vector memories.
+
+        Returns:
+            Tuple[List[DocumentRecall], RecallSettings]: A tuple containing the list of recalled DocumentRecall objects
+
+        See Also:
+            before_cat_recalls_memories
+            after_cat_recalls_memories
+
+        Notes
+        -----
+        The user's message is used as a query to make a similarity search in the Cat's vector memories.
+        Five hooks allow customizing the recall pipeline before and after it is done.
+        """
+        # Setting default recall configs for each memory + hooks to change recall configs for each memory
+        config = RecallSettings(
+            embedding=self.lizard.embedder.embed_query(query),
+            metadata=self.working_memory.user_message.get("metadata", {}),
+        )
+
+        # hook to do something before recall begins
+        config = self.plugin_manager.execute_hook("before_cat_recalls_memories", config, caller=self)
+
+        memories = await self.agentic_workflow.context_retrieval(
+            collection=collection,
+            params=config,
+        )
+
+        # hook to modify/enrich retrieved memories
+        self.plugin_manager.execute_hook("after_cat_recalls_memories", caller=self)
+
+        return memories, config
+
     async def get_procedures(self) -> List[StructuredTool]:
-        memories = await recall_relevant_memories_to_working_memory(
-            cat=self,
+        memories, _ = await self._recall_relevant_memories(
             query=self.working_memory.user_message.text,
             collection=VectorMemoryType.PROCEDURAL,
         )
 
         # these are procedures from embeddings, i.e., only from CatTool or CatForm instances
-        procedures = [
-            lp for m in memories for lp in CatProcedure.from_document_recall(document=m, stray=self).langchainfy()
-        ]
+        procedures = []
+        for m in memories:
+            try:
+                cp = CatProcedure.from_document_recall(document=m, stray=self)
+                procedures.extend(cp.langchainfy())
+            except Exception as e:
+                log.warning(f"Agent id: {self.agent_key}. Could not reconstruct procedure from memory. Error: {e}")
 
         # now, let's add the StructuredTool instances from the MCP clients using lazy loading
         mcp_clients = [p for p in self.plugin_manager.procedures if p.type == CatProcedureType.MCP]
@@ -143,51 +186,40 @@ class StrayCat(BotMixin):
         if fast_reply := plugin_manager.execute_hook("fast_reply", None, caller=self):
             return CatMessage(text=fast_reply)
 
+        # obtain prompt parts from plugins
+        prompt_prefix = plugin_manager.execute_hook("agent_prompt_prefix", prompts.MAIN_PROMPT, caller=self)
+        prompt_suffix = plugin_manager.execute_hook("agent_prompt_suffix", "", caller=self)
+        system_prompt = prompt_prefix + prompt_suffix
+
         # hook to modify/enrich user input; this is the latest user message
         self.working_memory.user_message = utils.restore_original_model(
             plugin_manager.execute_hook("before_cat_reads_message", self.working_memory.user_message, caller=self),
             UserMessage
         )
 
-        # if the agent is set to fast reply, skip everything and return the output
-        agent_fast_reply = plugin_manager.execute_hook("agent_fast_reply", AgentOutput(), caller=self)
-        if agent_fast_reply and agent_fast_reply.output:
-            return CatMessage(text=agent_fast_reply.output)
-
-        # usual flow: prepare agent input with context, input and history
-        latest_n_history = self.latest_n_history * 2  # each interaction has user + cat message
-        agent_input = plugin_manager.execute_hook(
-            "before_agent_starts",
-            AgentInput(
-                context=[m.document for m in self.working_memory.declarative_memories],
-                input=self.working_memory.user_message.text,
-                history=[h.langchainfy() for h in self.working_memory.history[-latest_n_history:]]
-            ),
-            caller=self,
-        )
-
-        # obtain prompt parts from plugins
-        prompt_prefix = plugin_manager.execute_hook("agent_prompt_prefix", prompts.MAIN_PROMPT, caller=self)
-        prompt_suffix = plugin_manager.execute_hook("agent_prompt_suffix", "", caller=self)
-        prompt_variables = plugin_manager.execute_hook(
-            "agent_prompt_variables",
-            {"context": agent_input.context, "input": agent_input.input},
-            caller=self,
-        )
-
-        system_prompt = prompt_prefix + prompt_suffix
         try:
-            tools = await self.get_procedures()
+            # recall declarative memory from vector collections and store it in working_memory
+            self.working_memory.declarative_memories, recall_config = await self._recall_relevant_memories(
+                collection=VectorMemoryType.DECLARATIVE,
+                query=user_message.text,
+            )
+
+            # if the agent is set to fast reply, skip everything and return the output
+            agent_output = plugin_manager.execute_hook("agent_fast_reply", caller=self)
+            if agent_output:
+                return CatMessage(text=agent_output.output)
+
+            # prepare agent input
+            agent_input = AgenticWorkflowTask(
+                system_prompt=system_prompt,
+                user_prompt=self.working_memory.user_message.text,
+                context=[m.document for m in self.working_memory.declarative_memories],
+                history=[h.langchainfy() for h in self.working_memory.history[-recall_config.latest_n_history:]],
+                tools=(await self.get_procedures()),
+            )
 
             agent_output = await self.agentic_workflow.run(
-                task=AgenticTask(
-                    prompt=ChatPromptTemplate.from_messages([
-                        SystemMessagePromptTemplate.from_template(template=system_prompt),
-                        *agent_input.history,
-                    ]),
-                    prompt_variables=prompt_variables,
-                    tools=tools,
-                ),
+                task=agent_input,
                 llm=self.large_language_model,
                 callbacks=plugin_manager.execute_hook(
                     "llm_callbacks", [NewTokenHandler(self.notifier)], caller=self
@@ -198,7 +230,7 @@ class StrayCat(BotMixin):
                 agent_output.with_llm_error = True
         except Exception as e:
             log.error(f"Agent id: {self.agent_key}. Error: {e}")
-            agent_output = AgentOutput(
+            agent_output = AgenticWorkflowOutput(
                 output=f"An error occurred: {e}. Please, contact your support service.", with_llm_error=True
             )
 

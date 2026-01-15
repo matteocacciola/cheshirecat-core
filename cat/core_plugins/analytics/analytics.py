@@ -13,7 +13,7 @@ from cat import (
 )
 import cat.core_plugins.analytics.cruds.embeddings as crud_embeddings
 import cat.core_plugins.analytics.cruds.llm as crud_llm
-from cat.services.memory.utils import PointStruct
+from cat.services.memory.models import PointStruct
 
 
 @hook(priority=1)

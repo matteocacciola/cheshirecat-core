@@ -40,13 +40,14 @@ The current version introduces also the following additional hooks:
 ### RabbitHole:
 - `before_rabbithole_splits_documents` replaces the removed `before_rabbithole_splits_text`
 
-### Prompt:
-- `agent_prompt_variables`: to add custom variables to the prompt template
-
 ### Memory:
 - `before_cat_recalls_memories` replaces the removed `before_cat_recalls_declarative_memories`
 
 ## List of suppressed hooks
+
+### Agent:
+- `before_agent_starts`, please use `before_cat_reads_message` instead
+- `cat_recall_query`
 
 ### RabbitHole:
 - `before_rabbithole_splits_text`

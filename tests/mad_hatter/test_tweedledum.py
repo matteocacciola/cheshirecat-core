@@ -38,7 +38,7 @@ def test_instantiation_discovery(lizard):
         assert h.priority >= 0.0
 
     # finds procedures
-    assert len(plugin_manager.procedures_registry) == 3
+    assert len(plugin_manager.procedures_registry) == 2
     for procedure in plugin_manager.procedures_registry.values():
         assert isinstance(procedure, CatProcedure)
         if isinstance(procedure, CatTool):
@@ -161,7 +161,7 @@ def test_plugin_uninstall(lizard, plugin_is_flat):
     for h_name, h_list in plugin_manager.hooks.items():
         assert len(h_list) >= 1
         assert h_list[0].plugin_id in core_plugins
-    assert len(plugin_manager.procedures_registry) == 3
+    assert len(plugin_manager.procedures_registry) == 2
 
     # list of active plugins in DB is correct
     active_plugins = plugin_manager.load_active_plugins_ids_from_db()

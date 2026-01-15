@@ -38,23 +38,20 @@ class ServiceProvider:
         )
 
     def _get_factory_object(self, factory_params: FactoryParams) -> ServiceFactory:
-        return ServiceFactory(self._plugin_manager, **factory_params.model_dump())
+        return ServiceFactory(self._agent_key, self._plugin_manager, **factory_params.model_dump())
 
     def _get_service_object(self, factory_params: FactoryParams) -> Any:
         factory = self._get_factory_object(factory_params)
 
         if not (selected_config := crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)):
-            # if no config is saved, use default one and save to db
+            # if no config is saved, use the default one and save to db
             # create the settings for the factory
             self._create_service_object(factory)
 
             # reload from db and return
             selected_config = crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)
 
-        service = factory.get_from_config_name(self._agent_key, selected_config["name"])
-        if hasattr(service, "agent_id"):
-            service.agent_id = self._agent_key
-        return service
+        return factory.get_from_config_name(selected_config["name"])
 
     def get_nlp_object_name(self, nlp_object: Any, default: str) -> str:
         name = default
@@ -92,7 +89,9 @@ class ServiceProvider:
         return self._get_service_object(self._list_factory_params["vector_memory_handler"])
 
     def get_agentic_workflow(self) -> BaseAgenticWorkflowHandler:
-        return self._get_service_object(self._list_factory_params["agentic_workflow"])
+        agentic_workflow = self._get_service_object(self._list_factory_params["agentic_workflow"])
+        agentic_workflow.vector_memory_handler = self.get_vector_memory_handler()
+        return agentic_workflow
 
     def _bootstrap_services(self, list_factory_params: Dict[str, FactoryParams]):
         for _, factory_params in list_factory_params.items():

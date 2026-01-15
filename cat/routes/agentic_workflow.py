@@ -17,11 +17,12 @@ async def get_agentic_workflow_settings(
     """Get the list of the Agentic Workflow settings"""
     ccat = info.cheshire_cat
     return ServiceFactory(
-        ccat.plugin_manager,
+        agent_key=ccat.agent_key,
+        hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_agentic_workflows",
         setting_category="agentic_workflow",
         schema_name="agenticWorkflowName",
-    ).get_factory_settings(ccat.agent_key)
+    ).get_factory_settings()
 
 
 @router.get("/settings/{agentic_workflow_name}", response_model=GetSettingResponse)
@@ -32,26 +33,28 @@ async def get_agentic_workflow_setting(
     """Get the settings of a specific Agentic Workflow"""
     ccat = info.cheshire_cat
     return ServiceFactory(
-        ccat.plugin_manager,
+        agent_key=ccat.agent_key,
+        hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_agentic_workflows",
         setting_category="agentic_workflow",
         schema_name="agenticWorkflowName",
-    ).get_factory_setting(ccat.agent_key, agentic_workflow_name)
+    ).get_factory_setting(agentic_workflow_name)
 
 
 @router.put("/settings/{agentic_workflow_name}", response_model=UpsertSettingResponse)
 async def upsert_agentic_workflow_setting(
     agentic_workflow_name: str,
     info: AuthorizedInfo = check_permissions(AuthResource.AGENTIC_WORKFLOW, AuthPermission.WRITE),
-    payload: Dict = Body(...),
+    payload: Dict = Body(default={}),
 ) -> UpsertSettingResponse:
     """Upsert the settings of a specific Agentic Workflow"""
     ccat = info.cheshire_cat
 
     result = ServiceFactory(
-        ccat.plugin_manager,
+        agent_key=ccat.agent_key,
+        hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_agentic_workflows",
         setting_category="agentic_workflow",
         schema_name="agenticWorkflowName",
-    ).upsert_service(ccat.agent_key, agentic_workflow_name, payload)
+    ).upsert_service(agentic_workflow_name, payload)
     return UpsertSettingResponse(**result)

@@ -18,6 +18,7 @@ from cat.services.factory.vector_db import QdrantConfig
 class ServiceFactory:
     def __init__(
         self,
+        agent_key: str,
         hook_manager: MadHatter,
         factory_allowed_handler_name: str,
         setting_category: Literal[
@@ -25,6 +26,7 @@ class ServiceFactory:
         ],
         schema_name: str,
     ):
+        self._agent_key = agent_key
         self._hook_manager = hook_manager
         self.factory_allowed_handler_name = factory_allowed_handler_name
         self.setting_category = setting_category
@@ -44,7 +46,7 @@ class ServiceFactory:
         }
 
     def get_schemas(self) -> Dict:
-        # schemas contains metadata to let any client know which fields are required to create the class.
+        # schemas contain metadata to let any client know which fields are required to create the class.
         schemas = {}
         for config_class in self.get_allowed_classes():
             schema = config_class.model_json_schema()
@@ -54,7 +56,7 @@ class ServiceFactory:
 
         return schemas
 
-    def get_from_config_name(self, agent_id: str, config_name: str) -> Any:
+    def get_from_config_name(self, config_name: str) -> Any:
         # get plugin file manager factory class
         factory_class = next((cls for cls in self.get_allowed_classes() if cls.__name__ == config_name), None)
         if not factory_class:
@@ -63,10 +65,13 @@ class ServiceFactory:
             )
             return self.default_config_class.get_from_config(self.default_config)
 
-        # obtain configuration and instantiate the finalized object by the factory
-        selected_config = crud_settings.get_setting_by_name(agent_id, config_name)
+        # get configuration and instantiate the finalized object by the factory
+        selected_config = crud_settings.get_setting_by_name(self._agent_key, config_name)
         try:
-            return factory_class.get_from_config(selected_config["value"])
+            obj = factory_class.get_from_config(selected_config["value"])
+            if hasattr(obj, "agent_id"):
+                obj.agent_id = self._agent_key
+            return obj
         except:
             return self.default_config_class.get_from_config(self.default_config)
 
@@ -75,7 +80,7 @@ class ServiceFactory:
             self.factory_allowed_handler_name, [self.default_config_class], caller=None
         )
 
-    def upsert_service(self, agent_key: str, service_name: str, payload: Dict) -> Dict:
+    def upsert_service(self, service_name: str, payload: Dict) -> Dict:
         from cat.services.service_updater import ServiceUpdater
 
         schemas = self.get_schemas()
@@ -85,13 +90,13 @@ class ServiceFactory:
             raise CustomValidationException(
                 f"{service_name} not supported. Must be one of {allowed_configurations}")
 
-        updater_service = ServiceUpdater(agent_key, self)
+        updater_service = ServiceUpdater(self)
         result = updater_service.replace_service(service_name, payload)
 
         return result
 
-    def get_factory_settings(self, agent_key: str) -> GetSettingsResponse:
-        saved_settings = crud_settings.get_settings_by_category(agent_key, self.setting_category)
+    def get_factory_settings(self) -> GetSettingsResponse:
+        saved_settings = crud_settings.get_settings_by_category(self._agent_key, self.setting_category)
 
         settings = [GetSettingResponse(
             name=class_name,
@@ -101,7 +106,7 @@ class ServiceFactory:
 
         return GetSettingsResponse(settings=settings, selected_configuration=saved_settings["name"])
 
-    def get_factory_setting(self, agent_key: str, configuration_name: str) -> GetSettingResponse:
+    def get_factory_setting(self, configuration_name: str) -> GetSettingResponse:
         schemas = self.get_schemas()
 
         allowed_configurations = list(schemas.keys())
@@ -109,7 +114,7 @@ class ServiceFactory:
             raise CustomValidationException(
                 f"{configuration_name} not supported. Must be one of {allowed_configurations}")
 
-        setting = crud_settings.get_setting_by_name(agent_key, configuration_name)
+        setting = crud_settings.get_setting_by_name(self._agent_key, configuration_name)
         setting = {} if setting is None else setting["value"]
 
         scheme = schemas[configuration_name]
@@ -119,3 +124,7 @@ class ServiceFactory:
     @property
     def default_config(self) -> Dict:
         return {k: v.default for k, v in self.default_config_class.model_fields.items()}
+
+    @property
+    def agent_key(self):
+        return self._agent_key

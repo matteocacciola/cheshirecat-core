@@ -2,7 +2,6 @@ import importlib
 from typing import Callable, List, Dict
 from langchain_core.tools import StructuredTool
 from fastmcp.tools.tool import ParsedFunction
-from mcp.types import Tool
 from pydantic import ConfigDict
 from slugify import slugify
 
@@ -53,23 +52,6 @@ class CatTool(CatProcedure):
             examples=examples,
         )
 
-    @classmethod
-    def from_fastmcp(
-        cls,
-        t: Tool,
-        mcp_client_func: Callable,
-        plugin_id: str,
-    ) -> "CatTool":
-        ct = cls(
-            func=mcp_client_func,
-            name=t.name,
-            description=t.description or t.name,
-            input_schema=t.inputSchema,
-            output_schema=t.outputSchema,
-        )
-        ct.plugin_id = plugin_id
-        return ct
-
     def dictify_input_params(self) -> Dict:
         return {
             "name": self.name,
@@ -86,10 +68,16 @@ class CatTool(CatProcedure):
     @classmethod
     def reconstruct_from_params(cls, input_params: Dict) -> "CatTool":
         # Parse the function reference
-        func_module_path = input_params["func"]["module"]
-        func_name = input_params["func"]["name"]
-        func_module = importlib.import_module(func_module_path)
-        func = getattr(func_module, func_name, None)
+        obj_module_path = input_params["func"]["module"]
+        obj_name = input_params["func"]["name"]
+        obj_module = importlib.import_module(obj_module_path)
+        func = getattr(obj_module, obj_name, None)
+        if not callable(func) and hasattr(func, "func"):
+            func = func.func  # unwrap if it's a tool object
+
+        # if func is still None, raise an error
+        if func is None:
+            raise ValueError(f"Function {obj_name} not found in module {obj_module_path}")
 
         # Create an instance with parsed params
         return cls(

@@ -11,7 +11,7 @@ from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
 from cat.exceptions import CustomNotFoundException, CustomValidationException
 from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
 from cat.services.factory.file_manager import FileResponse
-from cat.services.memory.utils import VectorMemoryType
+from cat.services.memory.models import VectorMemoryType
 from cat.services.service_factory import ServiceFactory
 
 router = APIRouter(tags=["File Manager"], prefix="/file_manager")
@@ -34,11 +34,12 @@ async def get_file_managers_settings(
     """Get the list of the File Managers and their settings"""
     ccat = info.cheshire_cat
     return ServiceFactory(
-        ccat.plugin_manager,
+        agent_key=ccat.agent_key,
+        hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_file_managers",
         setting_category="file_manager",
         schema_name="fileManagerName",
-    ).get_factory_settings(ccat.id)
+    ).get_factory_settings()
 
 
 @router.get("/settings/{file_manager_name}", response_model=GetSettingResponse)
@@ -49,11 +50,12 @@ async def get_file_manager_settings(
     """Get settings and scheme of the specified File Manager"""
     ccat = info.cheshire_cat
     return ServiceFactory(
-        ccat.plugin_manager,
+        agent_key=ccat.agent_key,
+        hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_file_managers",
         setting_category="file_manager",
         schema_name="fileManagerName",
-    ).get_factory_setting(ccat.id, file_manager_name)
+    ).get_factory_setting(file_manager_name)
 
 
 @router.put("/settings/{file_manager_name}", response_model=UpsertSettingResponse)
@@ -66,11 +68,12 @@ async def upsert_file_manager_setting(
     ccat = info.cheshire_cat
 
     result = ServiceFactory(
-        ccat.plugin_manager,
+        agent_key=ccat.agent_key,
+        hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_file_managers",
         setting_category="file_manager",
         schema_name="fileManagerName",
-    ).upsert_service(ccat.agent_key, file_manager_name, payload)
+    ).upsert_service(file_manager_name, payload)
     return UpsertSettingResponse(**result)
 
 

@@ -21,7 +21,6 @@ def test_create_working_memory():
     wm = WorkingMemory(agent_id=agent_id, user_id=generate_uuid(), chat_id=chat_id)
     assert wm.history == []
     assert wm.user_message_json is None
-    assert wm.recall_query == ""
     assert wm.declarative_memories == []
     assert len(wm.model_interactions) == 0
 

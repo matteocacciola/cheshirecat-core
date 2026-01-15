@@ -5,37 +5,21 @@ Here is a collection of methods to hook into the *Agent* execution pipeline.
 """
 from typing import List
 
-from cat import hook, AgentInput, AgentOutput
+from cat import hook, AgenticWorkflowOutput
 
 
 @hook(priority=0)
-def before_agent_starts(agent_input: AgentInput, cat) -> AgentInput:
-    """
-    Hook to read and edit the agent input
-
-    Args:
-        agent_input (Dict): Input that is about to be passed to the agent.
-        cat (StrayCat): Stray Cat instance.
-
-    Returns:
-        Agent Input as Dictionary
-    """
-    return agent_input
-
-
-@hook(priority=0)
-def agent_fast_reply(ag_fast_reply: AgentOutput, cat) -> AgentOutput | None:
+def agent_fast_reply(cat) -> AgenticWorkflowOutput | None:
     """
     This hook allows for a custom response after memory recall, skipping default agent execution.
     It's useful for custom agent logic or when you want to use recalled memories but avoid the main agent.
 
     Args:
-        ag_fast_reply (AgentOutput): Input is a dictionary (initially empty), which can be enriched with an "output" key with the shortcut response.
         cat (StrayCat): Stray Cat instance.
 
     Returns:
-        response (AgentOutput | None): If you want to bypass the main agent, return an AgentOutput with a valid `output` key.
-            Return None or an empty AgentOutput or an AgentOutput without a valid `output` key to continue with normal execution.
+        response (AgentOutput): If you want to bypass the main agent, return an AgenticWorkflowOutput with a valid `output` key.
+            Return None to continue with normal execution.
             See below for examples of Cat response
 
     Examples
@@ -45,10 +29,10 @@ def agent_fast_reply(ag_fast_reply: AgentOutput, cat) -> AgentOutput | None:
     ```python
     num_declarative_memories = len( cat.working_memory.declarative_memories )
     if num_declarative_memories == 0:
-        return AgentOutput(output="Sorry, I have no memories about that.")
+        return AgenticWorkflowOutput(output="Sorry, I have no memories about that.")
     ```
     """
-    return ag_fast_reply
+    return None
 
 
 @hook(priority=0)

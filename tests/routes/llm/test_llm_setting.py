@@ -8,7 +8,8 @@ from tests.utils import create_new_user, new_user_password, agent_id
 
 def test_get_all_llm_settings(secure_client, secure_client_headers, cheshire_cat):
     llms_schemas = ServiceFactory(
-        cheshire_cat.plugin_manager,
+        agent_key=cheshire_cat.agent_key,
+        hook_manager=cheshire_cat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_llms",
         setting_category="llm",
         schema_name="languageModelName",

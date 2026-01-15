@@ -33,7 +33,7 @@ def test_instantiation_discovery(cheshire_cat):
         assert h.priority >= 0.0
 
     # finds tool
-    assert len(plugin_manager.procedures_registry) == 3
+    assert len(plugin_manager.procedures_registry) == 2
     for procedure in plugin_manager.procedures_registry.values():
         assert isinstance(procedure, CatProcedure)
         if isinstance(procedure, CatTool):

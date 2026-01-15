@@ -33,31 +33,6 @@ def agent_prompt_prefix(prompt: str, cat) -> str:
 
 
 @hook(priority=0)
-def agent_prompt_variables(variables: Dict[str, Any], cat) -> Dict[str, Any]:
-    """Hook the main prompt variables.
-    Allows to edit the variables that will be used to format the *Main Prompt* that the Cat feeds to the *Agent*.
-
-    Args:
-        variables: Dict[str, Any]
-            The variables that will be used to format the *Main Prompt*.
-        cat: StrayCat
-            Stray Cat instance.
-
-    Returns:
-        variables: Dict[str, Any]
-            The variables that will be used to format the *Main Prompt*.
-
-    Notes
-    -----
-    The default variables are:
-    - `context`: the retrieved context from RAG (if any)
-    - `history`: the recent conversation history
-    - `agent_scratchpad`: where the *Agent* can concatenate tools use and multiple calls to the LLM.
-    """
-    return variables
-
-
-@hook(priority=0)
 def agent_prompt_suffix(prompt_suffix: str, cat) -> str:
     """Hook the main prompt suffix.
 

@@ -7,9 +7,10 @@ from cat.services.service_factory import ServiceFactory
 from tests.utils import api_key
 
 
-def test_get_all_agentic_workflow_settings(secure_client, secure_client_headers, agent_plugin_manager):
+def test_get_all_agentic_workflow_settings(secure_client, secure_client_headers, cheshire_cat):
     agentic_workflow_schemas = ServiceFactory(
-        agent_plugin_manager,
+        agent_key=cheshire_cat.agent_key,
+        hook_manager=cheshire_cat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_agentic_workflows",
         setting_category="agentic_workflow",
         schema_name="agenticWorkflowName",

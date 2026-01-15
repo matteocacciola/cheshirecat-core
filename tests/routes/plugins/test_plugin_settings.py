@@ -32,6 +32,8 @@ def test_get_all_plugin_settings(lizard, secure_client, secure_client_headers):
                 "is_disabled": True,
             }
             assert setting["scheme"] == PluginSettings.model_json_schema()
+        elif setting["name"] == "memory":
+            assert setting["value"] == {"enable_llm_knowledge": True}
         else:
             assert setting["value"] == {}
             assert setting["scheme"] == {}

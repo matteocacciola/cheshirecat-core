@@ -7,7 +7,6 @@ from mcp.types import Prompt, Resource, Tool
 from slugify import slugify
 
 from cat.log import log
-from cat.looking_glass.mad_hatter.decorators.tool import CatTool
 from cat.looking_glass.mad_hatter.procedures import CatProcedure, CatProcedureType
 from cat.utils import run_sync_or_async
 
@@ -115,9 +114,9 @@ class CatMcpClient(Client, CatProcedure, ABC):
                         return await self.call_tool(tool_name, **kwargs)
                 try:
                     return run_sync_or_async(call_tool_async)
-                except Exception as e:
-                    log.error(f"{self.name} - Error calling tool {tool_name}: {e}")
-                    return {"error": f"Error calling tool {tool_name}: {str(e)}"}
+                except Exception as ex:
+                    log.error(f"{self.name} - Error calling tool {tool_name}: {ex}")
+                    return {"error": f"Error calling tool {tool_name}: {str(ex)}"}
             return tool_caller
 
         # Fallback to all tools if find_relevant_tools wasn't called
@@ -133,17 +132,15 @@ class CatMcpClient(Client, CatProcedure, ABC):
 
             # Conversion logic
             try:
-                cat_tool = CatTool.from_fastmcp(mcp_tool, self.call_tool, self.plugin_id)
-
-                description = cat_tool.description or "No description provided."
+                description = mcp_tool.description or mcp_tool.name or "No description provided."
                 if self.examples:
                     description += "\n\nE.g.:\n" + "\n".join(f"- {ex}" for ex in self.examples)
 
                 structured_tool = StructuredTool.from_function(
-                    name=f"{self.name}_{cat_tool.name}",
+                    name=cache_key,
                     description=description,
-                    func=create_tool_caller(cat_tool.name),
-                    args_schema=cat_tool.input_schema,
+                    func=create_tool_caller(mcp_tool.name),
+                    args_schema=mcp_tool.inputSchema,
                 )
 
                 self._langchain_tools_cache[cache_key] = structured_tool

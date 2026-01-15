@@ -1,11 +1,10 @@
 import pytest
-from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 
-from cat import AgenticTask
+from cat import AgenticWorkflowTask
 from cat.db.cruds import users as crud_users
 from cat.looking_glass import StrayCat
 from cat.services.memory.messages import MessageWhy
-from cat.services.memory.utils import recall, VectorMemoryType
+from cat.services.memory.models import VectorMemoryType, RecallSettings
 from cat.services.memory.working_memory import WorkingMemory
 
 from tests.utils import api_key, create_mock_plugin_zip, send_file, http_message
@@ -20,12 +19,11 @@ def test_stray_initialization(stray_no_memory):
 
 @pytest.mark.asyncio
 async def test_stray_nlp(lizard, stray_no_memory):
+    agent_input = AgenticWorkflowTask(
+        user_prompt="hey",
+    )
     res = await stray_no_memory.agentic_workflow.run(
-        task=AgenticTask(
-            prompt=ChatPromptTemplate.from_messages([
-                HumanMessagePromptTemplate.from_template(template="hey")
-            ]),
-        ),
+        task=agent_input,
         llm=stray_no_memory.large_language_model,
     )
     assert "You did not configure" in res.output
@@ -55,7 +53,8 @@ async def test_stray_call(secure_client, stray_no_memory):
     }
 
     # send message
-    status_code, response_json = http_message(secure_client,{"text": "Where do I go?"}, ccat_headers)
+    message = "what time is it?"
+    status_code, response_json = http_message(secure_client,{"text": message}, ccat_headers)
 
     assert status_code == 200
     assert response_json["agent_id"] == stray_no_memory.agent_key
@@ -64,7 +63,7 @@ async def test_stray_call(secure_client, stray_no_memory):
     assert response_json["message"]["type"] == "chat"
     assert "You did not configure" in response_json["message"]["text"]
 
-    assert response_json["message"]["why"]["input"] == "Where do I go?"
+    assert response_json["message"]["why"]["input"] == message
     assert response_json["message"]["why"]["intermediate_steps"] == []
     assert response_json["message"]["why"]["memory"] == {'declarative': []}
 
@@ -77,7 +76,9 @@ async def test_stray_recall_all_memories(secure_client, secure_client_headers, s
     send_file("sample.pdf", "application/pdf", secure_client, secure_client_headers)
 
     query = lizard.embedder.embed_query("")
-    memories = await recall(stray, query, VectorMemoryType.DECLARATIVE, k=None)
+    memories = await stray.agentic_workflow.context_retrieval(
+        VectorMemoryType.DECLARATIVE, RecallSettings(embedding=query, k=None)
+    )
 
     assert len(memories) > 0
     for mem in memories:
@@ -92,8 +93,10 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
 
     file_name = "sample.pdf"
     _, file_path = send_file(file_name, content_type, secure_client, secure_client_headers)
-
-    memories = await recall(stray, query, VectorMemoryType.DECLARATIVE, metadata={"source": file_name})
+    memories = await stray.agentic_workflow.context_retrieval(
+        VectorMemoryType.DECLARATIVE,
+        RecallSettings(threshold=0.1, embedding=query, metadata={"source": file_name}),
+    )
     assert len(memories) > 0
     for mem in memories:
         assert mem.document.metadata["source"] == file_name
@@ -102,7 +105,10 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
         files = {"file": ("sample2.pdf", f, content_type)}
         _ = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
 
-    memories = await recall(stray, query, VectorMemoryType.DECLARATIVE, metadata={"source": file_name})
+    memories = await stray.agentic_workflow.context_retrieval(
+        VectorMemoryType.DECLARATIVE,
+        RecallSettings(threshold=0.1, embedding=query, metadata={"source": file_name}),
+    )
     assert len(memories) > 0
     for mem in memories:
         assert mem.document.metadata["source"] == file_name

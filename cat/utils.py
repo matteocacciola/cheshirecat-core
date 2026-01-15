@@ -13,7 +13,6 @@ import requests
 from PIL import Image
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, ConfigDict
-from rapidfuzz.distance import Levenshtein
 
 from cat.log import log
 
@@ -172,11 +171,6 @@ HOW TO FIX: go to your OpenAI account and add a credit card"""
         log.error(error_description)  # just to make sure the message is read both front and backend
 
     return error_description
-
-
-def levenshtein_distance(prediction: str, reference: str) -> float:
-    res = Levenshtein.normalized_distance(prediction, reference)
-    return res
 
 
 def parse_json(json_string: str, pydantic_model: BaseModel = None) -> Dict:

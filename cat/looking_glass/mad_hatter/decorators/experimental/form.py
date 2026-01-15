@@ -1,7 +1,6 @@
 import json
 from abc import ABC, abstractmethod
 from typing import List, Dict, Type
-from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, ValidationError
 from slugify import slugify
@@ -80,7 +79,7 @@ class CatForm(CatProcedure, ABC):  # base model of forms
         return [StructuredTool.from_function(
             name=self.name,
             description=description,
-            func=self.next,
+            coroutine=self.next,
         )]
 
     @property
@@ -312,18 +311,15 @@ Updated JSON:
             log.error(f"Error while executing form: {e}")
             return ""
 
-    async def _run_agent(self, prompt_template: str, prompt_variables: Dict | None = None) -> "AgentOutput":
-        from cat.services.factory.agentic_workflow import AgenticTask
+    async def _run_agent(self, prompt_template: str, prompt_variables: Dict | None = None) -> "AgenticWorkflowOutput":
+        from cat.looking_glass.models import AgenticWorkflowTask
 
-        response = await self._agent.run(
-            task=AgenticTask(
-                prompt=ChatPromptTemplate.from_messages([
-                    HumanMessagePromptTemplate.from_template(template=prompt_template)
-                ]),
-                prompt_variables=prompt_variables,
-            ),
-            llm=self.stray.large_language_model,
+        agent_input = AgenticWorkflowTask(
+            user_prompt=prompt_template,
+            prompt_variables=prompt_variables,
         )
+
+        response = await self._agent.run(task=agent_input, llm=self.stray.large_language_model)
         return response
 
 # form decorator

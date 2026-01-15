@@ -13,7 +13,7 @@ from langchain_core.documents.base import Document, Blob
 
 from cat.log import log
 from cat.services.factory.chunker import BaseChunker
-from cat.services.memory.utils import PointStruct, VectorMemoryType
+from cat.services.memory.models import PointStruct, VectorMemoryType
 
 
 class RabbitHole:

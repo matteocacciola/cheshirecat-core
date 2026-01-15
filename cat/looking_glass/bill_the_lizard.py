@@ -17,7 +17,7 @@ from cat.looking_glass.mad_hatter.registry import PluginRegistry
 from cat.looking_glass.tweedledum import Tweedledum
 from cat.rabbit_hole import RabbitHole
 from cat.services.factory.auth_handler import CoreAuthHandler
-from cat.services.memory.utils import VectorMemoryType
+from cat.services.memory.models import VectorMemoryType
 from cat.services.mixin import OrchestratorMixin
 from cat.services.websocket_manager import WebSocketManager
 from cat.utils import singleton, sanitize_permissions
@@ -289,10 +289,12 @@ class BillTheLizard(OrchestratorMixin):
 
         return cloned_ccat
 
-    async def embed_all_in_cheshire_cats(self) -> None:
+    async def embed_all_in_cheshire_cats(self, embedder_name: str, embedder_size: int) -> None:
         """Re-embeds all the stored files and procedures in all the Cheshire Cats using the current embedder."""
         ccat_ids = crud.get_agents_main_keys()
         stored_files_by_ccat: List[Dict] = []
+        # first, I need to get all the stored files from all the Cheshire Cats with the metadata stored
+        # within the vector memory; I do not remove anything from the latter to avoid any race condition
         for ccat_id in ccat_ids:
             if (ccat := self.get_cheshire_cat(ccat_id)) is None:
                 continue
@@ -302,6 +304,12 @@ class BillTheLizard(OrchestratorMixin):
                 "stored_files": await ccat.get_stored_files_with_metadata(),
             })
 
+        # now, I have to re-initialize all the vector databases in a serialized way, outside threads to avoid
+        # race conditions
+        for entry in stored_files_by_ccat:
+            await entry["ccat"].vector_memory_handler.initialize(embedder_name, embedder_size)
+
+        # finally, I can re-embed all the stored files in an asynchronous way
         for entry in stored_files_by_ccat:
             asyncio.create_task(entry["ccat"].embed_all(entry["stored_files"]))
 

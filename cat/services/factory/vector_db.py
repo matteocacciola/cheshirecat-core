@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import socket
 import sys
@@ -6,6 +7,7 @@ import uuid
 from abc import ABC, abstractmethod
 from typing import Any, List, Iterable, Dict, Tuple, Type
 from urllib.parse import urlparse
+from langchain_core.documents import Document as LangChainDocument
 import aiofiles
 import httpx
 from pydantic import ConfigDict
@@ -37,7 +39,7 @@ from qdrant_client.http.models import (
 
 from cat.log import log
 from cat.services.factory.models import BaseFactoryConfigModel
-from cat.services.memory.utils import (
+from cat.services.memory.models import (
     Document,
     DocumentRecall,
     Payload,
@@ -46,7 +48,6 @@ from cat.services.memory.utils import (
     ScoredPoint,
     UpdateResult,
     VectorMemoryType,
-    to_document_recall,
 )
 
 
@@ -873,6 +874,41 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             operation_id=res.operation_id,
         )
 
+    def _to_document_recall(self, m: Record | ScoredPoint) -> DocumentRecall:
+        """
+        Convert a Qdrant point to a DocumentRecall object
+
+        Args:
+            m (Record | ScoredPoint): The Qdrant point
+
+        Returns:
+            DocumentRecall: The converted DocumentRecall object
+        """
+        page_content = m.payload.get("page_content", "") if m.payload else ""
+        if isinstance(page_content, dict):
+            page_content = json.dumps(page_content)
+
+        metadata = m.payload.get("metadata", {}) if m.payload else {}
+        if isinstance(metadata, str):
+            try:
+                metadata = json.loads(metadata)
+            except json.JSONDecodeError:
+                metadata = {}
+
+        document = DocumentRecall(
+            document=LangChainDocument(
+                page_content=page_content,
+                metadata=metadata,
+            ),
+            vector=m.vector,
+            id=m.id,
+        )
+
+        if isinstance(m, ScoredPoint):
+            document.score = m.score
+
+        return document
+
     # retrieve similar memories from embedding
     async def recall_tenant_memory_from_embedding(
         self,
@@ -887,7 +923,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         # retrieve memories
         query_response = await self._client.query_points(
             collection_name=collection_name,
-            query=embedding,
+            query=embedding,  # type: ignore
             query_filter=Filter(must=conditions),
             with_payload=True,
             with_vectors=True,
@@ -904,11 +940,11 @@ class QdrantHandler(BaseVectorDatabaseHandler):
 
         # convert Qdrant points to a structure containing langchain.Document and its information
         retrieved_points = [ScoredPoint(**point.model_dump()) for point in query_response.points]
-        return [to_document_recall(m) for m in retrieved_points]
+        return [self._to_document_recall(m) for m in retrieved_points]
 
     async def recall_tenant_memory(self, collection_name: str) -> List[DocumentRecall]:
         all_points, _ = await self.get_all_tenant_points(collection_name)
-        memories = [to_document_recall(p) for p in all_points]
+        memories = [self._to_document_recall(p) for p in all_points]
 
         return memories
 
@@ -1048,7 +1084,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     ) -> List[ScoredPoint]:
         response = await self._client.query_points(
             collection_name=collection_name,
-            query=query_vector,
+            query=query_vector,  # type: ignore
             query_filter=query_filter,
             with_payload=with_payload,
             with_vectors=with_vectors,
@@ -1077,7 +1113,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     ) -> List[ScoredPoint]:
         response = await self._client.query_points(
             collection_name=collection_name,
-            query=FusionQuery(fusion=Fusion.RRF),
+            query=FusionQuery(fusion=Fusion.RRF),  # type: ignore
             query_filter=query_filter,
             prefetch=[
                 Prefetch(
