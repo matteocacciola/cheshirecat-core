@@ -3,20 +3,12 @@ import redis
 from cat.env import get_env
 from cat.utils import singleton
 
-DEFAULT_AGENT_KEY = "agent"  # default agent_id for backward compatibility
+DEFAULT_AGENTS_KEY = "agents"
+DEFAULT_AGENT_KEY = "agent"
+DEFAULT_CONVERSATIONS_KEY = "conversations"
+DEFAULT_PLUGINS_KEY = "plugins"
+DEFAULT_USERS_KEY = "users"
 DEFAULT_SYSTEM_KEY = "system"
-DEFAULT_SCHEMA_KEY = "schema"
-UNALLOWED_AGENT_KEYS = [
-    DEFAULT_SYSTEM_KEY,
-    DEFAULT_SCHEMA_KEY,
-    "agent_id",
-    "chat_id",
-    "user_id",
-    "session_id",
-    "message_id",
-    "web",
-    "batch",
-]
 
 
 @singleton

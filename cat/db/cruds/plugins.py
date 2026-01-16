@@ -3,6 +3,7 @@ from redis.exceptions import RedisError
 
 from cat.db import crud
 from cat.db.cruds import settings as crud_settings
+from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY, DEFAULT_PLUGINS_KEY
 from cat.log import log
 
 
@@ -15,9 +16,13 @@ def format_key(agent_id: str, plugin_id: str) -> str:
         plugin_id: ID of the plugin.
 
     Returns:
-        Formatted key (e.g., "<agent_id>:plugin:<plugin_id>").
+        Formatted key (e.g., "agents:<agent_id>:plugins:<plugin_id>" or "system:plugins:<plugin_id>" for the system agent)
     """
-    return f"{agent_id}:plugin:{plugin_id}"
+    return (
+        f"{DEFAULT_SYSTEM_KEY}:{DEFAULT_PLUGINS_KEY}:{plugin_id}"
+        if agent_id == DEFAULT_SYSTEM_KEY
+        else f"{DEFAULT_AGENTS_KEY}:{agent_id}:{DEFAULT_PLUGINS_KEY}:{plugin_id}"
+    )
 
 
 def get_settings(agent_id: str) -> Dict[str, Dict[str, Any]]:
@@ -184,7 +189,7 @@ def destroy_plugin(plugin_id: str):
 
 def get_agents_plugin_keys(plugin_id: str) -> List[str]:
     """
-    Get all unique agent IDs from Redis keys that have the format *:plugin_id:<plugin_name>.
+    Get all unique agent IDs from Redis keys that have the format agents:*:plugin_id:<plugin_name>.
 
     Args:
         plugin_id: The name of the plugin to filter by.

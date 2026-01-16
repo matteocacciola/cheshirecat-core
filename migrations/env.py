@@ -62,10 +62,8 @@ class MigrationRevision:
 
 class MigrationEnvironment:
     """Migration environment configuration"""
-    from cat.db.database import DEFAULT_SCHEMA_KEY
-
-    MIGRATIONS_KEY = f"{DEFAULT_SCHEMA_KEY}:migrations"
-    CURRENT_HEAD_KEY = f"{DEFAULT_SCHEMA_KEY}:current_head"
+    MIGRATIONS_KEY = "schema:migrations"
+    CURRENT_HEAD_KEY = "schema:current_head"
 
     def __init__(
         self,

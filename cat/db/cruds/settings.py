@@ -2,7 +2,7 @@ from typing import Dict, List
 from redis.exceptions import RedisError
 
 from cat.db import crud, models
-from cat.db.database import DEFAULT_AGENT_KEY
+from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY, DEFAULT_AGENT_KEY
 from cat.log import log
 
 
@@ -14,9 +14,13 @@ def format_key(key_id: str) -> str:
         key_id: Settings key identifier.
 
     Returns:
-        Formatted key (e.g., "<key_id>:<default_agent_key>").
+        Formatted key (e.g., "agents:<key_id>:agent" or "system:agent" for the system agent).
     """
-    return f"{key_id}:{DEFAULT_AGENT_KEY}"
+    return (
+        f"{DEFAULT_SYSTEM_KEY}:{DEFAULT_AGENT_KEY}"
+        if key_id == DEFAULT_SYSTEM_KEY
+        else f"{DEFAULT_AGENTS_KEY}:{key_id}:{DEFAULT_AGENT_KEY}"
+    )
 
 
 def get_settings(key_id: str, search: str = "") -> List[Dict]:

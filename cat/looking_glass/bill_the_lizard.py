@@ -7,7 +7,7 @@ from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
 from cat.auth.permissions import get_full_permissions
 from cat.db import crud
 from cat.db.cruds import settings as crud_settings, users as crud_users, plugins as crud_plugins
-from cat.db.database import DEFAULT_SYSTEM_KEY, UNALLOWED_AGENT_KEYS
+from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.env import get_env
 from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
@@ -171,9 +171,6 @@ class BillTheLizard(OrchestratorMixin):
         Returns:
             The Cheshire Cat with the given id, or None if it doesn't exist
         """
-        if agent_id in UNALLOWED_AGENT_KEYS:
-            raise ValueError(f"{agent_id} is not allowed as name for agents")
-
         if agent_id in crud.get_agents_main_keys():
             return self.get_cheshire_cat(agent_id)
 
@@ -265,7 +262,7 @@ class BillTheLizard(OrchestratorMixin):
         """
         # clone the settings from the provided agent
         log.info(f"Cloning settings from agent {ccat.agent_key} to agent {new_agent_id}")
-        crud.clone_agent(ccat.agent_key, new_agent_id, ["analytics"])
+        crud.clone_agent(ccat.agent_key, new_agent_id)
 
         # clone the vector points from the ccat to the provided agent
         cloned_ccat = self.get_cheshire_cat(new_agent_id)

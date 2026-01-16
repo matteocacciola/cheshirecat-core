@@ -1,11 +1,9 @@
-import pytest
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.embeddings import Embeddings
 from langchain_community.document_loaders import UnstructuredPDFLoader
 from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
 
 from cat.core_plugins.multimodality.unstructured_parser import UnstructuredParser
-from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.looking_glass import Tweedledee
 from cat.services.factory.chunker import BaseChunker
 from cat.services.factory.file_manager import BaseFileManager
@@ -35,12 +33,6 @@ def test_default_embedder_loaded(lizard):
     sample_embed = DumbEmbedder().embed_query(sentence)
     out = embedder.embed_query(sentence)
     assert sample_embed == out
-
-
-@pytest.mark.asyncio
-async def test_cheshire_cat_created_with_system_key(lizard):
-    with pytest.raises(ValueError):
-        await lizard.create_cheshire_cat(DEFAULT_SYSTEM_KEY)
 
 
 def test_file_handler_pdf(lizard, cheshire_cat):

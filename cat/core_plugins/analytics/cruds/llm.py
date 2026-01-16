@@ -29,7 +29,7 @@ def format_key(agent_id: str, user_id: str, chat_id: str, llm_id: str) -> str:
     Returns:
         Formatted key.
     """
-    return f"{agent_id}:{KEY_PREFIX}:{user_id}:{chat_id}:{llm_id}"
+    return f"{KEY_PREFIX}:llms:{llm_id}:{agent_id}:{user_id}:{chat_id}"
 
 
 def get_analytics(
@@ -45,12 +45,12 @@ def get_analytics(
         llm_id: LLM ID or "*" for all LLMs
 
     Returns:
-        Nested dictionary: {agent_id: {user_id: {chat_id: {llm_id: content}}}}
+        Nested dictionary: {llm_id: {agent_id: {user_id: {chat_id: <content>}}}}
     """
     try:
         pattern = format_key(agent_id, user_id, chat_id, llm_id)
 
-        return get_nested_analytics(pattern, expected_parts=5)
+        return get_nested_analytics(pattern, expected_parts=6)
     except RedisError as e:
         log.error(f"Redis error while fetching analytics for the LLMs: {e}")
         raise

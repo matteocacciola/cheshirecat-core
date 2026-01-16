@@ -5,6 +5,7 @@ from redis.exceptions import RedisError
 
 from cat.auth.auth_utils import check_password
 from cat.db import crud
+from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY, DEFAULT_USERS_KEY
 from cat.log import log
 
 
@@ -32,9 +33,13 @@ def format_key(agent_id: str) -> str:
         agent_id: ID of the chatbot.
 
     Returns:
-        Formatted key (e.g., "<agent_id>:users").
+        Formatted key (e.g., "agents:<agent_id>:users" or "system:users" for the system agent).
     """
-    return f"{agent_id}:users"
+    return (
+        f"{DEFAULT_SYSTEM_KEY}:{DEFAULT_USERS_KEY}"
+        if agent_id == DEFAULT_SYSTEM_KEY
+        else f"{DEFAULT_AGENTS_KEY}:{agent_id}:{DEFAULT_USERS_KEY}"
+    )
 
 
 def get_users(key_id: str, with_password: bool = False, with_timestamps: bool = False) -> Dict[str, Dict]:

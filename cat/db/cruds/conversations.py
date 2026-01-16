@@ -3,6 +3,7 @@ from typing import Dict, List, Any
 from redis.exceptions import RedisError
 
 from cat.db import crud
+from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_CONVERSATIONS_KEY
 from cat.log import log
 from cat.services.memory.messages import ConversationMessage
 
@@ -33,9 +34,9 @@ def format_key(agent_id: str, user_id: str, chat_id: str) -> str:
         chat_id: ID of the chat session.
 
     Returns:
-        Formatted key (e.g., "<agent_id>:conversation:<user_id>:<chat_id>").
+        Formatted key (e.g., "agents:<agent_id>:conversations:<user_id>:<chat_id>").
     """
-    return f"{agent_id}:conversation:{user_id}:{chat_id}"
+    return f"{DEFAULT_AGENTS_KEY}:{agent_id}:{DEFAULT_CONVERSATIONS_KEY}:{user_id}:{chat_id}"
 
 
 def get_conversation(agent_id: str, user_id: str, chat_id: str) -> Dict[str, Any] | None:
@@ -84,9 +85,9 @@ def get_conversations_attributes(agent_id: str, user_id: str) -> List[Dict[str, 
         for key_str in db.scan_iter(match=pattern):
             # Extract the chat_id from the key string
             parts = key_str.split(":")
-            if len(parts) != 4:
+            if len(parts) != 5:
                 continue
-            agent_id, _, user_id, chat_id = parts
+            _, agent_id, _, user_id, chat_id = parts
 
             messages = get_messages(agent_id, user_id, chat_id)
             num_messages = len(messages)

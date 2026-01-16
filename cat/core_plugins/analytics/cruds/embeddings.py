@@ -21,7 +21,7 @@ def format_key(agent_id: str, embedder_id: str) -> str:
     Returns:
         Formatted key.
     """
-    return f"{agent_id}:{KEY_PREFIX}:{embedder_id}"
+    return f"{KEY_PREFIX}:embedders:{agent_id}:{embedder_id}"
 
 
 def get_analytics(agent_id: str = "*", embedder_id: str = "*") -> Dict[str, Dict[str, Any]]:
@@ -33,11 +33,11 @@ def get_analytics(agent_id: str = "*", embedder_id: str = "*") -> Dict[str, Dict
         embedder_id: Embedder ID or "*" for all embedders
 
     Returns:
-        Nested dictionary: {agent_id: {embedder_id: content}}
+        Nested dictionary: {embedder_id: {agent_id: <content>}}
     """
     try:
         pattern = format_key(agent_id, embedder_id)
-        return get_nested_analytics(pattern, expected_parts=3)
+        return get_nested_analytics(pattern, expected_parts=4)
     except RedisError as e:
         log.error(f"Redis error while fetching analytics for the Embedders: {e}")
         raise

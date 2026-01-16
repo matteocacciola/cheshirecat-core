@@ -43,7 +43,7 @@ COPY ./migrations ./migrations
 ### INSTALL PLUGIN DEPENDENCIES ###
 RUN find /app/cat/core_plugins -name requirements.txt -exec uv pip install --no-cache -r {} \; && \
     uv cache clean && \
-    find /app | grep -E "(/__pycache__$|\.pyc$|\.pyo$)" | xargs sudo rm -rf && \
+    find /app -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
     pip cache purge
 
 ### FINISH ###

@@ -5,8 +5,7 @@ from redis.exceptions import RedisError
 from cat.db.database import (
     get_db as get_db_base,
     get_db_connection_string as get_db_connection_string_base,
-    DEFAULT_SYSTEM_KEY,
-    DEFAULT_SCHEMA_KEY,
+    DEFAULT_AGENTS_KEY,
 )
 from cat.log import log
 
@@ -147,12 +146,12 @@ def destroy(key_pattern: str):
         raise
 
 
-def get_agents_main_keys(pattern: str | None = "*") -> List[str]:
+def get_agents_main_keys(pattern: str | None = None) -> List[str]:
     """
-    Get all unique agent IDs from Redis keys, excluding DEFAULT_SYSTEM_KEY.
+    Get all unique agent IDs from Redis keys.
 
     Args:
-        pattern: Pattern to match keys (default: "*").
+        pattern: Pattern to match keys (default: None, all agent keys).
 
     Returns:
         List of unique agent IDs.
@@ -160,43 +159,38 @@ def get_agents_main_keys(pattern: str | None = "*") -> List[str]:
     Raises:
         RedisError: If Redis connection fails.
     """
+    pattern = f"{DEFAULT_AGENTS_KEY}:*" if pattern is None else pattern
+
     try:
-        return list({
-            ks
-            for k in get_db().scan_iter(pattern)
-            if (ks := k.split(":")[0]) not in [DEFAULT_SYSTEM_KEY, DEFAULT_SCHEMA_KEY]
-        })
+        return sorted(
+            list({k.split(":")[1] for k in get_db().scan_iter(pattern)})
+        )
     except RedisError as e:
         log.error(f"Redis error in get_agents_main_keys: {e}")
         raise
 
 
-def clone_agent(source_prefix: str, target_prefix: str, skip_keys: List[str] | None = None) -> int:
+def clone_agent(source_prefix: str, target_prefix: str) -> int:
     """
     Clone all keys with source_prefix to target_prefix.
 
     Args:
         source_prefix: Source key prefix (e.g., "agent_test")
         target_prefix: Target key prefix (e.g., "test_clone_agent_2")
-        skip_keys: List of specific keys to skip during cloning (e.g., ["analytics"]). Optional.
 
     Returns:
         Number of keys cloned
     """
-    skip_keys = skip_keys or []
-
     try:
         db = get_db()
 
         # Find all keys with the source prefix
-        pattern = f"{source_prefix}:*"
+        pattern = f"{DEFAULT_AGENTS_KEY}:{source_prefix}:*"
         keys = list(db.scan_iter(match=pattern))
         # Filter out keys to skip
         keys = [
-            kd
+            (k.decode() if isinstance(k, bytes) else k)
             for k in keys
-            for skip_key in skip_keys
-            if skip_key not in (kd := (k.decode() if isinstance(k, bytes) else k))
         ]
 
         if not keys:

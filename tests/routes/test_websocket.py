@@ -56,24 +56,25 @@ def test_websocket(secure_client, secure_client_headers):
     # check analytics
     response = secure_client.get("/analytics/llm", headers=secure_client_headers)
     analytics = response.json()
-    assert agent_id in analytics.keys()
-    assert analytics[agent_id] is not None
-    assert len(analytics[agent_id].keys()) == 1
-
-    user_id = list(analytics[agent_id].keys())[0]
-    assert user_id is not None
-    assert isinstance(analytics[agent_id][user_id], dict)
-
-    chat_id = list(analytics[agent_id][user_id].keys())[0]
-    assert chat_id is not None
-    assert isinstance(analytics[agent_id][user_id][chat_id], dict)
-
-    llm_id = list(analytics[agent_id][user_id][chat_id].keys())[0]
+    #{llm_id: {agent_id: {user_id: {chat_id: <content>}}}}
+    assert isinstance(analytics, dict)
+    llm_id = list(analytics.keys())[0]
     assert llm_id == "default_llm"
-    assert isinstance(analytics[agent_id][user_id][chat_id][llm_id], dict)
+
+    assert agent_id in analytics[llm_id].keys()
+    assert analytics[llm_id] is not None
+    assert len(analytics[llm_id].keys()) == 1
+
+    user_id = list(analytics[llm_id][agent_id].keys())[0]
+    assert user_id is not None
+    assert isinstance(analytics[llm_id][agent_id][user_id], dict)
+
+    chat_id = list(analytics[llm_id][agent_id][user_id].keys())[0]
+    assert chat_id is not None
+    assert isinstance(analytics[llm_id][agent_id][user_id][chat_id], dict)
 
     # no tokens used since no valid LLM was configured and, then, no LLM call was made
-    info = analytics[agent_id][user_id][chat_id][llm_id]
+    info = analytics[llm_id][agent_id][user_id][chat_id]
     assert "input_tokens" in info.keys()
     assert info["input_tokens"] == 0
     assert "output_tokens" in info.keys()
