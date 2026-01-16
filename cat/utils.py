@@ -7,7 +7,8 @@ import os
 import threading
 from enum import Enum as BaseEnum, EnumMeta
 from io import BytesIO
-from typing import Dict, List, Type, TypeVar, Any, Callable, Union, Generic
+from typing import Dict, List, Type, TypeVar, Any, Callable, Union, Generic, Tuple
+import filetype
 from typing_extensions import deprecated
 import requests
 from PIL import Image
@@ -507,3 +508,37 @@ def sanitize_permissions(permissions: Dict[str, List[str]], agent_key: str) -> D
         sanitized_permissions[resource] = [perm for perm in list(set(perms)) if perm in AuthPermission]
 
     return sanitized_permissions
+
+
+def guess_file_type(bytes_io: BytesIO) -> Tuple[str | None, str | None]:
+    """
+    Guess file type using the filetype library, with fallback for text files
+
+    Args:
+        bytes_io (BytesIO): The BytesIO object containing the file data.
+
+    Returns:
+        Tuple[str | None, str | None]: A tuple containing the MIME type and file extension, or (None, None) if unknown.
+    """
+    current_pos = bytes_io.tell()
+
+    bytes_io.seek(0)
+    kind = filetype.guess(bytes_io)
+
+    bytes_io.seek(current_pos)
+
+    if kind is None:
+        # Fallback: check if it's a text file
+        bytes_io.seek(0)
+        sample = bytes_io.read(8192)  # Read first 8KB
+        bytes_io.seek(current_pos)
+
+        try:
+            # Try to decode as text
+            sample.decode("utf-8")
+            return "text/plain", "txt"
+        except (UnicodeDecodeError, AttributeError):
+            # Not valid UTF-8 text
+            return None, None
+
+    return kind.mime, kind.extension

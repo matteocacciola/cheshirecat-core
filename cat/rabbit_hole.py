@@ -1,6 +1,7 @@
 import json
 import mimetypes
 import os
+import re
 import tempfile
 import time
 from io import BytesIO
@@ -104,6 +105,7 @@ class RabbitHole:
         filename: str | None = None,
         metadata: Dict = None,
         store_file: bool = True,
+        content_type: str | None = None,
     ):
         """
         Load a file in the Cat's declarative memory.
@@ -117,14 +119,10 @@ class RabbitHole:
             filename (str): The filename of the file to be ingested, if coming from the `/rabbithole/` endpoint.
             metadata (Dict): Metadata to be stored with each chunk.
             store_file (bool): Whether to store the file in the Cat's file storage.
+            content_type (str): The content type of the file. If not provided, it will be guessed based on the file extension.
 
         See Also:
             before_rabbithole_stores_documents
-
-        Notes
-        ----------
-        Currently supported formats are `.txt`, `.pdf` and `.md`.
-        You can add custom ones or substitute the above via RabbitHole hooks.
         """
         self.setup(cat)
 
@@ -132,8 +130,13 @@ class RabbitHole:
         if not filename:
             raise ValueError("No filename provided.")
 
+        # replace multiple spaces with underscore
+        filename = re.sub(r'\s+', '_', filename)
+
         # split a file into a list of docs
-        file_bytes, content_type, docs = await self._file_to_docs(file=file, filename=filename)
+        file_bytes, content_type, docs = await self._file_to_docs(
+            file=file, filename=filename, content_type=content_type
+        )
 
         # store in memory
         await self._store_documents(docs=docs, source=filename, metadata=metadata)
@@ -142,7 +145,9 @@ class RabbitHole:
         if store_file:
             await self._save_file(file_bytes, content_type, filename)
 
-    async def _file_to_docs(self, file: str | BytesIO, filename: str) -> Tuple[bytes, str | None, List[Document]]:
+    async def _file_to_docs(
+        self, file: str | BytesIO, filename: str, content_type: str | None = None
+    ) -> Tuple[bytes, str | None, List[Document]]:
         """
         Load and convert files to Langchain `Document`.
 
@@ -152,33 +157,28 @@ class RabbitHole:
         Args:
             file (str | BytesIO): The file can be either a string path if loaded programmatically, a `BytesIO` if coming from the `/rabbithole/` endpoint, or a URL if coming from the `/rabbithole/web` endpoint.
             filename (str): The filename of the file to be ingested.
+            content_type (str): The content type of the file. If not provided, it will be guessed based on the file extension.
 
         Returns:
             (bytes, content_type, docs): Tuple[bytes, List[Document]]. The file bytes, the content type and the list of chunked Langchain `Document`.
-
-        Notes
-        -----
-        This method is used by both `/rabbithole/` and `/rabbithole/web` endpoints.
-        Currently supported files are `.txt`, `.pdf`, `.md` and web pages.
         """
         source = None
-        content_type = None
         file_bytes = None
+
+        if not isinstance(file, BytesIO) and not isinstance(file, str):
+            raise ValueError(f"{type(file)} is not a valid type.")
 
         # Check type of incoming file.
         if isinstance(file, BytesIO):
             # Get mime type and source of UploadFile
-            content_type = mimetypes.guess_type(filename)[0]
             source = filename
 
             # Get file bytes
             file_bytes = file.read()
-        elif isinstance(file, str):
-            # Check if a string file is a string or url
+        else:
             parsed_file = urlparse(file)
-            is_url = all([parsed_file.scheme, parsed_file.netloc])
-
-            if is_url:
+            # Check if a string file is a string or url
+            if all([parsed_file.scheme, parsed_file.netloc]):
                 try:
                     # Make a request with a fake browser name
                     response = httpx.get(file, headers={"User-Agent": "Magic Browser"})
@@ -203,8 +203,6 @@ class RabbitHole:
                 # Get file bytes
                 with open(file, "rb") as f:
                     file_bytes = f.read()
-        else:
-            raise ValueError(f"{type(file)} is not a valid type.")
 
         if not file_bytes:
             raise ValueError(f"Something went wrong with the file {source}")

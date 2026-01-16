@@ -11,6 +11,7 @@ from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException
 from cat.log import log
 from cat.services.memory.models import VectorMemoryType
+from cat.utils import guess_file_type
 
 router = APIRouter(tags=["Rabbit Hole"], prefix="/rabbithole")
 
@@ -49,14 +50,15 @@ def _on_upload_single_file(
     lizard = info.lizard
     cat = info.stray_cat or info.cheshire_cat
 
-    # Check the file format is supported
-    admitted_types = cat.file_handlers.keys()
+    filename = file.filename
+    file = BytesIO(file.file.read())
 
     # Get file mime type
-    content_type, _ = mimetypes.guess_type(file.filename)
+    content_type, _ = guess_file_type(file)
     log.info(f"Uploaded {content_type} down the rabbit hole")
 
     # check if MIME type of uploaded file is supported
+    admitted_types = cat.file_handlers.keys()
     if content_type not in admitted_types:
         CustomValidationException(
             f'MIME type {content_type} not supported. Admitted types: {" - ".join(admitted_types)}'
@@ -67,8 +69,9 @@ def _on_upload_single_file(
     background_tasks.add_task(
         lizard.rabbit_hole.ingest_file,
         cat=cat,
-        file=BytesIO(file.file.read()),
-        filename=file.filename,
+        file=file,
+        filename=filename,
+        content_type=content_type,
         metadata=json.loads(metadata)
     )
 

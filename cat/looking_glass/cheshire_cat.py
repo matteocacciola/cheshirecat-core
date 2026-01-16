@@ -15,6 +15,7 @@ from cat.looking_glass.tweedledee import Tweedledee
 from cat.services.factory.file_manager import FileResponse
 from cat.services.memory.models import VectorMemoryType
 from cat.services.mixin import BotMixin
+from cat.utils import guess_file_type
 
 
 # main class
@@ -174,8 +175,14 @@ class CheshireCat(BotMixin):
 
         rabbit_hole = self.rabbit_hole
         for file in stored_files:
+            content_type, _ = guess_file_type(file.content)
             await rabbit_hole.ingest_file(
-                self, file.content, file.name, file.metadata, store_file=False
+                cat=self,
+                file=file.content,
+                filename=file.name,
+                metadata=file.metadata,
+                store_file=False,
+                content_type=content_type,
             )
 
         log.info(f"Agent id: {self.id}. Embedded {len(stored_files)} files in {collection_name} vector memory")

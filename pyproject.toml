@@ -17,6 +17,7 @@ dependencies = [
     "fastapi",
     "fastapi-healthz[redis]",
     "fastmcp",
+    "filetype",
     "gunicorn",
     "httpx",
     "langchain",

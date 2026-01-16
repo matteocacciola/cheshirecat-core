@@ -101,6 +101,7 @@ async def download_file(
     # Remove any path separators and resolve path components
     # This prevents directory traversal attacks like "../../../etc/passwd"
     sanitized_source = os.path.basename(source_name.strip())
+    sanitized_source, sanitized_extension = os.path.splitext(sanitized_source)
 
     # Additional validation: reject suspicious patterns
     forbidden_patterns = ['.', '..', '/', '\\', '\x00']
@@ -116,6 +117,7 @@ async def download_file(
         raise CustomValidationException("Invalid filename")
 
     # Optional: Additional path validation using pathlib for extra safety
+    sanitized_source = f"{sanitized_source}{sanitized_extension}"
     try:
         # This ensures the resolved path doesn't escape the intended directory
         base_path = Path(ccat.id).resolve()
