@@ -29,7 +29,6 @@ class BaseAgenticWorkflowHandler(ABC):
         self._vector_memory_handler = None
 
         self._task: AgenticWorkflowTask | None = None
-        self._prompt: ChatPromptTemplate| None = None
         self._llm: BaseLanguageModel | None = None
         self._callbacks: List[BaseCallbackHandler] | None = None
         self._can_bind_tools = False
@@ -67,7 +66,7 @@ class BaseAgenticWorkflowHandler(ABC):
         self._llm = llm
         self._callbacks = callbacks or []
 
-        self._prompt = ChatPromptTemplate.from_messages([
+        prompt = ChatPromptTemplate.from_messages([
             *([SystemMessagePromptTemplate.from_template(template=task.system_prompt)] if task.system_prompt else []),
             HumanMessagePromptTemplate.from_template(template=task.user_prompt),
             *self._task.history,
@@ -76,7 +75,7 @@ class BaseAgenticWorkflowHandler(ABC):
         # Intrinsic detection of tool binding support
         self._can_bind_tools = task.tools and hasattr(llm, "bind_tools")
 
-        result = await self._run()
+        result = await self._run(prompt)
         return result
 
     @abstractmethod
@@ -99,10 +98,16 @@ class BaseAgenticWorkflowHandler(ABC):
         pass
 
     @abstractmethod
-    async def _run(self) -> AgenticWorkflowOutput:
+    async def _run(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
         """
         The internal run method to be implemented by subclasses.
         Executes the agentic workflow logic.
+
+        Args:
+            prompt (ChatPromptTemplate): The prompt template to use for the agent.
+
+        Returns:
+            AgenticWorkflowOutput: The output of the agentic workflow execution.
         """
         pass
 
@@ -122,65 +127,78 @@ class CoreAgenticWorkflow(BaseAgenticWorkflowHandler):
         memories = await self.vector_memory_handler.recall_tenant_memory(str(collection))
         return memories
 
-    async def _run(self) -> AgenticWorkflowOutput:
-        def clean_response(response: str) -> str:
-            # parse the `response` string and get the text from <answer></answer> tag
-            if "<answer>" in response and "</answer>" in response:
-                start = response.index("<answer>") + len("<answer>")
-                end = response.index("</answer>")
-                return response[start:end].strip()
-            # otherwise, remove from `response` all the text between whichever tag and then return the remaining string
-            # This pattern matches any complete tag pair: <tagname>content</tagname>
-            cleaned = re.sub(r'<([^>]+)>.*?</\1>', '', response, flags=re.DOTALL)
-            return cleaned.strip()
+    def _clean_response(self, response: str) -> str:
+        # parse the `response` string and get the text from <answer></answer> tag
+        if "<answer>" in response and "</answer>" in response:
+            start = response.index("<answer>") + len("<answer>")
+            end = response.index("</answer>")
+            return response[start:end].strip()
 
-        def extract_info(action) -> Tuple[Tuple[str | None, Dict, Dict] | None, str]:
-            if not isinstance(action, tuple) or len(action) < 2:
-                return None, str(action)
-            # Extract the main fields from the first element of the tuple
-            tool = getattr(action[0], "tool")
-            tool_input = getattr(action[0], "tool_input", {})
-            usage_metadata = getattr(action[0], "usage_metadata", {})
-            # Create a tuple with the extracted information
-            return (tool, tool_input, usage_metadata), action[1]
+        # otherwise, remove from `response` all the text between whichever tag and then return the remaining string
+        # This pattern matches any complete tag pair: <tagname>content</tagname>
+        cleaned = re.sub(r'<([^>]+)>.*?</\1>', '', response, flags=re.DOTALL)
+        return cleaned.strip()
 
+    def _extract_info(self, action) -> Tuple[Tuple[str | None, Dict, Dict] | None, str]:
+        if not isinstance(action, tuple) or len(action) < 2:
+            return None, str(action)
+
+        # Extract the main fields from the first element of the tuple
+        tool = getattr(action[0], "tool")
+        tool_input = getattr(action[0], "tool_input", {})
+        usage_metadata = getattr(action[0], "usage_metadata", {})
+
+        # Create a tuple with the extracted information
+        return (tool, tool_input, usage_metadata), action[1]
+
+    async def _run_no_bind(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
+        prompt_variables = self._task.prompt_variables or {}
+
+        chain = prompt | self._llm
+        langchain_msg = await chain.ainvoke(prompt_variables, config=RunnableConfig(callbacks=self._callbacks))
+
+        output = getattr(langchain_msg, "content", str(langchain_msg))
+        return AgenticWorkflowOutput(output=self._clean_response(output))
+
+    async def _run_with_bind(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
+        # Deepcopy the prompt to avoid modifying the original
+        prompt = ChatPromptTemplate.from_messages(
+            prompt.messages + [HumanMessagePromptTemplate.from_template("{agent_scratchpad}")]
+        )
+
+        # Create the agent with the proper prompt structure
+        agent = create_tool_calling_agent(llm=self._llm, tools=self._task.tools, prompt=prompt)
+        # Create the agent executor
+        agent_executor = AgentExecutor.from_agent_and_tools(
+            agent=agent,
+            tools=self._task.tools,
+            callbacks=self._callbacks,
+            return_intermediate_steps=True,
+            verbose=True,
+            handle_parsing_errors=True,  # Add error handling
+        )
+        # Run the agent
+        langchain_msg = await agent_executor.ainvoke(
+            self._task.prompt_variables or {}, config=RunnableConfig(callbacks=self._callbacks)
+        )
+
+        cleaned_output = self._clean_response(langchain_msg.get("output", "")).strip()
+        extracted_steps = [self._extract_info(step) for step in langchain_msg.get("intermediate_steps", [])]
+        return AgenticWorkflowOutput(output=cleaned_output, intermediate_steps=extracted_steps)
+
+    async def _run(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
         # Direct LLM invocation
         if not self._can_bind_tools:
-            prompt_variables = self._task.prompt_variables or {}
-
-            chain = self._prompt | self._llm
-            langchain_msg = await chain.ainvoke(prompt_variables, config=RunnableConfig(callbacks=self._callbacks))
-
-            output = getattr(langchain_msg, "content", str(langchain_msg))
-            return AgenticWorkflowOutput(output=clean_response(output))
+            res = await self._run_no_bind(prompt)
+            return res
 
         try:
-            self._prompt.messages.append(HumanMessagePromptTemplate.from_template("{agent_scratchpad}"))
-
-            # Create the agent with a proper prompt structure
-            agent = create_tool_calling_agent(llm=self._llm, tools=self._task.tools, prompt=self._prompt)
-            # Create the agent executor
-            agent_executor = AgentExecutor.from_agent_and_tools(
-                agent=agent,
-                tools=self._task.tools,
-                callbacks=self._callbacks,
-                return_intermediate_steps=True,
-                verbose=True,
-                handle_parsing_errors=True,  # Add error handling
-            )
-            # Run the agent
-            langchain_msg = await agent_executor.ainvoke(
-                self._task.prompt_variables or {}, config=RunnableConfig(callbacks=self._callbacks)
-            )
-
-            cleaned_output = clean_response(langchain_msg.get("output", "")).strip()
-            extracted_steps = [extract_info(step) for step in langchain_msg.get("intermediate_steps", [])]
-            return AgenticWorkflowOutput(output=cleaned_output, intermediate_steps=extracted_steps)
+            res = await self._run_with_bind(prompt)
+            return res
         except Exception as e:
             log.warning(f"Tool binding failed with error: {e}. Falling back to direct LLM invocation.")
-            self._can_bind_tools = False
 
-            res = await self._run()
+            res = await self._run_no_bind(prompt)
             return res
 
 
