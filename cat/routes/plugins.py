@@ -70,7 +70,7 @@ async def get_cheshirecat_plugins_settings(
 ) -> PluginsSettingsResponse:
     """Returns the settings of all the plugins"""
     ccat = info.cheshire_cat
-    return get_plugins_settings(ccat.plugin_manager, ccat.id)
+    return get_plugins_settings(ccat.plugin_manager, ccat.agent_key)
 
 
 @router.get("/settings/{plugin_id}", response_model=GetSettingResponse)
@@ -86,7 +86,7 @@ async def get_cheshirecat_plugin_settings(
     if not plugin_manager.local_plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
-    return get_plugin_settings(plugin_manager, plugin_id, ccat.id)
+    return get_plugin_settings(plugin_manager, plugin_id, ccat.agent_key)
 
 
 @router.put("/settings/{plugin_id}", response_model=GetSettingResponse)
@@ -113,7 +113,7 @@ async def upsert_cheshirecat_plugin_settings(
     except ValidationError as e:
         raise CustomValidationException("\n".join(list(map(lambda x: x["msg"], e.errors()))))
 
-    final_settings = plugin.save_settings(payload, ccat.id)
+    final_settings = plugin.save_settings(payload, ccat.agent_key)
 
     return GetSettingResponse(name=plugin_id, value=final_settings)
 
@@ -137,7 +137,7 @@ async def reset_cheshirecat_plugin_settings(
     if not ccat.plugin_manager.local_plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
-    crud_plugins.set_setting(ccat.id, plugin_id, factory_settings)
+    crud_plugins.set_setting(ccat.agent_key, plugin_id, factory_settings)
 
     return GetSettingResponse(name=plugin_id, value=factory_settings)
 

@@ -229,7 +229,7 @@ def agent_plugin_manager(cheshire_cat):
 async def stray_no_memory(cheshire_cat, agent_plugin_manager):
     stray_cat = StrayCat(
         user_data=AuthUserInfo(id=str(uuid4()), name="Alice", permissions=get_base_permissions()),
-        agent_id=cheshire_cat.id,
+        agent_id=cheshire_cat.agent_key,
         plugin_manager_generator=lambda: agent_plugin_manager,
     )
     yield stray_cat

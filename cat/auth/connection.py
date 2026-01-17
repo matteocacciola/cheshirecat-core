@@ -72,7 +72,7 @@ class ConnectionAuth(ABC):
                 connection,
                 self.resource,
                 self.permission,
-                ccat.id,
+                ccat.agent_key,
             )
 
         # if no user was obtained, raise an exception
@@ -86,7 +86,7 @@ class ConnectionAuth(ABC):
         if ccat is not None and (chat_id := extract_chat_id_from_request(connection)):
             stray_cat = StrayCat(
                 user_data=user,
-                agent_id=ccat.id,
+                agent_id=ccat.agent_key,
                 stray_id=chat_id,
                 plugin_manager_generator=lambda: ccat.plugin_manager,
             )

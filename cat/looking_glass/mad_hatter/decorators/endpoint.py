@@ -30,13 +30,13 @@ class CatEndpoint:
     def __repr__(self) -> str:
         return f"CustomEndpoint(path={self.name} methods={self.methods})"
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Two endpoints are equal if they have the same name and methods"""
         if not isinstance(other, CatEndpoint):
             return False
         return self.name == other.name and set(self.methods or []) == set(other.methods or [])
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Make CustomEndpoint hashable for use in sets/dicts"""
         methods_tuple = tuple(sorted(self.methods)) if self.methods else ()
         return hash((self.name, methods_tuple))

@@ -1,3 +1,4 @@
+import os
 from typing import List
 from pydantic import BaseModel
 
@@ -11,6 +12,8 @@ from cat import (
     log,
 )
 from cat.db.cruds import conversations as crud_conversations
+from cat.exceptions import CustomValidationException
+from cat.services.memory.models import VectorMemoryType
 
 
 class DeleteConversationHistoryResponse(BaseModel):
@@ -48,13 +51,27 @@ async def delete_conversation(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteConversationHistoryResponse:
     """Delete the specified user's conversation"""
-    if not info.stray_cat:
+    stray_cat = info.stray_cat
+    if not stray_cat:
         log.warning("Trying to change conversation name but no StrayCat found in AuthorizedInfo")
         return DeleteConversationHistoryResponse(deleted=False)
 
-    cat = info.stray_cat
-    crud_conversations.delete_conversation(cat.agent_key, cat.user.id, cat.id)
-    return DeleteConversationHistoryResponse(deleted=True)
+    cat = info.cheshire_cat
+    try:
+        # delete the files related to the conversation from the storage
+        cat.file_manager.remove_folder_from_storage(os.path.join(cat.agent_key, stray_cat.id))
+
+        # delete the elements of the conversation from the vector memory
+        await cat.vector_memory_handler.delete_tenant_points(
+            str(VectorMemoryType.DECLARATIVE), {"chat_id": stray_cat.id},
+        )
+
+        # Delete conversation from the database
+        crud_conversations.delete_conversation(stray_cat.agent_key, stray_cat.user.id, stray_cat.id)
+
+        return DeleteConversationHistoryResponse(deleted=True)
+    except Exception as e:
+        raise CustomValidationException(f"Failed to delete conversation {stray_cat.id}: {e}")
 
 
 # GET conversation history from working memory
@@ -104,7 +121,7 @@ async def get_conversations_ids(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> List[GetConversationsResponse]:
     """Get the specified user's conversation history from working memory"""
-    agent_id = info.cheshire_cat.id
+    agent_id = info.cheshire_cat.agent_key
     user_id = info.user.id
     attributes_list = crud_conversations.get_conversations_attributes(agent_id, user_id)
 

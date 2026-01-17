@@ -236,7 +236,7 @@ async def delete_memory_points_by_metadata(
 
         # delete the file with path `metadata["source"]` from the file storage
         if collection_id == VectorMemoryType.DECLARATIVE and (source := metadata.get("source")):
-            ccat.file_manager.remove_file_from_storage(f"{ccat.id}/{source}")
+            ccat.file_manager.remove_file_from_storage(f"{ccat.agent_key}/{source}")
 
         return DeleteMemoryPointsByMetadataResponse(deleted=ret)
     except Exception as e:

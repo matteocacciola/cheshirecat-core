@@ -30,10 +30,10 @@ class ModelInteraction(BaseModel):
         protected_namespaces=()
     )
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.model_type, tuple(self.prompt), self.input_tokens))
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if not isinstance(other, ModelInteraction):
             return NotImplemented
         return (self.model_type, self.prompt, self.input_tokens) == (other.model_type, other.prompt, other.input_tokens)

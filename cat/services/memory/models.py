@@ -12,13 +12,19 @@ class VectorMemoryType(utils.Enum):
 
 class DocumentRecall(BaseModel):
     """
-    Langchain `Document` retrieved from a memory, with the similarity score, the list of embeddings and the
+    Langchain `Document` retrieved from a memory, with the similarity score, the list of embeddings, and the
     id of the memory.
     """
     document: LangChainDocument
     score: float | None = None
     vector: List[float] = Field(default_factory=list)
     id: str | None = None
+
+    def __eq__(self, other: "DocumentRecall") -> bool:
+        return self.id == other.id
+
+    def __hash__(self) -> int:
+        return hash(self.id)
 
 
 class SparseVector(BaseModel, extra="forbid"):

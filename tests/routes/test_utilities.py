@@ -50,7 +50,7 @@ async def checks_on_agent_reset(res, client, ccat_id, lizard):
 
 
 async def checks_on_agent_destroy(cheshire_cat):
-    settings = crud_settings.get_settings(cheshire_cat.id)
+    settings = crud_settings.get_settings(cheshire_cat.agent_key)
     assert len(settings) > 0
 
     collections = await cheshire_cat.vector_memory_handler._client.get_collections()
@@ -84,7 +84,7 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
     assert response.status_code == 200
     assert response.json() == {"deleted_settings": True, "deleted_memories": True, "deleted_plugin_folders": True}
 
-    settings = crud_settings.get_settings(cheshire_cat.id)
+    settings = crud_settings.get_settings(cheshire_cat.agent_key)
     assert len(settings) == 0
 
     # check that the Lizard has been correctly recreated from scratch
@@ -108,25 +108,26 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
 
     received_token = res.json()["access_token"]
     response = client.post(
-        "/utils/agents/destroy", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": cheshire_cat.id}
+        "/utils/agents/destroy",
+        headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": cheshire_cat.agent_key},
     )
 
     assert response.status_code == 200
     assert response.json() == {"deleted_settings": True, "deleted_memories": True, "deleted_plugin_folders": False}
 
-    settings = crud_settings.get_settings(cheshire_cat.id)
+    settings = crud_settings.get_settings(cheshire_cat.agent_key)
     assert len(settings) == 0
 
-    conversations = get_db().get(crud_conversations.format_key(cheshire_cat.id, "*", "*"))
+    conversations = get_db().get(crud_conversations.format_key(cheshire_cat.agent_key, "*", "*"))
     assert conversations is None
 
-    plugins = get_db().get(crud_plugins.format_key(cheshire_cat.id, "*"))
+    plugins = get_db().get(crud_plugins.format_key(cheshire_cat.agent_key, "*"))
     assert plugins is None
 
-    users = get_db().get(crud_users.format_key(cheshire_cat.id))
+    users = get_db().get(crud_users.format_key(cheshire_cat.agent_key))
     assert users is None
 
-    qdrant_filter = Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=cheshire_cat.id))])
+    qdrant_filter = Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=cheshire_cat.agent_key))])
     count_response = await cheshire_cat.vector_memory_handler._client.count(
         collection_name=str(VectorMemoryType.DECLARATIVE), count_filter=qdrant_filter
     )
@@ -143,7 +144,7 @@ async def test_agent_reset_success(client, lizard, cheshire_cat):
     res = client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
-    await checks_on_agent_reset(res, client, cheshire_cat.id, lizard)
+    await checks_on_agent_reset(res, client, cheshire_cat.agent_key, lizard)
 
 
 @pytest.mark.asyncio
@@ -156,7 +157,7 @@ async def test_agent_reset_by_new_admin_success(secure_client, client, lizard, c
     )
     res = client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
 
-    await checks_on_agent_reset(res, client, cheshire_cat.id, lizard)
+    await checks_on_agent_reset(res, client, cheshire_cat.agent_key, lizard)
 
 
 @pytest.mark.asyncio
@@ -172,7 +173,7 @@ async def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard
 
     response = client.post(
         "/utils/agents/destroy",
-        headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": cheshire_cat.id}
+        headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": cheshire_cat.agent_key}
     )
 
     assert response.status_code == 403

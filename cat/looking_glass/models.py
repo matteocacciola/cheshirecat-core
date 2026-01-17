@@ -57,24 +57,30 @@ class AgenticWorkflowOutput(BaseModel):
     with_llm_error: bool = False
 
 
-class StoredFileWithMetadata(BaseModel):
+class StoredSourceWithMetadata(BaseModel):
     """
-    Represents a stored file along with its metadata.
+    Represents a stored source of Knowledge Base along with its metadata.
 
     Attributes
     ----------
     name: str
-        The unique identifier of the stored file.
-    content: BytesIO
-        The content of the file as a BytesIO stream.
+        The unique identifier of the stored source, e.g., a file path or URL.
+    content: BytesIO | None
+        The content of the source as a BytesIO stream, or None if the element is an URL
     metadata: Dict
-        A dictionary containing metadata associated with the file.
+        A dictionary containing metadata associated with the source.
     """
     name: str
-    content: BytesIO
+    content: BytesIO | None
     metadata: Dict
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    def __eq__(self, other: "StoredSourceWithMetadata") -> bool:
+        return self.name == other.name
+
+    def __hash__(self) -> int:
+        return hash(self.name)
 
 
 class ChatResponse(BaseModel):

@@ -298,7 +298,7 @@ class BillTheLizard(OrchestratorMixin):
 
             stored_files_by_ccat.append({
                 "ccat": ccat,
-                "stored_files": await ccat.get_stored_files_with_metadata(),
+                "stored_sources": await ccat.get_stored_sources_with_metadata(),
             })
 
         # now, I have to re-initialize all the vector databases in a serialized way, outside threads to avoid
@@ -308,7 +308,7 @@ class BillTheLizard(OrchestratorMixin):
 
         # finally, I can re-embed all the stored files in an asynchronous way
         for entry in stored_files_by_ccat:
-            asyncio.create_task(entry["ccat"].embed_all(entry["stored_files"]))
+            asyncio.create_task(entry["ccat"].embed_all(entry["stored_sources"]))
 
     async def shutdown(self) -> None:
         """

@@ -1,3 +1,4 @@
+import os
 from io import BytesIO
 from typing import Dict, List
 
@@ -10,12 +11,11 @@ from cat.db.cruds import (
 from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.looking_glass.mad_hatter.procedures import CatProcedureType
-from cat.looking_glass.models import StoredFileWithMetadata
+from cat.looking_glass.models import StoredSourceWithMetadata
 from cat.looking_glass.tweedledee import Tweedledee
-from cat.services.factory.file_manager import FileResponse
-from cat.services.memory.models import VectorMemoryType
+from cat.services.memory.models import VectorMemoryType, Record
 from cat.services.mixin import BotMixin
-from cat.utils import guess_file_type
+from cat.utils import guess_file_type, is_url
 
 
 # main class
@@ -26,7 +26,8 @@ class CheshireCat(BotMixin):
     This is the main class that manages the whole AI application.
     It contains references to all the main modules and is responsible for the bootstrapping of the application.
 
-    In most cases you will not need to interact with this class directly, but rather with class `StrayCat` which will be available in your plugin's hooks, tools, forms end endpoints.
+    In most cases you will not need to interact with this class directly, but rather with class `StrayCat` which will be
+    available in your plugin's hooks, tools, forms end endpoints.
     """
     def __init__(self, agent_id: str):
         """
@@ -39,13 +40,13 @@ class CheshireCat(BotMixin):
         -----
         Bootstrapping is the process of loading the plugins, the LLM, the memories.
         """
-        self.id = agent_id
+        self._id = agent_id
 
         self.dispatcher = HumptyDumpty()
         self.dispatcher.subscribe_from(self)
 
         # instantiate plugin manager (loads all plugins' hooks and tools)
-        self.plugin_manager = Tweedledee(self.id)
+        self.plugin_manager = Tweedledee(self._id)
         self.plugin_manager.discover_plugins()
 
         # allows plugins to do something before cat components are loaded
@@ -55,8 +56,8 @@ class CheshireCat(BotMixin):
         super().__init__()
 
         # Initialize the default user if not present
-        if not crud_users.get_users(self.id):
-            crud_users.initialize_empty_users(self.id)
+        if not crud_users.get_users(self._id):
+            crud_users.initialize_empty_users(self._id)
 
         # allows plugins to do something after the cat bootstrap is complete
         self.plugin_manager.execute_hook("after_cat_bootstrap", caller=self)
@@ -65,13 +66,13 @@ class CheshireCat(BotMixin):
         """Check if two cats are equal."""
         if not isinstance(other, CheshireCat):
             return False
-        return self.id == other.id
+        return self._id == other.agent_key
 
-    def __hash__(self):
-        return hash(self.id)
+    def __hash__(self) -> int:
+        return hash(self._id)
 
-    def __repr__(self):
-        return f"CheshireCat(agent_id={self.id})"
+    def __repr__(self) -> str:
+        return f"CheshireCat(agent_id={self._id})"
 
     def __del__(self):
         """Cat destructor."""
@@ -87,7 +88,7 @@ class CheshireCat(BotMixin):
 
     async def destroy_memory(self):
         """Destroy all data from the cat's memory."""
-        log.info(f"Agent id: {self.id}. Destroying all data from the cat's memory")
+        log.info(f"Agent id: {self._id}. Destroying all data from the cat's memory")
 
         # destroy all memories
         for collection_name in await self.vector_memory_handler.get_collection_names():
@@ -95,42 +96,43 @@ class CheshireCat(BotMixin):
 
     async def destroy(self):
         """Destroy all data from the cat."""
-        log.info(f"Agent id: {self.id}. Destroying all data from the cat")
+        log.info(f"Agent id: {self._id}. Destroying all data from the cat")
 
         # destroy all memories
         await self.destroy_memory()
 
         # remove the folder from storage
-        self.file_manager.remove_folder_from_storage(self.id)
+        self.file_manager.remove_folder_from_storage(self._id)
 
         self.shutdown()
 
-        crud_settings.destroy_all(self.id)
-        crud_conversations.destroy_all(self.id)
-        crud_plugins.destroy_all(self.id)
-        crud_users.destroy_all(self.id)
+        crud_settings.destroy_all(self._id)
+        crud_conversations.destroy_all(self._id)
+        crud_plugins.destroy_all(self._id)
+        crud_users.destroy_all(self._id)
 
-    async def get_stored_files_with_metadata(self) -> List[StoredFileWithMetadata]:
+    async def get_stored_sources_with_metadata(self) -> List[StoredSourceWithMetadata]:
         """Get all stored files with their metadata."""
-        async def get_stored_file(file: FileResponse) -> StoredFileWithMetadata | None:
-            file_content = self.file_manager.read_file(file.name, self.agent_key)
+        async def get_stored_source(point: Record) -> StoredSourceWithMetadata | None:
+            metadata = point.payload.get("metadata", {})
+            filename = metadata.get("source")
+            if not filename:
+                return None
+            if is_url(filename):
+                return StoredSourceWithMetadata(name=filename, content=None, metadata=metadata)
+            file_content = self.file_manager.read_file(filename, self.agent_key)
             if not file_content:
                 return None
-            points, _ = await self.vector_memory_handler.get_all_tenant_points(
-                collection_name,
-                with_vectors=False,
-                metadata={"source": file.name},
-                limit=1,
-            )
-            return StoredFileWithMetadata(
-                name=file.name, content=BytesIO(file_content), metadata=points[0].payload["metadata"]
-            ) if points else None
+            return StoredSourceWithMetadata(name=filename, content=BytesIO(file_content), metadata=metadata)
 
         collection_name = str(VectorMemoryType.DECLARATIVE)
-        return [
-            stored_file for file in self.file_manager.list_files(self.agent_key)
-            if (stored_file := (await get_stored_file(file))) is not None
-        ]
+        points, _ = await self.vector_memory_handler.get_all_tenant_points(collection_name, with_vectors=False)
+
+        return list({
+            stored_source
+            for point in points
+            if (stored_source := await get_stored_source(point))
+        })
 
     async def embed_procedures(self):
         # Easy access to active procedures in plugin_manager (source of truth!)
@@ -151,7 +153,7 @@ class CheshireCat(BotMixin):
         if not payloads:
             return
 
-        log.info(f"Agent id: {self.id}. Embedding procedures in vector memory")
+        log.info(f"Agent id: {self._id}. Embedding procedures in vector memory")
         collection_name = str(VectorMemoryType.PROCEDURAL)
 
         # first, clear all existing procedural embeddings
@@ -160,34 +162,37 @@ class CheshireCat(BotMixin):
         await self.vector_memory_handler.add_points_to_tenant(
             collection_name=collection_name, payloads=payloads, vectors=vectors,
         )
-        log.info(f"Agent id: {self.id}. Embedded {len(payloads)} triggers in {collection_name} vector memory")
+        log.info(f"Agent id: {self._id}. Embedded {len(payloads)} triggers in {collection_name} vector memory")
 
-    async def embed_stored_files(self, stored_files: List[StoredFileWithMetadata]):
-        """Embeds stored files in the vector memory"""
-        if not stored_files:
+    async def embed_stored_sources(self, stored_sources: List[StoredSourceWithMetadata]):
+        """Embeds stored sources in the vector memory"""
+        if not stored_sources:
             return
 
-        log.info(f"Agent id: {self.id}. Embedding stored files in vector memory")
+        log.info(f"Agent id: {self._id}. Embedding stored files in vector memory")
         collection_name = str(VectorMemoryType.DECLARATIVE)
 
         # first, clear all existing declarative embeddings
         await self.vector_memory_handler.delete_tenant_points(collection_name)
 
         rabbit_hole = self.rabbit_hole
-        for file in stored_files:
-            content_type, _ = guess_file_type(file.content)
+        for source in stored_sources:
+            content_type = None
+            if source.content:
+                content_type, _ = guess_file_type(source.content)
+
             await rabbit_hole.ingest_file(
                 cat=self,
-                file=file.content,
-                filename=file.name,
-                metadata=file.metadata,
+                file=source.content or source.name,
+                filename=source.name,
+                metadata=source.metadata,
                 store_file=False,
                 content_type=content_type,
             )
 
-        log.info(f"Agent id: {self.id}. Embedded {len(stored_files)} files in {collection_name} vector memory")
+        log.info(f"Agent id: {self._id}. Embedded {len(stored_sources)} files in {collection_name} vector memory")
 
-    async def embed_all(self, stored_files: List[StoredFileWithMetadata]):
+    async def embed_all(self, stored_sources: List[StoredSourceWithMetadata]):
         """
         Re-embeds all the stored files and procedures in the vector memory.
         1. Re-initialize the vector memory handler with the current embedder
@@ -195,19 +200,32 @@ class CheshireCat(BotMixin):
         3. Re-embed all the procedures
 
         Args:
-            stored_files (List[StoredFileWithMetadata]): The list of stored files with metadata to embed.
+            stored_sources (List[StoredFileWithMetadata]): The list of stored sources of the Knowledge Base, with metadata to embed.
 
         Notes
         -----
-        This method is typically called when the embedder configuration changes, to ensure that all embeddings are
-        updated to use the new embedder. That's why the `stored_files` is passed as argument, in order to avoid race
+        This method is typically called when the embedder configuration changes to ensure that all embeddings are
+        updated to use the new embedder. That's why the `stored_sources` are passed as argument, to avoid race
         conditions when multiple agents are updating their embedder at the same time on the same database.
         """
         # re-embed all the stored files
-        await self.embed_stored_files(stored_files)
+        await self.embed_stored_sources(stored_sources)
 
         # re-embed all the procedures
         await self.embed_procedures()
+
+    def save_file(self, file_path: str, source: str, chat_id: str | None):
+        """Saves a file to the cat's storage.
+        Args:
+            file_path (str): The path to the file to save.
+            source (str): The source of the file.
+            chat_id (str | None): The chat id associated with the file.
+        """
+        remote_root_dir = self.agent_key
+        if chat_id:
+            remote_root_dir = os.path.join(remote_root_dir, chat_id)
+
+        self.file_manager.upload_file_to_storage(file_path, remote_root_dir, source)
 
     @subscriber("on_end_plugin_activate")
     async def on_end_plugin_activate(self, plugin_id: str) -> None:
@@ -234,4 +252,4 @@ class CheshireCat(BotMixin):
         Returns:
             agent_id (str): The unique identifier of the cat.
         """
-        return self.id
+        return self._id

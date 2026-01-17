@@ -8,6 +8,7 @@ import threading
 from enum import Enum as BaseEnum, EnumMeta
 from io import BytesIO
 from typing import Dict, List, Type, TypeVar, Any, Callable, Union, Generic, Tuple
+from urllib.parse import urlparse
 import filetype
 from typing_extensions import deprecated
 import requests
@@ -89,15 +90,15 @@ class MetaEnum(EnumMeta):
 
 
 class Enum(BaseEnum, metaclass=MetaEnum):
-    def __str__(self):
+    def __str__(self) -> str:
         return self.value
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if isinstance(other, Enum):
             return self.value == other.value
         return self.value == other
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.value)
 
 
@@ -542,3 +543,9 @@ def guess_file_type(bytes_io: BytesIO) -> Tuple[str | None, str | None]:
             return None, None
 
     return kind.mime, kind.extension
+
+
+def is_url(file: str) -> bool:
+    parsed_file = urlparse(file)
+    # Check if a string file is a string or url
+    return all([parsed_file.scheme, parsed_file.netloc])

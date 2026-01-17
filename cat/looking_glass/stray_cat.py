@@ -1,4 +1,5 @@
 import uuid
+from copy import deepcopy
 from typing import List, Final, Callable, Tuple
 from langchain_core.tools import StructuredTool
 from websockets.exceptions import ConnectionClosedOK
@@ -81,7 +82,7 @@ class StrayCat(BotMixin):
         """Check if two cats are equal."""
         return self.user.id == other.user.id and self.agent_key == other.agent_key and self.id == other.id
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.id)
 
     def __repr__(self):
@@ -120,10 +121,19 @@ class StrayCat(BotMixin):
         # hook to do something before recall begins
         config = self.plugin_manager.execute_hook("before_cat_recalls_memories", config, caller=self)
 
-        memories = await self.agentic_workflow.context_retrieval(
+        agent_memories = set(await self.agentic_workflow.context_retrieval(
             collection=collection,
             params=config,
-        )
+        ))
+
+        config_chat_memories = deepcopy(config)
+        config_chat_memories.metadata.update({"chat_id": self.id})
+        chat_memories = set(await self.agentic_workflow.context_retrieval(
+            collection=collection,
+            params=config_chat_memories,
+        ))
+
+        memories = list(agent_memories | chat_memories)
 
         # hook to modify/enrich retrieved memories
         self.plugin_manager.execute_hook("after_cat_recalls_memories", caller=self)

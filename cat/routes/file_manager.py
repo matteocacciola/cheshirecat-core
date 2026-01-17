@@ -83,7 +83,7 @@ async def get_attributes(
 ) -> FileManagerAttributes:
     ccat = info.cheshire_cat
 
-    list_files = ccat.file_manager.list_files(ccat.id)
+    list_files = ccat.file_manager.list_files(ccat.agent_key)
     return FileManagerAttributes(files=list_files, size=sum(file.size for file in list_files))
 
 
@@ -120,7 +120,7 @@ async def download_file(
     sanitized_source = f"{sanitized_source}{sanitized_extension}"
     try:
         # This ensures the resolved path doesn't escape the intended directory
-        base_path = Path(ccat.id).resolve()
+        base_path = Path(ccat.agent_key).resolve()
         requested_path = (base_path / sanitized_source).resolve()
 
         # Ensure the resolved path is within the base directory
@@ -130,7 +130,7 @@ async def download_file(
         raise CustomValidationException("Invalid file path")
 
     # Download the file
-    file_content = ccat.file_manager.download(f"{ccat.id}/{sanitized_source}")
+    file_content = ccat.file_manager.download(f"{ccat.agent_key}/{sanitized_source}")
     if file_content is None:
         raise CustomNotFoundException("File not found")
 
@@ -155,7 +155,7 @@ async def delete_file(
 
     try:
         # delete the file from the file storage
-        res = ccat.file_manager.remove_file_from_storage(f"{ccat.id}/{source_name}")
+        res = ccat.file_manager.remove_file_from_storage(f"{ccat.agent_key}/{source_name}")
 
         # delete points
         collection_id = VectorMemoryType.DECLARATIVE
@@ -178,10 +178,10 @@ async def delete_files(
 
     try:
         # get the list of files
-        files = ccat.file_manager.list_files(ccat.id)
+        files = ccat.file_manager.list_files(ccat.agent_key)
 
         # delete all the files from the file storage
-        res = ccat.file_manager.remove_folder_from_storage(ccat.id)
+        res = ccat.file_manager.remove_folder_from_storage(ccat.agent_key)
 
         # delete points
         for file in files:

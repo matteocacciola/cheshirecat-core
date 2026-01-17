@@ -7,7 +7,6 @@ import time
 from io import BytesIO
 from typing import List, Dict, Tuple
 from urllib.error import HTTPError
-from urllib.parse import urlparse
 import httpx
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
 from langchain_core.documents.base import Document, Blob
@@ -15,6 +14,7 @@ from langchain_core.documents.base import Document, Blob
 from cat.log import log
 from cat.services.factory.chunker import BaseChunker
 from cat.services.memory.models import PointStruct, VectorMemoryType
+from cat.utils import is_url as fnc_is_url
 
 
 class RabbitHole:
@@ -82,7 +82,7 @@ class RabbitHole:
         ]
         vectors = [m["vector"] for m in declarative_memories]
 
-        log.info(f"Agent id: {self.cat.id}. Preparing to load {len(vectors)} vector memories")
+        log.info(f"Agent id: {self.cat.agent_key}. Preparing to load {len(vectors)} vector memories")
 
         # Check embedding size is correct
         embedder_size = lizard.embedder_size
@@ -134,7 +134,7 @@ class RabbitHole:
         filename = re.sub(r'\s+', '_', filename)
 
         # split a file into a list of docs
-        file_bytes, content_type, docs = await self._file_to_docs(
+        file_bytes, content_type, docs, is_url = await self._file_to_docs(
             file=file, filename=filename, content_type=content_type
         )
 
@@ -142,12 +142,12 @@ class RabbitHole:
         await self._store_documents(docs=docs, source=filename, metadata=metadata)
 
         # store in file storage
-        if store_file:
+        if store_file and not is_url:
             await self._save_file(file_bytes, content_type, filename)
 
     async def _file_to_docs(
         self, file: str | BytesIO, filename: str, content_type: str | None = None
-    ) -> Tuple[bytes, str | None, List[Document]]:
+    ) -> Tuple[bytes, str | None, List[Document], bool]:
         """
         Load and convert files to Langchain `Document`.
 
@@ -160,7 +160,9 @@ class RabbitHole:
             content_type (str): The content type of the file. If not provided, it will be guessed based on the file extension.
 
         Returns:
-            (bytes, content_type, docs): Tuple[bytes, List[Document]]. The file bytes, the content type and the list of chunked Langchain `Document`.
+            (bytes, content_type, docs, is_url): Tuple[bytes, str | None, List[Document], bool]. The file bytes, the
+                content type, the list of chunked Langchain `Document` and a boolean indicating if the file was loaded
+                from a URL.
         """
         source = None
         file_bytes = None
@@ -169,6 +171,7 @@ class RabbitHole:
             raise ValueError(f"{type(file)} is not a valid type.")
 
         # Check type of incoming file.
+        is_url = False
         if isinstance(file, BytesIO):
             # Get mime type and source of UploadFile
             source = filename
@@ -176,9 +179,8 @@ class RabbitHole:
             # Get file bytes
             file_bytes = file.read()
         else:
-            parsed_file = urlparse(file)
-            # Check if a string file is a string or url
-            if all([parsed_file.scheme, parsed_file.netloc]):
+            is_url = fnc_is_url(file)
+            if is_url:
                 try:
                     # Make a request with a fake browser name
                     response = httpx.get(file, headers={"User-Agent": "Magic Browser"})
@@ -229,7 +231,7 @@ class RabbitHole:
         if self.stray:
             await self.stray.notifier.send_ws_message("Parsing completed. Now let's go with reading process...")
         docs = self._split_text(docs=super_docs)
-        return file_bytes, content_type, docs
+        return file_bytes, content_type, docs, is_url
 
     async def _store_documents(
         self,
@@ -285,6 +287,8 @@ class RabbitHole:
 
             # add custom metadata (sent via endpoint) and default metadata (source and when)
             doc.metadata = (metadata or {}) | doc.metadata | {"source": source, "when": time.time()}
+            if self.stray:
+                doc.metadata["chat_id"] = self.stray.id
 
             doc = plugin_manager.execute_hook("before_rabbithole_insert_memory", doc, caller=self.stray or self.cat)
             if doc.page_content != "":
@@ -459,13 +463,8 @@ class RabbitHole:
 
         # upload a file to CheshireCat's file manager
         try:
-            # finalize the source string so that its value is an acceptable file name even if the initial source is an URL
-            source_finalized = (
-                source.replace("://", "_").replace("/", "_").replace("\\", "_")
-                if "://" in source
-                else source
-            )
-            self.cat.file_manager.upload_file_to_storage(file_path, self.cat.agent_key, source_finalized)
+            chat_id = self.stray.id if self.stray else None
+            self.cat.save_file(file_path, source, chat_id)
         except Exception as e:
             log.error(f"Error while uploading file {file_path}: {e}")
         finally:
