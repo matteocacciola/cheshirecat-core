@@ -14,7 +14,6 @@ from cat.services.factory.chunker import ChunkerSettings
 
 
 class SemanticChunkerSettings(ChunkerSettings):
-    model_name: str
     cluster_threshold: float = 0.4
     similarity_threshold: float = 0.4
     max_tokens: int = 512

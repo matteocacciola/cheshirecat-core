@@ -17,8 +17,7 @@ from cat.services.factory.chunker import BaseChunker
 
 
 class SemanticChunker(BaseChunker):
-    def __init__(self, model_name: str, cluster_threshold: float, similarity_threshold: float, max_tokens: int):
-        self._model_name = model_name
+    def __init__(self, cluster_threshold: float, similarity_threshold: float, max_tokens: int):
         self._cluster_threshold = cluster_threshold
         self._similarity_threshold = similarity_threshold
         self._max_tokens = max_tokens
@@ -26,7 +25,6 @@ class SemanticChunker(BaseChunker):
     @property
     def analyzer(self):
         return SemanticAnalyzer(
-            model_name=self._model_name,
             cluster_threshold=self._cluster_threshold,
             similarity_threshold=self._similarity_threshold,
             max_tokens=self._max_tokens

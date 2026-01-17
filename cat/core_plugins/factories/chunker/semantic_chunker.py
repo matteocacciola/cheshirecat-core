@@ -2,22 +2,21 @@ from collections import defaultdict
 from typing import List, Dict, Any
 import numpy as np
 import torch
-from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
+from cat import BillTheLizard
 
 class SemanticChunker:
-    def __init__(self, model_name, max_tokens, cluster_threshold, similarity_threshold):
+    def __init__(self, max_tokens, cluster_threshold, similarity_threshold):
         self.device = (
             "cuda" if torch.cuda.is_available() else
             "mps" if torch.backends.mps.is_available() else
             "cpu"
         )
-        self.model = SentenceTransformer(model_name, device=self.device)
         self.max_tokens = max_tokens
         self.cluster_threshold = cluster_threshold
         self.similarity_threshold = similarity_threshold
-        self.tokenizer = self.model.tokenizer if hasattr(self.model, "tokenizer") else None
+        self.embedder = BillTheLizard().embedder
 
     def chunk(self, chunks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         def find(x: int):
@@ -34,7 +33,7 @@ class SemanticChunker:
             embeddings = np.array([])
         else:
             texts = [chunk["text"] for chunk in chunks]
-            embeddings = np.array(self.model.encode(texts, show_progress_bar=False))
+            embeddings = np.array(self.embedder.embed_documents(texts))
 
         # compute similarity
         similarity_matrix = np.zeros((0, 0)) if embeddings.size == 0 else cosine_similarity(embeddings)
@@ -67,7 +66,7 @@ class SemanticChunker:
 
             for chunk in chunk_list:
                 next_text = (current_text + " " + chunk["text"]).strip()
-                num_tokens = len(self.tokenizer.encode(next_text)) if self.tokenizer else len(next_text.split())
+                num_tokens = len(next_text.split())
 
                 if current_text and num_tokens > self.max_tokens:
                     merged_chunks.append({
