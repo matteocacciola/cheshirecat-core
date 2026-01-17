@@ -266,6 +266,9 @@ class BaseFileManager(ABC):
             remote_root_dir = os.path.dirname(filename)
             filename = os.path.basename(filename)
 
+        if self._root_dir not in remote_root_dir:
+            remote_root_dir = os.path.join(self._root_dir, remote_root_dir)
+
         return filename in [file.name for file in self._list_files(remote_root_dir)]
 
 

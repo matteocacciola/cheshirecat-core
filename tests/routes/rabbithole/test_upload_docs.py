@@ -1,7 +1,9 @@
 import json
+import os
 import pytest
 
 import cat.core_plugins.analytics.cruds.embeddings as crud_embeddings
+from cat.services.memory.models import VectorMemoryType
 
 from tests.utils import agent_id, api_key, chat_id, get_declarative_memory_contents, send_file
 
@@ -57,13 +59,33 @@ def test_rabbithole_upload_txt(secure_client, secure_client_headers):
     _check_upon_request(secure_client, secure_client_headers, file_name)
 
 
-def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_headers):
+@pytest.mark.asyncio
+async def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_headers, cheshire_cat):
+    # set a new file manager
+    file_manager_name = "LocalFileManagerConfig"
+    response = secure_client.put(
+        f"/file_manager/settings/{file_manager_name}", headers=secure_client_headers, json={},
+    )
+    assert response.status_code == 200
+
     content_type = "text/plain"
     file_name = "sample.txt"
     response, _ = send_file(file_name, content_type, secure_client, secure_client_headers, ch_id=chat_id)
 
     _check_on_file_upload(response, file_name, content_type, secure_client, secure_client_headers)
     _check_upon_request(secure_client, secure_client_headers, file_name)
+
+    # check that the file has been stored in the proper folder
+    file_exists = cheshire_cat.file_manager.file_exists(file_name, os.path.join(agent_id, chat_id))
+    assert file_exists
+
+    # check that the file has generated entries in the vector memory
+    points = await cheshire_cat.vector_memory_handler.get_all_tenant_points(
+        str(VectorMemoryType.DECLARATIVE),
+        metadata={"source": file_name, "chat_id": chat_id},
+        with_vectors=False,
+    )
+    assert len(points) > 0
 
 
 @pytest.mark.asyncio
