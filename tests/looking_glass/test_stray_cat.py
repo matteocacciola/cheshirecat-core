@@ -65,7 +65,7 @@ async def test_stray_call(secure_client, stray_no_memory):
 
     assert response_json["message"]["why"]["input"] == message
     assert response_json["message"]["why"]["intermediate_steps"] == []
-    assert response_json["message"]["why"]["memory"] == {'declarative': []}
+    assert response_json["message"]["why"]["memory"] == []
 
     why = MessageWhy(**response_json["message"]["why"])
     assert isinstance(why, MessageWhy)

@@ -306,3 +306,10 @@ def destroy_all(agent_id: str):
     except RedisError as e:
         log.error(f"Redis error destroying conversations for {agent_id}: {e}")
         raise
+
+
+def get_user_id_conversation_key(agent_id: str, chat_id: str) -> str | None:
+    pattern = format_key(agent_id, "*", chat_id)
+
+    user_ids = list({k.split(":")[3] for k in crud.get_db().scan_iter(pattern)})
+    return user_ids[0] if len(user_ids) == 1 else None

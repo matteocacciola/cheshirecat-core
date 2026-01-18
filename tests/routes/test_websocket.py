@@ -30,9 +30,7 @@ def check_correct_websocket_reply(reply):
     assert {"input", "intermediate_steps", "memory"} == set(why.keys())
     assert isinstance(why["input"], str)
     assert isinstance(why["intermediate_steps"], list)
-    assert isinstance(why["memory"], dict)
-    assert len(why["memory"].keys()) == 1
-    assert str(VectorMemoryType.DECLARATIVE) == list(why["memory"].keys())[0]
+    assert isinstance(why["memory"], list)
 
 
 def test_websocket(secure_client, secure_client_headers):

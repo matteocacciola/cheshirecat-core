@@ -1,3 +1,4 @@
+import os
 from typing import Dict, List, Any
 from fastapi import Query, Depends
 from pydantic import BaseModel
@@ -103,12 +104,10 @@ async def recall_memory_points_from_text(
 
     # Embed the query to plot it in the Memory page
     query_embedding = lizard.embedder.embed_query(text)
+    collection_name = str(VectorMemoryType.DECLARATIVE)
 
     dm = await info.cheshire_cat.vector_memory_handler.recall_tenant_memory_from_embedding(
-        str(VectorMemoryType.DECLARATIVE),
-        query_embedding,
-        k=k,
-        metadata={k: v for k, v in metadata.items() if k != "source"},
+        collection_name, query_embedding, k=k, metadata={k: v for k, v in metadata.items() if k != "source"},
     )
 
     return RecallResponse(
@@ -116,7 +115,7 @@ async def recall_memory_points_from_text(
         vectors=RecallResponseVectors(
             embedder=lizard.embedder_name,
             collections={
-                str(VectorMemoryType.DECLARATIVE): [build_memory_dict(document_recall) for document_recall in dm]
+                collection_name: [build_memory_dict(document_recall) for document_recall in dm]
             }
         )
     )
@@ -234,9 +233,14 @@ async def delete_memory_points_by_metadata(
         # delete points
         ret = await ccat.vector_memory_handler.delete_tenant_points(collection_id, metadata)
 
-        # delete the file with path `metadata["source"]` from the file storage
-        if collection_id == VectorMemoryType.DECLARATIVE and (source := metadata.get("source")):
-            ccat.file_manager.remove_file_from_storage(f"{ccat.agent_key}/{source}")
+        if source := metadata.get("source"):
+            # delete the file with path `metadata["source"]` from the file storage
+            ccat.file_manager.remove_file_from_storage(os.path.join(ccat.agent_key, source))
+
+            # delete the file with path `metadata["source"]/metadata["chat_id"]` from the file storage
+            chat_id = metadata.get("chat_id")
+            if chat_id:
+                ccat.file_manager.remove_file_from_storage(os.path.join(ccat.agent_key, chat_id, source))
 
         return DeleteMemoryPointsByMetadataResponse(deleted=ret)
     except Exception as e:

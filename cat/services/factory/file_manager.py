@@ -134,6 +134,9 @@ class BaseFileManager(ABC):
             True if the file has been removed, False otherwise
         """
         file_path = os.path.join(self._root_dir, file_path)
+        if not self.file_exists(file_path):
+            return False
+
         return self._remove_file_from_storage(file_path)
 
     @abstractmethod

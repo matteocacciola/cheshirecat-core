@@ -72,16 +72,30 @@ async def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_heade
     file_name = "sample.txt"
     response, _ = send_file(file_name, content_type, secure_client, secure_client_headers, ch_id=chat_id)
 
-    _check_on_file_upload(response, file_name, content_type, secure_client, secure_client_headers)
+    assert response.status_code == 200
+    json_res = response.json()
+    assert json_res["filename"] == file_name
+    assert json_res["content_type"] == content_type
+    assert "File is being ingested" in json_res["info"]
+
+    _check_analytics(crud_embeddings.get_analytics(agent_id), file_name)
     _check_upon_request(secure_client, secure_client_headers, file_name)
 
     # check that the file has been stored in the proper folder
     file_exists = cheshire_cat.file_manager.file_exists(file_name, os.path.join(agent_id, chat_id))
     assert file_exists
 
-    # check that the file has generated entries in the vector memory
-    points = await cheshire_cat.vector_memory_handler.get_all_tenant_points(
+    # check that the file has generated no entry in the declarative vector memory
+    points, _ = await cheshire_cat.vector_memory_handler.get_all_tenant_points(
         str(VectorMemoryType.DECLARATIVE),
+        metadata={"source": file_name, "chat_id": chat_id},
+        with_vectors=False,
+    )
+    assert len(points) == 0
+
+    # check that the file has generated entries in the episodic vector memory
+    points, _ = await cheshire_cat.vector_memory_handler.get_all_tenant_points(
+        str(VectorMemoryType.EPISODIC),
         metadata={"source": file_name, "chat_id": chat_id},
         with_vectors=False,
     )

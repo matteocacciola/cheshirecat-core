@@ -170,17 +170,19 @@ def get_agents_main_keys(pattern: str | None = None) -> List[str]:
         raise
 
 
-def clone_agent(source_prefix: str, target_prefix: str) -> int:
+def clone_agent(source_prefix: str, target_prefix: str, skip_keys: List[str] | None = None) -> int:
     """
     Clone all keys with source_prefix to target_prefix.
 
     Args:
         source_prefix: Source key prefix (e.g., "agent_test")
         target_prefix: Target key prefix (e.g., "test_clone_agent_2")
+        skip_keys: List of specific keys to skip during cloning (e.g., ["analytics"]). Optional.
 
     Returns:
         Number of keys cloned
     """
+    skip_keys = skip_keys or []
     try:
         db = get_db()
 
@@ -189,8 +191,10 @@ def clone_agent(source_prefix: str, target_prefix: str) -> int:
         keys = list(db.scan_iter(match=pattern))
         # Filter out keys to skip
         keys = [
-            (k.decode() if isinstance(k, bytes) else k)
+            kd
             for k in keys
+            for skip_key in skip_keys
+            if skip_key not in (kd := (k.decode() if isinstance(k, bytes) else k))
         ]
 
         if not keys:

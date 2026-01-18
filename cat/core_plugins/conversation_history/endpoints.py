@@ -63,7 +63,7 @@ async def delete_conversation(
 
         # delete the elements of the conversation from the vector memory
         await cat.vector_memory_handler.delete_tenant_points(
-            str(VectorMemoryType.DECLARATIVE), {"chat_id": stray_cat.id},
+            str(VectorMemoryType.EPISODIC), {"chat_id": stray_cat.id},
         )
 
         # Delete conversation from the database

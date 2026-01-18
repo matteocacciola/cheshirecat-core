@@ -1,6 +1,5 @@
 import uuid
-from copy import deepcopy
-from typing import List, Final, Callable, Tuple
+from typing import List, Final, Callable, Tuple, Dict
 from langchain_core.tools import StructuredTool
 from websockets.exceptions import ConnectionClosedOK
 
@@ -89,7 +88,7 @@ class StrayCat(BotMixin):
         return f"StrayCat(id={self.id}, user_id={self.user.id}, agent_id={self.agent_key})"
 
     async def _recall_relevant_memories(
-        self, collection: VectorMemoryType, query: str
+        self, collection: VectorMemoryType, query: str, metadata: Dict | None = None,
     ) -> Tuple[List[DocumentRecall], RecallSettings]:
         """
         Retrieve context from memory.
@@ -99,6 +98,7 @@ class StrayCat(BotMixin):
         Args:
             collection (VectorMemoryType): The name of the vector memory collection to retrieve memories from.
             query (str): The query used to make a similarity search in the Cat's vector memories.
+            metadata (Dict | None): Optional additional metadata to be searched in the vector memories.
 
         Returns:
             Tuple[List[DocumentRecall], RecallSettings]: A tuple containing the list of recalled DocumentRecall objects
@@ -113,27 +113,19 @@ class StrayCat(BotMixin):
         Five hooks allow customizing the recall pipeline before and after it is done.
         """
         # Setting default recall configs for each memory + hooks to change recall configs for each memory
+        config_metadata = self.working_memory.user_message.get("metadata", {})
+        if metadata:
+            config_metadata |= metadata
+
         config = RecallSettings(
             embedding=self.lizard.embedder.embed_query(query),
-            metadata=self.working_memory.user_message.get("metadata", {}),
+            metadata=config_metadata,
         )
 
         # hook to do something before recall begins
         config = self.plugin_manager.execute_hook("before_cat_recalls_memories", config, caller=self)
 
-        agent_memories = set(await self.agentic_workflow.context_retrieval(
-            collection=collection,
-            params=config,
-        ))
-
-        config_chat_memories = deepcopy(config)
-        config_chat_memories.metadata.update({"chat_id": self.id})
-        chat_memories = set(await self.agentic_workflow.context_retrieval(
-            collection=collection,
-            params=config_chat_memories,
-        ))
-
-        memories = list(agent_memories | chat_memories)
+        memories = await self.agentic_workflow.context_retrieval(collection=collection, params=config)
 
         # hook to modify/enrich retrieved memories
         self.plugin_manager.execute_hook("after_cat_recalls_memories", caller=self)
@@ -208,11 +200,20 @@ class StrayCat(BotMixin):
         )
 
         try:
-            # recall declarative memory from vector collections and store it in working_memory
-            self.working_memory.declarative_memories, recall_config = await self._recall_relevant_memories(
+            # recall declarative memory from vector collections
+            agent_memories, recall_config = await self._recall_relevant_memories(
                 collection=VectorMemoryType.DECLARATIVE,
                 query=user_message.text,
             )
+
+            # recall episodic memory from vector collections
+            chat_memories, _ = await self._recall_relevant_memories(
+                collection=VectorMemoryType.EPISODIC,
+                query=user_message.text,
+                metadata={"chat_id": self.id},
+            )
+
+            self.working_memory.declarative_memories = list(set(agent_memories) | set(chat_memories))
 
             # if the agent is set to fast reply, skip everything and return the output
             agent_output = plugin_manager.execute_hook("agent_fast_reply", caller=self)

@@ -6,6 +6,7 @@ from cat import utils
 
 
 class VectorMemoryType(utils.Enum):
+    EPISODIC = "episodic"
     DECLARATIVE = "declarative"
     PROCEDURAL = "procedural"
 

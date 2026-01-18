@@ -155,7 +155,7 @@ async def delete_file(
 
     try:
         # delete the file from the file storage
-        res = ccat.file_manager.remove_file_from_storage(f"{ccat.agent_key}/{source_name}")
+        res = ccat.file_manager.remove_file_from_storage(os.path.join(ccat.agent_key, source_name))
 
         # delete points
         collection_id = VectorMemoryType.DECLARATIVE

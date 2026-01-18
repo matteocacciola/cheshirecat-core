@@ -1,7 +1,10 @@
+import mimetypes
 import os
+import tempfile
 from io import BytesIO
 from typing import Dict, List
 
+from cat.auth.permissions import AuthUserInfo
 from cat.db.cruds import (
     settings as crud_settings,
     conversations as crud_conversations,
@@ -12,6 +15,7 @@ from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
 from cat.looking_glass.mad_hatter.procedures import CatProcedureType
 from cat.looking_glass.models import StoredSourceWithMetadata
+from cat.looking_glass.stray_cat import StrayCat
 from cat.looking_glass.tweedledee import Tweedledee
 from cat.services.memory.models import VectorMemoryType, Record
 from cat.services.mixin import BotMixin
@@ -125,12 +129,10 @@ class CheshireCat(BotMixin):
                 return None
             return StoredSourceWithMetadata(name=filename, content=BytesIO(file_content), metadata=metadata)
 
-        collection_name = str(VectorMemoryType.DECLARATIVE)
-        points, _ = await self.vector_memory_handler.get_all_tenant_points(collection_name, with_vectors=False)
-
         return list({
             stored_source
-            for point in points
+            for collection_name in [str(VectorMemoryType.DECLARATIVE), str(VectorMemoryType.EPISODIC)]
+            for point in (await self.vector_memory_handler.get_all_tenant_points(collection_name, with_vectors=False))[0]
             if (stored_source := await get_stored_source(point))
         })
 
@@ -169,11 +171,11 @@ class CheshireCat(BotMixin):
         if not stored_sources:
             return
 
-        log.info(f"Agent id: {self._id}. Embedding stored files in vector memory")
-        collection_name = str(VectorMemoryType.DECLARATIVE)
+        log.info(f"Agent id: {self._id}. Embedding stored files to the vector memory")
 
-        # first, clear all existing declarative embeddings
-        await self.vector_memory_handler.delete_tenant_points(collection_name)
+        # first, clear all existing declarative and episodic embeddings
+        await self.vector_memory_handler.delete_tenant_points(str(VectorMemoryType.DECLARATIVE))
+        await self.vector_memory_handler.delete_tenant_points(str(VectorMemoryType.EPISODIC))
 
         rabbit_hole = self.rabbit_hole
         for source in stored_sources:
@@ -181,8 +183,9 @@ class CheshireCat(BotMixin):
             if source.content:
                 content_type, _ = guess_file_type(source.content)
 
+            stray_cat = self._find_stray_cat(chat_id) if (chat_id := source.metadata.get("chat_id")) else None
             await rabbit_hole.ingest_file(
-                cat=self,
+                cat=stray_cat or self,
                 file=source.content or source.name,
                 filename=source.name,
                 metadata=source.metadata,
@@ -190,7 +193,7 @@ class CheshireCat(BotMixin):
                 content_type=content_type,
             )
 
-        log.info(f"Agent id: {self._id}. Embedded {len(stored_sources)} files in {collection_name} vector memory")
+        log.info(f"Agent id: {self._id}. Embedded {len(stored_sources)} files to the vector memory")
 
     async def embed_all(self, stored_sources: List[StoredSourceWithMetadata]):
         """
@@ -214,18 +217,59 @@ class CheshireCat(BotMixin):
         # re-embed all the procedures
         await self.embed_procedures()
 
-    def save_file(self, file_path: str, source: str, chat_id: str | None):
-        """Saves a file to the cat's storage.
-        Args:
-            file_path (str): The path to the file to save.
-            source (str): The source of the file.
-            chat_id (str | None): The chat id associated with the file.
+    def save_file(self, file_bytes: bytes, content_type: str, source: str, chat_id: str | None = None):
         """
-        remote_root_dir = self.agent_key
-        if chat_id:
-            remote_root_dir = os.path.join(remote_root_dir, chat_id)
+        Save file to the remote storage handled by the CheshireCat's file manager.
 
-        self.file_manager.upload_file_to_storage(file_path, remote_root_dir, source)
+        Args:
+            file_bytes (bytes): The file bytes to be saved.
+            content_type (str): The content type of the file.
+            source (str): The source of the file, e.g. the file name or URL.
+            chat_id (str | None): The chat id of the stray cat, if any.
+        """
+        # save a file in a temporary folder
+        extension = mimetypes.guess_extension(content_type)
+        with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as temp_file:
+            temp_file.write(file_bytes)
+            file_path = temp_file.name
+
+        # upload a file to CheshireCat's file manager
+        try:
+            remote_root_dir = self.agent_key
+            if chat_id:
+                remote_root_dir = os.path.join(remote_root_dir, chat_id)
+
+            self.file_manager.upload_file_to_storage(file_path, remote_root_dir, source)
+        except Exception as e:
+            log.error(f"Error while uploading file {file_path}: {e}")
+        finally:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+
+    def _find_stray_cat(self, chat_id: str) -> StrayCat | None:
+        """Finds a stray cat by chat id.
+
+        Args:
+            chat_id (str): The chat id of the stray cat.
+
+        Returns:
+            StrayCat | None: The stray cat if found, None otherwise.
+        """
+        # look for an existing conversation with the id = chat_id
+        user_id = crud_conversations.get_user_id_conversation_key(self.agent_key, chat_id)
+        if not user_id:
+            return None
+
+        user = crud_users.get_user(self.agent_key, user_id)
+        if not user:
+            return None
+
+        return StrayCat(
+            agent_id=self.agent_key,
+            user_data=AuthUserInfo(**user),
+            plugin_manager_generator=lambda: self.plugin_manager,
+            stray_id=chat_id,
+        )
 
     @subscriber("on_end_plugin_activate")
     async def on_end_plugin_activate(self, plugin_id: str) -> None:

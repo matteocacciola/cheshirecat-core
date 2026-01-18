@@ -19,12 +19,16 @@ def test_memory_collections_created(secure_client, secure_client_headers):
     assert response.status_code == 200
 
     # check default collections are created
-    assert len(json["collections"]) == 2
+    assert len(json["collections"]) == 3
 
     # check correct number of default points
     collections_n_points = {c["name"]: c["vectors_count"] for c in json["collections"]}
-    # all other collections should be empty
-    assert collections_n_points[str(VectorMemoryType.DECLARATIVE)] == 0
+    # each collection should be empty
+    for collection_name in VectorMemoryType:
+        if collection_name == VectorMemoryType.PROCEDURAL:
+            assert collections_n_points[str(collection_name)] >= 0
+        else:
+            assert collections_n_points[str(collection_name)] == 0
 
 
 def test_memory_collection_non_existent_clear(secure_client, secure_client_headers):

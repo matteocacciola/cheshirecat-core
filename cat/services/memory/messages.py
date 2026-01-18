@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Literal, List, Dict
+from typing import Literal, List, Dict, Any
 from langchain_core.messages import AIMessage, HumanMessage, BaseMessage as BaseLangChainMessage
 from pydantic import computed_field, BaseModel
 
@@ -13,11 +13,11 @@ class MessageWhy(BaseModel):
     Variables:
         input (str): input message
         intermediate_steps (List): intermediate steps
-        memory (Dict): memory
+        memory (List[Dict[str, Any]]): memory used to generate the message
     """
     input: str
     intermediate_steps: List
-    memory: Dict
+    memory: List[Dict[str, Any]]
 
 
 class BaseMessage(BaseModelDict, ABC):

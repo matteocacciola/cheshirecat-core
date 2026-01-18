@@ -7,7 +7,7 @@ from cat.auth.auth_utils import hash_password, DEFAULT_ADMIN_USERNAME
 from cat.auth.permissions import get_full_permissions
 from cat.db import crud
 from cat.db.cruds import settings as crud_settings, users as crud_users, plugins as crud_plugins
-from cat.db.database import DEFAULT_SYSTEM_KEY
+from cat.db.database import DEFAULT_SYSTEM_KEY, DEFAULT_CONVERSATIONS_KEY
 from cat.env import get_env
 from cat.log import log
 from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
@@ -262,19 +262,18 @@ class BillTheLizard(OrchestratorMixin):
         """
         # clone the settings from the provided agent
         log.info(f"Cloning settings from agent {ccat.agent_key} to agent {new_agent_id}")
-        crud.clone_agent(ccat.agent_key, new_agent_id)
+        crud.clone_agent(ccat.agent_key, new_agent_id, [DEFAULT_CONVERSATIONS_KEY])
 
         # clone the vector points from the ccat to the provided agent
         cloned_ccat = self.get_cheshire_cat(new_agent_id)
         await cloned_ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
 
         log.info(f"Cloning vector memory from agent {ccat.agent_key} to agent {new_agent_id}")
-        points, _ = await ccat.vector_memory_handler.get_all_tenant_points(
-            str(VectorMemoryType.DECLARATIVE), with_vectors=True
-        )
+        collection_name = str(VectorMemoryType.DECLARATIVE)
+        points, _ = await ccat.vector_memory_handler.get_all_tenant_points(collection_name, with_vectors=True)
         if points:
             await cloned_ccat.vector_memory_handler.add_points_to_tenant(
-                collection_name=str(VectorMemoryType.DECLARATIVE),
+                collection_name=collection_name,
                 payloads=[p.payload for p in points],
                 vectors=[p.vector for p in points],
             )

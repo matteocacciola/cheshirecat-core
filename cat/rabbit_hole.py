@@ -2,7 +2,6 @@ import json
 import mimetypes
 import os
 import re
-import tempfile
 import time
 from io import BytesIO
 from typing import List, Dict, Tuple
@@ -143,7 +142,8 @@ class RabbitHole:
 
         # store in file storage
         if store_file and not is_url:
-            await self._save_file(file_bytes, content_type, filename)
+            chat_id = self.stray.id if self.stray else None
+            self.cat.save_file(file_bytes, content_type, filename, chat_id)
 
     async def _file_to_docs(
         self, file: str | BytesIO, filename: str, content_type: str | None = None
@@ -302,8 +302,9 @@ class RabbitHole:
             # wait a little to avoid APIs rate limit errors
             time.sleep(0.05)
 
+        collection_name = str(VectorMemoryType.DECLARATIVE if not self.stray else VectorMemoryType.EPISODIC)
         await self.cat.vector_memory_handler.add_points_to_tenant(
-            collection_name=str(VectorMemoryType.DECLARATIVE), payloads=storing_payloads, vectors=storing_vectors,
+            collection_name=collection_name, payloads=storing_payloads, vectors=storing_vectors,
         )
 
         # hook the points after they are stored in the vector memory
@@ -316,7 +317,7 @@ class RabbitHole:
             await self.stray.notifier.send_ws_message(f"Finished reading {source}, I made {len(docs)} thoughts on it.")
 
         log.info(
-            f"Agent id: {self.cat.agent_key}. Done uploading {source}. Inserted #{len(storing_points)} points into memory."
+            f"Agent id: {self.cat.agent_key}. Done uploading {source}. Inserted #{len(storing_points)} points into {collection_name} memory."
         )
 
         return storing_points
@@ -443,30 +444,3 @@ class RabbitHole:
         merged_metadata["_is_merged"] = True
 
         return Document(page_content=merged_content, metadata=merged_metadata)
-
-    async def _save_file(self, file_bytes: bytes, content_type: str, source: str):
-        """
-        Save file in the Rabbit Hole remote storage handled by the CheshireCat's file manager.
-        This method saves the file in the Rabbit Hole storage. The file is saved in a temporary folder and the path is
-        stored in the remote storage handled by the CheshireCat's file manager.
-
-        Args:
-            file_bytes (bytes): The file bytes to be saved.
-            content_type (str): The content type of the file.
-            source (str): The source of the file, e.g. the file name or URL.
-        """
-        # save a file in a temporary folder
-        extension = mimetypes.guess_extension(content_type)
-        with tempfile.NamedTemporaryFile(delete=False, suffix=extension) as temp_file:
-            temp_file.write(file_bytes)
-            file_path = temp_file.name
-
-        # upload a file to CheshireCat's file manager
-        try:
-            chat_id = self.stray.id if self.stray else None
-            self.cat.save_file(file_path, source, chat_id)
-        except Exception as e:
-            log.error(f"Error while uploading file {file_path}: {e}")
-        finally:
-            if os.path.exists(file_path):
-                os.remove(file_path)

@@ -6,14 +6,14 @@ from cat.services.memory.models import VectorMemoryType
 
 @hook(priority=1)
 def before_cat_sends_message(message, agent_output, cat) -> Dict:
-    memory = {str(VectorMemoryType.DECLARATIVE): [
+    memory = [
         dict(d.document)
         | {
             "score": float(d.score) if d.score else None,
             "id": d.id,
         }
         for d in cat.working_memory.declarative_memories
-    ]}
+    ]
 
     # why this response?
     message.why = MessageWhy(
