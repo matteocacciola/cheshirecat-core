@@ -58,40 +58,7 @@ class BaseAuthHandler(ABC):
             return self.authorize_user_from_jwt(token, auth_resource, auth_permission, key_id)
 
         # API_KEY auth
-        user_id = self.extract_user_id_http(request) if protocol == "http" else self.extract_user_id_websocket(request)
-        return self.authorize_user_from_key(protocol, token, auth_resource, auth_permission, key_id, user_id)
-
-    @abstractmethod
-    def extract_user_id_http(self, request: HTTPConnection) -> str | None:
-        """
-        Extract the requesting user_id from an HTTP request. This method is used to extract the user_id from the request
-        when the user is using an HTTP protocol. It should return the token if it is found, otherwise it should return
-        None.
-
-        Args:
-            request: the Starlette request to extract the token from (HTTP)
-
-        Returns:
-            The user_id if it is found, None otherwise.
-        """
-        # will raise: NotImplementedError
-        pass
-
-    @abstractmethod
-    def extract_user_id_websocket(self, request: HTTPConnection) -> str | None:
-        """
-        Extract the requesting user_id from a WebSocket request. This method is used to extract the user_id from the
-        request when the user is using a WebSocket protocol. It should return the user_id if it is found, otherwise it
-        should return None.
-
-        Args:
-            request: the Starlette request to extract the token from (WebSocket)
-
-        Returns:
-            The user_id if it is found, None otherwise.
-        """
-        # will raise: NotImplementedError
-        pass
+        return self.authorize_user_from_key(request, protocol, token, auth_resource, auth_permission, key_id)
 
     @abstractmethod
     def authorize_user_from_jwt(
@@ -119,22 +86,22 @@ class BaseAuthHandler(ABC):
     @abstractmethod
     def authorize_user_from_key(
         self,
+        request: HTTPConnection,
         protocol: Literal["http", "websocket"],
         api_key: str,
         auth_resource: AuthResource,
         auth_permission: AuthPermission,
-        key_id: str,
-        request_user_id: str | None = None,
+        agent_key: str,
     ) -> AuthUserInfo | None:
         """
         Authorize a user from an API key. This method is used to authorize users when they are not using a JWT token.
         Args:
+            request: the Starlette request to authorize the user on
             protocol: the protocol used to authorize the user (either "http" or "websocket")
             api_key: the API key to authorize the user
             auth_resource: the resource to authorize the user on
             auth_permission: the permission to authorize the user on
-            key_id: the key ID of the agent to authorize the user with
-            request_user_id: the user ID to authorize (it can be null)
+            agent_key: the key ID of the agent to authorize the user with
 
         Returns:
             An AuthUserInfo object if the user is authorized, None otherwise.
@@ -145,12 +112,6 @@ class BaseAuthHandler(ABC):
 
 # Core auth handler, verify token on local idp
 class CoreAuthHandler(BaseAuthHandler):
-    def extract_user_id_http(self, request: HTTPConnection) -> str | None:
-        return request.headers.get("X-User-ID")
-
-    def extract_user_id_websocket(self, request: HTTPConnection) -> str | None:
-        return request.query_params.get("user_id")
-
     def authorize_user_from_jwt(
         self,
         token: str,
@@ -197,19 +158,20 @@ class CoreAuthHandler(BaseAuthHandler):
 
     def authorize_user_from_key(
         self,
+        request: HTTPConnection,
         protocol: Literal["http", "websocket"],
         api_key: str,
         auth_resource: AuthResource,
         auth_permission: AuthPermission,
-        key_id: str,
-        request_user_id: str | None = None,
+        agent_key: str,
     ) -> AuthUserInfo | None:
         if not (current_api_key := get_env("CCAT_API_KEY")):
             return None
         if api_key != current_api_key:
             return None
 
-        if not (user_info := extract_user_info_on_api_key(key_id, request_user_id)):
+        request_user_id = request.headers.get("X-User-ID") if protocol == "http" else request.query_params.get("user_id")
+        if not (user_info := extract_user_info_on_api_key(agent_key, request_user_id)):
             return None
 
         # No match -> deny access
