@@ -59,19 +59,22 @@ class LocalFileManager(BaseFileManager):
                     sha256.update(chunk)
             return sha256.hexdigest()
 
-        # list all the files in the directory: retrieve the full path, the size and the last modified date
+        if not os.path.exists(remote_root_dir):
+            return []
+
+        # List only the files in the remote_root_dir (no subfolders)
         return [
             FileResponse(
-                path=os.path.join(root, file),
+                path=os.path.join(remote_root_dir, file),
                 name=file,
-                hash=get_file_hash(os.path.join(root, file)),
-                size=int(os.path.getsize(os.path.join(root, file))),
+                hash=get_file_hash(os.path.join(remote_root_dir, file)),
+                size=int(os.path.getsize(os.path.join(remote_root_dir, file))),
                 last_modified=datetime.fromtimestamp(
-                    os.path.getmtime(os.path.join(root, file))
+                    os.path.getmtime(os.path.join(remote_root_dir, file))
                 ).strftime("%Y-%m-%d")
             )
-            for root, _, files in os.walk(remote_root_dir)
-            for file in files
+            for file in os.listdir(remote_root_dir)
+            if os.path.isfile(os.path.join(remote_root_dir, file))
         ]
 
     def _clone_folder(self, remote_root_dir_from: str, remote_root_dir_to: str) -> List[str]:

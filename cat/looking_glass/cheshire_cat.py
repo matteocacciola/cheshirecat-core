@@ -123,11 +123,16 @@ class CheshireCat(BotMixin):
             if not filename:
                 return None
             if is_url(filename):
-                return StoredSourceWithMetadata(name=filename, content=None, metadata=metadata)
-            file_content = self.file_manager.read_file(filename, self.agent_key)
+                return StoredSourceWithMetadata(name=filename, content=None, metadata=metadata, path=filename)
+            file_path = self.agent_key
+            if chat_id := metadata.get("chat_id"):
+                file_path = os.path.join(file_path, chat_id)
+            file_content = self.file_manager.read_file(filename, file_path)
             if not file_content:
                 return None
-            return StoredSourceWithMetadata(name=filename, content=BytesIO(file_content), metadata=metadata)
+            return StoredSourceWithMetadata(
+                name=filename, content=BytesIO(file_content), metadata=metadata, path=file_path,
+            )
 
         return list({
             stored_source
@@ -178,22 +183,31 @@ class CheshireCat(BotMixin):
         await self.vector_memory_handler.delete_tenant_points(str(VectorMemoryType.EPISODIC))
 
         rabbit_hole = self.rabbit_hole
+        counter = 0
         for source in stored_sources:
             content_type = None
             if source.content:
                 content_type, _ = guess_file_type(source.content)
 
-            stray_cat = self._find_stray_cat(chat_id) if (chat_id := source.metadata.get("chat_id")) else None
+            cat = self
+            if chat_id := source.metadata.get("chat_id"):
+                if not (stray_cat := self._find_stray_cat(chat_id)):
+                    log.warning(f"Stray cat with id {chat_id} not found. Skipping file {source.path}")
+                    continue
+
+                cat = stray_cat
+
             await rabbit_hole.ingest_file(
-                cat=stray_cat or self,
+                cat=cat,
                 file=source.content or source.name,
                 filename=source.name,
                 metadata=source.metadata,
                 store_file=False,
                 content_type=content_type,
             )
+            counter += 1
 
-        log.info(f"Agent id: {self._id}. Embedded {len(stored_sources)} files to the vector memory")
+        log.info(f"Agent id: {self._id}. Embedded {counter} files to the vector memory")
 
     async def embed_all(self, stored_sources: List[StoredSourceWithMetadata]):
         """

@@ -65,22 +65,25 @@ class StoredSourceWithMetadata(BaseModel):
     ----------
     name: str
         The unique identifier of the stored source, e.g., a file path or URL.
+    path: str
+        The path of the source, e.g., a file path or URL.
     content: BytesIO | None
-        The content of the source as a BytesIO stream, or None if the element is an URL
+        The content of the source as a BytesIO stream, or None if the element is an URL.
     metadata: Dict
         A dictionary containing metadata associated with the source.
     """
     name: str
+    path: str
     content: BytesIO | None
     metadata: Dict
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __eq__(self, other: "StoredSourceWithMetadata") -> bool:
-        return self.name == other.name
+        return self.name == other.name and self.path == other.path
 
     def __hash__(self) -> int:
-        return hash(self.name)
+        return hash((self.name, self.path))
 
 
 class ChatResponse(BaseModel):

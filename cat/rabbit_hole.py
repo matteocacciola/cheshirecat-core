@@ -27,6 +27,7 @@ class RabbitHole:
 
         if isinstance(_cat, CheshireCat):
             self.cat = _cat
+            self.stray = None
             return
 
         if isinstance(_cat, StrayCat):

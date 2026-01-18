@@ -6,7 +6,7 @@ from fastapi.encoders import jsonable_encoder
 from cat.services.memory.models import VectorMemoryType
 from cat.services.service_factory import ServiceFactory
 
-from tests.utils import send_file, api_key
+from tests.utils import send_file, api_key, chat_id
 
 
 def test_get_all_embedder_settings(secure_client, secure_client_headers, lizard):
@@ -110,18 +110,26 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
     file_name = "sample.txt"
     response, _ = send_file(file_name, content_type, secure_client, headers)
     assert response.status_code == 200
+
+    response, _ = send_file("sample.pdf", "application/pdf", secure_client, headers, ch_id=chat_id)
+    assert response.status_code == 200
     declarative_memories_before = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.DECLARATIVE)
     )
     assert declarative_memories_before > 0
+    episodic_memories = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
+        str(VectorMemoryType.EPISODIC)
+    )
+    assert episodic_memories > 0
 
-    # check that the file exists in the list of files
+    # check that only the file sent to the agent's RAG exists in the list of files
     res = secure_client.request("GET", "/file_manager", headers=headers)
     assert res.status_code == 200
     json = res.json()
     files = json["files"]
     assert len(files) == 1
     assert any(f["name"] == file_name for f in files)
+    assert not any(f["name"] == "sample.pdf" for f in files)
 
     # set a different embedder from default one (same class different size)
     embedder_config = {"size": 64}
@@ -159,3 +167,50 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
     json = res.json()
     files = json["files"]
     assert len(files) == 0
+
+
+@pytest.mark.asyncio
+async def test_upsert_embedder_settings_with_episodic_memory_without_conversation(secure_client, lizard):
+    agent_id = "test_embedder_settings_updates_collections"
+    cheshire_cat = await lizard.create_cheshire_cat(agent_id)
+
+    headers = {"X-Agent-ID": agent_id, "Authorization": f"Bearer {api_key}"}
+
+    # set a new file manager
+    file_manager_name = "LocalFileManagerConfig"
+    response = secure_client.put(
+        f"/file_manager/settings/{file_manager_name}", headers=headers, json={},
+    )
+    assert response.status_code == 200
+
+    # upload a file to the Knowledge Base of the agent
+    content_type = "text/plain"
+    file_name = "sample.txt"
+    response, _ = send_file(file_name, content_type, secure_client, headers, ch_id=chat_id)
+    assert response.status_code == 200
+    episodic_memories_before = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
+        str(VectorMemoryType.EPISODIC)
+    )
+    assert episodic_memories_before > 0
+
+    # check that the file does not in the list of files, because it is episodic
+    res = secure_client.request("GET", "/file_manager", headers=headers)
+    assert res.status_code == 200
+    json = res.json()
+    files = json["files"]
+    assert len(files) == 0
+
+    # set a different embedder from default one (same class different size)
+    embedder_config = {"size": 64}
+    response = secure_client.put(
+        "/embedder/settings/EmbedderFakeConfig", json=embedder_config, headers=headers
+    )
+    assert response.status_code == 200
+
+    await asyncio.sleep(1)  # give some time for the background tasks to complete
+
+    episodic_memories_after = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
+        str(VectorMemoryType.EPISODIC)
+    )
+    assert episodic_memories_after != episodic_memories_before
+    assert episodic_memories_after == 0
