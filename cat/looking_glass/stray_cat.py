@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Final, Callable, Tuple, Dict
+from typing import List, Final, Callable
 from langchain_core.tools import StructuredTool
 from websockets.exceptions import ConnectionClosedOK
 
@@ -11,7 +11,7 @@ from cat.looking_glass.mad_hatter.procedures import CatProcedure, CatProcedureTy
 from cat.looking_glass.models import AgenticWorkflowTask, AgenticWorkflowOutput, ChatResponse
 from cat.looking_glass.tweedledee import Tweedledee
 from cat.services.memory.messages import CatMessage, UserMessage
-from cat.services.memory.models import VectorMemoryType, DocumentRecall, RecallSettings
+from cat.services.memory.models import VectorMemoryType, RecallSettings
 from cat.services.memory.working_memory import WorkingMemory
 from cat.services.mixin import BotMixin
 from cat.services.notifier import NotifierService
