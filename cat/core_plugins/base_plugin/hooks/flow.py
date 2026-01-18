@@ -177,7 +177,7 @@ def before_cat_recalls_memories(config: RecallSettings, cat) -> RecallSettings:
 
 # Called just before the cat recalls memories.
 @hook(priority=0)
-def after_cat_recalls_memories(cat) -> None:
+def after_cat_recalls_memories(config: RecallSettings, cat) -> None:
     """
     Hook after a semantic search in memories.
 
@@ -185,6 +185,7 @@ def after_cat_recalls_memories(cat) -> None:
     and stores it in the *Working Memory*.
 
     Args:
+        config (RecallSettings): The configuration dictionary for retrieval of memories.
         cat (StrayCat): Stray Cat instance.
     """
     pass

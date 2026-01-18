@@ -67,18 +67,18 @@ class CatMcpClient(Client, CatProcedure, ABC):
 
         _MCP_TOOL_EMBEDDINGS_CACHE[cache_key] = tool_embeddings
 
-    def find_relevant_tools(self, query: str, top_k: int = 5) -> "CatMcpClient":
+    def find_relevant_tools(self, query_embeddings: List[float], top_k: int = 5) -> "CatMcpClient":
         """
         Get the most relevant MCP tools based on the user query using semantic similarity.
 
         Args:
-            query: The user's query text
+            query_embeddings: The user query to find relevant tools for, expressed as a list of floats, i.e., the embedding vector.
             top_k: Number of top relevant tools to return
 
         Returns:
             Self for method chaining
         """
-        if not query:
+        if not query_embeddings:
             self._relevant_tools = self.mcp_tools[:top_k]
             return self
 
@@ -89,13 +89,12 @@ class CatMcpClient(Client, CatProcedure, ABC):
         cache_key = self._get_cache_key()
         tool_embeddings = _MCP_TOOL_EMBEDDINGS_CACHE[cache_key]
 
-        # Embed the query (only thing we do per-message)
-        query_embedding = self.stray.embedder.embed_query(query)
-
         scores = []
         for item in tool_embeddings:
             tool_vec = item["embedding"]
-            similarity = np.dot(query_embedding, tool_vec) / (np.linalg.norm(query_embedding) * np.linalg.norm(tool_vec))
+            similarity = (
+                    np.dot(query_embeddings, tool_vec) / (np.linalg.norm(query_embeddings) * np.linalg.norm(tool_vec))
+            )
             scores.append(similarity)
 
         # Pick top K indices

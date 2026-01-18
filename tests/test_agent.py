@@ -1,8 +1,7 @@
 import json
 import pytest
 
-from cat import AgenticWorkflowTask
-from cat.looking_glass import AgenticWorkflowOutput
+from cat import AgenticWorkflowTask, AgenticWorkflowOutput, RecallSettings
 from cat.looking_glass.mad_hatter.decorators.experimental.form import CatFormState
 from cat.utils import default_llm_answer_prompt
 
@@ -51,10 +50,12 @@ async def test_execute_agent_with_form_submit(secure_client, secure_client_heade
         return result
     monkeypatch.setattr("cat.looking_glass.mad_hatter.decorators.experimental.form.CatForm.next", mock_func)
 
+    message = "I want to order a pizza"
+
     # empty agent execution with form
-    tools = await stray.get_procedures()
+    tools = await stray.get_procedures(RecallSettings(embedding=stray.embedder.embed_query(message)))
     agent_input = AgenticWorkflowTask(
-        user_prompt="I want to order a pizza",
+        user_prompt=message,
         tools=tools,
     )
     out = await stray.agentic_workflow.run(
@@ -81,10 +82,12 @@ async def test_execute_main_agent_with_tool(stray, monkeypatch):
     monkeypatch.setattr("cat.looking_glass.mad_hatter.decorators.experimental.form.CatForm._run_agent", mock_llm)
     monkeypatch.setattr("cat.services.factory.agentic_workflow.CoreAgenticWorkflow.run", mock_llm)
 
+    message = "What is the current time?"
+
     # empty agent execution with tool
-    tools = await stray.get_procedures()
+    tools = await stray.get_procedures(RecallSettings(embedding=stray.embedder.embed_query(message)))
     agent_input = AgenticWorkflowTask(
-        user_prompt="What is the current time?",
+        user_prompt=message,
         tools=tools,
     )
     out = await stray.agentic_workflow.run(
@@ -115,10 +118,12 @@ async def test_execute_main_agent_with_mcp_client_tool(stray, secure_client, sec
     monkeypatch.setattr("cat.looking_glass.mad_hatter.decorators.experimental.form.CatForm._run_agent", mock_llm)
     monkeypatch.setattr("cat.services.factory.agentic_workflow.CoreAgenticWorkflow.run", mock_llm)
 
+    message = "Call mock_procedure with param1='test', param2=42"
+
     # empty agent execution with tool
-    tools = await stray.get_procedures()
+    tools = await stray.get_procedures(RecallSettings(embedding=stray.embedder.embed_query(message)))
     agent_input = AgenticWorkflowTask(
-        user_prompt="Call mock_procedure with param1='test', param2=42",
+        user_prompt=message,
         tools=tools,
     )
     out = await stray.agentic_workflow.run(

@@ -27,10 +27,7 @@ class ContextMixin(ABC):
 
     @property
     def embedder_size(self) -> int | None:
-        try:
-            return len(self.embedder.embed_query("hello world"))
-        except Exception:
-            return 0
+        return len(self.embedder.embed_query("hello world"))
 
     @property
     def mad_hatter(self) -> MadHatter:

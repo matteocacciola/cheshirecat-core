@@ -87,56 +87,49 @@ class StrayCat(BotMixin):
     def __repr__(self):
         return f"StrayCat(id={self.id}, user_id={self.user.id}, agent_id={self.agent_key})"
 
-    async def _recall_relevant_memories(
-        self, collection: VectorMemoryType, query: str, metadata: Dict | None = None,
-    ) -> Tuple[List[DocumentRecall], RecallSettings]:
+    async def recall_context_to_working_memory(self, config: RecallSettings):
         """
-        Retrieve context from memory.
-        The method retrieves the relevant memories from the vector collections that are given as context to the LLM.
-        Recalled memories are stored in the working memory.
+        Recalls both declarative and episodic memories into the working memory.
+
+        This method retrieves declarative and episodic memories using the provided configuration and stores the combined
+        set in the working memory. Declarative memory is fetched from the declarative memory collection, while episodic
+        memory retrieval uses the specified chat ID as part of the metadata.
 
         Args:
-            collection (VectorMemoryType): The name of the vector memory collection to retrieve memories from.
-            query (str): The query used to make a similarity search in the Cat's vector memories.
-            metadata (Dict | None): Optional additional metadata to be searched in the vector memories.
+            config (RecallSettings): Configuration settings for memory retrieval. It includes retrieval parameters and
+                metadata to refine the memory extraction process.
+        """
+        # recall declarative memory from vector collections
+        agent_memories = await self.agentic_workflow.context_retrieval(
+            collection=VectorMemoryType.DECLARATIVE, params=config,
+        )
+
+        # recall episodic memory from vector collections
+        config.metadata = (config.metadata or {}) | {"chat_id": self.id}
+        chat_memories = await self.agentic_workflow.context_retrieval(
+            collection=VectorMemoryType.EPISODIC, params=config,
+        )
+
+        self.working_memory.declarative_memories = list(set(agent_memories) | set(chat_memories))
+
+    async def get_procedures(self, config: RecallSettings) -> List[StructuredTool]:
+        """
+        Retrieves a list of structured tools based on procedural memories and integrates relevant tools
+        from the MCP clients by performing context retrieval, reconstruction, and lazy loading.
+
+        The function first retrieves procedural memories in the form of embeddings from specified recall
+        settings. Next, it attempts to reconstruct and convert these memories into structured tools
+        (`CatProcedure` instances). Additionally, it integrates structured tools from MCP clients using
+        lazy loading, driven by a user-specified query.
+
+        Args:
+            config (RecallSettings): Settings used to retrieve procedural memories from the agent's workflow.
 
         Returns:
-            Tuple[List[DocumentRecall], RecallSettings]: A tuple containing the list of recalled DocumentRecall objects
-
-        See Also:
-            before_cat_recalls_memories
-            after_cat_recalls_memories
-
-        Notes
-        -----
-        The user's message is used as a query to make a similarity search in the Cat's vector memories.
-        Five hooks allow customizing the recall pipeline before and after it is done.
+            List[StructuredTool]: A list of structured tools, combining reconstructed procedural memories
+                and tools retrieved from MCP clients.
         """
-        # Setting default recall configs for each memory + hooks to change recall configs for each memory
-        config_metadata = self.working_memory.user_message.get("metadata", {})
-        if metadata:
-            config_metadata |= metadata
-
-        config = RecallSettings(
-            embedding=self.lizard.embedder.embed_query(query),
-            metadata=config_metadata,
-        )
-
-        # hook to do something before recall begins
-        config = self.plugin_manager.execute_hook("before_cat_recalls_memories", config, caller=self)
-
-        memories = await self.agentic_workflow.context_retrieval(collection=collection, params=config)
-
-        # hook to modify/enrich retrieved memories
-        self.plugin_manager.execute_hook("after_cat_recalls_memories", caller=self)
-
-        return memories, config
-
-    async def get_procedures(self) -> List[StructuredTool]:
-        memories, _ = await self._recall_relevant_memories(
-            query=self.working_memory.user_message.text,
-            collection=VectorMemoryType.PROCEDURAL,
-        )
+        memories = await self.agentic_workflow.context_retrieval(collection=VectorMemoryType.PROCEDURAL, params=config)
 
         # these are procedures from embeddings, i.e., only from CatTool or CatForm instances
         procedures = []
@@ -151,8 +144,8 @@ class StrayCat(BotMixin):
         mcp_clients = [p for p in self.plugin_manager.procedures if p.type == CatProcedureType.MCP]
         for mcp_client in mcp_clients:
             langchain_mcp_tools = mcp_client.inject_stray_cat(self).find_relevant_tools(
-                query=self.working_memory.user_message.text,
-                top_k=5
+                query_embeddings=config.embedding,
+                top_k=config.k,
             ).langchainfy()
             procedures.extend(langchain_mcp_tools)
 
@@ -200,33 +193,33 @@ class StrayCat(BotMixin):
         )
 
         try:
-            # recall declarative memory from vector collections
-            agent_memories, recall_config = await self._recall_relevant_memories(
-                collection=VectorMemoryType.DECLARATIVE,
-                query=user_message.text,
+            config = RecallSettings(
+                embedding=self.lizard.embedder.embed_query(self.working_memory.user_message.text),
+                metadata=self.working_memory.user_message.get("metadata", {})
             )
 
-            # recall episodic memory from vector collections
-            chat_memories, _ = await self._recall_relevant_memories(
-                collection=VectorMemoryType.EPISODIC,
-                query=user_message.text,
-                metadata={"chat_id": self.id},
-            )
+            # hook to do something before recall begins
+            config = self.plugin_manager.execute_hook("before_cat_recalls_memories", config, caller=self)
 
-            self.working_memory.declarative_memories = list(set(agent_memories) | set(chat_memories))
+            await self.recall_context_to_working_memory(config)
+
+            # hook to modify/enrich retrieved memories
+            self.plugin_manager.execute_hook("after_cat_recalls_memories", config, caller=self)
 
             # if the agent is set to fast reply, skip everything and return the output
             agent_output = plugin_manager.execute_hook("agent_fast_reply", caller=self)
             if agent_output:
                 return CatMessage(text=agent_output.output)
 
+            tools = await self.get_procedures(config)
+
             # prepare agent input
             agent_input = AgenticWorkflowTask(
                 system_prompt=system_prompt,
                 user_prompt=self.working_memory.user_message.text,
                 context=[m.document for m in self.working_memory.declarative_memories],
-                history=[h.langchainfy() for h in self.working_memory.history[-recall_config.latest_n_history:]],
-                tools=(await self.get_procedures()),
+                history=[h.langchainfy() for h in self.working_memory.history[-config.latest_n_history:]],
+                tools=tools,
             )
 
             agent_output = await self.agentic_workflow.run(
