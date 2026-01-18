@@ -6,7 +6,6 @@ from starlette.websockets import WebSocketDisconnect
 
 from cat.auth.permissions import get_base_permissions
 from cat.db.cruds import users as crud_users
-from cat.services.memory.models import VectorMemoryType
 
 from tests.utils import (
     send_websocket_message,
