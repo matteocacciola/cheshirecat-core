@@ -1,7 +1,7 @@
 import os
 from io import BytesIO
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from fastapi import APIRouter, Body
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
@@ -24,6 +24,18 @@ class FileManagerDeletedFiles(BaseModel):
 class FileManagerAttributes(BaseModel):
     files: List[FileResponse]
     size: int
+
+
+def get_from_info(info: AuthorizedInfo) -> Tuple[str, VectorMemoryType, Dict]:
+    ccat = info.cheshire_cat
+    path = ccat.agent_key
+    if info.stray_cat:
+        path = os.path.join(path, info.stray_cat.id)
+
+    collection_id = VectorMemoryType.DECLARATIVE if not info.stray_cat else VectorMemoryType.EPISODIC
+    metadata = {"chat_id": info.stray_cat.id} if info.stray_cat else {}
+
+    return path, collection_id, metadata
 
 
 # get configured Plugin File Managers and configuration schemas
@@ -81,9 +93,9 @@ async def upsert_file_manager_setting(
 async def get_attributes(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> FileManagerAttributes:
-    ccat = info.cheshire_cat
+    path, _, _ = get_from_info(info)
 
-    list_files = ccat.file_manager.list_files(ccat.agent_key)
+    list_files = info.cheshire_cat.file_manager.list_files(path)
     return FileManagerAttributes(files=list_files, size=sum(file.size for file in list_files))
 
 
@@ -92,7 +104,7 @@ async def download_file(
     source_name: str,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> StreamingResponse:
-    ccat = info.cheshire_cat
+    path, _, _ = get_from_info(info)
 
     # Security: Validate and sanitize the source parameter
     if not source_name or source_name.strip() == "":
@@ -120,7 +132,7 @@ async def download_file(
     sanitized_source = f"{sanitized_source}{sanitized_extension}"
     try:
         # This ensures the resolved path doesn't escape the intended directory
-        base_path = Path(ccat.agent_key).resolve()
+        base_path = Path(path).resolve()
         requested_path = (base_path / sanitized_source).resolve()
 
         # Ensure the resolved path is within the base directory
@@ -130,7 +142,7 @@ async def download_file(
         raise CustomValidationException("Invalid file path")
 
     # Download the file
-    file_content = ccat.file_manager.download(f"{ccat.agent_key}/{sanitized_source}")
+    file_content = info.cheshire_cat.file_manager.download(os.path.join(path, sanitized_source))
     if file_content is None:
         raise CustomNotFoundException("File not found")
 
@@ -151,16 +163,15 @@ async def delete_file(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> FileManagerDeletedFiles:
     """Delete a file"""
-    ccat = info.cheshire_cat
+    path, collection_id, metadata = get_from_info(info)
+    metadata = {"source": source_name} | metadata
 
     try:
         # delete the file from the file storage
-        res = ccat.file_manager.remove_file_from_storage(os.path.join(ccat.agent_key, source_name))
+        res = info.cheshire_cat.file_manager.remove_file_from_storage(os.path.join(path, source_name))
 
         # delete points
-        collection_id = VectorMemoryType.DECLARATIVE
-        metadata = {"source": source_name}
-        await ccat.vector_memory_handler.delete_tenant_points(str(collection_id), metadata)
+        await info.cheshire_cat.vector_memory_handler.delete_tenant_points(str(collection_id), metadata)
 
         return FileManagerDeletedFiles(deleted=res)
     except Exception as e:
@@ -172,21 +183,19 @@ async def delete_files(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> FileManagerDeletedFiles:
     """Delete all files"""
-    ccat = info.cheshire_cat
-
-    collection_id = VectorMemoryType.DECLARATIVE
+    path, collection_id, metadata = get_from_info(info)
 
     try:
         # get the list of files
-        files = ccat.file_manager.list_files(ccat.agent_key)
+        files = info.cheshire_cat.file_manager.list_files(path)
 
         # delete all the files from the file storage
-        res = ccat.file_manager.remove_folder_from_storage(ccat.agent_key)
+        res = info.cheshire_cat.file_manager.remove_folder_from_storage(path)
 
         # delete points
         for file in files:
-            metadata = {"source": file.name}
-            await ccat.vector_memory_handler.delete_tenant_points(str(collection_id), metadata)
+            metadata |= {"source": file.name}
+            await info.cheshire_cat.vector_memory_handler.delete_tenant_points(str(collection_id), metadata)
 
         return FileManagerDeletedFiles(deleted=res)
     except Exception as e:

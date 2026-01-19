@@ -3,7 +3,7 @@ from cat.db.cruds import users as crud_users
 from cat.services.memory.models import VectorMemoryType
 
 from tests.utils import (
-    get_declarative_memory_contents,
+    get_memory_contents,
     agent_id,
     fake_timestamp,
     send_file,
@@ -125,7 +125,7 @@ def test_points_deleted_by_metadata(secure_client, secure_client_headers):
     # check response
     assert response.status_code == 200
     # check memory contents
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
 
     dm_len = len(declarative_memories)
@@ -138,7 +138,7 @@ def test_points_deleted_by_metadata(secure_client, secure_client_headers):
     # check response
     assert response.status_code == 200
     # check memory contents
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == dm_len * 2
 
     # delete nothing
@@ -148,7 +148,7 @@ def test_points_deleted_by_metadata(secure_client, secure_client_headers):
     )
     # check memory contents
     assert res.status_code == 200
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == dm_len * 2
 
     # delete first document
@@ -160,7 +160,7 @@ def test_points_deleted_by_metadata(secure_client, secure_client_headers):
     assert res.status_code == 200
     json = res.json()
     assert isinstance(json["deleted"], dict)
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
 
     # delete second document
@@ -170,7 +170,7 @@ def test_points_deleted_by_metadata(secure_client, secure_client_headers):
     )
     # check memory contents
     assert res.status_code == 200
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 0
 
 

@@ -94,14 +94,14 @@ def create_mock_plugin_zip(flat: bool, plugin_id = "mock_plugin"):
 
 
 # utility to retrieve declarative memory contents
-def get_declarative_memory_contents(client, headers = None):
+def get_memory_contents(client, headers = None, collection: VectorMemoryType | None = VectorMemoryType.DECLARATIVE):
     headers = headers or {} | {"X-Agent-ID": agent_id}
     params = {"text": "Something"}
     response = client.get("/memory/recall/", params=params, headers=headers)
     assert response.status_code == 200
     json = response.json()
-    declarative_memories = json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)]
-    return declarative_memories
+    memories = json["vectors"]["collections"][str(collection)]
+    return memories
 
 
 # utility to get collections and point count from `GET /memory/collections` in a simpler format

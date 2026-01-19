@@ -1,3 +1,4 @@
+import asyncio
 import json
 import mimetypes
 import os
@@ -38,6 +39,7 @@ class RabbitHole:
         raise ValueError("RabbitHole can only be setup with CheshireCat or StrayCat instances.")
 
     """Manages content ingestion. I'm late... I'm late!"""
+
     async def ingest_memory(self, cat: "CheshireCat", file: BytesIO):
         """Upload memories to the declarative memory from a JSON file.
 
@@ -124,27 +126,40 @@ class RabbitHole:
         See Also:
             before_rabbithole_stores_documents
         """
-        self.setup(cat)
+        try:
+            self.setup(cat)
 
-        filename = filename or (file if isinstance(file, str) else None)
-        if not filename:
-            raise ValueError("No filename provided.")
+            filename = filename or (file if isinstance(file, str) else None)
+            if not filename:
+                raise ValueError("No filename provided.")
 
-        # replace multiple spaces with underscore
-        filename = re.sub(r'\s+', '_', filename)
+            # replace multiple spaces with underscore
+            filename = re.sub(r'\s+', '_', filename)
 
-        # split a file into a list of docs
-        file_bytes, content_type, docs, is_url = await self._file_to_docs(
-            file=file, filename=filename, content_type=content_type
-        )
+            # split a file into a list of docs
+            file_bytes, content_type, docs, is_url = await self._file_to_docs(
+                file=file, filename=filename, content_type=content_type
+            )
 
-        # store in memory
-        await self._store_documents(docs=docs, source=filename, metadata=metadata)
+            # store in memory
+            await self._store_documents(docs=docs, source=filename, metadata=metadata)
 
-        # store in file storage
-        if store_file and not is_url:
-            chat_id = self.stray.id if self.stray else None
-            self.cat.save_file(file_bytes, content_type, filename, chat_id)
+            # store in file storage
+            if store_file and not is_url:
+                chat_id = self.stray.id if self.stray else None
+                self.cat.save_file(file_bytes, content_type, filename, chat_id)
+
+            log.info(f"Successfully ingested file: {filename}")
+        except Exception as e:
+            log.error(f"Error ingesting file {filename}: {e}", exc_info=True)
+            # Don't raise in background tasks - just log the error
+            if self.stray:
+                try:
+                    await self.stray.notifier.send_error(
+                        f"Error processing {filename}: {str(e)}"
+                    )
+                except Exception as notify_error:
+                    log.error(f"Failed to send error notification: {notify_error}")
 
     async def _file_to_docs(
         self, file: str | BytesIO, filename: str, content_type: str | None = None
@@ -183,19 +198,20 @@ class RabbitHole:
             is_url = fnc_is_url(file)
             if is_url:
                 try:
-                    # Make a request with a fake browser name
-                    response = httpx.get(file, headers={"User-Agent": "Magic Browser"})
-                    response.raise_for_status()
+                    # Make a request with a fake browser name - use async httpx
+                    async with httpx.AsyncClient() as client:
+                        response = await client.get(file, headers={"User-Agent": "Magic Browser"})
+                        response.raise_for_status()
 
-                    # Define mime type and source of url
-                    # Add fallback for empty/None content_type
-                    content_type = response.headers.get(
-                        "Content-Type", "text/html" if file.startswith("http") else "text/plain"
-                    ).split(";")[0]
-                    source = file
+                        # Define mime type and source of url
+                        # Add fallback for empty/None content_type
+                        content_type = response.headers.get(
+                            "Content-Type", "text/html" if file.startswith("http") else "text/plain"
+                        ).split(";")[0]
+                        source = file
 
-                    # Get binary content of url
-                    file_bytes = response.content
+                        # Get binary content of url
+                        file_bytes = response.content
                 except HTTPError as e:
                     log.error(f"Agent id: {self.cat.agent_key}. Error: {e}")
             else:
@@ -203,9 +219,8 @@ class RabbitHole:
                 content_type = mimetypes.guess_type(file)[0]
                 source = os.path.basename(file)
 
-                # Get file bytes
-                with open(file, "rb") as f:
-                    file_bytes = f.read()
+                # Get file bytes - use async file reading
+                file_bytes = await asyncio.to_thread(lambda: open(file, "rb").read())
 
         if not file_bytes:
             raise ValueError(f"Something went wrong with the file {source}")
@@ -294,14 +309,14 @@ class RabbitHole:
             doc = plugin_manager.execute_hook("before_rabbithole_insert_memory", doc, caller=self.stray or self.cat)
             if doc.page_content != "":
                 payload = doc.model_dump()
-                vector = embedder.embed_documents([doc.page_content])[0]
+                vector = await asyncio.to_thread(lambda: embedder.embed_documents([doc.page_content])[0])
 
                 storing_points.append(PointStruct(id=None, payload=payload, vector=vector))
                 storing_payloads.append(payload)
                 storing_vectors.append(vector)
 
             # wait a little to avoid APIs rate limit errors
-            time.sleep(0.05)
+            await asyncio.sleep(0.05)
 
         collection_name = str(VectorMemoryType.DECLARATIVE if not self.stray else VectorMemoryType.EPISODIC)
         await self.cat.vector_memory_handler.add_points_to_tenant(

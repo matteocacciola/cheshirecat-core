@@ -5,7 +5,7 @@ import pytest
 import cat.core_plugins.analytics.cruds.embeddings as crud_embeddings
 from cat.services.memory.models import VectorMemoryType
 
-from tests.utils import agent_id, api_key, chat_id, get_declarative_memory_contents, send_file
+from tests.utils import agent_id, api_key, chat_id, get_memory_contents, send_file
 
 
 def _check_analytics_not_empty(analytics):
@@ -37,7 +37,7 @@ def _check_on_file_upload(response, file_name, content_type, secure_client, secu
 
     # check memory contents
     # check declarative memory is not empty
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
 
     _check_analytics(crud_embeddings.get_analytics(agent_id), file_name)
@@ -114,7 +114,7 @@ async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_header
     _check_upon_request(secure_client, secure_client_headers, file_name)
 
     # declarative memory should be empty for another agent
-    declarative_memories = get_declarative_memory_contents(
+    declarative_memories = get_memory_contents(
         secure_client, {"X-Agent-ID": "another_agent_test", "Authorization": f"Bearer {api_key}"}
     )
     assert len(declarative_memories) == 0
@@ -139,7 +139,7 @@ def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers):
     assert json_res[file_name]["content_type"] == content_type
     assert "File is being ingested" in json_res[file_name]["info"]
 
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
 
     _check_analytics(crud_embeddings.get_analytics(agent_id), file_name)
@@ -147,7 +147,7 @@ def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers):
 
 def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_headers):
     files = []
-    files_to_upload = {"sample.pdf": "application/pdf", "sample.txt": "application/txt"}
+    files_to_upload = {"sample.pdf": "application/pdf", "sample.txt": "text/plain"}
     for file_name in files_to_upload:
         content_type = files_to_upload[file_name]
         file_path = f"tests/mocks/{file_name}"
@@ -165,7 +165,7 @@ def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_hea
         assert json_res[file_name]["content_type"] == files_to_upload[file_name]
         assert "File is being ingested" in json_res[file_name]["info"]
 
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
 
     analytics = crud_embeddings.get_analytics(agent_id)
@@ -192,7 +192,7 @@ def test_rabbithole_upload_doc_with_metadata(secure_client, secure_client_header
     # check response
     assert response.status_code == 200
 
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
     for dm in declarative_memories:
         for k, v in metadata.items():
@@ -203,7 +203,7 @@ def test_rabbithole_upload_doc_with_metadata(secure_client, secure_client_header
 
 def test_rabbithole_upload_docs_batch_with_metadata(secure_client, secure_client_headers):
     files = []
-    files_to_upload = {"sample.pdf": "application/pdf", "sample.txt": "application/txt"}
+    files_to_upload = {"sample.pdf": "application/pdf", "sample.txt": "text/plain"}
     for file_name in files_to_upload:
         content_type = files_to_upload[file_name]
         file_path = f"tests/mocks/{file_name}"
@@ -234,7 +234,7 @@ def test_rabbithole_upload_docs_batch_with_metadata(secure_client, secure_client
     # check response
     assert response.status_code == 200
 
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
     for dm in declarative_memories:
         assert "when" in dm["metadata"]

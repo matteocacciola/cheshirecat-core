@@ -41,38 +41,37 @@ class AllowedMimeTypesResponse(BaseModel):
     allowed: List[str]
 
 
-def _on_upload_single_file(
+async def _on_upload_single_file(
     info: AuthorizedInfo,
-    file: UploadFile,
-    background_tasks: BackgroundTasks,
-    metadata: str | None = None,
+    file_content: bytes,
+    filename: str,
+    metadata: Dict | None = None,
 ):
+    """Background task that processes a single file"""
     lizard = info.lizard
     cat = info.stray_cat or info.cheshire_cat
 
-    filename = file.filename
-    file = BytesIO(file.file.read())
+    # Create BytesIO from the already-read content
+    file_bytes = BytesIO(file_content)
 
     # Get file mime type
-    content_type, _ = guess_file_type(file)
-    log.info(f"Uploaded {content_type} down the rabbit hole")
+    content_type, _ = guess_file_type(file_bytes)
+    log.info(f"Processing {content_type} in background")
 
     # check if MIME type of uploaded file is supported
     admitted_types = cat.file_handlers.keys()
     if content_type not in admitted_types:
-        CustomValidationException(
-            f'MIME type {content_type} not supported. Admitted types: {" - ".join(admitted_types)}'
+        raise CustomValidationException(
+            f"MIME type {content_type} not supported. Admitted types: {' - '.join(admitted_types)}"
         )
 
-    # upload file to long-term memory, in the background
-    # https://github.com/tiangolo/fastapi/discussions/10936
-    background_tasks.add_task(
-        lizard.rabbit_hole.ingest_file,
+    # upload file to long-term memory
+    await lizard.rabbit_hole.ingest_file(
         cat=cat,
-        file=file,
+        file=file_bytes,
         filename=filename,
         content_type=content_type,
-        metadata=json.loads(metadata)
+        metadata=metadata or {},
     )
 
 
@@ -143,13 +142,25 @@ async def upload_files(
     metadata_dict = json.loads(metadata)
 
     for file in files:
-        # if file.filename in dictionary pass the stringified metadata, otherwise pass empty dictionary-like string
-        metadata_dict_current = json.dumps(metadata_dict[file.filename]) if file.filename in metadata_dict else "{}"
-        _on_upload_single_file(info, file, background_tasks, metadata_dict_current)
+        filename = file.filename
 
-        response[file.filename] = UploadSingleFileResponse(
-            filename=file.filename, content_type=file.content_type, info="File is being ingested asynchronously"
+        # if filename in dictionary pass the stringified metadata, otherwise pass empty dictionary-like string
+        metadata_dict_current = metadata_dict[filename] if filename in metadata_dict else {}
+        file_content = await file.read()
+
+        background_tasks.add_task(
+            _on_upload_single_file,
+            info=info,
+            file_content=file_content,
+            filename=filename,
+            metadata=metadata_dict_current,
         )
+
+        response[filename] = UploadSingleFileResponse(
+            filename=filename, content_type=file.content_type, info="File is being ingested asynchronously"
+        )
+
+        await file.close()
 
     return response
 
@@ -225,21 +236,25 @@ async def get_source_urls(
     info: AuthorizedInfo = check_permissions(AuthResource.UPLOAD, AuthPermission.READ),
 ) -> List[str]:
     """Retrieve the list of source URLs that have been uploaded to the Rabbit Hole"""
+    collection = str(VectorMemoryType.DECLARATIVE if not info.stray_cat else VectorMemoryType.EPISODIC)
+
     # Get all points
-    memory_points, _ = await info.cheshire_cat.vector_memory_handler.get_all_tenant_points_from_web(
-        str(VectorMemoryType.DECLARATIVE)
-    )
+    memory_points, _ = await info.cheshire_cat.vector_memory_handler.get_all_tenant_points_from_web(collection)
 
     # retrieve all the memory points where the metadata["source"] is a URL
-    return [
-        memory_point.payload["metadata"]["source"]
-        for memory_point in memory_points
-        if (
-                "metadata" in memory_point.payload
-                and "source" in memory_point.payload["metadata"]
-                and memory_point.payload["metadata"]["source"].startswith("http")
-        )
-    ]
+    result = []
+    for memory_point in memory_points:
+        metadata = memory_point.payload.get("metadata", {})
+        if info.stray_cat and metadata.get("chat_id") != info.stray_cat.id:
+            continue
+
+        source = metadata.get("source")
+        if source is None or not source.startswith("http"):
+            continue
+
+        result.append(source)
+
+    return result
 
 
 # receive files via http endpoint
@@ -289,9 +304,20 @@ async def upload_file(
         )
     ```
     """
-    _on_upload_single_file(info, file, background_tasks, metadata)
+    filename = file.filename
+    file_content = await file.read()
+
+    background_tasks.add_task(
+        _on_upload_single_file,
+        info=info,
+        file_content=file_content,
+        filename=filename,
+        metadata=json.loads(metadata) if metadata else {},
+    )
+
+    await file.close()
 
     # reply to client
     return UploadSingleFileResponse(
-        filename=file.filename, content_type=file.content_type, info="File is being ingested asynchronously"
+        filename=filename, content_type=file.content_type, info="File is being ingested asynchronously",
     )

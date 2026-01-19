@@ -104,10 +104,13 @@ async def recall_memory_points_from_text(
 
     # Embed the query to plot it in the Memory page
     query_embedding = lizard.embedder.embed_query(text)
-    collection_name = str(VectorMemoryType.DECLARATIVE)
+    collection_name = str(VectorMemoryType.DECLARATIVE if not info.stray_cat else VectorMemoryType.EPISODIC)
+    metadata = {k: v for k, v in metadata.items() if k != "source"}
+    if info.stray_cat:
+        metadata["chat_id"] = info.stray_cat.id
 
     dm = await info.cheshire_cat.vector_memory_handler.recall_tenant_memory_from_embedding(
-        collection_name, query_embedding, k=k, metadata={k: v for k, v in metadata.items() if k != "source"},
+        collection_name, query_embedding, k=k, metadata=metadata,
     )
 
     return RecallResponse(

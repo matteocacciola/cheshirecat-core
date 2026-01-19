@@ -2,7 +2,7 @@ import logging
 import requests
 
 from cat.exceptions import CustomValidationException
-from tests.utils import get_declarative_memory_contents, chat_id
+from tests.utils import get_memory_contents, chat_id
 
 
 def test_rabbithole_upload_invalid_url(secure_client, secure_client_headers):
@@ -15,7 +15,7 @@ def test_rabbithole_upload_invalid_url(secure_client, secure_client_headers):
     assert json["detail"] == "Unable to reach the URL: https://www.example.sbadabim"
 
     # check declarative memory is still empty
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 0
 
 
@@ -42,7 +42,7 @@ def test_rabbithole_upload_url(secure_client, secure_client_headers):
     assert json["url"] == payload["url"]
 
     # check declarative memories have been stored
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 1
 
 
@@ -69,7 +69,7 @@ def test_rabbithole_upload_url_to_stray(secure_client, secure_client_headers):
     assert json["url"] == payload["url"]
 
     # check declarative memories have been stored
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 1
 
 
@@ -90,7 +90,7 @@ def test_rabbithole_upload_url_with_metadata(secure_client, secure_client_header
     assert json["url"] == payload["url"]
 
     # check declarative memories have been stored
-    declarative_memories = get_declarative_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 1
     assert "when" in declarative_memories[0]["metadata"]
     assert "source" in declarative_memories[0]["metadata"]
