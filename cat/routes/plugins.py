@@ -1,6 +1,5 @@
 import mimetypes
 from typing import Dict
-import aiofiles
 from fastapi import Body, APIRouter, UploadFile
 from pydantic import ValidationError
 from slugify import slugify
@@ -24,7 +23,7 @@ from cat.routes.routes_utils import (
     InstallPluginFromRegistryResponse,
     create_plugin_manifest
 )
-from cat.utils import get_allowed_plugins_mime_types
+from cat.utils import get_allowed_plugins_mime_types, write_temp_file
 
 router = APIRouter(tags=["Plugins"], prefix="/plugins")
 
@@ -170,23 +169,19 @@ async def install_plugin(
             f'MIME type `{file.content_type}` not supported. Admitted types: {", ".join(allowed_mime_types)}'
         )
 
-    log.info(f"Uploading {content_type} plugin {file.filename}")
-    plugin_archive_path = f"/tmp/{file.filename}"
-    async with aiofiles.open(plugin_archive_path, "wb+") as f:
-        content = await file.read()
-        await f.write(content)
-
+    filename = file.filename
+    log.info(f"Uploading {content_type} plugin {filename}")
     try:
+        plugin_archive_path = await write_temp_file(filename, await file.read())
         info.lizard.plugin_manager.install_plugin(plugin_archive_path)
     except Exception as e:
         raise CustomValidationException(f"Could not install plugin from file: {e}")
 
     return InstallPluginResponse(
-        filename=file.filename,
-        content_type=file.content_type,
+        filename=filename,
+        content_type=content_type,
         info="Plugin is being installed asynchronously",
     )
-
 
 @router.post("/install/registry", response_model=InstallPluginFromRegistryResponse)
 async def install_plugin_from_registry(
@@ -258,8 +253,11 @@ async def uninstall_plugin(
     if not plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
-    # remove folder, hooks and tools
-    plugin_manager.uninstall_plugin(plugin_id)
+    try:
+        # remove folder, hooks and tools
+        plugin_manager.uninstall_plugin(plugin_id)
+    except Exception as e:
+        raise CustomValidationException(f"Could not uninstall plugin: {e}")
 
     return DeletePluginResponse(deleted=plugin_id)
 

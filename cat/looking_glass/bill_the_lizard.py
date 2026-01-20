@@ -287,6 +287,10 @@ class BillTheLizard(OrchestratorMixin):
 
     async def embed_all_in_cheshire_cats(self, embedder_name: str, embedder_size: int) -> None:
         """Re-embeds all the stored files and procedures in all the Cheshire Cats using the current embedder."""
+        async def embed_with_limit(entry_):
+            async with semaphore:
+                await entry_["ccat"].embed_all(entry_["stored_sources"])
+
         ccat_ids = crud.get_agents_main_keys()
         stored_files_by_ccat: List[Dict] = []
         # first, I need to get all the stored files from all the Cheshire Cats with the metadata stored
@@ -306,8 +310,12 @@ class BillTheLizard(OrchestratorMixin):
             await entry["ccat"].vector_memory_handler.initialize(embedder_name, embedder_size)
 
         # finally, I can re-embed all the stored files in an asynchronous way
-        for entry in stored_files_by_ccat:
-            asyncio.create_task(entry["ccat"].embed_all(entry["stored_sources"]))
+        # limit concurrent embeddings to avoid overwhelming resources
+        semaphore = asyncio.Semaphore(5)  # Max 5 concurrent
+        await asyncio.gather(*[
+            embed_with_limit(entry)
+            for entry in stored_files_by_ccat
+        ])
 
     async def shutdown(self) -> None:
         """

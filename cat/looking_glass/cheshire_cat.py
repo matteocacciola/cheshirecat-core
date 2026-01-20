@@ -1,3 +1,4 @@
+import asyncio
 import mimetypes
 import os
 import tempfile
@@ -115,31 +116,41 @@ class CheshireCat(BotMixin):
         crud_plugins.destroy_all(self._id)
         crud_users.destroy_all(self._id)
 
-    async def get_stored_sources_with_metadata(self) -> List[StoredSourceWithMetadata]:
+    async def get_stored_sources_with_metadata(self) -> Dict[VectorMemoryType, List[StoredSourceWithMetadata]]:
         """Get all stored files with their metadata."""
-        async def get_stored_source(point: Record) -> StoredSourceWithMetadata | None:
-            metadata = point.payload.get("metadata", {})
-            filename = metadata.get("source")
-            if not filename:
-                return None
-            if is_url(filename):
-                return StoredSourceWithMetadata(name=filename, content=None, metadata=metadata, path=filename)
-            file_path = self.agent_key
-            if chat_id := metadata.get("chat_id"):
-                file_path = os.path.join(file_path, chat_id)
-            file_content = self.file_manager.read_file(filename, file_path)
-            if not file_content:
-                return None
-            return StoredSourceWithMetadata(
-                name=filename, content=BytesIO(file_content), metadata=metadata, path=file_path,
-            )
+        results = {
+            VectorMemoryType.DECLARATIVE: set(),
+            VectorMemoryType.EPISODIC: set(),
+        }
+        for collection_name in results.keys():
+            points, _ = await self.vector_memory_handler.get_all_tenant_points(str(collection_name), with_vectors=False)
+            for point in points:
+                metadata = point.payload.get("metadata", {})
+                filename = metadata.get("source")
+                if not filename:
+                    continue
 
-        return list({
-            stored_source
-            for collection_name in [str(VectorMemoryType.DECLARATIVE), str(VectorMemoryType.EPISODIC)]
-            for point in (await self.vector_memory_handler.get_all_tenant_points(collection_name, with_vectors=False))[0]
-            if (stored_source := await get_stored_source(point))
-        })
+                if is_url(filename):
+                    results[collection_name].add(
+                        StoredSourceWithMetadata(name=filename, content=None, metadata=metadata, path=filename)
+                    )
+                    continue
+
+                file_path = self.agent_key
+                if chat_id := metadata.get("chat_id"):
+                    file_path = os.path.join(file_path, chat_id)
+
+                file_content = self.file_manager.read_file(filename, file_path)
+                if not file_content:
+                    continue
+
+                results[collection_name].add(
+                    StoredSourceWithMetadata(
+                        name=filename, content=BytesIO(file_content), metadata=metadata, path=file_path,
+                    )
+                )
+
+        return {k: list(v) for k, v in results.items()}
 
     async def embed_procedures(self):
         # Easy access to active procedures in plugin_manager (source of truth!)
@@ -171,16 +182,31 @@ class CheshireCat(BotMixin):
         )
         log.info(f"Agent id: {self._id}. Embedded {len(payloads)} triggers in {collection_name} vector memory")
 
-    async def embed_stored_sources(self, stored_sources: List[StoredSourceWithMetadata]):
-        """Embeds stored sources in the vector memory"""
-        if not stored_sources:
-            return
+    async def _embed_stored_sources(
+        self, collection_name: VectorMemoryType, stored_sources: List[StoredSourceWithMetadata]
+    ):
+        """
+        Embeds stored sources into a vector memory collection.
 
+        This method retrieves and processes a list of stored sources with their associated metadata and incorporates
+        them into a vector memory collection. During this process, any pre-existing embeddings in the collection are
+        cleared, and files are systematically ingested. The method handles potential irregularities such as missing
+        content or stray references and logs appropriate messages.
+
+        Args:
+            collection_name (VectorMemoryType): The name of the collection where the stored sources
+                will be embedded in vector memory.
+            stored_sources (List[StoredSourceWithMetadata]): A list of sources, each containing content
+                and metadata, to be embedded into vector memory.
+
+        Raises:
+            This method does not explicitly raise any exceptions but relies on the calling context to
+            handle exceptions raised by dependent operations such as file ingestion.
+        """
         log.info(f"Agent id: {self._id}. Embedding stored files to the vector memory")
 
         # first, clear all existing declarative and episodic embeddings
-        await self.vector_memory_handler.delete_tenant_points(str(VectorMemoryType.DECLARATIVE))
-        await self.vector_memory_handler.delete_tenant_points(str(VectorMemoryType.EPISODIC))
+        await self.vector_memory_handler.delete_tenant_points(str(collection_name))
 
         rabbit_hole = self.rabbit_hole
         counter = 0
@@ -209,7 +235,7 @@ class CheshireCat(BotMixin):
 
         log.info(f"Agent id: {self._id}. Embedded {counter} files to the vector memory")
 
-    async def embed_all(self, stored_sources: List[StoredSourceWithMetadata]):
+    async def embed_all(self, stored_sources: Dict[VectorMemoryType, List[StoredSourceWithMetadata]]):
         """
         Re-embeds all the stored files and procedures in the vector memory.
         1. Re-initialize the vector memory handler with the current embedder
@@ -217,7 +243,8 @@ class CheshireCat(BotMixin):
         3. Re-embed all the procedures
 
         Args:
-            stored_sources (List[StoredFileWithMetadata]): The list of stored sources of the Knowledge Base, with metadata to embed.
+            stored_sources (Dict[VectorMemoryType, List[StoredSourceWithMetadata]]): The list of stored sources of the
+                Knowledge Base, with metadata to embed, grouped by collection.
 
         Notes
         -----
@@ -226,10 +253,16 @@ class CheshireCat(BotMixin):
         conditions when multiple agents are updating their embedder at the same time on the same database.
         """
         # re-embed all the stored files
-        await self.embed_stored_sources(stored_sources)
+        tasks = []
 
-        # re-embed all the procedures
-        await self.embed_procedures()
+        for collection_name, sources in stored_sources.items():
+            if sources:
+                tasks.append(self._embed_stored_sources(collection_name, sources))
+
+        tasks.append(self.embed_procedures())
+
+        # This allows concurrent embedding within each cat
+        await asyncio.gather(*tasks)
 
     def save_file(self, file_bytes: bytes, content_type: str, source: str, chat_id: str | None = None):
         """

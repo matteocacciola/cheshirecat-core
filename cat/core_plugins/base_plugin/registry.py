@@ -1,11 +1,11 @@
 import random
 from typing import List
-import aiofiles
 import httpx
 
 from cat import PluginRegistry
 from cat.log import log
 from cat.looking_glass.models import PluginManifest
+from cat.utils import write_temp_file
 
 
 class CheshireCatPluginRegistry(PluginRegistry):
@@ -51,11 +51,7 @@ class CheshireCatPluginRegistry(PluginRegistry):
         async with httpx.AsyncClient() as client:
             response = await client.post(f"{self.registry_url}/download", json=payload)
             response.raise_for_status()
-
-            plugin_zip_path = f"/tmp/{url.split('/')[-1]}.zip"
-
-            async with aiofiles.open(plugin_zip_path, "wb") as f:
-                await f.write(response.content)  # Write the content asynchronously
+            plugin_zip_path = await write_temp_file(f"{url.split('/')[-1]}.zip", response.content)
 
         log.info(f"Saved plugin as {plugin_zip_path}")
         return plugin_zip_path

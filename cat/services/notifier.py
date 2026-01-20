@@ -13,6 +13,11 @@ class NotifierService:
         self.agent_key: Final[str] = agent_key
         self.chat_id: Final[str] = chat_id
 
+    def has_ws_connection(self) -> bool:
+        from cat.looking_glass.bill_the_lizard import BillTheLizard
+
+        return BillTheLizard().websocket_manager.get_connection(self.user.id) is not None
+
     async def _send_ws_json(self, data: Any):
         from cat.looking_glass.bill_the_lizard import BillTheLizard
 

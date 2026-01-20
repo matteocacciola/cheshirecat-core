@@ -1,5 +1,6 @@
 import json
 import mimetypes
+import os
 from io import BytesIO
 from typing import Dict, List
 import httpx
@@ -11,7 +12,7 @@ from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException
 from cat.log import log
 from cat.services.memory.models import VectorMemoryType
-from cat.utils import guess_file_type
+from cat.utils import guess_file_type, write_temp_file
 
 router = APIRouter(tags=["Rabbit Hole"], prefix="/rabbithole")
 
@@ -43,44 +44,45 @@ class AllowedMimeTypesResponse(BaseModel):
 
 async def _on_upload_single_file(
     info: AuthorizedInfo,
-    file_content: bytes,
+    path: str,
     filename: str,
     metadata: Dict | None = None,
 ):
-    """Background task that processes a single file"""
     lizard = info.lizard
     cat = info.stray_cat or info.cheshire_cat
 
-    # Create BytesIO from the already-read content
-    file_bytes = BytesIO(file_content)
+    try:
+        with open(path, "rb") as f:
+            file_bytes = BytesIO(f.read())
+            # Get file mime type
+            content_type, _ = guess_file_type(file_bytes)
 
-    # Get file mime type
-    content_type, _ = guess_file_type(file_bytes)
-    log.info(f"Processing {content_type} in background")
+            # check if MIME type of uploaded file is supported
+            admitted_types = cat.file_handlers.keys()
+            if content_type not in admitted_types:
+                raise CustomValidationException(
+                    f"MIME type {content_type} not supported. Admitted types: {' - '.join(admitted_types)}"
+                )
 
-    # check if MIME type of uploaded file is supported
-    admitted_types = cat.file_handlers.keys()
-    if content_type not in admitted_types:
-        raise CustomValidationException(
-            f"MIME type {content_type} not supported. Admitted types: {' - '.join(admitted_types)}"
-        )
-
-    # upload file to long-term memory
-    await lizard.rabbit_hole.ingest_file(
-        cat=cat,
-        file=file_bytes,
-        filename=filename,
-        content_type=content_type,
-        metadata=metadata or {},
-    )
+            # upload file to long-term memory
+            await lizard.rabbit_hole.ingest_file(
+                cat=cat,
+                file=file_bytes,
+                filename=filename,
+                content_type=content_type,
+                metadata=metadata or {},
+            )
+    finally:
+        if os.path.exists(path):
+            os.remove(path)
 
 
 # receive files via http endpoint
 @router.post("/batch", response_model=Dict[str, UploadSingleFileResponse])
 @router.post("/batch/{chat_id}", response_model=UploadSingleFileResponse)
 async def upload_files(
-    files: List[UploadFile],
     background_tasks: BackgroundTasks,
+    files: List[UploadFile],
     metadata: str = Form(
         default="{}",
         description="Metadata to be stored where each key is the name of a file being uploaded, and the corresponding value is another dictionary containing metadata specific to that file. "
@@ -136,6 +138,12 @@ async def upload_files(
     )
     ```
     """
+    async def task(file_name: str, content: bytes):
+        temp_path = await write_temp_file(file_name, content)
+        # if file_name in dictionary pass the stringified metadata, otherwise pass an empty dictionary-like string
+        metadata_dict_current = metadata_dict[file_name] if file_name in metadata_dict else {}
+        await _on_upload_single_file(info=info, path=temp_path, filename=file_name, metadata=metadata_dict_current)
+
     log.info(f"Uploading {len(files)} files down the rabbit hole")
 
     response = {}
@@ -143,24 +151,10 @@ async def upload_files(
 
     for file in files:
         filename = file.filename
-
-        # if filename in dictionary pass the stringified metadata, otherwise pass empty dictionary-like string
-        metadata_dict_current = metadata_dict[filename] if filename in metadata_dict else {}
-        file_content = await file.read()
-
-        background_tasks.add_task(
-            _on_upload_single_file,
-            info=info,
-            file_content=file_content,
-            filename=filename,
-            metadata=metadata_dict_current,
-        )
-
+        background_tasks.add_task(task, file_name=filename, content=await file.read())
         response[filename] = UploadSingleFileResponse(
             filename=filename, content_type=file.content_type, info="File is being ingested asynchronously"
         )
-
-        await file.close()
 
     return response
 
@@ -199,8 +193,8 @@ async def upload_url(
 
 @router.post("/memory", response_model=UploadSingleFileResponse)
 async def upload_memory(
-    file: UploadFile,
     background_tasks: BackgroundTasks,
+    file: UploadFile,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
 ) -> UploadSingleFileResponse:
     """Upload a memory json file to the cat memory"""
@@ -257,12 +251,11 @@ async def get_source_urls(
     return result
 
 
-# receive files via http endpoint
 @router.post("/", response_model=UploadSingleFileResponse)
 @router.post("/{chat_id}", response_model=UploadSingleFileResponse)
 async def upload_file(
-    file: UploadFile,
     background_tasks: BackgroundTasks,
+    file: UploadFile,
     metadata: str = Form(
         default="{}",
         description="Metadata to be stored with each chunk (e.g. author, category, etc.). Since we are passing this along side form data, must be a JSON string (use `json.dumps(metadata)`)."
@@ -304,20 +297,15 @@ async def upload_file(
         )
     ```
     """
+    async def task(content: bytes):
+        temp_path = await write_temp_file(filename, content)
+        await _on_upload_single_file(
+            info=info, path=temp_path, filename=filename, metadata=json.loads(metadata) if metadata else {},
+        )
+
     filename = file.filename
-    file_content = await file.read()
+    background_tasks.add_task(task, content=await file.read())
 
-    background_tasks.add_task(
-        _on_upload_single_file,
-        info=info,
-        file_content=file_content,
-        filename=filename,
-        metadata=json.loads(metadata) if metadata else {},
-    )
-
-    await file.close()
-
-    # reply to client
     return UploadSingleFileResponse(
         filename=filename, content_type=file.content_type, info="File is being ingested asynchronously",
     )

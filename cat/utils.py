@@ -4,11 +4,13 @@ import base64
 import hashlib
 import inspect
 import os
+import tempfile
 import threading
 from enum import Enum as BaseEnum, EnumMeta
 from io import BytesIO
 from typing import Dict, List, Type, TypeVar, Any, Callable, Union, Generic, Tuple
 from urllib.parse import urlparse
+import aiofiles
 import filetype
 from typing_extensions import deprecated
 import requests
@@ -549,3 +551,11 @@ def is_url(file: str) -> bool:
     parsed_file = urlparse(file)
     # Check if a string file is a string or url
     return all([parsed_file.scheme, parsed_file.netloc])
+
+
+async def write_temp_file(filename: str, content: bytes) -> str:
+    tmp_path = os.path.join(tempfile.gettempdir(), filename)
+    async with aiofiles.open(tmp_path, "wb") as f:
+        await f.write(content)
+
+    return tmp_path

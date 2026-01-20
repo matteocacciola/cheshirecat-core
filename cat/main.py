@@ -1,3 +1,4 @@
+import multiprocessing
 import uvicorn
 
 from cat.env import get_env, get_env_bool
@@ -5,14 +6,20 @@ from cat.utils import get_base_path, get_plugins_path
 
 # RUN!
 if __name__ == "__main__":
+    # Get number of workers from environment or use CPU count
+    # Always ensure at least 2 workers in production to prevent blocking
+    workers = max(2, multiprocessing.cpu_count())
+
     # debugging utilities, to deactivate put `DEBUG=false` in .env
     debug_config = {}
     if get_env_bool("CCAT_DEBUG"):
+        workers = 1
         debug_config = {
             "reload": True,
             "reload_dirs": [get_base_path()],
             "reload_excludes": [get_plugins_path()],
         }
+
     # uvicorn running behind an https proxy
     proxy_pass_config = {}
     if get_env_bool("CCAT_HTTPS_PROXY_MODE"):
@@ -25,6 +32,7 @@ if __name__ == "__main__":
         "cat.startup:cheshire_cat_api",
         host="0.0.0.0",
         port=80,
+        workers=workers,
         use_colors=True,
         log_level=get_env("CCAT_LOG_LEVEL").lower(),
         **debug_config,

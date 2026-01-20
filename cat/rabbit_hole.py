@@ -126,6 +126,16 @@ class RabbitHole:
         See Also:
             before_rabbithole_stores_documents
         """
+        def sanitize_filename(file_name: str) -> str:
+            if "." not in file_name:
+                return file_name
+            # Split on the LAST dot only (if any)
+            base, ext = file_name.rsplit(".", 1)
+            ext = "." + ext
+            # Replace any sequence of dots or spaces in the base name only
+            base = re.sub(r"[.\s]+", "_", base)
+            return base + ext
+
         try:
             self.setup(cat)
 
@@ -134,7 +144,7 @@ class RabbitHole:
                 raise ValueError("No filename provided.")
 
             # replace multiple spaces with underscore
-            filename = re.sub(r'\s+', '_', filename)
+            filename = sanitize_filename(filename)
 
             # split a file into a list of docs
             file_bytes, content_type, docs, is_url = await self._file_to_docs(
@@ -151,7 +161,7 @@ class RabbitHole:
 
             log.info(f"Successfully ingested file: {filename}")
         except Exception as e:
-            log.error(f"Error ingesting file {filename}: {e}", exc_info=True)
+            log.error(f"Error ingesting file {filename}: {e}")
             # Don't raise in background tasks - just log the error
             if self.stray:
                 try:
@@ -237,15 +247,13 @@ class RabbitHole:
         parser = MimeTypeBasedParser(handlers=self.cat.file_handlers)
 
         # Parse the content
-        if self.stray:
-            await self.stray.notifier.send_ws_message(
-                "I'm parsing the content. Big content could require some minutes..."
-            )
+        await self._send_ws_message(
+            "I'm parsing the content. Big content could require some minutes..."
+        )
         super_docs = parser.parse(blob)
 
         # Split
-        if self.stray:
-            await self.stray.notifier.send_ws_message("Parsing completed. Now let's go with reading process...")
+        await self._send_ws_message("Parsing completed. Now let's go with reading process...")
         docs = self._split_text(docs=super_docs)
         return file_bytes, content_type, docs, is_url
 
@@ -296,8 +304,7 @@ class RabbitHole:
                 time_last_notification = time.time()
                 perc_read = int(d / len(docs) * 100)
                 read_message = f"Read {perc_read}% of {source}"
-                if self.stray:
-                    await self.stray.notifier.send_ws_message(read_message)
+                await self._send_ws_message(read_message)
 
                 log.info(read_message)
 
@@ -329,8 +336,7 @@ class RabbitHole:
         )
 
         # notify client
-        if self.stray:
-            await self.stray.notifier.send_ws_message(f"Finished reading {source}, I made {len(docs)} thoughts on it.")
+        await self._send_ws_message(f"Finished reading {source}, I made {len(docs)} thoughts on it.")
 
         log.info(
             f"Agent id: {self.cat.agent_key}. Done uploading {source}. Inserted #{len(storing_points)} points into {collection_name} memory."
@@ -460,3 +466,7 @@ class RabbitHole:
         merged_metadata["_is_merged"] = True
 
         return Document(page_content=merged_content, metadata=merged_metadata)
+
+    async def _send_ws_message(self, message: str):
+        if self.stray and self.stray.notifier.has_ws_connection():
+            await self.stray.notifier.send_ws_message(message)
