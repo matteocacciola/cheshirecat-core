@@ -1,4 +1,4 @@
-from cat import hook, log, run_sync_or_async, CatProcedureType, get_env
+from cat import hook, log, run_sync_or_async, CatProcedureType
 from cat.core_plugins.white_rabbit.white_rabbit import WhiteRabbit
 from cat.db import crud
 
