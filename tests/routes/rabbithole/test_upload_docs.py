@@ -145,6 +145,31 @@ def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers):
     _check_analytics(crud_embeddings.get_analytics(agent_id), file_name)
 
 
+def test_rabbithole_upload_batch_one_file_to_chat(secure_client, secure_client_headers):
+    content_type = "application/pdf"
+    file_name = "sample.pdf"
+    file_path = f"tests/mocks/{file_name}"
+    with open(file_path, "rb") as f:
+        files = [("files", (file_name, f, content_type))]
+        response = secure_client.post(f"/rabbithole/batch/{chat_id}", files=files, headers=secure_client_headers)
+
+    # check response
+    assert response.status_code == 200
+    json_res = response.json()
+    assert len(json_res) == 1
+    assert file_name in json_res
+    assert json_res[file_name]["filename"] == file_name
+    assert json_res[file_name]["content_type"] == content_type
+    assert "File is being ingested" in json_res[file_name]["info"]
+
+    memories = get_memory_contents(
+        secure_client, secure_client_headers | {"X-Chat-ID": chat_id}, VectorMemoryType.EPISODIC,
+    )
+    assert len(memories) > 0
+
+    _check_analytics(crud_embeddings.get_analytics(agent_id), file_name)
+
+
 def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_headers):
     files = []
     files_to_upload = {"sample.pdf": "application/pdf", "sample.txt": "text/plain"}

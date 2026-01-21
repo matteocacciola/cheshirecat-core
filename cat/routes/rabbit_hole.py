@@ -79,7 +79,7 @@ async def _on_upload_single_file(
 
 # receive files via http endpoint
 @router.post("/batch", response_model=Dict[str, UploadSingleFileResponse])
-@router.post("/batch/{chat_id}", response_model=UploadSingleFileResponse)
+@router.post("/batch/{chat_id}", response_model=Dict[str, UploadSingleFileResponse])
 async def upload_files(
     background_tasks: BackgroundTasks,
     files: List[UploadFile],

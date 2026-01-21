@@ -6,6 +6,7 @@ from .auth.permissions import (
     AuthPermission,
 )
 
+from .env import get_env
 from .log import log
 from .looking_glass import AgenticWorkflowTask, AgenticWorkflowOutput, BillTheLizard, CheshireCat, StrayCat
 from .looking_glass.mad_hatter.decorators.experimental.form import form, CatForm
@@ -14,6 +15,7 @@ from .looking_glass.mad_hatter.decorators.endpoint import endpoint
 from .looking_glass.mad_hatter.decorators.hook import hook
 from .looking_glass.mad_hatter.decorators.plugin_decorator import plugin
 from .looking_glass.mad_hatter.decorators.tool import tool
+from .looking_glass.mad_hatter.procedures import CatProcedureType
 from .looking_glass.mad_hatter.registry import PluginRegistry
 from .services.factory.agentic_workflow import AgenticWorkflowConfig, BaseAgenticWorkflowHandler
 from .services.factory.auth_handler import AuthHandlerConfig, BaseAuthHandler
@@ -27,44 +29,46 @@ from .services.memory.models import RecallSettings
 from .utils import get_caller_info, run_sync_or_async
 
 __all__ = [
+    "AgenticWorkflowConfig",
     "AgenticWorkflowTask",
     "AgenticWorkflowOutput",
     "AuthorizedInfo",
-    "check_permissions",
-    "check_websocket_permissions",
+    "AuthHandlerConfig",
     "AuthResource",
     "AuthPermission",
-    "hook",
-    "tool",
-    "plugin",
-    "endpoint",
-    "form",
-    "CatForm",
-    "mcp_client",
-    "CatMcpClient",
-    "AgenticWorkflowConfig",
     "BaseAgenticWorkflowHandler",
-    "AuthHandlerConfig",
     "BaseAuthHandler",
     "BaseChunker",
-    "ChunkerSettings",
-    "EmbedderSettings",
-    "MultimodalEmbeddings",
     "BaseFileManager",
+    "BaseVectorDatabaseHandler",
+    "BillTheLizard",
+    "CatForm",
+    "CatMcpClient",
+    "CatMessage",
+    "CatProcedureType",
+    "CheshireCat",
+    "ChunkerSettings",
+    "ConversationMessage",
+    "EmbedderSettings",
     "FileManagerConfig",
     "LLMSettings",
-    "BaseVectorDatabaseHandler",
-    "VectorDatabaseSettings",
-    "log",
-    "BillTheLizard",
-    "CheshireCat",
-    "StrayCat",
-    "get_caller_info",
-    "run_sync_or_async",
-    "CatMessage",
-    "ConversationMessage",
     "MessageWhy",
-    "UserMessage",
-    "RecallSettings",
+    "MultimodalEmbeddings",
     "PluginRegistry",
+    "RecallSettings",
+    "StrayCat",
+    "UserMessage",
+    "VectorDatabaseSettings",
+    "check_permissions",
+    "check_websocket_permissions",
+    "endpoint",
+    "form",
+    "get_caller_info",
+    "get_env",
+    "hook",
+    "log",
+    "mcp_client",
+    "plugin",
+    "run_sync_or_async",
+    "tool",
 ]

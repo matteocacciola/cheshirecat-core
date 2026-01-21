@@ -7,7 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from pydantic import BaseModel
 from pytz import utc
 
-from cat import hook, log
+from cat import log
 from cat.utils import singleton
 
 
@@ -17,7 +17,6 @@ class Job(BaseModel):
     next_run: int | float
 
 
-# I'm late, I'm late, for a very important date!
 @singleton
 class WhiteRabbit:
     """The WhiteRabbit
@@ -405,16 +404,3 @@ class WhiteRabbit:
         self.jobs.append(job_id)
 
         return job_id
-
-
-@hook
-def before_lizard_bootstrap(lizard):
-    # Start scheduling system and attach it to the BillTheLizard core class
-    lizard.white_rabbit = WhiteRabbit()
-
-
-@hook(priority=0)
-def before_lizard_shutdown(lizard) -> None:
-    if hasattr(lizard, "white_rabbit"):
-        lizard.white_rabbit.shutdown()
-        lizard.white_rabbit = None
