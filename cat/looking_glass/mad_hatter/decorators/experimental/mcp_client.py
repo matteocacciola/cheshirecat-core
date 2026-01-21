@@ -61,7 +61,6 @@ class CatMcpClient(Client, CatProcedure, ABC):
         for mcp_tool in self.mcp_tools:
             triggers_map = {
                 "description": [mcp_tool.description or mcp_tool.name],
-                "examples": self.examples,
             }
 
             result.extend([
@@ -110,13 +109,9 @@ class CatMcpClient(Client, CatProcedure, ABC):
         for mcp_tool in self.mcp_tools:
             if self.source_name(mcp_tool) == self.expected_tool_name:
                 # Convert the MCP tool to a LangChain StructuredTool
-                description = mcp_tool.description or mcp_tool.name or "No description provided."
-                if self.examples:
-                    description += "\n\nE.g.:\n" + "\n".join(f"- {ex}" for ex in self.examples)
-
                 return StructuredTool.from_function(
                     name=self.expected_tool_name,
-                    description=description,
+                    description=mcp_tool.description or mcp_tool.name or "No description provided.",
                     func=create_tool_caller(mcp_tool.name),
                     args_schema=mcp_tool.inputSchema,
                 )
