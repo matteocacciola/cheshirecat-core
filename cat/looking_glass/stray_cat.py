@@ -135,19 +135,10 @@ class StrayCat(BotMixin):
         procedures = []
         for m in memories:
             try:
-                cp = CatProcedure.from_document_recall(document=m, stray=self)
-                procedures.extend(cp.langchainfy())
+                if lp := CatProcedure.from_document_recall(document=m, stray=self).langchainfy():
+                    procedures.append(lp)
             except Exception as e:
                 log.warning(f"Agent id: {self.agent_key}. Could not reconstruct procedure from memory. Error: {e}")
-
-        # now, let's add the StructuredTool instances from the MCP clients using lazy loading
-        mcp_clients = [p for p in self.plugin_manager.procedures if p.type == CatProcedureType.MCP]
-        for mcp_client in mcp_clients:
-            langchain_mcp_tools = mcp_client.inject_stray_cat(self).find_relevant_tools(
-                query_embeddings=config.embedding,
-                top_k=config.k,
-            ).langchainfy()
-            procedures.extend(langchain_mcp_tools)
 
         return procedures
 

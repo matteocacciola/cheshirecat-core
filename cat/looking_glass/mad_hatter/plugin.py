@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from inspect import getmembers, isclass
+from inspect import getmembers, isabstract
 from pathlib import Path
 from typing import Dict, List, Tuple
 from packaging.requirements import Requirement
@@ -363,22 +363,11 @@ class Plugin:
                 hooks += getmembers(plugin_module, lambda obj: isinstance(obj, CatHook))
                 procedures += (
                         getmembers(plugin_module, lambda obj: isinstance(obj, CatTool)) +
-                        getmembers(plugin_module, lambda obj: (
-                                isclass(obj)
-                                and obj is not CatForm
-                                and issubclass(obj, CatForm)
-                                and obj._autopilot
-                        )) +
-                        getmembers(plugin_module, lambda obj: (
-                                isclass(obj)
-                                and obj is not CatMcpClient
-                                and issubclass(obj, CatMcpClient)
-                        ))
+                        getmembers(plugin_module, lambda obj: isinstance(obj, CatForm) and not isabstract(obj) and obj.autopilot) +
+                        getmembers(plugin_module, lambda obj: isinstance(obj, CatMcpClient) and not isabstract(obj))
                 )
                 endpoints += getmembers(plugin_module, lambda obj: isinstance(obj, CatEndpoint))
-                plugin_overrides += getmembers(
-                    plugin_module, lambda obj: isinstance(obj, CatPluginDecorator)
-                )
+                plugin_overrides += getmembers(plugin_module, lambda obj: isinstance(obj, CatPluginDecorator))
             except Exception as e:
                 log.error(
                     f"Error in {py_filename}: {str(e)}. Unable to load plugin {self._id}"
@@ -459,11 +448,11 @@ class Plugin:
 
     @property
     def forms(self):
-        return [p for p in self._procedures if isinstance(p, type) and issubclass(p, CatForm)]
+        return [p for p in self._procedures if isinstance(p, CatForm)]
 
     @property
     def mcp_clients(self):
-        return [p for p in self._procedures if isinstance(p, type) and issubclass(p, CatMcpClient)]
+        return [p for p in self._procedures if isinstance(p, CatMcpClient)]
 
     @property
     def endpoints(self):

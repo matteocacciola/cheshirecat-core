@@ -1,11 +1,13 @@
 import importlib
 from typing import Callable, List, Dict
+from langchain_core.documents import Document as LangChainDocument
 from langchain_core.tools import StructuredTool
 from fastmcp.tools.tool import ParsedFunction
 from pydantic import ConfigDict
 from slugify import slugify
 
 from cat.looking_glass.mad_hatter.procedures import CatProcedure, CatProcedureType
+from cat.services.memory.models import DocumentRecall
 
 
 class CatTool(CatProcedure):
@@ -52,18 +54,41 @@ class CatTool(CatProcedure):
             examples=examples,
         )
 
-    def dictify_input_params(self) -> Dict:
-        return {
-            "name": self.name,
-            "func": {
-                "module": self.func.__module__,
-                "name": self.func.__name__,
-            },
-            "description": self.description,
-            "input_schema": self.input_schema,
-            "output_schema": self.output_schema,
+    def to_document_recall(self) -> List[DocumentRecall]:
+        triggers_map = {
+            "description": [f"{self.name}: {self.description}"],
             "examples": self.examples,
         }
+
+        return [
+            DocumentRecall(
+                document=LangChainDocument(
+                    page_content=trigger_content,
+                    metadata={
+                        "obj_data": {
+                            "__class__": self.__class__.__name__,
+                            "__module__": self.__class__.__module__,
+                            "input_params": {
+                                "name": self.name,
+                                "func": {
+                                    "module": self.func.__module__,
+                                    "name": self.func.__name__,
+                                },
+                                "description": self.description,
+                                "input_schema": self.input_schema,
+                                "output_schema": self.output_schema,
+                                "examples": self.examples,
+                            },
+                        },
+                        "source": self.name,
+                        "type": str(self.type),
+                        "trigger_type": trigger_type,
+                    },
+                ),
+            )
+            for trigger_type, trigger_list in triggers_map.items()
+            for trigger_content in trigger_list
+        ]
 
     @classmethod
     def reconstruct_from_params(cls, input_params: Dict) -> "CatTool":
@@ -83,13 +108,13 @@ class CatTool(CatProcedure):
         return cls(
             name=input_params["name"],
             func=func,
-            description=input_params.get("description"),
-            input_schema=input_params.get("input_schema"),
-            output_schema=input_params.get("output_schema"),
-            examples=input_params.get("examples"),
+            description=input_params["description"],
+            input_schema=input_params["input_schema"],
+            output_schema=input_params["output_schema"],
+            examples=input_params["examples"],
         )
 
-    def langchainfy(self) -> List[StructuredTool]:
+    def langchainfy(self) -> StructuredTool:
         """
         Convert CatProcedure to a langchain compatible StructuredTool object.
 
@@ -108,17 +133,23 @@ class CatTool(CatProcedure):
                 return func(*args, **kwargs, cat=self.stray)
             func = func_with_cat
 
-        return [StructuredTool.from_function(
+        return StructuredTool.from_function(
             name=self.name,
             description=description,
             func=func,
             args_schema=self.input_schema,
-        )]
+        )
 
     @property
     def type(self) -> CatProcedureType:
         return CatProcedureType.TOOL
 
+    @property
+    def triggers_map(self) -> Dict[str, List[str]]:
+        return {
+            "description": [f"{self.name}: {self.description}"],
+            "examples": self.examples,
+        }
 
 def tool(
     *args: str | Callable, examples: List[str] | None = None

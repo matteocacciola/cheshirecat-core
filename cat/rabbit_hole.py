@@ -126,16 +126,6 @@ class RabbitHole:
         See Also:
             before_rabbithole_stores_documents
         """
-        def sanitize_filename(file_name: str) -> str:
-            if "." not in file_name:
-                return file_name
-            # Split on the LAST dot only (if any)
-            base, ext = file_name.rsplit(".", 1)
-            ext = "." + ext
-            # Replace any sequence of dots or spaces in the base name only
-            base = re.sub(r"[.\s]+", "_", base)
-            return base + ext
-
         try:
             self.setup(cat)
 
@@ -143,21 +133,18 @@ class RabbitHole:
             if not filename:
                 raise ValueError("No filename provided.")
 
-            # replace multiple spaces with underscore
-            filename = sanitize_filename(filename)
-
             # split a file into a list of docs
-            file_bytes, content_type, docs, is_url = await self._file_to_docs(
+            source, file_bytes, content_type, docs, is_url = await self._file_to_docs(
                 file=file, filename=filename, content_type=content_type
             )
 
             # store in memory
-            await self._store_documents(docs=docs, source=filename, metadata=metadata)
+            await self._store_documents(docs=docs, source=source, metadata=metadata)
 
             # store in file storage
             if store_file and not is_url:
                 chat_id = self.stray.id if self.stray else None
-                self.cat.save_file(file_bytes, content_type, filename, chat_id)
+                self.cat.save_file(file_bytes, content_type, source, chat_id)
 
             log.info(f"Successfully ingested file: {filename}")
         except Exception as e:
@@ -165,15 +152,13 @@ class RabbitHole:
             # Don't raise in background tasks - just log the error
             if self.stray:
                 try:
-                    await self.stray.notifier.send_error(
-                        f"Error processing {filename}: {str(e)}"
-                    )
+                    await self.stray.notifier.send_error(f"Error processing {filename}: {str(e)}")
                 except Exception as notify_error:
                     log.error(f"Failed to send error notification: {notify_error}")
 
     async def _file_to_docs(
         self, file: str | BytesIO, filename: str, content_type: str | None = None
-    ) -> Tuple[bytes, str | None, List[Document], bool]:
+    ) -> Tuple[str, bytes, str | None, List[Document], bool]:
         """
         Load and convert files to Langchain `Document`.
 
@@ -186,10 +171,20 @@ class RabbitHole:
             content_type (str): The content type of the file. If not provided, it will be guessed based on the file extension.
 
         Returns:
-            (bytes, content_type, docs, is_url): Tuple[bytes, str | None, List[Document], bool]. The file bytes, the
-                content type, the list of chunked Langchain `Document` and a boolean indicating if the file was loaded
-                from a URL.
+            (source, file_bytes, content_type, docs, is_url): Tuple[str, bytes, str | None, List[Document], bool].
+                The file name, the file content in bytes, the content type, the list of chunked Langchain `Document` and
+                a boolean indicating if the file was loaded from a URL.
         """
+        def sanitize_filename(file_name: str) -> str:
+            if "." not in file_name:
+                return file_name
+            # Split on the LAST dot only (if any)
+            base, ext = file_name.rsplit(".", 1)
+            ext = "." + ext
+            # Replace any sequence of dots or spaces in the base name only
+            base = re.sub(r"[.\s]+", "_", base)
+            return base + ext
+
         source = None
         file_bytes = None
 
@@ -200,7 +195,7 @@ class RabbitHole:
         is_url = False
         if isinstance(file, BytesIO):
             # Get mime type and source of UploadFile
-            source = filename
+            source = sanitize_filename(filename)
 
             # Get file bytes
             file_bytes = file.read()
@@ -227,7 +222,7 @@ class RabbitHole:
             else:
                 # Get mime type from file extension and source
                 content_type = mimetypes.guess_type(file)[0]
-                source = os.path.basename(file)
+                source = sanitize_filename(os.path.basename(file))
 
                 # Get file bytes - use async file reading
                 file_bytes = await asyncio.to_thread(lambda: open(file, "rb").read())
@@ -255,7 +250,7 @@ class RabbitHole:
         # Split
         await self._send_ws_message("Parsing completed. Now let's go with reading process...")
         docs = self._split_text(docs=super_docs)
-        return file_bytes, content_type, docs, is_url
+        return source, file_bytes, content_type, docs, is_url
 
     async def _store_documents(
         self,

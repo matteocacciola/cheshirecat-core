@@ -1,12 +1,14 @@
 import json
 from abc import ABC, abstractmethod
 from typing import List, Dict, Type
+from langchain_core.documents import Document as LangChainDocument
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel, ValidationError
 from slugify import slugify
 
 from cat.log import log
 from cat.looking_glass.mad_hatter.procedures import CatProcedure, CatProcedureType
+from cat.services.memory.models import DocumentRecall
 from cat.utils import Enum, parse_json
 
 
@@ -57,15 +59,38 @@ class CatForm(CatProcedure, ABC):  # base model of forms
     def autopilot(self) -> bool:
         return self._autopilot
 
-    def dictify_input_params(self) -> Dict:
-        return {}
+    def to_document_recall(self) -> List[DocumentRecall]:
+        triggers_map = {
+            "description": [f"{self.name}: {self.description}"],
+            "examples": self.examples,
+        }
+
+        return [
+            DocumentRecall(
+                document=LangChainDocument(
+                    page_content=trigger_content,
+                    metadata={
+                        "obj_data": {
+                            "__class__": self.__class__.__name__,
+                            "__module__": self.__class__.__module__,
+                            "input_params": {},
+                        },
+                        "source": self.name,
+                        "type": str(self.type),
+                        "trigger_type": trigger_type,
+                    },
+                ),
+            )
+            for trigger_type, trigger_list in triggers_map.items()
+            for trigger_content in trigger_list
+        ]
 
     @classmethod
     def reconstruct_from_params(cls, input_params: Dict) -> "CatForm":
         # CatForm has no constructor params
         return cls()
 
-    def langchainfy(self) -> List[StructuredTool]:
+    def langchainfy(self) -> StructuredTool:
         """
         Convert CatProcedure to a langchain compatible StructuredTool object.
 
@@ -76,11 +101,11 @@ class CatForm(CatProcedure, ABC):  # base model of forms
         for example in self.examples:
             description += f"- {example}\n"
 
-        return [StructuredTool.from_function(
+        return StructuredTool.from_function(
             name=self.name,
             description=description,
             coroutine=self.next,
-        )]
+        )
 
     @property
     def type(self) -> CatProcedureType:
@@ -322,10 +347,13 @@ Updated JSON:
         response = await self._agent.run(task=agent_input, llm=self.stray.large_language_model)
         return response
 
-# form decorator
-def form(this_form: CatForm) -> CatForm:
-    this_form._autopilot = True
-    if this_form.name is None:
-        this_form.name = this_form.__name__
 
-    return this_form
+def form(cls: type[CatForm]) -> CatForm:
+    """Decorator for Form classes."""
+    if not hasattr(cls, "name") or cls.name is None:
+        cls.name = cls.__name__
+
+    instance = cls()
+    instance._autopilot = True
+
+    return instance

@@ -1,7 +1,6 @@
 import importlib
 from abc import ABC, abstractmethod
 from typing import List, Dict, Callable
-from langchain_core.documents import Document as LangChainDocument
 from langchain_core.tools import StructuredTool
 from pydantic import Field
 
@@ -31,54 +30,12 @@ class CatProcedure(ABC):
         return self
 
     @abstractmethod
-    def langchainfy(self) -> List[StructuredTool]:
+    def to_document_recall(self) -> List[DocumentRecall]:
         """
-        Provides an abstract method interface to define the `langchainfy` method for generating a list of
-        `StructuredTool` instances.
-
-        This method must be implemented in any subclass and is designed to facilitate the creation and retrieval of
-        `StructuredTool` objects in a structured manner.
+        Convert CatProcedure into a list of DocumentRecall objects for memory storage.
 
         Returns:
-            List[StructuredTool]: A list of `StructuredTool` instances.
-        """
-        pass
-
-    @abstractmethod
-    def dictify_input_params(self) -> Dict:
-        """
-        Represents an abstract method for transforming input parameters into a dictionary format.
-
-        This method is intended to be implemented by subclasses. It should provide
-        a mechanism to convert specific input parameters into a dictionary representation.
-        The structure and content of the dictionary will depend on the specific implementation
-        in the subclass.
-
-        Returns:
-            Dict: A dictionary representation of the input parameters.
-        """
-        pass
-
-    @classmethod
-    @abstractmethod
-    def reconstruct_from_params(cls, input_params: Dict) -> "CatProcedure":
-        """
-        Reconstructs an instance of CatProcedure from the given dictionary of input
-        parameters.
-
-        This class method serves as a factory method that initializes an instance of
-        CatProcedure based on the provided parameters. It must be implemented by
-        any subclass that inherits this method. The specific behavior, including
-        how the dictionary is parsed or the object is constructed, depends on the
-        implementation within each subclass.
-
-        Args:
-            input_params (Dict): A dictionary containing the input parameters
-                required to reconstruct a CatProcedure instance.
-
-        Returns:
-            CatProcedure: A new instance of CatProcedure constructed using the given
-                input parameters.
+            List[DocumentRecall]: List of DocumentRecall representing the procedure.
         """
         pass
 
@@ -107,37 +64,38 @@ class CatProcedure(ABC):
 
         return obj
 
-    def to_document_recall(self) -> List[DocumentRecall]:
+    @classmethod
+    @abstractmethod
+    def reconstruct_from_params(cls, input_params: Dict) -> "CatProcedure":
         """
-        Convert CatProcedure into a list of DocumentRecall objects for memory storage.
+        Reconstructs an instance of CatProcedure from the given dictionary of input parameters.
+
+        This class method serves as a factory method that initializes an instance of CatProcedure based on the provided
+        parameters. It must be implemented by any subclass that inherits this method. The specific behavior, including
+        how the dictionary is parsed or the object is constructed, depends on the implementation within each subclass.
+
+        Args:
+            input_params (Dict): A dictionary containing the input parameters required to reconstruct a CatProcedure instance.
 
         Returns:
-            List[DocumentRecall]: List of DocumentRecall representing the procedure.
+            CatProcedure: A new instance of CatProcedure constructed using the given input parameters.
         """
-        triggers_map = {
-            "description": [f"{self.name}: {self.description}"],
-            "examples": self.examples,
-        }
+        pass
 
-        return [
-            DocumentRecall(
-                document=LangChainDocument(
-                    page_content=trigger_content,
-                    metadata={
-                        "obj_data": {
-                            "__class__": self.__class__.__name__,
-                            "__module__": self.__class__.__module__,
-                            "input_params": self.dictify_input_params(),
-                        },
-                        "source": self.name,
-                        "type": str(self.type),
-                        "trigger_type": trigger_type,
-                    },
-                ),
-            )
-            for trigger_type, trigger_list in triggers_map.items()
-            for trigger_content in trigger_list
-        ]
+    @abstractmethod
+    def langchainfy(self) -> StructuredTool | None:
+        """
+        Provides an abstract method interface to define the `langchainfy` method for generating a `StructuredTool`
+        instance.
+
+        This method must be implemented in any subclass and is designed to facilitate the creation and retrieval of a
+        `StructuredTool` object in a structured manner.
+
+        Returns:
+            StructuredTool: The `StructuredTool` instance, or None if the procedure cannot be converted to a
+                `StructuredTool`.
+        """
+        pass
 
     @property
     @abstractmethod

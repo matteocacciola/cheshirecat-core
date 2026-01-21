@@ -87,12 +87,12 @@ def test_activate_plugin(plugin):
     # forms
     assert len(plugin.forms) == 1
     form = plugin.forms[0]
-    assert issubclass(form, CatForm)
+    assert isinstance(form, CatForm)
 
     # mcp_clients
     assert len(plugin.mcp_clients) == 1
     mcp_client = plugin.mcp_clients[0]
-    assert issubclass(mcp_client, CatMcpClient)
+    assert isinstance(mcp_client, CatMcpClient)
 
 
 def test_deactivate_plugin(plugin):

@@ -18,7 +18,7 @@ from cat.looking_glass.mad_hatter.procedures import CatProcedureType
 from cat.looking_glass.models import StoredSourceWithMetadata
 from cat.looking_glass.stray_cat import StrayCat
 from cat.looking_glass.tweedledee import Tweedledee
-from cat.services.memory.models import VectorMemoryType, Record
+from cat.services.memory.models import VectorMemoryType
 from cat.services.mixin import BotMixin
 from cat.utils import guess_file_type, is_url
 
@@ -152,19 +152,15 @@ class CheshireCat(BotMixin):
 
         return {k: list(v) for k, v in results.items()}
 
-    async def embed_procedures(self):
-        # Easy access to active procedures in plugin_manager (source of truth!)
+    async def embed_procedures(self, pt: CatProcedureType | None = None):
         payloads = []
         vectors = []
-        for ap in self.plugin_manager.procedures:
-            # we don't want to embed MCP clients' procedures, because we want to always use the latest version
-            if ap.type == CatProcedureType.MCP:
+        for p in self.plugin_manager.procedures:
+            # Only process if pt is None or p.type matches pt
+            if pt is not None and p.type != pt:
                 continue
 
-            if ap.type != CatProcedureType.TOOL:
-                ap = ap()
-
-            for t in ap.to_document_recall():
+            for t in p.to_document_recall():
                 payloads.append(t.document.model_dump())
                 vectors.append(self.lizard.embedder.embed_query(t.document.page_content))
 
@@ -271,7 +267,7 @@ class CheshireCat(BotMixin):
         Args:
             file_bytes (bytes): The file bytes to be saved.
             content_type (str): The content type of the file.
-            source (str): The source of the file, e.g. the file name or URL.
+            source (str): The source of the file, i.e., the name used to store the file in the file manager.
             chat_id (str | None): The chat id of the stray cat, if any.
         """
         # save a file in a temporary folder
