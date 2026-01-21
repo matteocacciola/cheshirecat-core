@@ -7,7 +7,7 @@ from cat import utils
 from cat.auth.permissions import AuthUserInfo
 from cat.log import log
 from cat.looking_glass.callbacks import NewTokenHandler
-from cat.looking_glass.mad_hatter.procedures import CatProcedure, CatProcedureType
+from cat.looking_glass.mad_hatter.procedures import CatProcedure
 from cat.looking_glass.models import AgenticWorkflowTask, AgenticWorkflowOutput, ChatResponse
 from cat.looking_glass.tweedledee import Tweedledee
 from cat.services.memory.messages import CatMessage, UserMessage
