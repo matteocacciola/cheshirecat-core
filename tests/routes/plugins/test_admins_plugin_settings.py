@@ -33,6 +33,8 @@ def test_get_all_plugin_settings(lizard, secure_client, secure_client_headers):
             assert setting["scheme"] == PluginSettings.model_json_schema()
         elif setting["name"] == "memory":
             assert setting["value"] == {"enable_llm_knowledge": True}
+        elif setting["name"] == "white_rabbit":
+            assert setting["value"] == {"embed_procedures_every_n_days": 7}
         else:
             assert setting["value"] == {}
             assert setting["scheme"] == {}
