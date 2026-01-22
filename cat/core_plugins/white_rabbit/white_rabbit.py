@@ -91,7 +91,7 @@ class WhiteRabbit:
 
         if self._is_running:
             log.info("WhiteRabbit: Scheduler stopped")
-            self.scheduler.shutdown(wait=False)
+            self.scheduler.shutdown(wait=True)
             self._is_running = False
 
     def get_job(self, job_id: str) -> Dict[str, str] | None:

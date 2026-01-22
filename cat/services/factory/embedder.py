@@ -72,14 +72,14 @@ class EmbedderSettings(BaseFactoryConfigModel, ABC):
     def pyclass(cls) -> Type[Embeddings]:
         pass
 
-    @property
-    def is_multimodal(self) -> bool:
+    @classmethod
+    def is_multimodal(cls) -> bool:
         return False
 
 
 class EmbedderMultimodalSettings(EmbedderSettings, ABC):
-    @property
-    def is_multimodal(self) -> bool:
+    @classmethod
+    def is_multimodal(cls) -> bool:
         return True
 
 

@@ -104,8 +104,8 @@ class RabbitHole:
         self,
         cat: "BotMixin",
         file: str | BytesIO,
+        metadata: Dict,
         filename: str | None = None,
-        metadata: Dict = None,
         store_file: bool = True,
         content_type: str | None = None,
     ):
@@ -118,8 +118,8 @@ class RabbitHole:
         Args:
             cat (CheshireCat | StrayCat): Cheshire Cat or Stray Cat instance.
             file (str | BytesIO): The file can be a path passed as a string or a `BytesIO` object if the document is ingested using the `rabbithole` endpoint.
-            filename (str): The filename of the file to be ingested, if coming from the `/rabbithole/` endpoint.
             metadata (Dict): Metadata to be stored with each chunk.
+            filename (str): The filename of the file to be ingested, if coming from the `/rabbithole/` endpoint.
             store_file (bool): Whether to store the file in the Cat's file storage.
             content_type (str): The content type of the file. If not provided, it will be guessed based on the file extension.
 
@@ -256,7 +256,7 @@ class RabbitHole:
         self,
         docs: List[Document],
         source: str,
-        metadata: Dict = None
+        metadata: Dict,
     ) -> List[PointStruct]:
         """Add documents to the Cat's declarative memory.
 
@@ -304,7 +304,7 @@ class RabbitHole:
                 log.info(read_message)
 
             # add custom metadata (sent via endpoint) and default metadata (source and when)
-            doc.metadata = (metadata or {}) | doc.metadata | {"source": source, "when": time.time()}
+            doc.metadata = doc.metadata | metadata | {"source": source, "when": time.time()}
             if self.stray:
                 doc.metadata["chat_id"] = self.stray.id
 

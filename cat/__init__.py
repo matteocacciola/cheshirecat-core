@@ -20,7 +20,7 @@ from .looking_glass.mad_hatter.registry import PluginRegistry
 from .services.factory.agentic_workflow import AgenticWorkflowConfig, BaseAgenticWorkflowHandler
 from .services.factory.auth_handler import AuthHandlerConfig, BaseAuthHandler
 from .services.factory.chunker import BaseChunker, ChunkerSettings
-from .services.factory.embedder import EmbedderSettings, MultimodalEmbeddings
+from .services.factory.embedder import EmbedderSettings, EmbedderMultimodalSettings, MultimodalEmbeddings
 from .services.factory.file_manager import BaseFileManager, FileManagerConfig
 from .services.factory.llm import LLMSettings
 from .services.factory.vector_db import BaseVectorDatabaseHandler, VectorDatabaseSettings
@@ -50,6 +50,7 @@ __all__ = [
     "ChunkerSettings",
     "ConversationMessage",
     "EmbedderSettings",
+    "EmbedderMultimodalSettings",
     "FileManagerConfig",
     "LLMSettings",
     "MessageWhy",

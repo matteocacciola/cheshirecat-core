@@ -1,4 +1,5 @@
 from typing import Type, Dict, Any, List, Literal
+from pydantic import BaseModel
 
 from cat.db.cruds import settings as crud_settings
 from cat.exceptions import CustomValidationException
@@ -44,6 +45,12 @@ class ServiceFactory:
             "llm": LLMDefaultConfig,
             "vector_database": QdrantConfig,
         }
+
+    def get_config_class_from_adapter(self, obj: Any) -> Type[BaseModel] | None:
+        return next(
+            (config_class for config_class in self.get_allowed_classes() if config_class.pyclass() == type(obj)),
+            None
+        )
 
     def get_schemas(self) -> Dict:
         # schemas contain metadata to let any client know which fields are required to create the class.

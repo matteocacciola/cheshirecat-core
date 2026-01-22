@@ -88,7 +88,7 @@ class ConnectionAuth(ABC):
                 user_data=user,
                 agent_id=ccat.agent_key,
                 stray_id=chat_id,
-                plugin_manager_generator=lambda: ccat.plugin_manager,
+                plugin_manager_generator=ccat.plugin_manager_generator,
             )
 
         return AuthorizedInfo(lizard=lizard, cheshire_cat=ccat, user=user, stray_cat=stray_cat, agent_id=agent_id)

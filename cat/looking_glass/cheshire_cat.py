@@ -3,7 +3,7 @@ import mimetypes
 import os
 import tempfile
 from io import BytesIO
-from typing import Dict, List
+from typing import Dict, List, Callable
 
 from cat.auth.permissions import AuthUserInfo
 from cat.db.cruds import (
@@ -223,7 +223,7 @@ class CheshireCat(BotMixin):
                 cat=cat,
                 file=source.content or source.name,
                 filename=source.name,
-                metadata=source.metadata,
+                metadata=source.metadata or {},
                 store_file=False,
                 content_type=content_type,
             )
@@ -310,7 +310,7 @@ class CheshireCat(BotMixin):
         return StrayCat(
             agent_id=self.agent_key,
             user_data=AuthUserInfo(**user),
-            plugin_manager_generator=lambda: self.plugin_manager,
+            plugin_manager_generator=self.plugin_manager_generator,
             stray_id=chat_id,
         )
 
@@ -340,3 +340,7 @@ class CheshireCat(BotMixin):
             agent_id (str): The unique identifier of the cat.
         """
         return self._id
+
+    @property
+    def plugin_manager_generator(self) -> Callable[[], Tweedledee]:
+        return lambda: self.plugin_manager

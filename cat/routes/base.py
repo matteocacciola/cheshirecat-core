@@ -115,7 +115,7 @@ async def http_chat(
     stray_cat = info.stray_cat or StrayCat(
         user_data=info.user,
         agent_id=info.cheshire_cat.agent_key,
-        plugin_manager_generator=lambda: info.cheshire_cat.plugin_manager,
+        plugin_manager_generator=info.cheshire_cat.plugin_manager_generator,
     )
 
     user_message = UserMessage(**payload)

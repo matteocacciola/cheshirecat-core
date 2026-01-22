@@ -3,6 +3,7 @@ from typing import Dict
 from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
 
+from cat.core_plugins.white_rabbit.white_rabbit import WhiteRabbit
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.rabbit_hole import RabbitHole
 from cat.services.factory.agentic_workflow import BaseAgenticWorkflowHandler
@@ -20,6 +21,7 @@ class ContextMixin(ABC):
     """
     def __init__(self):
         self.service_provider = ServiceProvider(self.agent_key, self.mad_hatter)
+        self._white_rabbit = None
 
     @property
     def embedder_name(self) -> str:
@@ -47,6 +49,15 @@ class ContextMixin(ABC):
         {"num_cats": 44, "rows": 6, "remainder": 0}
         """
         return getattr(self, "plugin_manager")
+
+    @property
+    def white_rabbit(self) -> WhiteRabbit:
+        return self._white_rabbit
+
+    @white_rabbit.setter
+    def white_rabbit(self, white_rabbit: WhiteRabbit):
+        if self._white_rabbit is None:
+            self._white_rabbit = white_rabbit
 
     @property
     @abstractmethod

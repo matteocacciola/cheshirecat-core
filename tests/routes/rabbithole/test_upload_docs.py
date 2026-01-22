@@ -267,3 +267,21 @@ def test_rabbithole_upload_docs_batch_with_metadata(secure_client, secure_client
         # compare with the metadata of the file
         for k, v in metadata[dm["metadata"]["source"]].items():
             assert dm["metadata"][k] == v
+
+
+def test_simple_upload_pdf_with_image_only(secure_client, secure_client_headers):
+    new_chunker = "RecursiveTextChunkerSettings"
+    payload = {"encoding_name": "cl100k_base","chunk_size": 256,"chunk_overlap": 64}
+    response = secure_client.put(f"/chunking/settings/{new_chunker}", json=payload, headers=secure_client_headers)
+    assert response.status_code == 200
+
+    content_type = "application/pdf"
+    file_name = "sample_image.pdf"
+    file_path = f"tests/mocks/{file_name}"
+    with open(file_path, "rb") as f:
+        files = {"file": (file_name, f, content_type)}
+        response = secure_client.post(f"/rabbithole/{chat_id}", files=files, headers=secure_client_headers)
+        assert response.status_code == 200
+
+        response = secure_client.post(f"/rabbithole/", files=files, headers=secure_client_headers)
+        assert response.status_code == 200

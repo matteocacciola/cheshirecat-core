@@ -55,31 +55,31 @@ def test_upsert_chunker_settings_success(secure_client, secure_client_headers):
     invented_model_name = "this_should_be_a_model"
 
     # set a different chunker
-    new_llm = "SemanticChunkerSettings"
+    new_chunker = "SemanticChunkerSettings"
     payload = {"model_name": invented_model_name}
-    response = secure_client.put(f"/chunking/settings/{new_llm}", json=payload, headers=secure_client_headers)
+    response = secure_client.put(f"/chunking/settings/{new_chunker}", json=payload, headers=secure_client_headers)
 
     # check immediate response
     json = response.json()
     assert response.status_code == 200
-    assert json["name"] == new_llm
+    assert json["name"] == new_chunker
     assert json["value"]["model_name"] == invented_model_name
 
-    # retrieve all LLMs settings to check if it was saved in DB
+    # retrieve all Chunker settings to check if it was saved in DB
     response = secure_client.get("/chunking/settings", headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
-    assert json["selected_configuration"] == new_llm
-    saved_config = [c for c in json["settings"] if c["name"] == new_llm]
+    assert json["selected_configuration"] == new_chunker
+    saved_config = [c for c in json["settings"] if c["name"] == new_chunker]
     assert saved_config[0]["value"]["model_name"] == invented_model_name
 
-    # check also specific LLM endpoint
-    response = secure_client.get(f"/chunking/settings/{new_llm}", headers=secure_client_headers)
+    # check also specific Chunker endpoint
+    response = secure_client.get(f"/chunking/settings/{new_chunker}", headers=secure_client_headers)
     assert response.status_code == 200
     json = response.json()
-    assert json["name"] == new_llm
+    assert json["name"] == new_chunker
     assert json["value"]["model_name"] == invented_model_name
-    assert json["scheme"]["chunkerName"] == new_llm
+    assert json["scheme"]["chunkerName"] == new_chunker
 
 
 def test_forbidden_access_no_auth(client):

@@ -4,7 +4,7 @@ from cat.db import crud
 
 
 @hook
-def before_lizard_bootstrap(lizard):
+def after_lizard_bootstrap(lizard):
     # Start scheduling system and attach it to the BillTheLizard core class
     lizard.white_rabbit = WhiteRabbit()
 
@@ -21,15 +21,19 @@ def before_lizard_bootstrap(lizard):
     def re_embed_mcp_tools():
         """Re-embed MCP tools for all CheshireCat instances"""
         ccat_ids = crud.get_agents_main_keys()
-        try:
-            for ccat_id in ccat_ids:
-                if (ccat := lizard.get_cheshire_cat(ccat_id)) is None:
-                    continue
 
+        # Track errors to ensure we don't leave things hanging
+        for ccat_id in ccat_ids:
+            if (ccat := lizard.get_cheshire_cat(ccat_id)) is None:
+                continue
+
+            try:
                 run_sync_or_async(ccat.embed_procedures, pt=CatProcedureType.MCP)
-            log.info("WhiteRabbit: Successfully re-embedded MCP tools for all cats")
-        except Exception as e:
-            log.error(f"WhiteRabbit: Error re-embedding MCP tools: {e}")
+                del ccat
+            except Exception as e:
+                log.error(f"WhiteRabbit: Failed re-embedding for Cat {ccat_id}: {e}")
+                # Continue to the next cat even if one fails
+                continue
 
     lizard.white_rabbit.schedule_interval_job(
         job=re_embed_mcp_tools,
@@ -40,6 +44,5 @@ def before_lizard_bootstrap(lizard):
 
 @hook(priority=0)
 def before_lizard_shutdown(lizard) -> None:
-    if hasattr(lizard, "white_rabbit"):
-        lizard.white_rabbit.shutdown()
-        lizard.white_rabbit = None
+    lizard.white_rabbit.shutdown()
+    lizard.white_rabbit = None
