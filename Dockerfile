@@ -34,10 +34,12 @@ RUN pip install -U pip && \
     pip install uv && \
     uv sync --frozen --no-install-project
 
+COPY ./cat/core_plugins ./cat/core_plugins
+
 ### INSTALL CORE PLUGIN DEPENDENCIES ###
-RUN find /app/cat/core_plugins -name requirements.txt -exec uv pip install --no-cache -r {} \; && \
+RUN find ./cat/core_plugins -name requirements.txt -exec uv pip install --no-cache -r {} \; && \
     uv cache clean && \
-    find /app -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
+    find ./ -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true && \
     pip cache purge
 
 FROM libraries AS build

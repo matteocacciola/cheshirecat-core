@@ -283,5 +283,5 @@ def test_simple_upload_pdf_with_image_only(secure_client, secure_client_headers)
         response = secure_client.post(f"/rabbithole/{chat_id}", files=files, headers=secure_client_headers)
         assert response.status_code == 200
 
-        response = secure_client.post(f"/rabbithole/", files=files, headers=secure_client_headers)
+        response = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
         assert response.status_code == 200

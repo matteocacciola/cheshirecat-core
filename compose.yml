@@ -14,7 +14,6 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway" # This adds an entry to /etc/hosts file in the container mapping host.docker.internal to the host machine IP addr, allowing the container to access services running on the host, not only on Win and Mac but also Linux. See https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host and https://docs.docker.com/reference/cli/docker/container/run/#add-host
     environment:
-      # Timezone
       - CCAT_API_KEY=test
       - CCAT_REDIS_HOST=cheshire_cat_redis
       - CCAT_REDIS_PORT=6379
