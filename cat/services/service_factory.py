@@ -48,7 +48,7 @@ class ServiceFactory:
 
     def get_config_class_from_adapter(self, obj: Any) -> Type[BaseModel] | None:
         return next(
-            (config_class for config_class in self.get_allowed_classes() if isinstance(obj, config_class.pyclass())),
+            (config_class for config_class in self.get_allowed_classes() if config_class.pyclass() is type(obj)),
             None
         )
 
