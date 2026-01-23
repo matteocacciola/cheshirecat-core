@@ -1,5 +1,5 @@
 pandas==2.3.3
 pdfminer-six==20250506
 pytube==15.0.0
-unstructured[docx,image,pdf,pptx,xlsx]==0.18.15
+unstructured[docx,image,pdf,pptx,xlsx]==0.18.27
 youtube-transcript-api==1.2.3
