@@ -1,6 +1,8 @@
+from typing import Dict
 from pydantic import BaseModel
 
 from cat import plugin
+from cat.looking_glass.mad_hatter.plugin import Plugin
 
 
 # this class represents settings for the core plugin (at the moment empty)
@@ -52,13 +54,19 @@ def settings_model():
 
 
 @plugin
-def load_settings():
+def load_settings(plugin_id: str, agent_id: str) -> Dict:
     """
     This function defines how to load saved settings for the plugin.
 
     Default behavior is defined in:
        `cat.mad_hatter.plugin.Plugin::load_settings`
        It loads the settings from the Redis database.
+
+    Args:
+        plugin_id: str
+            Plugin ID.
+        agent_id: str
+            Agent ID.
 
     Returns:
         settings: Dict
@@ -69,7 +77,7 @@ def load_settings():
 
 
 @plugin
-def save_settings(settings):
+def save_settings(plugin_id: str, settings: Dict, agent_id: str) -> Dict:
     """
     This function passes the plugin settings as sent to the http endpoint (via admin, or any client), in order to let the plugin save them as desired.
     The settings to save should be validated according to the json schema given in the `plugin_settings_schema` hook.
@@ -79,8 +87,13 @@ def save_settings(settings):
        It just saves contents into the Redis database
 
     Args:
+
+        plugin_id: str
+            Plugin ID.
         settings: Dict
             Settings to be saved.
+        agent_id: str
+            Agent ID.
 
     Returns:
         settings: Dict
@@ -91,7 +104,7 @@ def save_settings(settings):
 
 
 @plugin
-def activated(plugin):
+def activated(plugin: Plugin):
     """This method allows executing custom code right after a plugin is activated.
 
     Args:
@@ -101,7 +114,7 @@ def activated(plugin):
 
 
 @plugin
-def deactivated(plugin):
+def deactivated(plugin: Plugin):
     """This method allows executing custom code right after a plugin is deactivated.
 
     Args:
