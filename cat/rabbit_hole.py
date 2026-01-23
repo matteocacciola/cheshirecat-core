@@ -257,7 +257,7 @@ class RabbitHole:
         docs: List[Document],
         source: str,
         metadata: Dict,
-    ) -> List[PointStruct]:
+    ) -> None:
         """Add documents to the Cat's declarative memory.
 
         This method loops a list of Langchain `Document` and adds some metadata. Namely, the source filename and the
@@ -272,72 +272,56 @@ class RabbitHole:
             stored_points (List[PointStruct]): List of points stored in the Cat's declarative memory.
 
         See Also:
-            before_rabbithole_insert_memory
+            before_rabbithole_stores_documents
+            after_rabbithole_stored_documents
 
         Notes
         -------
-        At this point, it is possible to customize the Cat's behavior using the `before_rabbithole_insert_memory` hook
-        to edit the memories before they are inserted in the vector database.
+        At this point, it is possible to customize the Cat's behavior using the `before_rabbithole_stores_documents`
+        hook to edit the memories before they are inserted in the vector database.
+        The hook `after_rabbithole_stored_documents` could be used to track the end of the process, indeed.
         """
         log.info(f"Agent id: {self.cat.agent_key}. Preparing to memorize {len(docs)} vectors for {source}.")
 
         embedder = self.cat.lizard.embedder
         plugin_manager = self.cat.plugin_manager
 
+        # add custom metadata (sent via endpoint) and default metadata (source and when and eventual chat_id)
+        for doc in docs:
+            doc.metadata = (
+                    doc.metadata
+                    | metadata
+                    | {"source": source, "when": time.time()}
+                    | ({"chat_id": self.stray.id} if self.stray else {})
+            )
+
         # hook the docs before they are stored in the vector memory
         docs = plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, caller=self.stray or self.cat)
 
-        # classic embed
-        time_last_notification = time.time()
-        time_interval = 10  # a notification every 10 secs
+        # hook the points before they are stored in the vector memory
+        valid_documents = list(filter(lambda doc_: doc_.page_content.strip(), docs))
 
-        storing_points = []
-        storing_payloads = []
-        storing_vectors = []
-        for d, doc in enumerate(docs):
-            if time.time() - time_last_notification > time_interval:
-                time_last_notification = time.time()
-                perc_read = int(d / len(docs) * 100)
-                read_message = f"Read {perc_read}% of {source}"
-                await self._send_ws_message(read_message)
-
-                log.info(read_message)
-
-            # add custom metadata (sent via endpoint) and default metadata (source and when)
-            doc.metadata = doc.metadata | metadata | {"source": source, "when": time.time()}
-            if self.stray:
-                doc.metadata["chat_id"] = self.stray.id
-
-            doc = plugin_manager.execute_hook("before_rabbithole_insert_memory", doc, caller=self.stray or self.cat)
-            if doc.page_content != "":
-                payload = doc.model_dump()
-                vector = await asyncio.to_thread(lambda: embedder.embed_documents([doc.page_content])[0])
-
-                storing_points.append(PointStruct(id=None, payload=payload, vector=vector))
-                storing_payloads.append(payload)
-                storing_vectors.append(vector)
-
-            # wait a little to avoid APIs rate limit errors
-            await asyncio.sleep(0.05)
+        storing_payloads = [doc.model_dump() for doc in valid_documents]
+        storing_vectors = await asyncio.to_thread(
+            lambda: embedder.embed_documents([doc_.page_content for doc_ in valid_documents])
+        )
 
         collection_name = str(VectorMemoryType.DECLARATIVE if not self.stray else VectorMemoryType.EPISODIC)
-        await self.cat.vector_memory_handler.add_points_to_tenant(
+        points, _ = await self.cat.vector_memory_handler.add_points_to_tenant(
             collection_name=collection_name, payloads=storing_payloads, vectors=storing_vectors,
         )
 
         # hook the points after they are stored in the vector memory
         plugin_manager.execute_hook(
-            "after_rabbithole_stored_documents", source, storing_points, caller=self.stray or self.cat
+            "after_rabbithole_stored_documents", source, points, caller=self.stray or self.cat,
         )
 
         # notify client
         await self._send_ws_message(f"Finished reading {source}, I made {len(docs)} thoughts on it.")
 
         log.info(
-            f"Agent id: {self.cat.agent_key}. Done uploading {source}. Inserted #{len(storing_points)} points into {collection_name} memory."
+            f"Agent id: {self.cat.agent_key}. Done uploading {source}. Inserted #{len(storing_payloads)} points into {collection_name} memory."
         )
-
-        return storing_points
 
     def _split_text(self, docs: List[Document]):
         """Split LangChain documents in chunks.

@@ -60,35 +60,6 @@ def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
     return file_handlers
 
 
-# Hook called just before of inserting a document in vector memory
-@hook(priority=0)
-def before_rabbithole_insert_memory(doc: Document, cat) -> Document:
-    """Hook the `Document` before is inserted in the vector memory.
-
-    Allows editing and enhancing a single `Document` before the *RabbitHole* add it to the declarative vector memory.
-
-    Args:
-        doc: Document
-            Langchain `Document` to be inserted in memory.
-        cat: CheshireCat or StrayCat
-            Cheshire Cat or Stray Cat instance.
-
-    Returns:
-        doc: Document
-            Langchain `Document` that is added in the declarative vector memory.
-
-    Notes
-    -----
-    The `Document` has two properties::
-
-        `page_content`: the string with the content to save in memory;
-        `metadata`: a dictionary with at least two keys:
-            `source`: where the content comes from;
-            `when`: timestamp to track when it's been uploaded.
-    """
-    return doc
-
-
 # Hook called just before rabbithole splits file content converted to LangChain Documents.
 # Input is whole list of Documents
 @hook(priority=0)

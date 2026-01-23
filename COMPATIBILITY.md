@@ -52,6 +52,7 @@ The current version introduces also the following additional hooks:
 ### RabbitHole:
 - `before_rabbithole_splits_text`
 - `rabbithole_instantiates_splitter`
+- `before_rabbithole_insert_memory`, please use `before_rabbithole_stores_documents` instead
 
 ### Memory:
 - `before_cat_recalls_episodic_memories`

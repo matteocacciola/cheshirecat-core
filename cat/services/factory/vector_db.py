@@ -184,7 +184,7 @@ class BaseVectorDatabaseHandler(ABC):
     @abstractmethod
     async def add_points_to_tenant(
         self, collection_name: str, payloads: List[Payload], vectors: List, ids: List | None = None
-    ) -> UpdateResult:
+    ) -> Tuple[List[PointStruct], UpdateResult]:
         """
         Upsert memories in batch mode
 
@@ -195,7 +195,7 @@ class BaseVectorDatabaseHandler(ABC):
             ids: the ids of the points, if not provided, they will be generated automatically using uuid4 hex strings
 
         Returns:
-            the response of the upsert operation
+            the list of inserted points and the response of the upsert operation
         """
         pass
 
@@ -841,7 +841,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     # add points in collection
     async def add_points_to_tenant(
         self, collection_name: str, payloads: List[Payload], vectors: List, ids: List | None = None
-    ) -> UpdateResult:
+    ) -> Tuple[List[PointStruct], UpdateResult]:
         if not ids:
             ids = [uuid.uuid4().hex for _ in range(len(payloads))]
 
@@ -850,11 +850,14 @@ class QdrantHandler(BaseVectorDatabaseHandler):
 
         payloads = [{**p, **{"tenant_id": self.agent_id}} for p in payloads]
         points = Batch(ids=ids, payloads=payloads, vectors=vectors)
-
         res = await self._client.upsert(collection_name=collection_name, points=points)
-        return UpdateResult(
-            status=res.status,
-            operation_id=res.operation_id,
+
+        return (
+            [
+                PointStruct(id=id_, payload=payload, vector=vector)
+                for id_, payload, vector in zip(points.ids, points.payloads, points.vectors)
+            ],
+            UpdateResult(status=res.status, operation_id=res.operation_id)
         )
 
     async def delete_tenant_points(self, collection_name: str, metadata: Dict | None = None) -> UpdateResult:
