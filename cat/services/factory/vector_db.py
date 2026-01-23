@@ -24,7 +24,6 @@ from qdrant_client.http.models import (
     PayloadSchemaType,
     Filter,
     HasIdCondition,
-    Batch,
     FieldCondition,
     MatchValue,
     MatchText,
@@ -42,7 +41,6 @@ from cat.services.factory.models import BaseFactoryConfigModel
 from cat.services.memory.models import (
     Document,
     DocumentRecall,
-    Payload,
     PointStruct,
     Record,
     ScoredPoint,
@@ -183,19 +181,17 @@ class BaseVectorDatabaseHandler(ABC):
 
     @abstractmethod
     async def add_points_to_tenant(
-        self, collection_name: str, payloads: List[Payload], vectors: List, ids: List | None = None
-    ) -> Tuple[List[PointStruct], UpdateResult]:
+        self, collection_name: str, points: List[PointStruct]
+    ) -> UpdateResult:
         """
         Upsert memories in batch mode
 
         Args:
             collection_name: the name of the collection to upsert points into
-            payloads: the payloads of the points
-            vectors: the vectors of the points
-            ids: the ids of the points, if not provided, they will be generated automatically using uuid4 hex strings
+            points: the list of points to upsert
 
         Returns:
-            the list of inserted points and the response of the upsert operation
+            The response of the upsert operation
         """
         pass
 
@@ -840,25 +836,14 @@ class QdrantHandler(BaseVectorDatabaseHandler):
 
     # add points in collection
     async def add_points_to_tenant(
-        self, collection_name: str, payloads: List[Payload], vectors: List, ids: List | None = None
-    ) -> Tuple[List[PointStruct], UpdateResult]:
-        if not ids:
-            ids = [uuid.uuid4().hex for _ in range(len(payloads))]
+        self, collection_name: str, points: List[PointStruct]
+    ) -> UpdateResult:
+        for point in points:
+            point.payload["tenant_id"] = self.agent_id
 
-        if len(ids) != len(payloads) or len(ids) != len(vectors):
-            raise ValueError("ids, payloads and vectors must have the same length")
-
-        payloads = [{**p, **{"tenant_id": self.agent_id}} for p in payloads]
-        points = Batch(ids=ids, payloads=payloads, vectors=vectors)
         res = await self._client.upsert(collection_name=collection_name, points=points)
 
-        return (
-            [
-                PointStruct(id=id_, payload=payload, vector=vector)
-                for id_, payload, vector in zip(points.ids, points.payloads, points.vectors)
-            ],
-            UpdateResult(status=res.status, operation_id=res.operation_id)
-        )
+        return UpdateResult(status=res.status, operation_id=res.operation_id)
 
     async def delete_tenant_points(self, collection_name: str, metadata: Dict | None = None) -> UpdateResult:
         conditions = self._build_metadata_conditions(metadata=metadata)

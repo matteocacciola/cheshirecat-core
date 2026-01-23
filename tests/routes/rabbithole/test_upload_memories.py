@@ -1,5 +1,4 @@
 import json
-import pytest
 
 from cat.services.memory.models import VectorMemoryType
 
@@ -47,22 +46,16 @@ def test_upload_memory_check_embedder(secure_client, secure_client_headers, ches
     another_embedder = "AnotherEmbedder"
     fake_memory = get_fake_memory_export(secure_client, embedder_name=another_embedder)
 
-    with pytest.raises(Exception) as e:
-        response = secure_client.post(
-            "/rabbithole/memory/",
-            files={
-                "file": ("test_file.json", json.dumps(fake_memory), "application/json")
-            },
-            headers = secure_client_headers
-        )
-        assert response.status_code == 200
-
-    # ...but found a different embedder
-    assert (
-        f"Embedder mismatch: file embedder {another_embedder} is different from DumbEmbedder"
-        in str(e.value)
+    response = secure_client.post(
+        "/rabbithole/memory/",
+        files={
+            "file": ("test_file.json", json.dumps(fake_memory), "application/json")
+        },
+        headers = secure_client_headers
     )
-    # and did not update collection
+    assert response.status_code == 200
+
+    # ...but found a different embedder and did not update the collection
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
     assert collections_n_points[str(VectorMemoryType.DECLARATIVE)] == 0
 
@@ -72,19 +65,16 @@ def test_upload_memory_check_dimensionality(secure_client, secure_client_headers
     wrong_dim = 9
     fake_memory = get_fake_memory_export(secure_client, dim=wrong_dim)
 
-    with pytest.raises(Exception) as e:
-        response = secure_client.post(
-            "/rabbithole/memory/",
-            files={
-                "file": ("test_file.json", json.dumps(fake_memory), "application/json")
-            },
-            headers=secure_client_headers
-        )
-        assert response.status_code == 200
+    response = secure_client.post(
+        "/rabbithole/memory/",
+        files={
+            "file": ("test_file.json", json.dumps(fake_memory), "application/json")
+        },
+        headers=secure_client_headers
+    )
+    assert response.status_code == 200
 
-    # ...but found a different embedder
-    assert "Embedding size mismatch" in str(e.value)
-    # and did not update collection
+    # ...but found a different embedder and did not update the collection
     collections_n_points = get_collections_names_and_point_count(secure_client, secure_client_headers)
     assert collections_n_points[str(VectorMemoryType.DECLARATIVE)] == 0
 

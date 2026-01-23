@@ -17,7 +17,7 @@ from cat.looking_glass.mad_hatter.registry import PluginRegistry
 from cat.looking_glass.tweedledum import Tweedledum
 from cat.rabbit_hole import RabbitHole
 from cat.services.factory.auth_handler import CoreAuthHandler
-from cat.services.memory.models import VectorMemoryType
+from cat.services.memory.models import VectorMemoryType, PointStruct
 from cat.services.mixin import OrchestratorMixin
 from cat.services.websocket_manager import WebSocketManager
 from cat.utils import singleton, sanitize_permissions
@@ -274,8 +274,7 @@ class BillTheLizard(OrchestratorMixin):
         if points:
             await cloned_ccat.vector_memory_handler.add_points_to_tenant(
                 collection_name=collection_name,
-                payloads=[p.payload for p in points],
-                vectors=[p.vector for p in points],
+                points=[PointStruct(**p.model_dump()) for p in points],
             )
         await cloned_ccat.embed_procedures()
 

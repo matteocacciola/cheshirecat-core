@@ -4,6 +4,7 @@ import mimetypes
 import os
 import re
 import time
+import uuid
 from io import BytesIO
 from typing import List, Dict, Tuple
 from urllib.error import HTTPError
@@ -13,7 +14,7 @@ from langchain_core.documents.base import Document, Blob
 
 from cat.log import log
 from cat.services.factory.chunker import BaseChunker
-from cat.services.memory.models import VectorMemoryType
+from cat.services.memory.models import VectorMemoryType, PointStruct
 from cat.utils import is_url as fnc_is_url
 
 
@@ -40,12 +41,13 @@ class RabbitHole:
 
     """Manages content ingestion. I'm late... I'm late!"""
 
-    async def ingest_memory(self, cat: "CheshireCat", file: BytesIO):
+    async def ingest_memory(self, cat: "CheshireCat", file: BytesIO, filename: str):
         """Upload memories to the declarative memory from a JSON file.
 
         Args:
             cat (CheshireCat): Cheshire Cat instance.
             file (BytesIO): JSON file containing vector and content memories.
+            filename (str): Filename of the uploaded file.
 
         Notes
         -----
@@ -55,51 +57,46 @@ class RabbitHole:
         when uploading.
         The method also performs a check on the dimensionality of the embeddings (i.e. length of each vector).
         """
-        self.setup(cat)
-        lizard = self.cat.lizard
+        try:
+            self.setup(cat)
+            lizard = self.cat.lizard
 
-        # Get file bytes
-        file_bytes = file.read()
+            # Load fyle byte in a dict
+            memories = json.loads(file.read().decode("utf-8"))
 
-        # Load fyle byte in a dict
-        memories = json.loads(file_bytes.decode("utf-8"))
+            # Check the embedder used for the uploaded memories is the same the Cat is using now
+            upload_embedder = memories["embedder"]
+            cat_embedder = str(lizard.embedder.__class__.__name__)
+            if upload_embedder != cat_embedder:
+                raise Exception(f"Embedder mismatch for file '{filename}': file embedder {upload_embedder} is different from {cat_embedder}")
 
-        # Check the embedder used for the uploaded memories is the same the Cat is using now
-        upload_embedder = memories["embedder"]
-        cat_embedder = str(lizard.embedder.__class__.__name__)
+            # Get Declarative memories in file
+            declarative_memories = memories["collections"][str(VectorMemoryType.DECLARATIVE)]
+            if not declarative_memories:
+                raise Exception(f"No Declarative memories found in the uploaded file '{filename}'.")
 
-        if upload_embedder != cat_embedder:
-            log.error(f"Embedder mismatch for file '{file.name}': file embedder {upload_embedder} is different from {cat_embedder}")
-            return
+            # Store data to upload the memories in batch
+            points = [PointStruct(
+                id=m["id"],
+                payload={"page_content": m["page_content"], "metadata": m["metadata"]},
+                vector=m["vector"],
+            ) for m in declarative_memories]
 
-        # Get Declarative memories in file
-        declarative_memories = memories["collections"][str(VectorMemoryType.DECLARATIVE)]
-        if not declarative_memories:
-            log.error(f"No Declarative memories found in the uploaded file '{file.name}'.")
-            return
+            log.info(f"Agent id: {self.cat.agent_key}. Preparing to load {len(points)} vector memories")
 
-        # Store data to upload the memories in batch
-        ids = [m["id"] for m in declarative_memories]
-        payloads = [
-            {"page_content": m["page_content"], "metadata": m["metadata"]}
-            for m in declarative_memories
-        ]
-        vectors = [m["vector"] for m in declarative_memories]
+            # Check embedding size is correct
+            embedder_size = lizard.embedder_size
+            len_mismatch = [len(p.vector) == embedder_size for p in points]
 
-        log.info(f"Agent id: {self.cat.agent_key}. Preparing to load {len(vectors)} vector memories")
+            if not any(len_mismatch):
+                raise Exception(f"Embedding size mismatch for file '{filename}': vectors length should be {embedder_size}")
 
-        # Check embedding size is correct
-        embedder_size = lizard.embedder_size
-        len_mismatch = [len(v) == embedder_size for v in vectors]
-
-        if not any(len_mismatch):
-            log.error(f"Embedding size mismatch for file '{file.name}': vectors length should be {embedder_size}")
-            return
-
-        # Upsert memories in batch mode
-        await cat.vector_memory_handler.add_points_to_tenant(
-            collection_name=str(VectorMemoryType.DECLARATIVE), ids=ids, payloads=payloads, vectors=vectors
-        )
+            # Upsert memories in batch mode
+            await cat.vector_memory_handler.add_points_to_tenant(
+                collection_name=str(VectorMemoryType.DECLARATIVE), points=points,
+            )
+        except Exception as e:
+            log.error(f"Error uploading memories from file '{filename}': {e}")
 
     async def ingest_file(
         self,
@@ -139,8 +136,7 @@ class RabbitHole:
                 file=file, filename=filename, content_type=content_type
             )
             if not docs:
-                log.error(f"No valid chunks found in the file '{filename}'.")
-                return
+                raise Exception(f"No valid chunks found in the file '{filename}'.")
 
             # store in memory
             await self._store_documents(docs=docs, source=source, metadata=metadata)
@@ -304,27 +300,26 @@ class RabbitHole:
 
         # hook the points before they are stored in the vector memory
         valid_documents = list(filter(lambda doc_: doc_.page_content.strip(), docs))
-
-        storing_payloads = [doc.model_dump() for doc in valid_documents]
         storing_vectors = await asyncio.to_thread(
             lambda: embedder.embed_documents([doc_.page_content for doc_ in valid_documents])
         )
+        points = [PointStruct(
+            id=uuid.uuid4().hex,
+            payload=doc.model_dump(),
+            vector=vector,
+        ) for doc, vector in zip(valid_documents, storing_vectors)]
 
         collection_name = str(VectorMemoryType.DECLARATIVE if not self.stray else VectorMemoryType.EPISODIC)
-        points, _ = await self.cat.vector_memory_handler.add_points_to_tenant(
-            collection_name=collection_name, payloads=storing_payloads, vectors=storing_vectors,
-        )
+        await self.cat.vector_memory_handler.add_points_to_tenant(collection_name=collection_name, points=points)
 
         # hook the points after they are stored in the vector memory
-        plugin_manager.execute_hook(
-            "after_rabbithole_stored_documents", source, points, caller=self.stray or self.cat,
-        )
+        plugin_manager.execute_hook("after_rabbithole_stored_documents", source, points, caller=self.stray or self.cat)
 
         # notify client
         await self._send_ws_message(f"Finished reading {source}, I made {len(docs)} thoughts on it.")
 
         log.info(
-            f"Agent id: {self.cat.agent_key}. Done uploading {source}. Inserted #{len(storing_payloads)} points into {collection_name} memory."
+            f"Agent id: {self.cat.agent_key}. Done uploading {source}. Inserted #{len(points)} points into {collection_name} memory."
         )
 
     def _split_text(self, docs: List[Document]):

@@ -2,6 +2,7 @@ import asyncio
 import mimetypes
 import os
 import tempfile
+import uuid
 from io import BytesIO
 from typing import Dict, List, Callable
 
@@ -18,7 +19,7 @@ from cat.looking_glass.mad_hatter.procedures import CatProcedureType
 from cat.looking_glass.models import StoredSourceWithMetadata
 from cat.looking_glass.stray_cat import StrayCat
 from cat.looking_glass.tweedledee import Tweedledee
-from cat.services.memory.models import VectorMemoryType
+from cat.services.memory.models import VectorMemoryType, PointStruct
 from cat.services.mixin import BotMixin
 from cat.utils import guess_file_type, is_url
 
@@ -153,18 +154,14 @@ class CheshireCat(BotMixin):
         return {k: list(v) for k, v in results.items()}
 
     async def embed_procedures(self, pt: CatProcedureType | None = None):
-        payloads = []
-        vectors = []
-        for p in self.plugin_manager.procedures:
-            # Only process if pt is None or p.type matches pt
-            if pt is not None and p.type != pt:
-                continue
-
-            for t in p.to_document_recall():
-                payloads.append(t.document.model_dump())
-                vectors.append(self.lizard.embedder.embed_query(t.document.page_content))
-
-        if not payloads:
+        points = [
+            PointStruct(
+                id=uuid.uuid4().hex,
+                payload=t.document.model_dump(),
+                vector=self.lizard.embedder.embed_query(t.document.page_content),
+            ) for p in self.plugin_manager.procedures for t in p.to_document_recall() if pt is None or p.type == pt
+        ]
+        if not points:
             return
 
         log.info(f"Agent id: {self._id}. Embedding procedures in vector memory")
@@ -173,10 +170,8 @@ class CheshireCat(BotMixin):
         # first, clear all existing procedural embeddings
         await self.vector_memory_handler.delete_tenant_points(collection_name)
 
-        await self.vector_memory_handler.add_points_to_tenant(
-            collection_name=collection_name, payloads=payloads, vectors=vectors,
-        )
-        log.info(f"Agent id: {self._id}. Embedded {len(payloads)} triggers in {collection_name} vector memory")
+        await self.vector_memory_handler.add_points_to_tenant(collection_name=collection_name, points=points)
+        log.info(f"Agent id: {self._id}. Embedded {len(points)} triggers in {collection_name} vector memory")
 
     async def _embed_stored_sources(
         self, collection_name: VectorMemoryType, stored_sources: List[StoredSourceWithMetadata]

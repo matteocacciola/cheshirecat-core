@@ -208,7 +208,10 @@ async def upload_memory(
 
     # Ingest memories in background and notify client
     background_tasks.add_task(
-        info.lizard.rabbit_hole.ingest_memory, cat=info.cheshire_cat, file=BytesIO(file.file.read())
+        info.lizard.rabbit_hole.ingest_memory,
+        cat=info.cheshire_cat,
+        file=BytesIO(await file.read()),
+        filename=file.filename,
     )
 
     # reply to client
