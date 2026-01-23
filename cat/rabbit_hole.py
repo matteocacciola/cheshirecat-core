@@ -69,12 +69,14 @@ class RabbitHole:
         cat_embedder = str(lizard.embedder.__class__.__name__)
 
         if upload_embedder != cat_embedder:
-            raise Exception(
-                f"Embedder mismatch: file embedder {upload_embedder} is different from {cat_embedder}"
-            )
+            log.error(f"Embedder mismatch for file '{file.name}': file embedder {upload_embedder} is different from {cat_embedder}")
+            return
 
         # Get Declarative memories in file
         declarative_memories = memories["collections"][str(VectorMemoryType.DECLARATIVE)]
+        if not declarative_memories:
+            log.error(f"No Declarative memories found in the uploaded file '{file.name}'.")
+            return
 
         # Store data to upload the memories in batch
         ids = [m["id"] for m in declarative_memories]
@@ -91,9 +93,8 @@ class RabbitHole:
         len_mismatch = [len(v) == embedder_size for v in vectors]
 
         if not any(len_mismatch):
-            raise Exception(
-                f"Embedding size mismatch: vectors length should be {embedder_size}"
-            )
+            log.error(f"Embedding size mismatch for file '{file.name}': vectors length should be {embedder_size}")
+            return
 
         # Upsert memories in batch mode
         await cat.vector_memory_handler.add_points_to_tenant(
@@ -137,6 +138,9 @@ class RabbitHole:
             source, file_bytes, content_type, docs, is_url = await self._file_to_docs(
                 file=file, filename=filename, content_type=content_type
             )
+            if not docs:
+                log.error(f"No valid chunks found in the file '{filename}'.")
+                return
 
             # store in memory
             await self._store_documents(docs=docs, source=source, metadata=metadata)
