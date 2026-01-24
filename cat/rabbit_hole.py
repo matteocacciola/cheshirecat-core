@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import mimetypes
 import os
@@ -139,7 +140,9 @@ class RabbitHole:
                 raise Exception(f"No valid chunks found in the file '{filename}'.")
 
             # store in memory
-            await self._store_documents(docs=docs, source=source, metadata=metadata)
+            sha256 = hashlib.sha256()
+            sha256.update(file_bytes)
+            await self._store_documents(docs=docs, source=source, file_hash=sha256.hexdigest(), metadata=metadata)
 
             # store in file storage
             if store_file and not is_url:
@@ -256,6 +259,7 @@ class RabbitHole:
         self,
         docs: List[Document],
         source: str,
+        file_hash: str,
         metadata: Dict,
     ) -> None:
         """Add documents to the Cat's declarative memory.
@@ -266,6 +270,7 @@ class RabbitHole:
         Args:
             docs (List[Document]): List of Langchain `Document` to be inserted in the Cat's declarative memory.
             source (str): Source name to be added as a metadata. It can be a file name or an URL.
+            file_hash (str): Hash of the file to be added as a metadata.
             metadata (Dict): Metadata to be stored with each chunk.
 
         Returns:
@@ -291,7 +296,7 @@ class RabbitHole:
             doc.metadata = (
                     doc.metadata
                     | metadata
-                    | {"source": source, "when": time.time()}
+                    | {"source": source, "when": time.time(), "hash": file_hash}
                     | ({"chat_id": self.stray.id} if self.stray else {})
             )
 
