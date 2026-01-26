@@ -1,10 +1,8 @@
 from .bill_the_lizard import BillTheLizard
 from .cheshire_cat import CheshireCat
-from .humpty_dumpty import HumptyDumpty
+from .mad_hatter.mad_hatter import MadHatter
 from .models import AgenticWorkflowTask, AgenticWorkflowOutput, ChatResponse
 from .stray_cat import StrayCat
-from .tweedledee import Tweedledee
-from .tweedledum import Tweedledum
 
 __all__ = [
     "AgenticWorkflowTask",
@@ -12,8 +10,6 @@ __all__ = [
     "BillTheLizard",
     "ChatResponse",
     "CheshireCat",
-    "HumptyDumpty",
+    "MadHatter",
     "StrayCat",
-    "Tweedledee",
-    "Tweedledum",
 ]

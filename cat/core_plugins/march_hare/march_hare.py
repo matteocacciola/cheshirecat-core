@@ -10,9 +10,6 @@ from cat import log, hook
 from cat.utils import pod_id
 
 
-_march_hare = None
-_consumer_threads = []
-
 class MarchHareConfig:
     # List of channels for event management
     channels = {
@@ -79,7 +76,7 @@ class MarchHare:
             channel.basic_publish(
                 exchange=exchange,
                 routing_key="",
-                body=message
+                body=message,  # type: ignore
             )
             log.debug(f"Event {event_type} sent to exchange {exchange} with payload: {payload}")
         except AMQPConnectionError as e:
@@ -121,6 +118,10 @@ class MarchHare:
                     connection.close()
 
 
+_march_hare: MarchHare | None = None
+_consumer_threads = []
+
+
 def _consume_plugin_events(lizard):
     """
     Consumer thread that listens for activation events from RabbitMQ.
@@ -140,12 +141,16 @@ def _consume_plugin_events(lizard):
 
             if event["event_type"] == MarchHareConfig.events["PLUGIN_INSTALLATION"]:
                 payload = event["payload"]
-                lizard.plugin_manager.install_extracted_plugin(payload["plugin_id"], payload["plugin_path"])
-            elif event["event_type"] == MarchHareConfig.events["PLUGIN_UNINSTALLATION"]:
+                lizard.plugin_manager.install_extracted_plugin(payload["plugin_id"])
+                lizard.on_plugin_activate(payload["plugin_id"])
+                return
+
+            if event["event_type"] == MarchHareConfig.events["PLUGIN_UNINSTALLATION"]:
                 payload = event["payload"]
-                lizard.plugin_manager.uninstall_plugin(payload["plugin_id"])
-            else:
-                log.warning(f"Unknown event type: {event['event_type']}. Message body: {body}")
+                lizard.plugin_manager.uninstall_plugin(payload["plugin_id"], dispatch_event=False)
+                return
+
+            log.warning(f"Unknown event type: {event['event_type']}. Message body: {body}")
         except json.JSONDecodeError as e:
             log.error(f"Failed to decode JSON message: {e}. Message body: {body}")
         except Exception as e:

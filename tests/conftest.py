@@ -206,23 +206,23 @@ def plugin_manager(lizard):
 
     # install plugin
     new_plugin_zip_path = create_mock_plugin_zip(flat=True)
-    plugin_manager.install_plugin(new_plugin_zip_path)
+    lizard.install_plugin(new_plugin_zip_path)
 
     yield plugin_manager
 
     plugin_manager.uninstall_plugin("mock_plugin")
 
 
-@pytest.fixture(scope="function")
-def agent_plugin_manager(cheshire_cat):
+@pytest_asyncio.fixture(scope="function")
+async def agent_plugin_manager(cheshire_cat):
     plugin_manager = cheshire_cat.plugin_manager
 
     # install plugin
     new_plugin_zip_path = create_mock_plugin_zip(flat=True)
-    plugin_id = cheshire_cat.lizard.plugin_manager.install_plugin(new_plugin_zip_path)
+    plugin_id = cheshire_cat.lizard.install_plugin(new_plugin_zip_path)
 
     # activate the plugin within the Cheshire Cat whose plugin manager is being used
-    plugin_manager.toggle_plugin(plugin_id)
+    await cheshire_cat.toggle_plugin(plugin_id)
 
     yield plugin_manager
 

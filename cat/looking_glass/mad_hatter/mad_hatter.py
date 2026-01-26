@@ -1,18 +1,20 @@
 import glob
 import os
-from abc import ABC, abstractmethod
+import shutil
 from copy import deepcopy
 from pathlib import Path
 from typing import List, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 
 from cat import utils
-from cat.db.cruds import settings as crud_settings
+from cat.db.cruds import plugins as crud_plugins, settings as crud_settings
+from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.db.models import Setting
 from cat.log import log
 from cat.looking_glass.mad_hatter.decorators.endpoint import CatEndpoint
 from cat.looking_glass.mad_hatter.decorators.hook import CatHook
 from cat.looking_glass.mad_hatter.plugin import Plugin
+from cat.looking_glass.mad_hatter.plugin_extractor import PluginExtractor
 from cat.looking_glass.mad_hatter.procedures import CatProcedure
 
 
@@ -23,18 +25,15 @@ class LoadedPlugin(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-class MadHatter(ABC):
+class MadHatter:
     """
     This is the abstract class that defines the methods that the plugin managers should implement.
     """
-    def __init__(self):
-        from cat.looking_glass.humpty_dumpty import HumptyDumpty
-
-        self.dispatcher = HumptyDumpty()
+    def __init__(self, agent_key: str):
+        self._agent_key = agent_key
         self._skip_folders = ["__pycache__", "lost+found"]
 
         self.plugins: Dict[str, Plugin] = {}
-
         # a unified registry for all procedures (local tools, forms, remote clients)
         self.procedures_registry: Dict[str, CatProcedure] = {}
         # dict of active plugins hooks (hook_name -> [CatHook, CatHook, ...])
@@ -79,22 +78,94 @@ class MadHatter(ABC):
 
         return active_plugins
 
-    def activate_plugin(self, plugin_id: str, dispatch_events: bool = True):
+    def install_plugin(self, package_plugin: str) -> str:
+        """
+        Install a plugin from a package file (zip/tar).
+
+        Args:
+            package_plugin (str): The path to the plugin package file.
+
+        Returns:
+            str: The ID of the installed plugin.
+        """
+        # extract zip/tar file into plugin folder
+        extractor = PluginExtractor(package_plugin)
+        plugin_path = extractor.extract(utils.get_plugins_path())
+        plugin_id = extractor.id
+
+        if missing_deps := self.load_plugin(plugin_id, with_deactivation=False).missing_dependencies:
+            # remove plugin folder
+            shutil.rmtree(plugin_path)
+            raise Exception(f"Cannot install plugin {plugin_id} because of missing dependencies: {missing_deps}")
+
+        # install the extracted plugin
+        return self.install_extracted_plugin(plugin_id)
+
+    def install_extracted_plugin(self, plugin_id: str) -> str:
+        """
+        Installs and activates a plugin if it is not already activated. This method verifies if the given plugin ID
+        exists among core plugin IDs, and if not, activates the corresponding plugin.
+
+        Args:
+            plugin_id: Unique identifier for the plugin to be installed.
+
+        Returns:
+            The plugin ID as a string, whether it was already installed or newly activated.
+        """
+        # create plugin obj, and eventually activate it
+        if plugin_id in self.get_core_plugins_ids:
+            return plugin_id
+
+        self.activate_plugin(plugin_id)
+
+        return plugin_id
+
+    def uninstall_plugin(self, plugin_id: str):
+        """
+        Uninstalls the specified plugin by its ID. This includes removing the plugin folder, deactivating the plugin if
+        it is active, and clearing it from any stored metadata. If the plugin is a dependency of other plugins, the
+        operation is not performed and an exception is raised.
+
+        Args:
+            plugin_id (str): The unique identifier of the plugin to be uninstalled.
+
+        Raises:
+            Exception: If the plugin is a dependency of other plugins, an exception is raised with the list of dependent
+                plugins.
+        """
+        if not self.plugin_exists(plugin_id) or plugin_id in self.get_core_plugins_ids:
+            return
+
+        # if the plugin is within the dependencies of other plugins, raise an exception
+        dependent_plugins = self._get_plugins_depending_on(plugin_id)
+        if dependent_plugins:
+            raise Exception(
+                f"Cannot uninstall plugin {plugin_id} because it is a dependency of the following plugins: "
+                f"{', '.join(dependent_plugins)}"
+            )
+
+        plugin_path = self.plugins[plugin_id].path
+
+        # deactivate plugin if it is active (will sync cache)
+        if plugin_id in self.active_plugins:
+            self.deactivate_plugin(plugin_id)
+
+        # remove plugin folder
+        shutil.rmtree(plugin_path)
+
+        crud_plugins.destroy_plugin(plugin_id)
+
+    def activate_plugin(self, plugin_id: str):
         if not self.plugin_exists(plugin_id):
             raise Exception(f"Plugin {plugin_id} not present in plugins folder")
 
-        if dispatch_events:
-            self.dispatcher.dispatch("on_start_plugin_activate", plugin_id=plugin_id)
-
-        if self.on_plugin_activation(plugin_id=plugin_id):
+        if self._on_plugin_activation(plugin_id=plugin_id):
             # Add the plugin in the list of active plugins
             self.active_plugins.append(plugin_id)
 
         self._on_finish_discovering_plugins()
-        if dispatch_events:
-            self.dispatcher.dispatch("on_end_plugin_activate", plugin_id=plugin_id)
 
-    def deactivate_plugin(self, plugin_id: str, dispatch_events: bool = True):
+    def deactivate_plugin(self, plugin_id: str):
         if not self.plugin_exists(plugin_id):
             raise Exception(f"Plugin {plugin_id} not present in plugins folder")
 
@@ -109,23 +180,21 @@ class MadHatter(ABC):
                 f"{', '.join(dependent_plugins)}"
             )
 
-        if dispatch_events:
-            self.dispatcher.dispatch("on_start_plugin_deactivate", plugin_id=plugin_id)
-
         # Deactivate the plugin
         log.warning(f"Toggle plugin '{plugin_id}' for agent '{self.agent_key}': Deactivate")
-        if self.on_plugin_deactivation(plugin_id=plugin_id):
+        try:
+            if self.agent_key == DEFAULT_SYSTEM_KEY:
+                self.plugins[plugin_id].deactivate(self.agent_key)
+            else:
+                self.plugins[plugin_id].deactivate_settings(self.agent_key)
+
             # Remove the plugin from the list of active plugins
             self.active_plugins.remove(plugin_id)
-
-            if plugin_id == self.get_base_core_plugin_id or plugin_id not in self.plugins.keys():
-                return
-
             self.plugins.pop(plugin_id, None)
 
-        self._on_finish_discovering_plugins()
-        if dispatch_events:
-            self.dispatcher.dispatch("on_end_plugin_deactivate", plugin_id=plugin_id)
+            self._on_finish_discovering_plugins()
+        except Exception as e:
+            log.error(f"Could not deactivate plugin {plugin_id}: {e}")
 
     # activate / deactivate plugin
     def toggle_plugin(self, plugin_id: str):
@@ -167,9 +236,6 @@ class MadHatter(ABC):
         # sort each hooks list by priority
         for hook_name in self.hooks.keys():
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
-
-        # notify sync has finished
-        self.dispatcher.dispatch("on_finish_plugins_sync", self.manage_endpoints)
 
     # execute requested hook
     def execute_hook(self, hook_name: str, *args, caller: "ContextMixin") -> Any:
@@ -248,6 +314,62 @@ class MadHatter(ABC):
                 dependent_plugins.append(p_id)
         return dependent_plugins
 
+    def _on_discovering_plugins(self):
+        if self.agent_key == DEFAULT_SYSTEM_KEY:
+            if not self.active_plugins:
+                self.active_plugins = self.load_active_plugins_ids_from_folders()
+
+            for plugin_id in self.active_plugins:
+                plugin = self.load_plugin(plugin_id).plugin
+                if not plugin:
+                    log.error(f"Plugin {plugin_id} could not be loaded")
+                    continue
+
+                self.plugins[plugin.id] = plugin
+                try:
+                    self._on_plugin_activation(plugin_id)
+                except Exception as e:
+                    # Couldn't activate the plugin -> Deactivate it
+                    self.deactivate_plugin(plugin_id)
+                    self.active_plugins.remove(plugin_id)
+                    raise e
+
+        # plugins are already loaded when BillTheLizard is created; since its plugin manager scans the plugins folder
+        # then, we just need to grab the plugins from there
+        for plugin_id, plugin in self.available_plugins.items():
+            if plugin_id not in self.active_plugins:
+                continue
+
+            if plugin_id not in self.plugins.keys():
+                self.plugins[plugin_id] = plugin
+            try:
+                self.plugins[plugin_id].activate_settings(self.agent_key)
+            except Exception as e:
+                # Couldn't activate the plugin -> Deactivate it
+                self.toggle_plugin(plugin_id)
+                raise e
+
+    def _on_plugin_activation(self, plugin_id: str) -> bool:
+        plugin = (
+            self.load_plugin(plugin_id).plugin
+            if self.agent_key == DEFAULT_SYSTEM_KEY
+            else self.available_plugins.get(plugin_id)
+        )
+        if not plugin:
+            return False
+
+        self.plugins[plugin_id] = plugin
+        try:
+            if self.agent_key == DEFAULT_SYSTEM_KEY:
+                self.plugins[plugin_id].activate(self.agent_key)
+            else:
+                self.plugins[plugin_id].activate_settings(self.agent_key)
+            return True
+        except Exception as e:
+            log.error(f"Could not activate plugin {plugin_id}: {e}")
+            self.plugins.pop(plugin_id, None)
+            return False
+
     @property
     def procedures(self) -> List[CatProcedure]:
         return list(self.procedures_registry.values())
@@ -262,34 +384,27 @@ class MadHatter(ABC):
         core_plugins = [p.name for p in path.iterdir() if p.is_dir()]
         return core_plugins
 
-    @abstractmethod
-    def _on_discovering_plugins(self):
-        pass
-
-    @abstractmethod
-    def on_plugin_activation(self, plugin_id: str) -> bool:
-        pass
-
-    @abstractmethod
-    def on_plugin_deactivation(self, plugin_id: str) -> bool:
-        pass
-
     @property
-    @abstractmethod
     def agent_key(self) -> str:
-        pass
+        return self._agent_key
 
     @property
-    @abstractmethod
     def available_plugins(self) -> Dict[str, Plugin]:
-        pass
+        from cat.looking_glass.bill_the_lizard import BillTheLizard
+        if self.agent_key == DEFAULT_SYSTEM_KEY:
+            plugins_ids = self.load_active_plugins_ids_from_folders()
+
+            result = {}
+            for plugin_id in plugins_ids:
+                plugin = self.load_plugin(plugin_id).plugin
+                if plugin:
+                    result[plugin.id] = plugin
+
+            return result
+
+        # the `plugins` property of the plugin manager of BillTheLizard contains only the globally active plugins
+        return BillTheLizard().plugin_manager.plugins
 
     @property
-    @abstractmethod
     def context_execute_hook(self) -> str:
-        pass
-
-    @property
-    @abstractmethod
-    def manage_endpoints(self) -> bool:
-        pass
+        return "lizard" if self.agent_key == DEFAULT_SYSTEM_KEY else "cat"

@@ -90,16 +90,16 @@ def test_delete_endpoint(plugin_manager):
     assert endpoint.tags == ["Tests"]
 
 
-def test_endpoints_deactivation_or_uninstall(plugin_manager):
+def test_endpoints_deactivation_or_uninstall(lizard):
     # custom endpoints are registered in mad_hatter, mock_plugin is installed into the plugin_manager fixture
-    for e in plugin_manager.endpoints:
+    for e in lizard.plugin_manager.endpoints:
         assert isinstance(e, CatEndpoint)
-        assert e.plugin_id in plugin_manager.get_core_plugins_ids + ["mock_plugin"]
+        assert e.plugin_id in lizard.plugin_manager.get_core_plugins_ids + ["mock_plugin"]
 
-    plugin_manager.uninstall_plugin("mock_plugin")
+    lizard.uninstall_plugin("mock_plugin")
 
     # no more custom endpoints
-    for e in plugin_manager.endpoints:
+    for e in lizard.plugin_manager.endpoints:
         assert isinstance(e, CatEndpoint)
         assert e.plugin_id != "mock_plugin"
-        assert e.plugin_id in plugin_manager.get_core_plugins_ids
+        assert e.plugin_id in lizard.plugin_manager.get_core_plugins_ids

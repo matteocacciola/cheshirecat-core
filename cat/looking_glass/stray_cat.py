@@ -7,9 +7,9 @@ from cat import utils
 from cat.auth.permissions import AuthUserInfo
 from cat.log import log
 from cat.looking_glass.callbacks import NewTokenHandler
+from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.procedures import CatProcedure
 from cat.looking_glass.models import AgenticWorkflowTask, AgenticWorkflowOutput, ChatResponse
-from cat.looking_glass.tweedledee import Tweedledee
 from cat.services.memory.messages import CatMessage, UserMessage
 from cat.services.memory.models import VectorMemoryType, RecallSettings
 from cat.services.memory.working_memory import WorkingMemory
@@ -34,7 +34,7 @@ class StrayCat(BotMixin):
         Unique identifier of the cat session.
     user: AuthUserInfo
         User data object containing user information.
-    plugin_manager_generator: Callable[[], Tweedledee]
+    plugin_manager_generator: Callable[[], MadHatter]
         Function that generates the plugin manager for this cat.
     notifier: NotifierService
         Notifier service to send messages/updates to the client via Websocket.
@@ -62,13 +62,13 @@ class StrayCat(BotMixin):
         self,
         agent_id: str,
         user_data: AuthUserInfo,
-        plugin_manager_generator: Callable[[], Tweedledee],
+        plugin_manager_generator: Callable[[], MadHatter],
         stray_id: str | None = None,
     ):
         self.id = stray_id or str(uuid.uuid4())
         self._agent_id: Final[str] = agent_id
         self.user: Final[AuthUserInfo] = user_data
-        self.plugin_manager_generator: Final[Callable[[], Tweedledee]] = plugin_manager_generator
+        self.plugin_manager_generator: Final[Callable[[], MadHatter]] = plugin_manager_generator
         self.notifier: Final[NotifierService] = NotifierService(self.user, self.agent_key, self.id)
 
         # bootstrap stray cat
@@ -271,10 +271,13 @@ class StrayCat(BotMixin):
             except ConnectionClosedOK as ex:
                 log.warning(f"Agent id: {self.agent_key}. Warning {ex}")
 
+    async def toggle_plugin(self, plugin_id: str):
+        raise Exception("Not implemented yet")
+
     @property
     def agent_key(self):
         return self._agent_id
 
     @property
-    def plugin_manager(self) -> Tweedledee:
+    def plugin_manager(self) -> MadHatter:
         return self.plugin_manager_generator()

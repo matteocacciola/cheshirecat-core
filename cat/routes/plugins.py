@@ -59,7 +59,7 @@ async def toggle_plugin_cheshirecat(
         raise CustomNotFoundException("Plugin not found")
 
     # toggle plugin
-    ccat.plugin_manager.toggle_plugin(plugin_id)
+    await ccat.toggle_plugin(plugin_id)
     return TogglePluginResponse(info=f"Plugin {plugin_id} toggled")
 
 
@@ -81,11 +81,10 @@ async def get_cheshirecat_plugin_settings(
     plugin_id = slugify(plugin_id, separator="_")
 
     ccat = info.cheshire_cat
-    plugin_manager = ccat.plugin_manager
-    if not plugin_manager.local_plugin_exists(plugin_id):
+    if not ccat.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
-    return get_plugin_settings(plugin_manager, plugin_id, ccat.agent_key)
+    return get_plugin_settings(ccat.plugin_manager, plugin_id, ccat.agent_key)
 
 
 @router.put("/settings/{plugin_id}", response_model=GetSettingResponse)
@@ -99,13 +98,11 @@ async def upsert_cheshirecat_plugin_settings(
 
     # access cat instance
     ccat = info.cheshire_cat
-
-    if not ccat.plugin_manager.local_plugin_exists(plugin_id):
+    if not ccat.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
     # Get the plugin object
     plugin = ccat.plugin_manager.plugins[plugin_id]
-
     try:
         # Load the plugin settings Pydantic model, and validate the settings
         plugin.settings_model().model_validate(payload)
@@ -132,12 +129,10 @@ async def reset_cheshirecat_plugin_settings(
 
     # access cat instance
     ccat = info.cheshire_cat
-
-    if not ccat.plugin_manager.local_plugin_exists(plugin_id):
+    if not ccat.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
     crud_plugins.set_setting(ccat.agent_key, plugin_id, factory_settings)
-
     return GetSettingResponse(name=plugin_id, value=factory_settings)
 
 
@@ -173,7 +168,7 @@ async def install_plugin(
     log.info(f"Uploading {content_type} plugin {filename}")
     try:
         plugin_archive_path = await write_temp_file(filename, await file.read())
-        info.lizard.plugin_manager.install_plugin(plugin_archive_path)
+        info.lizard.install_plugin(plugin_archive_path)
     except Exception as e:
         raise CustomValidationException(f"Could not install plugin from file: {e}")
 
@@ -192,7 +187,7 @@ async def install_plugin_from_registry(
     # download zip from registry
     try:
         tmp_plugin_path = await info.lizard.plugin_registry.download_plugin(payload["url"])
-        info.lizard.plugin_manager.install_plugin(tmp_plugin_path)
+        info.lizard.install_plugin(tmp_plugin_path)
     except Exception as e:
         raise CustomValidationException(f"Could not install plugin from registry: {e}")
 
@@ -255,7 +250,7 @@ async def uninstall_plugin(
 
     try:
         # remove folder, hooks and tools
-        plugin_manager.uninstall_plugin(plugin_id)
+        info.lizard.uninstall_plugin(plugin_id)
     except Exception as e:
         raise CustomValidationException(f"Could not uninstall plugin: {e}")
 
@@ -276,5 +271,5 @@ async def toggle_plugin_admin(
         raise CustomNotFoundException("Plugin not found")
 
     # toggle plugin
-    plugin_manager.toggle_plugin(plugin_id)
+    info.lizard.toggle_plugin(plugin_id)
     return TogglePluginResponse(info=f"Plugin {plugin_id} toggled")

@@ -22,7 +22,6 @@ services:
       - ./data:/app/data
       - ./tests:/app/tests
       - ./migrations:/app/migrations
-      - uv-cache:/app/.venv
     restart: unless-stopped
     depends_on:
       cheshire-cat-redis:
@@ -96,6 +95,4 @@ volumes:
   rabbitmq-data:
     driver: local
   rabbitmq-log:
-    driver: local
-  uv-cache:
     driver: local

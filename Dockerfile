@@ -31,7 +31,7 @@ COPY ./cat/core_plugins ./cat/core_plugins
 RUN pip install -U pip uv && \
     uv sync --frozen --no-install-project --no-upgrade --no-cache && \
     find ./cat/core_plugins -name requirements.txt | sed 's/^/-r /' | xargs uv pip install --no-cache --no-upgrade && \
-    # find ./cat/core_plugins -name requirements.txt | xargs -I {} echo -r {} | xargs uv pip install --no-cache --no-upgrade && \
+    rm -rf *.egg-info && \
     uv cache clean && \
     find ./ -type d -name __pycache__ -exec rm -rf {} + && \
     rm -rf /root/.cache/pip && \

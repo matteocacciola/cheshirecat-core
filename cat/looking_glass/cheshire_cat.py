@@ -14,11 +14,10 @@ from cat.db.cruds import (
     users as crud_users,
 )
 from cat.log import log
-from cat.looking_glass.humpty_dumpty import HumptyDumpty, subscriber
+from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.procedures import CatProcedureType
 from cat.looking_glass.models import StoredSourceWithMetadata
 from cat.looking_glass.stray_cat import StrayCat
-from cat.looking_glass.tweedledee import Tweedledee
 from cat.services.memory.models import VectorMemoryType, PointStruct
 from cat.services.mixin import BotMixin
 from cat.utils import guess_file_type, is_url
@@ -48,11 +47,8 @@ class CheshireCat(BotMixin):
         """
         self._id = agent_id
 
-        self.dispatcher = HumptyDumpty()
-        self.dispatcher.subscribe_from(self)
-
         # instantiate plugin manager (loads all plugins' hooks and tools)
-        self.plugin_manager = Tweedledee(self._id)
+        self.plugin_manager = MadHatter(self.agent_key)
         self.plugin_manager.discover_plugins()
 
         # allows plugins to do something before cat components are loaded
@@ -88,8 +84,6 @@ class CheshireCat(BotMixin):
         self.service_provider.bootstrap_services_bot()
 
     def shutdown(self) -> None:
-        self.dispatcher.unsubscribe_from(self)
-
         self.plugin_manager = None
 
     async def destroy_memory(self):
@@ -284,6 +278,13 @@ class CheshireCat(BotMixin):
             if os.path.exists(file_path):
                 os.remove(file_path)
 
+    async def toggle_plugin(self, plugin_id: str):
+        self.plugin_manager.toggle_plugin(plugin_id)
+
+        # destroy all procedural embeddings and re-embed them
+        await self.vector_memory_handler.delete_tenant_points(str(VectorMemoryType.PROCEDURAL))
+        await self.embed_procedures()
+
     def _find_stray_cat(self, chat_id: str) -> StrayCat | None:
         """Finds a stray cat by chat id.
 
@@ -309,17 +310,27 @@ class CheshireCat(BotMixin):
             stray_id=chat_id,
         )
 
-    @subscriber("on_end_plugin_activate")
-    async def on_end_plugin_activate(self, plugin_id: str) -> None:
-        # Destroy all procedural embeddings
-        await self.vector_memory_handler.delete_tenant_points(str(VectorMemoryType.PROCEDURAL))
-        await self.embed_procedures()
+    def has_custom_endpoint(self, path: str, methods: set[str] | List[str] | None = None):
+        """
+        Check if an endpoint with the given path and methods exists in the active plugins.
 
-    @subscriber("on_end_plugin_deactivate")
-    async def on_end_plugin_deactivate(self, plugin_id: str) -> None:
-        # Destroy all procedural embeddings
-        await self.vector_memory_handler.delete_tenant_points(str(VectorMemoryType.PROCEDURAL))
-        await self.embed_procedures()
+        Args:
+            path (str): The path of the endpoint to check.
+            methods (set[str] | List[str] | None): The HTTP methods of the endpoint to check. If None, checks all methods.
+
+        Returns:
+            bool: True if the endpoint exists, False otherwise.
+        """
+        for plugin in self.plugin_manager.plugins.values():
+            # Check if the plugin has an endpoint with the given path and methods
+            for ep in plugin.endpoints:
+                if ep.real_path == path and (methods is None or set(ep.methods) == set(methods)):
+                    return True
+
+        return False
+
+    def plugin_exists(self, plugin_id: str):
+        return plugin_id in self.plugin_manager.plugins.keys()
 
     # each time we access the file handlers, plugins can intervene
     @property
@@ -337,5 +348,5 @@ class CheshireCat(BotMixin):
         return self._id
 
     @property
-    def plugin_manager_generator(self) -> Callable[[], Tweedledee]:
+    def plugin_manager_generator(self) -> Callable[[], MadHatter]:
         return lambda: self.plugin_manager

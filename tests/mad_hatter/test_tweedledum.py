@@ -69,7 +69,7 @@ def test_plugin_install(lizard, plugin_is_flat):
 
     # install plugin
     new_plugin_zip_path = create_mock_plugin_zip(flat=plugin_is_flat)
-    plugin_manager.install_plugin(new_plugin_zip_path)
+    lizard.install_plugin(new_plugin_zip_path)
 
     # archive extracted
     assert os.path.exists(os.path.join(utils.get_plugins_path(), "mock_plugin"))
@@ -129,7 +129,7 @@ def test_plugin_uninstall_non_existent(lizard):
 
     # should not throw error
     assert len(plugin_manager.plugins) == len(core_plugins)
-    plugin_manager.uninstall_plugin("wrong_plugin")
+    lizard.uninstall_plugin("wrong_plugin")
     assert len(plugin_manager.plugins) == len(core_plugins)
 
     # list of active plugins in DB is correct
@@ -146,10 +146,10 @@ def test_plugin_uninstall(lizard, plugin_is_flat):
 
     # install plugin
     new_plugin_zip_path = create_mock_plugin_zip(flat=plugin_is_flat)
-    plugin_manager.install_plugin(new_plugin_zip_path)
+    lizard.install_plugin(new_plugin_zip_path)
 
     # uninstall
-    plugin_manager.uninstall_plugin("mock_plugin")
+    lizard.uninstall_plugin("mock_plugin")
 
     # directory removed
     assert not os.path.exists(os.path.join(utils.get_plugins_path(), "mock_plugin"))

@@ -1,0 +1,9 @@
+{
+    "name": "Cat Webhook",
+    "description": "Allow the consumers of the Cheshirecat API to register webhooks to be notified when certain events occur.",
+    "author_name": "Matteo Cacciola",
+    "plugin_url": "https://github.com/matteocacciola/cheshirecat-core",
+    "tags": "core, webhooks",
+    "thumb": "",
+    "version": "0.0.1"
+}

@@ -34,10 +34,10 @@ class ContextMixin(ABC):
     @property
     def mad_hatter(self) -> MadHatter:
         """
-        Gives access to the `Tweedledee` plugin manager.
+        Gives access to the `MadHatter` plugin manager.
 
         Returns:
-            mad_hatter (Tweedledee): Module to manage plugins.
+            mad_hatter (MadHatter): Module to manage plugins.
 
         Examples
         --------
@@ -78,6 +78,16 @@ class ContextMixin(ABC):
         --------
         >> cat.lizard.embedder.embed_query("Oh dear!")
         [0.2, 0.02, 0.4, ...]
+        """
+        pass
+
+    @abstractmethod
+    async def toggle_plugin(self, plugin_id: str):
+        """
+        Toggles the state of a plugin with the given ID.
+
+        Args:
+            plugin_id (str): The unique identifier of the plugin to be toggled.
         """
         pass
 
