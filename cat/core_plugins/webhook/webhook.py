@@ -64,6 +64,7 @@ async def register_webhook(webhook: WebhookPayload) -> WebhookResponse:
 
 @endpoint.delete("/", tags=["Webhooks"], prefix="/webhooks")
 async def delete_webhook(webhook: WebhookPayload) -> None:
+    global cripto
+    
     secret = crypto.encrypt(webhook.secret)
-
     crud_webhook.delete_webhook(webhook.agent_id, webhook.event, webhook.url, secret)
