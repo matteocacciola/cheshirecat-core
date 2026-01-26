@@ -142,14 +142,24 @@ class RabbitHole:
             # store in memory
             sha256 = hashlib.sha256()
             sha256.update(file_bytes)
-            await self._store_documents(docs=docs, source=source, file_hash=sha256.hexdigest(), metadata=metadata)
+            points = await self._store_documents(
+                docs=docs, source=source, file_hash=sha256.hexdigest(), metadata=metadata,
+            )
 
             # store in file storage
             if store_file and not is_url:
                 chat_id = self.stray.id if self.stray else None
                 self.cat.save_file(file_bytes, content_type, source, chat_id)
 
-            log.info(f"Successfully ingested file: {filename}")
+            # hook the points after they are stored in the vector memory
+            self.cat.plugin_manager.execute_hook(
+                "after_rabbithole_stored_documents", source, points, caller=self.stray or self.cat,
+            )
+
+            # notify client
+            await self._send_ws_message(f"Finished reading {source}, I made {len(docs)} thoughts on it.")
+
+            log.info(f"Agent id: {self.cat.agent_key}. Successfully ingested file: {filename}")
         except Exception as e:
             log.error(f"Error ingesting file {filename}: {e}")
             # Don't raise in background tasks - just log the error
@@ -261,7 +271,7 @@ class RabbitHole:
         source: str,
         file_hash: str,
         metadata: Dict,
-    ) -> None:
+    ) -> List[PointStruct]:
         """Add documents to the Cat's declarative memory.
 
         This method loops a list of Langchain `Document` and adds some metadata. Namely, the source filename and the
@@ -317,15 +327,7 @@ class RabbitHole:
         collection_name = str(VectorMemoryType.DECLARATIVE if not self.stray else VectorMemoryType.EPISODIC)
         await self.cat.vector_memory_handler.add_points_to_tenant(collection_name=collection_name, points=points)
 
-        # hook the points after they are stored in the vector memory
-        plugin_manager.execute_hook("after_rabbithole_stored_documents", source, points, caller=self.stray or self.cat)
-
-        # notify client
-        await self._send_ws_message(f"Finished reading {source}, I made {len(docs)} thoughts on it.")
-
-        log.info(
-            f"Agent id: {self.cat.agent_key}. Done uploading {source}. Inserted #{len(points)} points into {collection_name} memory."
-        )
+        return points
 
     def _split_text(self, docs: List[Document]):
         """Split LangChain documents in chunks.

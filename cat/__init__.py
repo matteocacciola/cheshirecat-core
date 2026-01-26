@@ -25,7 +25,7 @@ from .services.factory.file_manager import BaseFileManager, FileManagerConfig
 from .services.factory.llm import LLMSettings
 from .services.factory.vector_db import BaseVectorDatabaseHandler, VectorDatabaseSettings
 from .services.memory.messages import CatMessage, ConversationMessage, MessageWhy, UserMessage
-from .services.memory.models import RecallSettings
+from .services.memory.models import RecallSettings, PointStruct
 from .utils import get_caller_info, run_sync_or_async
 
 __all__ = [
@@ -56,6 +56,7 @@ __all__ = [
     "MessageWhy",
     "MultimodalEmbeddings",
     "PluginRegistry",
+    "PointStruct",
     "RecallSettings",
     "StrayCat",
     "UserMessage",

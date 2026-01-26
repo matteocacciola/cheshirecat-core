@@ -14,9 +14,8 @@ from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
 from langchain_community.document_loaders.parsers.txt import TextParser
 from langchain_core.documents import Document
 
-from cat import hook
+from cat import hook, PointStruct
 from cat.core_plugins.base_plugin.parsers import YoutubeParser, TableParser, JSONParser, PowerPointParser
-from cat.services.memory.models import PointStruct
 
 
 @hook(priority=999)

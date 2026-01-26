@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 from redis.exceptions import RedisError
 
 from cat.db import crud
@@ -12,7 +12,7 @@ def format_key(agent_id: str, event_id: str) -> str:
     return f"{KEY_PREFIX}:{agent_id}:{event_id}"
 
 
-def get_webhook(agent_id: str, event: str) -> Dict[str, Any] | None:
+def get_webhooks(agent_id: str, event: str) -> List[Dict[str, Any]] | None:
     key = format_key(agent_id, event)
 
     try:
@@ -20,9 +20,6 @@ def get_webhook(agent_id: str, event: str) -> Dict[str, Any] | None:
         if webhook is None:
             log.debug(f"No webhook found for {key.replace(KEY_PREFIX + ':', '')}")
             return None
-
-        if isinstance(webhook, list):
-            webhook = webhook[0]
 
         return webhook
     except RedisError as e:
@@ -36,11 +33,17 @@ def set_webhook(agent_id: str, event: str, settings: Dict[str, Any]) -> Dict[str
     try:
         # Check if the key exists
         existing_data = crud.read(key)
+        if existing_data is not None:
+            # check if the url already exists
+            for existing_setting in existing_data:
+                if existing_setting["url"] == settings["url"]:
+                    log.debug(f"The URL '{settings['url']}' is already registered as a webhook for {key.replace(KEY_PREFIX + ':', '')}")
+                    return existing_setting
+
+            existing_data.append(settings)
 
         if existing_data is None:
             existing_data = [settings]
-        else:
-            existing_data.append(settings)
 
         # Key exists - update only the messages path
         crud.store(key, existing_data)
@@ -60,7 +63,7 @@ def delete_webhook(agent_id: str, event: str, url: str, secret: str) -> None:
         settings = [
             setting
             for setting in settings
-            if settings["url"] not in [url, f"{url}/"] and settings["secret"] != secret
+            if setting["url"] not in [url, f"{url}/"] and setting["secret"] != secret
         ]
 
         crud.store(key, settings)
