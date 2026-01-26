@@ -93,6 +93,57 @@ for complete responses
 - Receive complete response in single API call
 - Better for integrations, batch processing, or simple request/response patterns
 
+# Webhooks
+
+Some activities are currently asynchronous: you can register a webhook to be notified when they are completed.
+Currently, the following events are supported:
+- `knowledge_source_loaded`, triggered when a knowledge source is loaded;
+- `plugin_installed`, triggered when a plugin is installed;
+- `plugin_uninstalled`, triggered when a plugin is uninstalled.
+
+To register a webhook, use the `/webhooks` endpoint with a `POST` request. You can specify the event type and the URL
+to be called when the event occurs. To register a webhook,, you need to provide the following parameters:
+- `event`: the event type to listen for (e.g., `knowledge_source_loaded`, `plugin_installed`, `plugin_uninstalled`);
+- `url`: the URL to be called when the event occurs;
+- `header_key`: the header key to be used for authentication;
+- `secret`: the secret to be used for authentication.
+
+Likewise you can register a webhook, you can delete it by using the `/webhooks` endpoint with a `DELETE` request and
+the same payload as the `POST` request.
+
+The webhook will be called by the CheshireCat with a `POST` request, authenticated with the provided header and secret
+and containing one of the following payloads:
+- `knowledge_source_loaded`:
+```json
+{
+  "agent": <the agent id>,
+  "chat": <the chat id>,
+  "source": <the knowledge source id>,
+  "points": <the list of metadata of the stored points>,
+  "success": <true if the operation was successful, false otherwise>
+}
+```
+- `plugin_installed`:
+```json
+{
+  "plugin_id": <the id of the installed plugin,
+  "success": <true if the operation was successful, false otherwise>
+}
+```
+- `plugin_uninstalled`:
+```json
+{
+  "plugin_id": <the id of the uninstalled plugin>,
+  "success": <true if the operation was successful, false otherwise>
+}
+```
+
+> [!IMPORTANT]
+> If you do not use the API Key to communicate with the Cheshire Cat, you need to be authenticated as an user with
+> SYSTEM:WRITE permission to register or delete webhooks.
+> 
+> Do not forget to specify the `X-Agent-ID` header for registering webhooks for the `knowledge_source_loaded` event.
+
 # Compatibility 
 This new version is no more completely compatible with the original version, since the architecture has been changed.
 Please, refer to [COMPATIBILITY.md](COMPATIBILITY.md) for more information.
@@ -139,7 +190,7 @@ from cat import tool
 
 
 # langchain inspired tools (function calling)
-@tool(return_direct=True)
+@tool
 def socks_prices(color, cat):
     """How much do socks cost? Input is the sock color."""
     prices = {

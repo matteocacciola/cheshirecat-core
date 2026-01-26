@@ -1,7 +1,8 @@
 import hashlib
 import hmac
 import json
-from typing import List, Literal, get_args
+import os.path
+from typing import List, Literal, get_args, Dict, Any
 import requests
 from pydantic import BaseModel, Field
 
@@ -18,6 +19,7 @@ from cat import (
 )
 import cat.core_plugins.webhooks.crud as crud_webhook
 from cat.services.string_crypto import StringCrypto
+from cat.utils import get_plugins_path, is_url
 
 
 WEBHOOK_EVENT = Literal["knowledge_source_loaded", "plugin_installed", "plugin_uninstalled"]
@@ -35,21 +37,28 @@ class WebhookPayload(WebhookResponse):
     secret: str
 
 
-def trigger_webhook(webhook_data: WebhookPayload, payload):
+def trigger_webhook(webhook_data: WebhookPayload, payload: Dict[str, Any]):
     target_url = webhook_data.url
     custom_header_key = webhook_data.header_key
 
     secret = crypto.decrypt(webhook_data.secret)
-    body_bytes = json.dumps(payload, separators=(',', ':')).encode("utf-8")
 
     signature = hmac.new(
         secret.encode("utf-8"),
-        msg=body_bytes,
-        digestmod=hashlib.sha256
+        msg=json.dumps(payload, separators=(',', ':')).encode("utf-8"),
+        digestmod=hashlib.sha256,
     ).hexdigest()
 
     headers = {"Content-Type": "application/json", custom_header_key: signature}
-    requests.post(target_url, data=body_bytes, headers=headers)
+    requests.post(target_url, json=payload, headers=headers)
+
+
+def parse_agent_key(info: AuthorizedInfo, webhook: WebhookPayload) -> str:
+    if webhook.event is not "knowledge_source_loaded":
+        return info.lizard.agent_key
+    if not info.cheshire_cat:
+        raise ValueError("Cannot register / unregister the webhook without a CheshireCat instance")
+    return info.cheshire_cat.agent_key
 
 
 @endpoint.get("/events", tags=["Webhooks"], prefix="/webhooks", response_model=List[str])
@@ -64,7 +73,7 @@ async def register_webhook(
 ) -> WebhookResponse:
     global crypto
 
-    agent_id = info.cheshire_cat.agent_key
+    agent_id = parse_agent_key(info, webhook)
 
     settings = webhook.model_dump(exclude={"event"}) | {"secret": crypto.encrypt(webhook.secret)}
     stored_webhook = crud_webhook.set_webhook(agent_id, webhook.event, settings)
@@ -81,9 +90,11 @@ async def delete_webhook(
     info: AuthorizedInfo = check_permissions(AuthResource.SYSTEM, AuthPermission.DELETE),
 ) -> None:
     global crypto
-    
+
+    agent_id = parse_agent_key(info, webhook)
+
     secret = crypto.encrypt(webhook.secret)
-    crud_webhook.delete_webhook(info.cheshire_cat.agent_key, webhook.event, webhook.url, secret)
+    crud_webhook.delete_webhook(agent_id, webhook.event, webhook.url, secret)
 
 
 @hook(priority=0)
@@ -92,17 +103,24 @@ def after_rabbithole_stored_documents(source, stored_points: List[PointStruct], 
     if webhooks is None:
         return
 
+    remote_dir = cat.agent_key + (f"/{cat.id}" if isinstance(cat, StrayCat) else "")
+    file_exists = (
+        cat.file_manager.file_exists(source, remote_dir)
+        if not is_url(source)
+        else True
+    )
+
+    payload = {
+        "agent": cat.agent_key,
+        "chat": cat.id if isinstance(cat, StrayCat) else None,
+        "source": source,
+        "points": [point.payload.get("metadata") for point in stored_points],
+        "success": file_exists,
+    }
+
     for webhook in webhooks:
         try:
-            trigger_webhook(
-                WebhookPayload(**webhook),
-                {
-                    "agent": cat.agent_key,
-                    "chat": cat.id if isinstance(cat, StrayCat) else None,
-                    "source": source,
-                    "points": [point.payload.get("metadata") for point in stored_points]
-                },
-            )
+            trigger_webhook(WebhookPayload(**webhook), payload)
             log.info(f"Triggered the webhook '{webhook['url']}' for the agent '{cat.agent_key}' on knowledge source loaded")
         except Exception as e:
             log.error(f"Failed to trigger the webhook '{webhook['url']}' for the agent '{cat.agent_key}' on knowledge source loaded: {e}")
@@ -114,15 +132,16 @@ def lizard_notify_plugin_installation(plugin_id: str, plugin_path: str, lizard) 
     if webhooks is None:
         return
 
+    success = os.path.exists(os.path.join(get_plugins_path(), plugin_id))
+    payload = {"plugin_id": plugin_id, "success": success}
+
     for webhook in webhooks:
         try:
-            trigger_webhook(
-                WebhookPayload(**webhook),
-                {"plugin_id": plugin_id, "plugin_path": plugin_path}
-            )
+            trigger_webhook(WebhookPayload(**webhook), payload)
             log.info(f"Triggered the webhook '{webhook['url']}' on plugin installation")
         except Exception as e:
             log.error(f"Failed to trigger the webhook '{webhook['url']}' on plugin installation: {e}")
+
 
 @hook(priority=0)
 def lizard_notify_plugin_uninstallation(plugin_id: str, lizard) -> None:
@@ -130,9 +149,12 @@ def lizard_notify_plugin_uninstallation(plugin_id: str, lizard) -> None:
     if webhooks is None:
         return
 
+    success = os.path.exists(os.path.join(get_plugins_path(), plugin_id))
+    payload = {"plugin_id": plugin_id, "success": not success}
+
     for webhook in webhooks:
         try:
-            trigger_webhook(WebhookPayload(**webhook), {"plugin_id": plugin_id})
+            trigger_webhook(WebhookPayload(**webhook), payload)
             log.info(f"Triggered webhook {webhook['url']} on plugin uninstallation")
         except Exception as e:
             log.error(f"Failed to trigger the webhook '{webhook['url']}' on plugin uninstallation: {e}")
