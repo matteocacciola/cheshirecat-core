@@ -46,5 +46,10 @@ COPY ./cat ./cat
 COPY ./data ./data
 COPY ./migrations ./migrations
 
-### FINISH ###
+### SETUP ENTRYPOINT ###
+COPY ./docker/entrypoint.sh ./docker/entrypoint.sh
+RUN chmod +x ./docker/entrypoint.sh
+ENTRYPOINT ["./docker/entrypoint.sh"]
+
+### DEFAULT COMMAND ###
 CMD ["uv", "run", "python", "-m", "cat.main"]

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from fastapi import Request, WebSocket, WebSocketException
 from fastapi.requests import HTTPConnection
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator, SkipValidation
 from typing_extensions import Self
 
 from cat.auth.auth_utils import extract_agent_id_from_request, extract_chat_id_from_request
@@ -9,11 +9,12 @@ from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException, CustomUnauthorizedException
 from cat.looking_glass import BillTheLizard, CheshireCat, StrayCat
+from cat.utils import singleton
 
 
 class AuthorizedInfo(BaseModel):
     agent_id: str | None
-    lizard: BillTheLizard
+    lizard: SkipValidation[singleton[BillTheLizard]]
     cheshire_cat: CheshireCat | None = None
     user: AuthUserInfo
     stray_cat: StrayCat | None = None
