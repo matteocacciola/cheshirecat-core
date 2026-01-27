@@ -1,7 +1,6 @@
 import hashlib
 import hmac
 import json
-import os.path
 from typing import List, Literal, get_args, Dict, Any
 import requests
 from pydantic import BaseModel, Field
@@ -19,7 +18,6 @@ from cat import (
 )
 import cat.core_plugins.webhooks.crud as crud_webhook
 from cat.services.string_crypto import StringCrypto
-from cat.utils import get_plugins_path, is_url
 
 
 WEBHOOK_EVENT = Literal["knowledge_source_loaded", "plugin_installed", "plugin_uninstalled"]
@@ -54,11 +52,22 @@ def trigger_webhook(webhook_data: WebhookPayload, payload: Dict[str, Any]):
 
 
 def parse_agent_key(info: AuthorizedInfo, webhook: WebhookPayload) -> str:
-    if webhook.event is not "knowledge_source_loaded":
+    if webhook.event != "knowledge_source_loaded":
         return info.lizard.agent_key
     if not info.cheshire_cat:
         raise ValueError("Cannot register / unregister the webhook without a CheshireCat instance")
     return info.cheshire_cat.agent_key
+
+
+def notify_plugin_event_to_webhooks(plugin_id: str, webhooks: List[Dict[str, Any]], success: bool, what: str):
+    payload = {"plugin_id": plugin_id, "success": success}
+
+    for webhook in webhooks:
+        try:
+            trigger_webhook(WebhookPayload(**webhook), payload)
+            log.info(f"Triggered webhook {webhook['url']} on plugin {what}")
+        except Exception as e:
+            log.error(f"Failed to trigger the webhook '{webhook['url']}' on plugin {what}: {e}")
 
 
 @endpoint.get("/events", tags=["Webhooks"], prefix="/webhooks", response_model=List[str])
@@ -103,19 +112,12 @@ def after_rabbithole_stored_documents(source, stored_points: List[PointStruct], 
     if webhooks is None:
         return
 
-    remote_dir = cat.agent_key + (f"/{cat.id}" if isinstance(cat, StrayCat) else "")
-    file_exists = (
-        cat.file_manager.file_exists(source, remote_dir)
-        if not is_url(source)
-        else True
-    )
-
     payload = {
         "agent": cat.agent_key,
         "chat": cat.id if isinstance(cat, StrayCat) else None,
         "source": source,
         "points": [point.payload.get("metadata") for point in stored_points],
-        "success": file_exists,
+        "success": len(stored_points) > 0,
     }
 
     for webhook in webhooks:
@@ -132,15 +134,8 @@ def lizard_notify_plugin_installation(plugin_id: str, plugin_path: str, lizard) 
     if webhooks is None:
         return
 
-    success = os.path.exists(os.path.join(get_plugins_path(), plugin_id))
-    payload = {"plugin_id": plugin_id, "success": success}
-
-    for webhook in webhooks:
-        try:
-            trigger_webhook(WebhookPayload(**webhook), payload)
-            log.info(f"Triggered the webhook '{webhook['url']}' on plugin installation")
-        except Exception as e:
-            log.error(f"Failed to trigger the webhook '{webhook['url']}' on plugin installation: {e}")
+    success = plugin_id and lizard.plugin_manager.plugins.get(plugin_id)
+    notify_plugin_event_to_webhooks(plugin_id, webhooks, success, "installation")
 
 
 @hook(priority=0)
@@ -149,12 +144,5 @@ def lizard_notify_plugin_uninstallation(plugin_id: str, lizard) -> None:
     if webhooks is None:
         return
 
-    success = os.path.exists(os.path.join(get_plugins_path(), plugin_id))
-    payload = {"plugin_id": plugin_id, "success": not success}
-
-    for webhook in webhooks:
-        try:
-            trigger_webhook(WebhookPayload(**webhook), payload)
-            log.info(f"Triggered webhook {webhook['url']} on plugin uninstallation")
-        except Exception as e:
-            log.error(f"Failed to trigger the webhook '{webhook['url']}' on plugin uninstallation: {e}")
+    success = lizard.plugin_manager.plugins.get(plugin_id) is None
+    notify_plugin_event_to_webhooks(plugin_id, webhooks, success, "uninstallation")

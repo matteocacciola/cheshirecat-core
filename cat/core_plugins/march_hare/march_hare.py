@@ -211,14 +211,15 @@ def lizard_notify_plugin_installation(plugin_id: str, plugin_path: str, lizard) 
     if _march_hare is None:
         return
 
-    _march_hare.notify_event(
-        event_type=MarchHareConfig.events["PLUGIN_INSTALLATION"],
-        payload={
-            "plugin_id": plugin_id,
-            "plugin_path": plugin_path
-        },
-        exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
-    )
+    if plugin_id and lizard.plugin_manager.plugins.get(plugin_id):
+        _march_hare.notify_event(
+            event_type=MarchHareConfig.events["PLUGIN_INSTALLATION"],
+            payload={
+                "plugin_id": plugin_id,
+                "plugin_path": plugin_path
+            },
+            exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
+        )
 
 
 @hook(priority=0)
@@ -228,8 +229,9 @@ def lizard_notify_plugin_uninstallation(plugin_id, lizard) -> None:
     if _march_hare is None:
         return
 
-    _march_hare.notify_event(
-        event_type=MarchHareConfig.events["PLUGIN_UNINSTALLATION"],
-        payload={"plugin_id": plugin_id},
-        exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
-    )
+    if lizard.plugin_manager.plugins.get(plugin_id) is None:
+        _march_hare.notify_event(
+            event_type=MarchHareConfig.events["PLUGIN_UNINSTALLATION"],
+            payload={"plugin_id": plugin_id},
+            exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
+        )

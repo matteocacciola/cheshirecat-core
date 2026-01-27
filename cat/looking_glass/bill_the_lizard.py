@@ -264,26 +264,39 @@ class BillTheLizard(OrchestratorMixin):
         )
 
     def install_plugin(self, plugin_path: str) -> str:
-        plugin_id = self.plugin_manager.install_plugin(plugin_path)
+        plugin_id = ""
+        try:
+            plugin_id = self.plugin_manager.install_plugin(plugin_path)
 
-        self.on_plugin_activate(plugin_id)
-        self.plugin_manager.execute_hook(
-            "lizard_notify_plugin_installation", plugin_id, plugin_path, caller=self,
-        )
+            self.on_plugin_activate(plugin_id)
+            self.plugin_manager.execute_hook(
+                "lizard_notify_plugin_installation", plugin_id, plugin_path, caller=self,
+            )
 
-        return plugin_id
+            return plugin_id
+        except Exception as e:
+            log.error(f"Could not install plugin from {plugin_path}: {e}")
+            raise e
+        finally:
+            self.plugin_manager.execute_hook(
+                "lizard_notify_plugin_installation", plugin_id, plugin_path, caller=self,
+            )
 
     def uninstall_plugin(self, plugin_id: str, dispatch_event: bool = True):
-        # deactivate plugins in the Cheshire Cats
-        if plugin_id in self.plugin_manager.active_plugins:
-            self.on_plugin_deactivate(plugin_id)
+        try:
+            # deactivate plugins in the Cheshire Cats
+            if plugin_id in self.plugin_manager.active_plugins:
+                self.on_plugin_deactivate(plugin_id)
 
-        self.plugin_manager.uninstall_plugin(plugin_id)
-
-        if dispatch_event:
-            self.plugin_manager.execute_hook(
-                "lizard_notify_plugin_uninstallation", plugin_id, caller=self,
-            )
+            self.plugin_manager.uninstall_plugin(plugin_id)
+        except Exception as e:
+            log.error(f"Could not uninstall plugin {plugin_id}: {e}")
+            raise e
+        finally:
+            if dispatch_event:
+                self.plugin_manager.execute_hook(
+                    "lizard_notify_plugin_uninstallation", plugin_id, caller=self,
+                )
 
     def toggle_plugin(self, plugin_id: str):
         # the plugin is active, and evidently I am deactivating it: deactivate it in the Cheshire Cats before

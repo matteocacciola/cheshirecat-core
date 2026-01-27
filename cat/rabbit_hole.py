@@ -125,6 +125,9 @@ class RabbitHole:
         See Also:
             before_rabbithole_stores_documents
         """
+        source = ""
+        points = []
+
         try:
             self.setup(cat)
 
@@ -151,11 +154,6 @@ class RabbitHole:
                 chat_id = self.stray.id if self.stray else None
                 self.cat.save_file(file_bytes, content_type, source, chat_id)
 
-            # hook the points after they are stored in the vector memory
-            self.cat.plugin_manager.execute_hook(
-                "after_rabbithole_stored_documents", source, points, caller=self.stray or self.cat,
-            )
-
             # notify client
             await self._send_ws_message(f"Finished reading {source}, I made {len(docs)} thoughts on it.")
 
@@ -168,6 +166,11 @@ class RabbitHole:
                     await self.stray.notifier.send_error(f"Error processing {filename}: {str(e)}")
                 except Exception as notify_error:
                     log.error(f"Failed to send error notification: {notify_error}")
+        finally:
+            # hook the points after they are stored in the vector memory
+            self.cat.plugin_manager.execute_hook(
+                "after_rabbithole_stored_documents", source, points, caller=self.stray or self.cat,
+            )
 
     async def _file_to_docs(
         self, file: str | BytesIO, filename: str, content_type: str | None = None

@@ -38,6 +38,9 @@ def before_cat_sends_message(message, agent_output, cat) -> Dict:
 
 @hook(priority=1)
 def after_rabbithole_stored_documents(source: str, stored_points: List[PointStruct], cat) -> None:
+    if not stored_points:
+        return
+
     # cl100k_base is the most common encoding for OpenAI models such as GPT-3.5, GPT-4 - what about other providers?
     tokenizer = tiktoken.get_encoding("cl100k_base")
     buffer_multiplier = 1.05  # 5% buffer instead of 20%
