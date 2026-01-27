@@ -24,7 +24,7 @@ def test_get_all_agentic_workflow_settings(secure_client, secure_client_headers,
 
     for setting in json["settings"]:
         assert setting["name"] in agentic_workflow_schemas.keys()
-        assert setting["value"] == {}
+        assert setting["value"] == {"metadata": {}}
         expected_schema = agentic_workflow_schemas[setting["name"]]
         assert dumps(jsonable_encoder(expected_schema)) == dumps(setting["scheme"])
 
