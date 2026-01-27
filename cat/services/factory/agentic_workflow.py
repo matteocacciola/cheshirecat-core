@@ -6,7 +6,7 @@ from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
 from langchain_core.runnables import RunnableConfig
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 
 from cat.log import log
 from cat.looking_glass.models import AgenticWorkflowOutput, AgenticWorkflowTask
@@ -203,6 +203,8 @@ class CoreAgenticWorkflow(BaseAgenticWorkflowHandler):
 
 
 class AgenticWorkflowConfig(BaseFactoryConfigModel, ABC):
+    metadata: Dict = Field(default_factory=dict, description="Metadata associated with the workflow.")
+
     @classmethod
     def base_class(cls) -> Type[BaseAgenticWorkflowHandler]:
         return BaseAgenticWorkflowHandler

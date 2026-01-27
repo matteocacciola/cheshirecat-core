@@ -15,8 +15,8 @@ def before_cat_reads_message(user_message: UserMessage, cat) -> UserMessage:
     cat.working_memory.update_history(who="user", content=user_message)
     # if first message, set conversation name
     if len(cat.working_memory.history) == 1:
-        # first message, set name in the conversation
-        crud_conversations.set_name(cat.agent_key, cat.user.id, cat.id, name=cat.id)
+        # first message, set name and metadata in the conversation
+        crud_conversations.set_attributes(cat.agent_key, cat.user.id, cat.id, name=cat.id, metadata={}, first_time=True)
 
     return user_message
 

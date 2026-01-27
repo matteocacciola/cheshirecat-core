@@ -841,7 +841,9 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         for point in points:
             point.payload["tenant_id"] = self.agent_id
 
-        res = await self._client.upsert(collection_name=collection_name, points=points)
+        res = await self._client.upsert(
+            collection_name=collection_name, points=[QdrantPointStruct(**p.model_dump()) for p in points],
+        )
 
         return UpdateResult(status=res.status, operation_id=res.operation_id)
 

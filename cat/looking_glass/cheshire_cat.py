@@ -295,7 +295,7 @@ class CheshireCat(BotMixin):
             StrayCat | None: The stray cat if found, None otherwise.
         """
         # look for an existing conversation with the id = chat_id
-        user_id = crud_conversations.get_user_id_conversation_key(self.agent_key, chat_id)
+        user_id = crud_conversations.get_user_id_from_conversation_keys(self.agent_key, chat_id)
         if not user_id:
             return None
 

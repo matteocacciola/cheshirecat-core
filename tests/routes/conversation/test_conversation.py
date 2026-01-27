@@ -16,7 +16,7 @@ from tests.utils import (
 
 def test_convo_history_absent(secure_client, secure_client_headers):
     # no ws connection, so no convo history available
-    response = secure_client.get(f"/conversation/{chat_id}", headers=secure_client_headers)
+    response = secure_client.get(f"/conversations/{chat_id}/history", headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
     assert "history" in json
@@ -39,7 +39,7 @@ def test_convo_history_no_update_invalid_llm(secure_client, secure_client_header
     )
 
     # check conversation history update
-    response = secure_client.get(f"/conversation/{chat_id}", headers=secure_client_headers)
+    response = secure_client.get(f"/conversations/{chat_id}/history", headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
     assert "history" in json
@@ -64,7 +64,7 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
 
     # check conversation history update
     response = secure_client.get(
-        f"/conversation/{chat_id}", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+        f"/conversations/{chat_id}/history", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     json = response.json()
     assert response.status_code == 200
@@ -110,14 +110,14 @@ def test_convo_delete(secure_client, secure_client_headers, mocked_default_llm_a
 
     # delete convo history
     response = secure_client.delete(
-        f"/conversation/{chat_id}", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+        f"/conversations/{chat_id}", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     assert response.status_code == 200
     assert response.json()["deleted"] is True
 
     # check conversation history is empty
     response = secure_client.get(
-        f"/conversation/{chat_id}", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+        f"/conversations/{chat_id}/history", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     json = response.json()
     assert response.status_code == 200
@@ -170,7 +170,7 @@ def test_convo_history_by_user(secure_client, secure_client_headers, client, moc
     # check conversation history
     for username, n_messages in convos.items():
         response = client.get(
-            f"/conversation/{chat_id}",
+            f"/conversations/{chat_id}/history",
             headers={"X-Agent-ID": agent_id, "Authorization": f"Bearer {tokens[username]}"},
         )
         json = response.json()
@@ -190,12 +190,12 @@ def test_convo_history_by_user(secure_client, secure_client_headers, client, moc
 
     # delete White Rabbit convo
     response = client.delete(
-        f"/conversation/{chat_id}",
+        f"/conversations/{chat_id}",
         headers={"X-Agent-ID": agent_id, "Authorization": f"Bearer {tokens['White Rabbit']}"},
     )
     assert response.status_code == 403  # user has no permission
     response = secure_client.delete(
-        f"/conversation/{chat_id}",
+        f"/conversations/{chat_id}",
         headers={"X-User-ID": users["White Rabbit"]["id"], "X-Agent-ID": agent_id, "Authorization": f"Bearer {api_key}"},
     )
     assert response.status_code == 200
@@ -203,21 +203,21 @@ def test_convo_history_by_user(secure_client, secure_client_headers, client, moc
     # check convo deletion per user
     ### White Rabbit convo is empty
     response = secure_client.get(
-        f"/conversation/{chat_id}",
+        f"/conversations/{chat_id}/history",
         headers=secure_client_headers | {"X-User-ID": users["White Rabbit"]["id"]},
     )
     json = response.json()
     assert len(json["history"]) == 0
     ### Alice convo still the same
     response = secure_client.get(
-        f"/conversation/{chat_id}",
+        f"/conversations/{chat_id}/history",
         headers=secure_client_headers | {"X-User-ID": users["Alice"]["id"]},
     )
     json = response.json()
     assert len(json["history"]) == convos["Alice"] * 2
 
 
-def test_change_name_to_conversation(secure_client, secure_client_headers, client, cheshire_cat):
+def test_change_attributes_to_conversation(secure_client, secure_client_headers, client, cheshire_cat):
     user = create_new_user(
         secure_client,
         "/users",
@@ -241,19 +241,40 @@ def test_change_name_to_conversation(secure_client, secure_client_headers, clien
         ch_id=chat_id,
     )
 
-    current_name = crud_conversations.get_name(agent_id, user["id"], chat_id)  # should be None at first
-    assert current_name == chat_id
+    conversation = crud_conversations.get_conversation(agent_id, user["id"], chat_id)
+    assert conversation["name"] == chat_id
+    assert conversation["metadata"] == {}
 
     # change the name of the conversation
-    response = secure_client.post(
-        f"/conversation/{chat_id}",
+    response = secure_client.put(
+        f"/conversations/{chat_id}",
         headers={**secure_client_headers, **{"X-User-ID": user["id"]}},
         json={"name": "this_is_a_new_name"}
     )
     assert response.status_code == 200
 
-    current_name = crud_conversations.get_name(agent_id, user["id"], chat_id)  # should be None at first
-    assert current_name == "this_is_a_new_name"
+    conversation = crud_conversations.get_conversation(agent_id, user["id"], chat_id)
+    assert conversation["name"] == "this_is_a_new_name"
+    assert conversation["metadata"] == {}
+
+    # change the metadata of the conversation
+    response = secure_client.put(
+        f"/conversations/{chat_id}",
+        headers={**secure_client_headers, **{"X-User-ID": user["id"]}},
+        json={"metadata": {"topic": "greetings"}}
+    )
+    assert response.status_code == 200
+
+    conversation = crud_conversations.get_conversation(agent_id, user["id"], chat_id)
+    assert conversation["name"] == "this_is_a_new_name"
+    assert conversation["metadata"] == {"topic": "greetings"}
+
+    # change nothing
+    response = secure_client.put(
+        f"/conversations/{chat_id}",
+        headers={**secure_client_headers, **{"X-User-ID": user["id"]}},
+    )
+    assert response.status_code == 400
 
 
 def test_get_empty_conversations(secure_client, secure_client_headers):
@@ -269,7 +290,7 @@ def test_get_empty_conversations(secure_client, secure_client_headers):
 
     # check conversation history update
     response = secure_client.get(
-        "/conversation", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+        "/conversations", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     assert response.status_code == 200
 
@@ -298,7 +319,7 @@ def test_get_conversations(secure_client, secure_client_headers, mocked_default_
 
     # check all the conversation histories
     response = secure_client.get(
-        "/conversation", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+        "/conversations", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     assert response.status_code == 200
 
@@ -315,7 +336,7 @@ def test_get_conversations(secure_client, secure_client_headers, mocked_default_
 
     # check again all the conversation histories
     response = secure_client.get(
-        "/conversation", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+        "/conversations", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     assert response.status_code == 200
 
@@ -331,3 +352,32 @@ def test_get_conversations(secure_client, secure_client_headers, mocked_default_
             assert item["num_messages"] == 2  # 1 mex + 1 reply
         else:
             assert item["num_messages"] == 4  # 2 mex + 2 replies
+
+
+def test_get_conversation(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+    create_new_user(
+        secure_client,
+        "/users",
+        "user",
+        headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
+        permissions=get_base_permissions(),
+    )
+    user = crud_users.get_user_by_username(agent_id, "user")
+
+    message = "It's late! It's late!"
+    # sending two messages to the `chat_id` chat
+    for _ in range(2):
+        # send websocket messages
+        send_websocket_message(
+            {"text": message}, secure_client, api_key, query_params={"user_id": user["id"]}, ch_id=chat_id
+        )
+
+    # check again all the conversation histories
+    response = secure_client.get(
+        f"/conversations/{chat_id}", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+    )
+    json_response = response.json()
+
+    assert response.status_code == 200
+    assert json_response["chat_id"] == json_response["name"]  # chat_id and name are the same
+    assert json_response["num_messages"] == 4  # 2 mex + 2 reply

@@ -1,6 +1,6 @@
 import os
-from typing import List
-from pydantic import BaseModel
+from typing import List, Dict, Any
+from pydantic import BaseModel, Field, model_validator
 
 from cat import (
     AuthorizedInfo,
@@ -12,7 +12,7 @@ from cat import (
     log,
 )
 from cat.db.cruds import conversations as crud_conversations
-from cat.exceptions import CustomValidationException
+from cat.exceptions import CustomValidationException, CustomNotFoundException
 from cat.services.memory.models import VectorMemoryType
 
 
@@ -24,11 +24,20 @@ class GetConversationHistoryResponse(BaseModel):
     history: List[ConversationMessage]
 
 
-class PostConversationPayload(BaseModel):
-    name: str
+class PutConversationAttributes(BaseModel):
+    name: str | None = None
+    metadata: Dict[str, Any] | None = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_metadata(self):
+        if self.metadata is None:
+            self.metadata = {}
+        if self.name is None and not self.metadata:
+            raise ValueError("Either name or metadata must be provided")
+        return self
 
 
-class PostConversationResponse(BaseModel):
+class PutConversationResponse(BaseModel):
     changed: bool
 
 
@@ -36,6 +45,7 @@ class GetConversationsResponse(BaseModel):
     chat_id: str
     name: str
     num_messages: int
+    metadata: Dict[str, Any]
     created_at: float | None
     updated_at: float | None
 
@@ -45,7 +55,7 @@ class GetConversationsResponse(BaseModel):
     "/{chat_id}",
     response_model=DeleteConversationHistoryResponse,
     tags=["Conversation"],
-    prefix="/conversation",
+    prefix="/conversations",
 )
 async def delete_conversation(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
@@ -76,10 +86,10 @@ async def delete_conversation(
 
 # GET conversation history from working memory
 @endpoint.get(
-    "/{chat_id}",
+    "/{chat_id}/history",
     response_model=GetConversationHistoryResponse,
     tags=["Conversation"],
-    prefix="/conversation",
+    prefix="/conversations",
 )
 async def get_conversation_history(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
@@ -88,26 +98,48 @@ async def get_conversation_history(
     return GetConversationHistoryResponse(history=info.stray_cat.working_memory.history)
 
 
-# POST conversation name change
-@endpoint.post(
+# GET conversation attributes
+@endpoint.get(
     "/{chat_id}",
-    response_model=PostConversationResponse,
+    response_model=GetConversationsResponse,
     tags=["Conversation"],
-    prefix="/conversation",
+    prefix="/conversations",
 )
-async def change_name_conversation(
-    payload: PostConversationPayload,
+async def get_conversation(
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
+) -> GetConversationsResponse:
+    """Get the specified user's conversation from working memory"""
+    attributes = crud_conversations.get_conversation_attributes(
+        info.cheshire_cat.agent_key, info.user.id, info.stray_cat.id,
+    )
+    if attributes is None:
+        raise CustomNotFoundException("Conversation not found")
+
+    return GetConversationsResponse(**attributes)
+
+
+# PUT conversation name or metadata change
+@endpoint.put(
+    "/{chat_id}",
+    response_model=PutConversationResponse,
+    tags=["Conversation"],
+    prefix="/conversations",
+)
+async def change_attribute_conversation(
+    payload: PutConversationAttributes,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
-) -> PostConversationResponse:
+) -> PutConversationResponse:
     """Insert the specified conversation item into the working memory"""
     if not info.stray_cat:
         log.warning("Trying to change conversation name but no StrayCat found in AuthorizedInfo")
-        return PostConversationResponse(changed=False)
+        return PutConversationResponse(changed=False)
 
     cat = info.stray_cat
 
-    crud_conversations.set_name(cat.agent_key, cat.user.id, cat.id, payload.name)
-    return PostConversationResponse(changed=True)
+    crud_conversations.set_attributes(
+        cat.agent_key, cat.user.id, cat.id, name=payload.name, metadata=payload.metadata,
+    )
+    return PutConversationResponse(changed=True)
 
 
 # GET all conversations, in the format of IDs and names
@@ -115,9 +147,9 @@ async def change_name_conversation(
     "/",
     response_model=List[GetConversationsResponse],
     tags=["Conversation"],
-    prefix="/conversation",
+    prefix="/conversations",
 )
-async def get_conversations_ids(
+async def get_conversations(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> List[GetConversationsResponse]:
     """Get the specified user's conversation history from working memory"""

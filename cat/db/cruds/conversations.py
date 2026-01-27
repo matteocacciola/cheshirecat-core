@@ -53,6 +53,12 @@ def get_conversation(agent_id: str, user_id: str, chat_id: str) -> Dict[str, Any
     """
     try:
         conversation = crud.read(format_key(agent_id, user_id, chat_id))
+        if not conversation:
+            return None
+
+        if isinstance(conversation, list):
+            conversation = conversation[0]
+
         return conversation
     except RedisError as e:
         log.error(f"Failed to get conversation '{chat_id}' for '{agent_id}:{user_id}': {e}")
@@ -69,7 +75,15 @@ def get_conversations_attributes(agent_id: str, user_id: str) -> List[Dict[str, 
         user_id: ID of the user.
 
     Returns:
-        List of dictionaries having the format {"chat_id": str, "name": str}.
+        List of dictionaries, each one having the format
+            {
+                "chat_id": str,
+                "name": str,
+                "num_messages": int,
+                "metadata": dict,
+                "created_at": datetime,
+                "updated_at": datetime,
+            }
 
     Raises:
         RedisError: If Redis connection fails.
@@ -89,24 +103,60 @@ def get_conversations_attributes(agent_id: str, user_id: str) -> List[Dict[str, 
                 continue
             _, agent_id, _, user_id, chat_id = parts
 
-            messages = get_messages(agent_id, user_id, chat_id)
-            num_messages = len(messages)
+            conversation = get_conversation_attributes(agent_id, user_id, chat_id)
+            if not conversation:
+                continue
 
-            # Extract created_at (first message) and updated_at (last message)
-            created_at = messages[0]["when"] if num_messages > 0 else None
-            updated_at = messages[-1]["when"] if num_messages > 0 else None
-
-            # Retrieve the conversation name for the specific key
-            conversation_name = get_name(agent_id, user_id, chat_id)
-            results.append({
-                "chat_id": chat_id,
-                "name": conversation_name or chat_id,
-                "num_messages": num_messages,
-                "created_at": created_at,
-                "updated_at": updated_at,
-            })
+            results.append(conversation)
 
         return results
+    except RedisError as e:
+        log.error(f"Failed to get chat attributes for '{agent_id}:{user_id}': {e}")
+        raise
+
+
+def get_conversation_attributes(agent_id: str, user_id: str, chat_id: str) -> Dict[str, Any] | None:
+    """
+    Retrieve conversation parameters from Redis.
+
+    Args:
+        agent_id: ID of the chatbot.
+        user_id: ID of the user.
+        chat_id: ID of the chat session.
+
+    Returns:
+        Dictionary having the format
+            {
+                "chat_id": str,
+                "name": str,
+                "num_messages": int,
+                "metadata": dict,
+                "created_at": datetime,
+                "updated_at": datetime,
+            }
+        or None if conversation not found.
+    """
+    try:
+        conversation = get_conversation(agent_id, user_id, chat_id)
+        if not conversation:
+            return None
+
+        messages = conversation.get("messages", [])
+        num_messages = len(messages)
+
+        # Extract created_at (first message) and updated_at (last message)
+        created_at = messages[0]["when"] if num_messages > 0 else None
+        updated_at = messages[-1]["when"] if num_messages > 0 else None
+
+        # Retrieve the conversation name for the specific key
+        return {
+            "chat_id": chat_id,
+            "name": conversation.get("name", chat_id),
+            "num_messages": num_messages,
+            "metadata": conversation.get("metadata", {}),
+            "created_at": created_at,
+            "updated_at": updated_at,
+        }
     except RedisError as e:
         log.error(f"Failed to get chat attributes for '{agent_id}:{user_id}': {e}")
         raise
@@ -176,7 +226,14 @@ def set_messages(
         raise
 
 
-def set_name(agent_id: str, user_id: str, chat_id: str, name: str):
+def set_attributes(
+    agent_id: str,
+    user_id: str,
+    chat_id: str,
+    name: str | None = None,
+    metadata: Dict[str, Any] | None = None,
+    first_time: bool = False,
+):
     """
     Set the name of a conversation in Redis.
 
@@ -184,37 +241,30 @@ def set_name(agent_id: str, user_id: str, chat_id: str, name: str):
         agent_id: ID of the chatbot.
         user_id: ID of the user.
         chat_id: ID of the chat session.
-        name: Name to set for the conversation.
+        name: New name for the conversation, if any.
+        metadata: New metadata for the conversation, if any.
+        first_time: Whether this is the first time the conversation is being created.
 
     Raises:
         RedisError: If Redis connection fails.
     """
+    if not name and not metadata:
+        return
+
     try:
-        crud.store(format_key(agent_id, user_id, chat_id), name, path="$.name")
+        conversation = get_conversation(agent_id, user_id, chat_id)
+        if not conversation:
+            return
+
+        if name:
+            crud.store(format_key(agent_id, user_id, chat_id), name, path="$.name")
+
+        current_metadata = conversation.get("metadata", {})
+        if metadata or first_time:
+            current_metadata.update(metadata)
+            crud.store(format_key(agent_id, user_id, chat_id), current_metadata or {}, path="$.metadata")
     except RedisError as e:
         log.error(f"Redis error setting conversation name for '{agent_id}:{user_id}:{chat_id}': {e}")
-        raise
-
-
-def get_name(agent_id: str, user_id: str, chat_id: str) -> str | None:
-    """
-    Get the name of a conversation from Redis.
-
-    Args:
-        agent_id: ID of the chatbot.
-        user_id: ID of the user.
-        chat_id: ID of the chat session.
-
-    Returns:
-        Name of the conversation, or None if not set.
-    """
-    try:
-        name = crud.read(format_key(agent_id, user_id, chat_id), path="$.name")
-        if isinstance(name, list):
-            return name[0]
-        return name
-    except RedisError as e:
-        log.error(f"Redis error getting conversation name for '{agent_id}:{user_id}:{chat_id}': {e}")
         raise
 
 
@@ -308,7 +358,7 @@ def destroy_all(agent_id: str):
         raise
 
 
-def get_user_id_conversation_key(agent_id: str, chat_id: str) -> str | None:
+def get_user_id_from_conversation_keys(agent_id: str, chat_id: str) -> str | None:
     pattern = format_key(agent_id, "*", chat_id)
 
     user_ids = list({k.split(":")[3] for k in crud.get_db().scan_iter(pattern)})
