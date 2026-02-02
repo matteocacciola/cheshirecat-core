@@ -95,12 +95,10 @@ class CatMcpClient(Client, CatProcedure, ABC):
     def langchainfy(self) -> StructuredTool | None:
         def create_tool_caller(tool_name: str):
             """Create a closure that calls the MCP tool."""
-            def tool_caller(**kwargs):
-                async def call_tool_async():
+            async def tool_caller(**kwargs):
+                try:
                     async with self:
                         return await self.call_tool(tool_name, **kwargs)
-                try:
-                    return run_sync_or_async(call_tool_async)
                 except Exception as ex:
                     log.error(f"{self.name} - Error calling tool {tool_name}: {ex}")
                     return {"error": f"Error calling tool {tool_name}: {str(ex)}"}
@@ -112,7 +110,7 @@ class CatMcpClient(Client, CatProcedure, ABC):
                 return StructuredTool.from_function(
                     name=self.expected_tool_name,
                     description=mcp_tool.description or mcp_tool.name or "No description provided.",
-                    func=create_tool_caller(mcp_tool.name),
+                    coroutine=create_tool_caller(mcp_tool.name),
                     args_schema=mcp_tool.inputSchema,
                 )
 

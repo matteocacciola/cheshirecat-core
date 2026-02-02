@@ -9,12 +9,11 @@ from cat.auth.permissions import AuthPermission, AuthResource, AuthUserInfo
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.exceptions import CustomNotFoundException, CustomForbiddenException, CustomUnauthorizedException
 from cat.looking_glass import BillTheLizard, CheshireCat, StrayCat
-from cat.utils import singleton
 
 
 class AuthorizedInfo(BaseModel):
     agent_id: str | None
-    lizard: SkipValidation[singleton[BillTheLizard]]
+    lizard: SkipValidation[BillTheLizard]
     cheshire_cat: CheshireCat | None = None
     user: AuthUserInfo
     stray_cat: StrayCat | None = None

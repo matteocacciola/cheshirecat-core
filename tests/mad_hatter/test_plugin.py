@@ -134,9 +134,10 @@ def test_save_settings(plugin):
 # ATTENTION: not using `plugin` fixture here, we instantiate and cleanup manually
 #           to use the unmocked Plugin class
 @pytest.mark.skip_encapsulation
-def test_install_plugin_dependencies():
+@pytest.mark.asyncio
+async def test_install_plugin_dependencies():
     # manual cleanup
-    clean_up()
+    await clean_up()
     # Uninstall mock plugin requirements
     os.system("uv pip uninstall -y pip-install-test")
 
@@ -152,6 +153,6 @@ def test_install_plugin_dependencies():
     assert fnmatch.fnmatch(result, "*pip-install-test*")
 
     # manual cleanup
-    clean_up()
+    await clean_up()
     # Uninstall mock plugin requirements
     os.system("uv pip uninstall -y pip-install-test")

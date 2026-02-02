@@ -10,7 +10,7 @@ from cat.db import crud
 from cat.db.database import get_db
 from cat.log import log
 from cat.routes.routes_utils import startup_app, shutdown_app
-from cat.utils import get_plugins_path
+import cat.utils as utils
 
 router = APIRouter(tags=["Utilities"], prefix="/utils")
 
@@ -66,7 +66,7 @@ async def factory_reset(
 
     try:
         # empty the plugin folder
-        plugin_folder = get_plugins_path()
+        plugin_folder = utils.get_plugins_path()
         for _, folders, _ in os.walk(plugin_folder):
             for folder in folders:
                 item = os.path.join(plugin_folder, folder)

@@ -75,13 +75,7 @@ def mock_classes(monkeypatch):
     auth_utils.extract_agent_id_from_request = lambda: agent_id
 
 
-def clean_up():
-    # delete all the collections in Qdrant
-    async def flush_vector_db():
-        collections = await memory_client.get_collections()
-        for collection in collections.collections:
-            await memory_client.delete_collection(collection.name)
-
+async def clean_up():
     # clean up service files and mocks
     to_be_removed = [
         "tests/mocks/mock_plugin.zip",
@@ -103,11 +97,13 @@ def clean_up():
             else:
                 os.remove(tbr)
 
+    # flush redis database
     redis_client.flushdb()
-    utils.run_sync_or_async(flush_vector_db)
 
-    # wait for the flushdb to be completed
-    time.sleep(0.1)
+    # delete all the collections in Qdrant
+    collections = await memory_client.get_collections()
+    for collection in collections.collections:
+        await memory_client.delete_collection(collection.name)
 
 
 def should_skip_encapsulation(request):
@@ -130,7 +126,7 @@ async def encapsulate_each_test(request, monkeypatch):
     os.environ["CCAT_DEBUG"] = "false"  # do not autoreload
 
     # clean up tmp files, folders and redis database
-    clean_up()
+    await clean_up()
 
     # delete all singletons!!!
     utils.singleton.instances.clear()
@@ -138,7 +134,7 @@ async def encapsulate_each_test(request, monkeypatch):
     yield
 
     # clean up tmp files, folders and redis database
-    clean_up()
+    await clean_up()
 
     if current_debug:
         os.environ["CCAT_DEBUG"] = current_debug

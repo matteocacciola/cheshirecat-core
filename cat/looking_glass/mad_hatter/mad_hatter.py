@@ -248,9 +248,9 @@ class MadHatter:
             try:
                 log.debug(f"Executing {hook.plugin_id}::{hook.name} with priority {hook.priority}")
                 tea_spoon = (
-                    hook.function(**{self.context_execute_hook: caller})
+                    utils.run_sync_or_async(hook.function, **{self.context_execute_hook: caller})
                     if len(args) == 0
-                    else hook.function(deepcopy(tea_cup), *deepcopy(args[1:]), **{self.context_execute_hook: caller})
+                    else utils.run_sync_or_async(hook.function, deepcopy(tea_cup), *deepcopy(args[1:]), **{self.context_execute_hook: caller})
                 )
                 if tea_spoon is not None:
                     tea_cup = tea_spoon
