@@ -1,6 +1,6 @@
 from cat import hook, log, run_sync_or_async, CatProcedureType
 from cat.core_plugins.white_rabbit.white_rabbit import WhiteRabbit
-from cat.db import crud
+import cat.db.cruds.settings as crud_settings
 
 
 @hook
@@ -20,7 +20,7 @@ def after_lizard_bootstrap(lizard):
     # Schedule MCP tools re-embedding every 7 days
     def re_embed_mcp_tools():
         """Re-embed MCP tools for all CheshireCat instances"""
-        ccat_ids = crud.get_agents_main_keys()
+        ccat_ids = crud_settings.get_agents_main_keys()
 
         # Track errors to ensure we don't leave things hanging
         for ccat_id in ccat_ids:

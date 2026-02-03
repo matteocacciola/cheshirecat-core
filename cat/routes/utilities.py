@@ -1,13 +1,14 @@
 import os
 import shutil
-from typing import List
+from typing import List, Dict
 from fastapi import APIRouter, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
-from cat.db import crud
+import cat.db.cruds.settings as crud_settings
 from cat.db.database import get_db
+from cat.db.models import Setting
 from cat.log import log
 from cat.routes.routes_utils import startup_app, shutdown_app
 import cat.utils as utils
@@ -15,22 +16,39 @@ import cat.utils as utils
 router = APIRouter(tags=["Utilities"], prefix="/utils")
 
 
-class ResetResponse(BaseModel):
-    deleted_settings: bool
-    deleted_memories: bool
-    deleted_plugin_folders: bool
+class AgentUpdateRequest(BaseModel):
+    metadata: Dict | None = Field(default={})
 
 
-class CreatedResponse(BaseModel):
+class AgentCloneRequest(BaseModel):
+    agent_id: str
+
+
+class AgentCreateRequest(AgentCloneRequest, AgentUpdateRequest):
+    pass
+
+
+class AgentResponse(BaseModel):
+    agent_id: str
+    metadata: Dict
+
+
+class AgentCreatedResponse(BaseModel):
     created: bool
 
 
-class AgentRequest(BaseModel):
-    agent_id: str
+class AgentUpdatedResponse(BaseModel):
+    updated: bool
 
 
 class AgentClonedResponse(BaseModel):
     cloned: bool = False
+
+
+class ResetResponse(BaseModel):
+    deleted_settings: bool
+    deleted_memories: bool
+    deleted_plugin_folders: bool
 
 
 @router.post("/factory/reset", response_model=ResetResponse)
@@ -42,7 +60,7 @@ async def factory_reset(
     Factory reset the entire application. This will delete all settings, memories, and metadata.
     """
     # remove memories
-    cheshire_cats_ids = crud.get_agents_main_keys()
+    cheshire_cats_ids = crud_settings.get_agents_main_keys()
     deleted_memories = False
     for agent_id in cheshire_cats_ids:
         ccat = info.lizard.get_cheshire_cat(agent_id)
@@ -89,31 +107,49 @@ async def factory_reset(
 
 
 @router.get("/agents", dependencies=[check_permissions(AuthResource.CHESHIRE_CAT, AuthPermission.READ)])
-async def get_agents() -> List[str]:
+async def get_agents() -> List[AgentResponse]:
     """
     Get all agents.
     """
     try:
-        return sorted(crud.get_agents_main_keys())
+        return [AgentResponse(**agent) for agent in crud_settings.get_agents()]
     except Exception as e:
         log.error(f"Error creating agent: {e}")
         return []
 
 
-@router.post("/agents/create", response_model=CreatedResponse)
+@router.post("/agents/create", response_model=AgentCreatedResponse)
 async def agent_create(
-    request: AgentRequest,
+    request: AgentCreateRequest,
     info: AuthorizedInfo = check_permissions(AuthResource.CHESHIRE_CAT, AuthPermission.WRITE),
-) -> CreatedResponse:
+) -> AgentCreatedResponse:
     """
-    Reset a single agent. This will delete all settings, memories, and metadata, for the agent.
+    Create a single agent.
     """
     try:
-        await info.lizard.create_cheshire_cat(request.agent_id)
-        return CreatedResponse(created=True)
+        await info.lizard.create_cheshire_cat(request.agent_id, request.metadata)
+        return AgentCreatedResponse(created=True)
     except Exception as e:
         log.error(f"Error creating agent: {e}")
-        return CreatedResponse(created=False)
+        return AgentCreatedResponse(created=False)
+
+
+@router.put("/agents", response_model=AgentUpdatedResponse)
+async def agent_update(
+    request: AgentUpdateRequest,
+    info: AuthorizedInfo = check_permissions(AuthResource.CHESHIRE_CAT, AuthPermission.WRITE),
+) -> AgentUpdatedResponse:
+    """
+    Update the metadata of a specific agent.
+    """
+    try:
+        crud_settings.upsert_setting_by_name(
+            info.cheshire_cat.agent_key, Setting(name="metadata", value=request.metadata)
+        )
+        return AgentUpdatedResponse(updated=True)
+    except Exception as e:
+        log.error(f"Error updating agent: {e}")
+        return AgentUpdatedResponse(updated=False)
 
 
 @router.post("/agents/destroy", response_model=ResetResponse)
@@ -170,14 +206,14 @@ async def agent_reset(
 
 @router.post("/agents/clone", response_model=AgentClonedResponse)
 async def agent_clone(
-    request: AgentRequest,
+    request: AgentCloneRequest,
     info: AuthorizedInfo = check_permissions(AuthResource.CHESHIRE_CAT, AuthPermission.WRITE),
 ) -> AgentClonedResponse:
     """
     Clone a single agent. This will clone all settings, memories, and metadata, for the agent.
     """
     agent_id = request.agent_id
-    if agent_id in crud.get_agents_main_keys():
+    if agent_id in crud_settings.get_agents_main_keys():
         log.warning(f"Agent {agent_id} already exists. Cannot clone.")
         return AgentClonedResponse(cloned=False)
 

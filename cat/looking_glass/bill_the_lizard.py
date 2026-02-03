@@ -8,6 +8,7 @@ from cat.auth.permissions import get_full_permissions
 from cat.db import crud
 from cat.db.cruds import settings as crud_settings, users as crud_users, plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY, DEFAULT_CONVERSATIONS_KEY
+from cat.db.models import Setting
 from cat.env import get_env
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
@@ -89,12 +90,13 @@ class BillTheLizard(OrchestratorMixin):
             "permissions": permissions,  # base admin has all permissions, but CHAT
         })
 
-    async def create_cheshire_cat(self, agent_id: str) -> CheshireCat:
+    async def create_cheshire_cat(self, agent_id: str, metadata: Dict | None = None) -> CheshireCat:
         """
         Create the Cheshire Cat with the given id, directly from db.
 
         Args:
             agent_id: The id of the agent to get
+            metadata: The metadata of the agent to create
 
         Returns:
             The Cheshire Cat with the given id, or None if it doesn't exist
@@ -102,13 +104,18 @@ class BillTheLizard(OrchestratorMixin):
         if agent_id == DEFAULT_SYSTEM_KEY:
             raise ValueError(f"{agent_id} is not allowed as name for agents")
 
-        if agent_id in crud.get_agents_main_keys():
+        if agent_id in crud_settings.get_agents_main_keys():
             return self.get_cheshire_cat(agent_id)
 
         ccat = None
         try:
             ccat = CheshireCat(agent_id)
             ccat.bootstrap_services()
+            if metadata is not None:
+                crud_settings.upsert_setting_by_name(
+                    ccat.agent_key,
+                    Setting(name="metadata", value=metadata),
+                )
             await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
             await ccat.embed_procedures()
 
@@ -169,7 +176,7 @@ class BillTheLizard(OrchestratorMixin):
             log.debug("The system agent has been requested: returning null value.")
             return None
 
-        if agent_id not in crud.get_agents_main_keys():
+        if agent_id not in crud_settings.get_agents_main_keys():
             log.debug(f"Requested not existing `{agent_id}`")
             raise ValueError("Bad Request")
 
@@ -193,7 +200,7 @@ class BillTheLizard(OrchestratorMixin):
         """
         # clone the settings from the provided agent
         log.info(f"Cloning settings from agent {ccat.agent_key} to agent {new_agent_id}")
-        crud.clone_agent(ccat.agent_key, new_agent_id, [DEFAULT_CONVERSATIONS_KEY])
+        crud_settings.clone_agent(ccat.agent_key, new_agent_id, [DEFAULT_CONVERSATIONS_KEY])
 
         # clone the vector points from the ccat to the provided agent
         cloned_ccat = self.get_cheshire_cat(new_agent_id)
@@ -221,7 +228,7 @@ class BillTheLizard(OrchestratorMixin):
             async with semaphore:
                 await entry_["ccat"].embed_all(entry_["stored_sources"])
 
-        ccat_ids = crud.get_agents_main_keys()
+        ccat_ids = crud_settings.get_agents_main_keys()
         stored_files_by_ccat: List[Dict] = []
         # first, I need to get all the stored files from all the Cheshire Cats with the metadata stored
         # within the vector memory; I do not remove anything from the latter to avoid any race condition

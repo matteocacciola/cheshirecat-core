@@ -313,3 +313,34 @@ async def test_reclone_agent(secure_client, secure_client_headers, lizard, chesh
     # Assert the response content
     response_data = response.json()
     assert response_data["cloned"] is False
+
+
+def test_get_agents(client, cheshire_cat):
+    response = client.get("/utils/agents", headers=get_client_admin_headers(client))
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert cheshire_cat.agent_key in [agent["agent_id"] for agent in data]
+    for agent in data:
+        assert agent["metadata"] == {}
+
+
+def test_update_agent(client, cheshire_cat):
+    new_metadata = {"key": "value"}
+
+    response = client.put(
+        "/utils/agents",
+        headers=get_client_admin_headers(client) | {"X-Agent-ID": cheshire_cat.agent_key},
+        json={"metadata": new_metadata},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["updated"]
+
+    response = client.get("/utils/agents", headers=get_client_admin_headers(client))
+    data = response.json()
+    for agent in data:
+        if agent["agent_id"] == cheshire_cat.agent_key:
+            assert agent["metadata"] == new_metadata
+        else:
+            assert agent["metadata"] == {}

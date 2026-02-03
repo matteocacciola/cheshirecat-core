@@ -17,6 +17,7 @@ from cat.auth.auth_utils import is_jwt, extract_token_from_request
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.db import crud
+import cat.db.cruds.settings as crud_settings
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.exceptions import CustomUnauthorizedException, CustomNotFoundException
 from cat.looking_glass import StrayCat, ChatResponse
@@ -157,7 +158,7 @@ async def me(request: Request) -> MeResponse:
         system_agent = [agent for agent in valid_agents if agent.agent_name == DEFAULT_SYSTEM_KEY][0]
         missing_agents = [
             AgentMatch(agent_name=agent_name, user=system_agent.user)
-            for agent_name in crud.get_agents_main_keys()
+            for agent_name in crud_settings.get_agents_main_keys()
             if agent_name not in valid_agents_names
         ]
         valid_agents.extend(missing_agents)

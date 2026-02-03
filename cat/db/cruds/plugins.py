@@ -201,7 +201,7 @@ def get_agents_plugin_keys(plugin_id: str) -> List[str]:
         RedisError: If Redis connection fails.
     """
     pattern = format_key("*", plugin_id)
-    return crud.get_agents_main_keys(pattern)
+    return crud_settings.get_agents_main_keys(pattern)
 
 
 def get_active_plugins_from_db(agent_id: str) -> List[str]:
