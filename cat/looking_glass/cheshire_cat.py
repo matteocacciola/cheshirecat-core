@@ -102,7 +102,7 @@ class CheshireCat(BotMixin):
         await self.destroy_memory()
 
         # remove the folder from storage
-        self.file_manager.remove_folder_from_storage(self._id)
+        self.file_manager.remove_folder(self._id)
 
         self.shutdown()
 
@@ -271,7 +271,7 @@ class CheshireCat(BotMixin):
             if chat_id:
                 remote_root_dir = os.path.join(remote_root_dir, chat_id)
 
-            self.file_manager.upload_file_to_storage(file_path, remote_root_dir, source)
+            self.file_manager.upload_file(file_path, remote_root_dir, source)
         except Exception as e:
             log.error(f"Error while uploading file {file_path}: {e}")
         finally:

@@ -238,12 +238,12 @@ async def delete_memory_points_by_metadata(
 
         if source := metadata.get("source"):
             # delete the file with path `metadata["source"]` from the file storage
-            ccat.file_manager.remove_file_from_storage(os.path.join(ccat.agent_key, source))
+            ccat.file_manager.remove_file(os.path.join(ccat.agent_key, source))
 
             # delete the file with path `metadata["source"]/metadata["chat_id"]` from the file storage
             chat_id = metadata.get("chat_id")
             if chat_id:
-                ccat.file_manager.remove_file_from_storage(os.path.join(ccat.agent_key, chat_id, source))
+                ccat.file_manager.remove_file(os.path.join(ccat.agent_key, chat_id, source))
 
         return DeleteMemoryPointsByMetadataResponse(deleted=ret)
     except Exception as e:

@@ -25,6 +25,18 @@ FORBIDDEN_CALLS = [
     "builtins.open", # Explicitly disallow open from builtins if allowing a custom "open"
 ]
 
+# Allowlist for sub-commands that are considered safe when invoked as literal commands
+ALLOWED_SUBCOMMANDS = {
+    "subprocess.run": ["crawl4ai-setup", "playwright", "pip"],  # `pip` if needed for plugin installation
+    "subprocess.call": ["python"],
+    "subprocess.Popen": ["python"],
+    "shutil.rmtree": ["/tmp"],
+    "shutil.move": ["/tmp"],
+    "shutil.copy": ["/tmp"],
+    "tempfile.mkdtemp": ["/tmp"],
+    "tempfile.mkstemp": ["/tmp"],
+}
+
 
 # Define a custom exception for malicious code detection
 class MaliciousCodeError(Exception):
@@ -86,11 +98,41 @@ class PythonSecurityVisitor(ast.NodeVisitor):
                     func_path.append(current.id)
                     break
             full_call_name = ".".join(reversed(func_path))
-            if full_call_name in FORBIDDEN_CALLS:
+            if full_call_name not in FORBIDDEN_CALLS:
+                self.generic_visit(node)  # type: ignore
+                return
+
+            if (
+                    full_call_name not in ALLOWED_SUBCOMMANDS
+                    or not (allowed_subcommands := ALLOWED_SUBCOMMANDS.get(full_call_name))
+            ):
                 self.found_malicious = True
                 raise MaliciousCodeError(
                     f"Forbidden function call: {full_call_name} in {self.file_path} line {node.lineno}"
                 )
+
+            # Special-case: allow certain literal subprocess.run invocations
+            found = False
+            for arg in node.args:
+                if isinstance(arg, ast.Constant) and isinstance(arg.value, str) and arg.value in allowed_subcommands:
+                    found = True
+                    break
+                if (
+                        isinstance(arg, ast.List)
+                        and any(
+                            isinstance(el, ast.Constant) and isinstance(el.value, str) and el.value in allowed_subcommands
+                            for el in arg.elts
+                        )
+                ):
+                    found = True
+                    break
+
+            if not found:
+                self.found_malicious = True
+                raise MaliciousCodeError(
+                    f"Forbidden function call: {full_call_name} in {self.file_path} line {node.lineno}"
+                )
+
         self.generic_visit(node)  # type: ignore
 
     # Detect `exec` and `eval` usage

@@ -69,7 +69,7 @@ async def delete_conversation(
     cat = info.cheshire_cat
     try:
         # delete the files related to the conversation from the storage
-        cat.file_manager.remove_folder_from_storage(os.path.join(cat.agent_key, stray_cat.id))
+        cat.file_manager.remove_folder(os.path.join(cat.agent_key, stray_cat.id))
 
         # delete the elements of the conversation from the vector memory
         await cat.vector_memory_handler.delete_tenant_points(

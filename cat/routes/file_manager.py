@@ -142,7 +142,7 @@ async def download_file(
         raise CustomValidationException("Invalid file path")
 
     # Download the file
-    file_content = info.cheshire_cat.file_manager.download(os.path.join(path, sanitized_source))
+    file_content = info.cheshire_cat.file_manager.download_file(os.path.join(path, sanitized_source))
     if file_content is None:
         raise CustomNotFoundException("File not found")
 
@@ -168,7 +168,7 @@ async def delete_file(
 
     try:
         # delete the file from the file storage
-        res = info.cheshire_cat.file_manager.remove_file_from_storage(os.path.join(path, source_name))
+        res = info.cheshire_cat.file_manager.remove_file(os.path.join(path, source_name))
 
         # delete points
         await info.cheshire_cat.vector_memory_handler.delete_tenant_points(str(collection_id), metadata)
@@ -190,7 +190,7 @@ async def delete_files(
         files = info.cheshire_cat.file_manager.list_files(path)
 
         # delete all the files from the file storage
-        res = info.cheshire_cat.file_manager.remove_folder_from_storage(path)
+        res = info.cheshire_cat.file_manager.remove_folder(path)
 
         # delete points
         for file in files:

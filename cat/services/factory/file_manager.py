@@ -27,7 +27,7 @@ class BaseFileManager(ABC):
         self._excluded_files = [".gitignore", ".DS_Store", ".gitkeep", ".git", ".dockerignore"]
         self._root_dir = utils.get_file_manager_root_storage_path()
 
-    def upload_file_to_storage(
+    def upload_file(
         self, file_path: str, remote_root_dir: str, remote_filename: str | None = None
     ) -> str | None:
         """
@@ -49,9 +49,13 @@ class BaseFileManager(ABC):
         if any([ex_file in destination_path for ex_file in self._excluded_files]):
             return None
 
-        return self._upload_file_to_storage(file_path, destination_path)
+        return self._upload_file(file_path, destination_path)
 
-    def download(self, file_path: str) -> bytes | None:
+    @abstractmethod
+    def _upload_file(self, file_path: str, destination_path: str) -> str:
+        pass
+
+    def download_file(self, file_path: str) -> bytes | None:
         """
         Download a single file from the storage and return its content as bytes.
 
@@ -62,7 +66,11 @@ class BaseFileManager(ABC):
             The path of the file on the storage, None if the file has not been downloaded
         """
         file_path = os.path.join(self._root_dir, file_path)
-        return self._download(file_path)
+        return self._download_file(file_path)
+
+    @abstractmethod
+    def _download_file(self, file_path: str) -> bytes | None:
+        pass
 
     def read_file(self, remote_filename: str, remote_root_dir: str | None = None) -> bytes | None:
         """
@@ -88,42 +96,40 @@ class BaseFileManager(ABC):
         return self._read_file(destination_path)
 
     @abstractmethod
-    def _download(self, file_path: str) -> bytes | None:
-        pass
-
-    @abstractmethod
-    def _upload_file_to_storage(self, file_path: str, destination_path: str) -> str:
-        pass
-
-    @abstractmethod
     def _read_file(self, file_path: str) -> bytes:
         pass
 
-    def download_file_from_storage(self, file_path: str, local_dir: str) -> str | None:
+    def write_file(self, file_content: str | bytes, remote_filename: str, remote_root_dir: str | None = None) -> bool:
         """
-        Download a single file from the storage to the `local_dir`.
+        Writes the content to a specified file to a remote directory as bytes.
+
+        This method constructs the complete path to the file based on the specified remote filename and the provided
+        root directory, or the class's default root directory if none is given. It then writes the file content in
+        binary format.
 
         Args:
-            file_path: The path of the file to download
-            local_dir: The directory where the file will be downloaded locally
+            file_content (str | bytes): The content to write to the file.
+            remote_filename (str): The name of the file to write.
+            remote_root_dir (str | None): The root directory of the remote file system where the file is stored. If None, the class's default root directory is used.
 
         Returns:
-            The path of the file locally if the file has been downloaded, None otherwise
+             bool: True if the file was written successfully, False otherwise.
         """
-        local_dir = os.path.join(self._root_dir, local_dir)
+        remote_root_dir = os.path.join(self._root_dir, remote_root_dir) if remote_root_dir else self._root_dir
+        destination_path = os.path.join(remote_root_dir, remote_filename)
 
-        local_path = os.path.join(local_dir, os.path.basename(file_path))
-        if any([ex_file in local_path for ex_file in self._excluded_files]):
-            return None
-        os.makedirs(local_dir, exist_ok=True)
-
-        return self._download_file_from_storage(file_path, local_path)
+        try:
+            self._write_file(file_content, destination_path)
+            return True
+        except Exception as e:
+            log.error(f"Error while writing file {destination_path}: {e}")
+            return False
 
     @abstractmethod
-    def _download_file_from_storage(self, file_path: str, local_path: str) -> str:
+    def _write_file(self, file_content: str | bytes, file_path: str) -> None:
         pass
 
-    def remove_file_from_storage(self, file_path: str) -> bool:
+    def remove_file(self, file_path: str) -> bool:
         """
         Remove a single file with `file_path` path from the storage.
 
@@ -137,13 +143,13 @@ class BaseFileManager(ABC):
         if not self.file_exists(file_path):
             return False
 
-        return self._remove_file_from_storage(file_path)
+        return self._remove_file(file_path)
 
     @abstractmethod
-    def _remove_file_from_storage(self, file_path: str) -> bool:
+    def _remove_file(self, file_path: str) -> bool:
         pass
 
-    def remove_folder_from_storage(self, remote_root_dir: str) -> bool:
+    def remove_folder(self, remote_root_dir: str) -> bool:
         """
         Remove the entire `remote_root_dir` directory from the storage. If not specified, the entire storage will be
         removed.
@@ -152,10 +158,10 @@ class BaseFileManager(ABC):
             True if the storage has been removed, False otherwise
         """
         remote_root_dir = os.path.join(self._root_dir, remote_root_dir) if remote_root_dir else self._root_dir
-        return self._remove_folder_from_storage(remote_root_dir)
+        return self._remove_folder(remote_root_dir)
 
     @abstractmethod
-    def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
+    def _remove_folder(self, remote_root_dir: str) -> bool:
         pass
 
     def list_files(self, remote_root_dir: str) -> List[FileResponse]:
@@ -195,7 +201,7 @@ class BaseFileManager(ABC):
     def _clone_folder(self, remote_root_dir_from: str, remote_root_dir_to: str) -> List[str]:
         pass
 
-    def upload_folder_to_storage(self, local_dir: str, remote_root_dir: str) -> List[str]:
+    def upload_folder(self, local_dir: str, remote_root_dir: str) -> List[str]:
         """
         Upload a directory with all the contained files on the storage, within the directory specified by
         `remote_root_dir`.
@@ -210,12 +216,12 @@ class BaseFileManager(ABC):
         local_dir = os.path.join(self._root_dir, local_dir)
 
         return [
-            self.upload_file_to_storage(os.path.join(root, file), remote_root_dir)
+            self.upload_file(os.path.join(root, file), remote_root_dir)
             for root, _, files in os.walk(local_dir)
             for file in files
         ]
 
-    def download_folder_from_storage(self, local_dir: str, remote_root_dir: str) -> List[str]:
+    def download_folder(self, local_dir: str, remote_root_dir: str) -> List[str]:
         """
         Download the directory specified by `remote_root_dir` with all the contained files from the storage to
         `local_dir`.
@@ -227,10 +233,23 @@ class BaseFileManager(ABC):
         Returns:
             List of the paths of the files locally
         """
-        return [
-            self.download_file_from_storage(file.path, local_dir)
-            for file in self.list_files(remote_root_dir)
-        ]
+        local_dir = os.path.join(self._root_dir, local_dir)
+
+        result = []
+        # Downloads files from storage, skipping excluded files
+        for file in self.list_files(remote_root_dir):
+            local_path = os.path.join(local_dir, os.path.basename(file.path))
+            if any([ex_file in local_path for ex_file in self._excluded_files]):
+                continue
+
+            os.makedirs(local_dir, exist_ok=True)
+            result.append(self._download_file_to_local(file.path, local_path))
+        
+        return result
+
+    @abstractmethod
+    def _download_file_to_local(self, file_path: str, local_path: str) -> str:
+        pass
 
     def transfer(self, file_manager_from: "BaseFileManager", remote_root_dir: str) -> bool:
         """
@@ -243,11 +262,11 @@ class BaseFileManager(ABC):
         try:
             with tempfile.TemporaryDirectory() as tmp_folder_name:
                 # try to download the files from the old file manager to the `tmp_folder_name`
-                file_manager_from.download_folder_from_storage(tmp_folder_name, remote_root_dir)
+                file_manager_from.download_folder(tmp_folder_name, remote_root_dir)
 
                 # now, try to upload the files to the new storage
-                self.upload_folder_to_storage(tmp_folder_name, remote_root_dir)
-                file_manager_from.remove_folder_from_storage(remote_root_dir)
+                self.upload_folder(tmp_folder_name, remote_root_dir)
+                file_manager_from.remove_folder(remote_root_dir)
 
                 return True
         except Exception as e:
@@ -276,19 +295,19 @@ class BaseFileManager(ABC):
 
 
 class DummyFileManager(BaseFileManager):
-    def _download(self, file_path: str) -> bytes | None:
+    def _download_file(self, file_path: str) -> bytes | None:
         pass
 
-    def _upload_file_to_storage(self, file_path: str, destination_path: str) -> str:
+    def _upload_file(self, file_path: str, destination_path: str) -> str:
         return ""
 
-    def _download_file_from_storage(self, file_path: str, local_path: str) -> str:
+    def _download_file_to_local(self, file_path: str, local_path: str) -> str:
         return ""
 
-    def _remove_file_from_storage(self, file_path: str) -> bool:
+    def _remove_file(self, file_path: str) -> bool:
         return False
 
-    def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
+    def _remove_folder(self, remote_root_dir: str) -> bool:
         return False
 
     def _clone_folder(self, remote_root_dir_from: str, remote_root_dir_to: str) -> List[str]:
@@ -298,6 +317,9 @@ class DummyFileManager(BaseFileManager):
         return []
 
     def _read_file(self, destination_path: str) -> bytes:
+        pass
+    
+    def _write_file(self, file_content: str | bytes, file_path: str) -> None:
         pass
 
 

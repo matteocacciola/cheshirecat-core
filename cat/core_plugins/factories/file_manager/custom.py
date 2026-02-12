@@ -1,6 +1,7 @@
 import hashlib
 import os
 import shutil
+from io import BytesIO
 from typing import List
 from datetime import datetime
 
@@ -9,7 +10,7 @@ from cat.services.factory.file_manager import BaseFileManager, FileResponse
 
 
 class LocalFileManager(BaseFileManager):
-    def _download(self, file_path: str) -> bytes | None:
+    def _download_file(self, file_path: str) -> bytes | None:
         try:
             if not os.path.exists(file_path):
                 return None
@@ -20,20 +21,20 @@ class LocalFileManager(BaseFileManager):
             log.error(f"Error while downloading file {file_path} from storage: {e}")
             return None
 
-    def _upload_file_to_storage(self, file_path: str, destination_path: str) -> str:
+    def _upload_file(self, file_path: str, destination_path: str) -> str:
         if file_path != destination_path:
             os.makedirs(os.path.dirname(destination_path), exist_ok=True)
             # move the file from file_path to destination_path
             shutil.move(file_path, destination_path)
         return destination_path
 
-    def _download_file_from_storage(self, file_path: str, local_path: str) -> str:
+    def _download_file_to_local(self, file_path: str, local_path: str) -> str:
         if file_path != local_path:
             # move the file from origin_path to local_path
             shutil.move(file_path, local_path)
         return local_path
 
-    def _remove_file_from_storage(self, file_path: str) -> bool:
+    def _remove_file(self, file_path: str) -> bool:
         if os.path.exists(file_path) and os.path.isfile(file_path):
             try:
                 os.remove(file_path)
@@ -42,7 +43,7 @@ class LocalFileManager(BaseFileManager):
                 return False
         return True
 
-    def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
+    def _remove_folder(self, remote_root_dir: str) -> bool:
         if os.path.exists(remote_root_dir) and os.path.isdir(remote_root_dir):
             try:
                 shutil.rmtree(remote_root_dir)
@@ -93,6 +94,10 @@ class LocalFileManager(BaseFileManager):
     def _read_file(self, file_path: str) -> bytes:
         with open(file_path, "rb") as f:
             return f.read()
+    
+    def _write_file(self, file_content: str | bytes, file_path: str) -> None:
+        with open(file_path, "wb", encoding="utf-8") as f:
+            f.write(file_content)
 
 
 class AWSFileManager(BaseFileManager):
@@ -106,7 +111,7 @@ class AWSFileManager(BaseFileManager):
         self.bucket_name = bucket_name
         super().__init__()
 
-    def _download(self, file_path: str) -> bytes | None:
+    def _download_file(self, file_path: str) -> bytes | None:
         try:
             response = self.s3.get_object(Bucket=self.bucket_name, Key=file_path)
             return response["Body"].read()
@@ -114,15 +119,15 @@ class AWSFileManager(BaseFileManager):
             log.error(f"Error downloading file {file_path}: {str(e)}")
             return None
 
-    def _upload_file_to_storage(self, file_path: str, destination_path: str) -> str:
+    def _upload_file(self, file_path: str, destination_path: str) -> str:
         self.s3.upload_file(file_path, self.bucket_name, destination_path)
         return os.path.join("s3://", self.bucket_name, destination_path)
 
-    def _download_file_from_storage(self, file_path: str, local_path: str) -> str:
+    def _download_file_to_local(self, file_path: str, local_path: str) -> str:
         self.s3.download_file(self.bucket_name, file_path, local_path)
         return local_path
 
-    def _remove_file_from_storage(self, file_path: str) -> bool:
+    def _remove_file(self, file_path: str) -> bool:
         try:
             self.s3.head_object(Bucket=self.bucket_name, Key=file_path)
             self.s3.delete_object(Bucket=self.bucket_name, Key=file_path)
@@ -131,7 +136,7 @@ class AWSFileManager(BaseFileManager):
             log.error(f"Error while removing file {file_path} from storage: {e}")
             return False
 
-    def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
+    def _remove_folder(self, remote_root_dir: str) -> bool:
         try:
             files_to_delete = [file.name for file in self.list_files(remote_root_dir)]
             if files_to_delete:
@@ -182,6 +187,9 @@ class AWSFileManager(BaseFileManager):
 
     def _read_file(self, file_path: str) -> bytes:
         return self.s3.get_object(Bucket=self.bucket_name, Key=file_path)["Body"].read()
+    
+    def _write_file(self, file_content: str | bytes, file_path: str) -> None:
+        self.s3.put_object(Bucket=self.bucket_name, Key=file_path, Body=file_content)
 
 
 class AzureFileManager(BaseFileManager):
@@ -191,7 +199,7 @@ class AzureFileManager(BaseFileManager):
         self.container = self.blob_service.get_container_client(container_name)
         super().__init__()
 
-    def _download(self, file_path: str) -> bytes | None:
+    def _download_file(self, file_path: str) -> bytes | None:
         try:
             blob_client = self.container.get_blob_client(file_path)
             if blob_client.exists():
@@ -201,19 +209,19 @@ class AzureFileManager(BaseFileManager):
             log.error(f"Error while downloading file {file_path} from storage: {e}")
             return None
 
-    def _upload_file_to_storage(self, file_path: str, destination_path: str) -> str:
+    def _upload_file(self, file_path: str, destination_path: str) -> str:
         with open(file_path, "rb") as data:
             self.container.upload_blob(name=destination_path, data=data, overwrite=True)
         return os.path.join("azure://", self.container.container_name, destination_path)
 
-    def _download_file_from_storage(self, file_path: str, local_path: str) -> str:
+    def _download_file_to_local(self, file_path: str, local_path: str) -> str:
         blob_client = self.container.get_blob_client(file_path)
         with open(local_path, "wb") as file:
             data = blob_client.download_blob()
             file.write(data.readall())
         return local_path
 
-    def _remove_file_from_storage(self, file_path: str) -> bool:
+    def _remove_file(self, file_path: str) -> bool:
         try:
             blob_client = self.container.get_blob_client(file_path)
             if blob_client.exists():
@@ -223,7 +231,7 @@ class AzureFileManager(BaseFileManager):
             log.error(f"Error while removing file {file_path} from storage: {e}")
             return False
 
-    def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
+    def _remove_folder(self, remote_root_dir: str) -> bool:
         try:
             for file_path in [file.name for file in self.list_files(remote_root_dir)]:
                 blob_client = self.container.get_blob_client(file_path)
@@ -257,6 +265,10 @@ class AzureFileManager(BaseFileManager):
     def _read_file(self, file_path: str) -> bytes:
         blob_client = self.container.get_blob_client(file_path)
         return blob_client.download_blob().readall()
+    
+    def _write_file(self, file_content: str | bytes, file_path: str) -> None:
+        blob_client = self.container.get_blob_client(file_path)
+        blob_client.upload_blob(file_content)
 
 
 class GoogleCloudFileManager(BaseFileManager):
@@ -266,7 +278,7 @@ class GoogleCloudFileManager(BaseFileManager):
         self.bucket = self.storage_client.bucket(bucket_name)
         super().__init__()
 
-    def _download(self, file_path: str) -> bytes | None:
+    def _download_file(self, file_path: str) -> bytes | None:
         try:
             blob = self.bucket.blob(file_path)
             if blob.exists():
@@ -276,17 +288,17 @@ class GoogleCloudFileManager(BaseFileManager):
             log.error(f"Error while downloading file {file_path} from storage: {e}")
             return None
 
-    def _upload_file_to_storage(self, file_path: str, destination_path: str) -> str:
+    def _upload_file(self, file_path: str, destination_path: str) -> str:
         blob = self.bucket.blob(destination_path)
         blob.upload_from_filename(file_path)
         return os.path.join("gs://", self.bucket.name, destination_path)
 
-    def _download_file_from_storage(self, file_path: str, local_path: str) -> str:
+    def _download_file_to_local(self, file_path: str, local_path: str) -> str:
         blob = self.bucket.blob(file_path)
         blob.download_to_filename(local_path)
         return local_path
 
-    def _remove_file_from_storage(self, file_path: str) -> bool:
+    def _remove_file(self, file_path: str) -> bool:
         try:
             blob = self.bucket.blob(file_path)
             if blob.exists():
@@ -296,7 +308,7 @@ class GoogleCloudFileManager(BaseFileManager):
             log.error(f"Error while removing file {file_path} from storage: {e}")
             return False
 
-    def _remove_folder_from_storage(self, remote_root_dir: str) -> bool:
+    def _remove_folder(self, remote_root_dir: str) -> bool:
         try:
             for file_path in [file.name for file in self.list_files(remote_root_dir)]:
                 blob = self.bucket.blob(file_path)
@@ -329,6 +341,13 @@ class GoogleCloudFileManager(BaseFileManager):
     def _read_file(self, file_path: str) -> bytes:
         blob = self.bucket.blob(file_path)
         return blob.download_as_bytes()
+    
+    def _write_file(self, file_content: str | bytes, file_path: str) -> None:
+        blob = self.bucket.blob(file_path)
+        if isinstance(file_content, str):
+            blob.upload_from_string(file_content)
+            return
+        blob.upload_from_file(BytesIO(file_content))
 
 
 class DigitalOceanFileManager(AWSFileManager):
