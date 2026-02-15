@@ -1,7 +1,5 @@
-import logging
 import requests
 
-from cat.exceptions import CustomValidationException
 from tests.utils import get_memory_contents, chat_id
 
 
