@@ -271,7 +271,6 @@ class BillTheLizard(OrchestratorMixin):
         )
 
     def install_plugin(self, plugin_path: str) -> str:
-        plugin_id = ""
         try:
             plugin_id = self.plugin_manager.install_plugin(plugin_path)
 
@@ -284,10 +283,6 @@ class BillTheLizard(OrchestratorMixin):
         except Exception as e:
             log.error(f"Could not install plugin from {plugin_path}: {e}")
             raise e
-        finally:
-            self.plugin_manager.execute_hook(
-                "lizard_notify_plugin_installation", plugin_id, plugin_path, caller=self,
-            )
 
     def uninstall_plugin(self, plugin_id: str, dispatch_event: bool = True):
         try:
@@ -317,10 +312,13 @@ class BillTheLizard(OrchestratorMixin):
         if plugin_id in self.plugin_manager.active_plugins:
             self.on_plugin_activate(plugin_id)
 
-    def on_plugin_activate(self, plugin_id: str) -> None:
+    def activate_plugin_endpoints(self, plugin_id: str):
         # Store endpoints for later activation
         self._pending_endpoints = deepcopy(self.plugin_manager.plugins[plugin_id].endpoints)
         self._activate_pending_endpoints()
+
+    def on_plugin_activate(self, plugin_id: str) -> None:
+        self.activate_plugin_endpoints(plugin_id)
 
         # if I already installed and activated the plugin and I am now re-installing it, then migrate plugin settings in
         # the Cheshire Cats to incrementally apply the new settings

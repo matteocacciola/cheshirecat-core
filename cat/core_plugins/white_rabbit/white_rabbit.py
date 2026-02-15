@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from pytz import utc
 
 from cat import log
+from cat.db.database import get_db
 from cat.utils import singleton
 
 
@@ -19,10 +20,12 @@ class Job(BaseModel):
 
 @singleton
 class WhiteRabbit:
-    """The WhiteRabbit
+    """
+    The WhiteRabbit
 
-    Here the cron magic happens
-
+    Here the cron magic happens. This class is responsible for scheduling and executing jobs. It uses APScheduler under
+    the hood, but we can easily swap it for another library if needed. The main idea is to have a centralized place to
+    manage all the scheduled tasks in the system, from sending a message to re-embedding MCP tools periodically.
     """
     def __init__(self):
         log.debug("Initializing WhiteRabbit...")
@@ -47,6 +50,9 @@ class WhiteRabbit:
             timezone=utc,
         )
 
+        self._client_db = get_db()
+        self._prefix_lock_key = "white_rabbit:lock"
+
         # Add our listener to the scheduler
         self.scheduler.add_listener(
             self._job_ended_listener, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR
@@ -67,6 +73,26 @@ class WhiteRabbit:
 
     def __del__(self):
         self.shutdown()
+
+    def acquire_lock(self, event: str) -> bool:
+        lock_key = f"{self._prefix_lock_key}:{event}"
+        # for security reasons, the lock automatically expires after 1 hour
+        # nx=True guarantees that only the first node that acquires the lock will proceed
+        lock_acquired = self._client_db.set(lock_key, "locked", nx=True, ex=3600)
+
+        debug_message = (
+            f"WhiteRabbit: Lock acquired. Starting '{event}' event..."
+            if lock_acquired
+            else f"WhiteRabbit: Job '{event}' already in execution or handled by another node."
+        )
+        log.debug(debug_message)
+
+        return lock_acquired
+
+    def release_lock(self, event: str):
+        lock_key = f"{self._prefix_lock_key}:{event}"
+        self._client_db.delete(lock_key)
+        log.debug(f"WhiteRabbit: Lock released for '{event}' event.")
 
     def _job_ended_listener(self, event):
         """
@@ -94,7 +120,7 @@ class WhiteRabbit:
             self.scheduler.shutdown(wait=True)
             self._is_running = False
 
-    def get_job(self, job_id: str) -> Dict[str, str] | None:
+    def get_job(self, job_id: str) -> Job | None:
         """
         Gets a scheduled job
 
@@ -102,7 +128,7 @@ class WhiteRabbit:
             job_id (str): The id assigned to the job.
 
         Returns:
-            Dict[str, str] | None: A dictionary with id, name and next_run if the job exists, otherwise None.
+            Job | None: A Job object with id, name and next_run if the job exists, otherwise None.
         """
         job = self.scheduler.get_job(job_id)
         return Job(id=job.id, name=job.name, next_run=job.next_run_time) if job else None

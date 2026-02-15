@@ -5,39 +5,42 @@ import cat.db.cruds.settings as crud_settings
 
 @hook
 def after_lizard_bootstrap(lizard):
+    def re_embed_mcp_tools():
+        """Re-embed MCP tools for all CheshireCat instances"""
+        lock_acquired = lizard.white_rabbit.acquire_lock(job_id)
+        if not lock_acquired:
+            return
+        try:
+            ccat_ids = crud_settings.get_agents_main_keys()
+            # Track errors to ensure we don't leave things hanging
+            for ccat_id in ccat_ids:
+                if (ccat := lizard.get_cheshire_cat(ccat_id)) is None:
+                    continue
+                try:
+                    run_sync_or_async(ccat.embed_procedures, pt=CatProcedureType.MCP)
+                    del ccat
+                except Exception as e:
+                    log.error(f"WhiteRabbit: Failed re-embedding for Cat {ccat_id}: {e}")
+        finally:
+            # release the lock immediately
+            lizard.white_rabbit.release_lock(job_id)
+
     # Start scheduling system and attach it to the BillTheLizard core class
     lizard.white_rabbit = WhiteRabbit()
+    job_id = "re_embed_mcp_tools"
 
     try:
         settings = lizard.plugin_manager.get_plugin().load_settings()
         interval_job_days = int(settings["embed_procedures_every_n_days"])
-    except ValueError:
+    except (ValueError, KeyError):
         interval_job_days = None
 
     if not interval_job_days:
         return
 
-    # Schedule MCP tools re-embedding every 7 days
-    def re_embed_mcp_tools():
-        """Re-embed MCP tools for all CheshireCat instances"""
-        ccat_ids = crud_settings.get_agents_main_keys()
-
-        # Track errors to ensure we don't leave things hanging
-        for ccat_id in ccat_ids:
-            if (ccat := lizard.get_cheshire_cat(ccat_id)) is None:
-                continue
-
-            try:
-                run_sync_or_async(ccat.embed_procedures, pt=CatProcedureType.MCP)
-                del ccat
-            except Exception as e:
-                log.error(f"WhiteRabbit: Failed re-embedding for Cat {ccat_id}: {e}")
-                # Continue to the next cat even if one fails
-                continue
-
     lizard.white_rabbit.schedule_interval_job(
         job=re_embed_mcp_tools,
-        job_id="re_embed_mcp_tools",
+        job_id=job_id,
         days=interval_job_days,
     )
 

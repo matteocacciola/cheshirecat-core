@@ -6,7 +6,7 @@ from typing import Dict, Callable
 import pika
 from pika.exceptions import AMQPConnectionError
 
-from cat import log, hook
+from cat import log, hook, BillTheLizard
 from cat.utils import pod_id
 
 
@@ -142,7 +142,7 @@ def _consume_plugin_events(lizard):
             if event["event_type"] == MarchHareConfig.events["PLUGIN_INSTALLATION"]:
                 payload = event["payload"]
                 lizard.plugin_manager.install_extracted_plugin(payload["plugin_id"])
-                lizard.on_plugin_activate(payload["plugin_id"])
+                lizard.activate_plugin_endpoints(payload["plugin_id"])
                 return
 
             if event["event_type"] == MarchHareConfig.events["PLUGIN_UNINSTALLATION"]:
@@ -196,6 +196,19 @@ def before_lizard_bootstrap(lizard) -> None:
     _start_consumer_threads(lizard)
 
 
+@hook(priority=999)
+def after_lizard_bootstrap(lizard: BillTheLizard):
+    plugins_to_install = [
+        plugin_id
+        for plugin_id in lizard.plugin_manager.active_plugins
+        if plugin_id not in lizard.plugin_manager.get_core_plugins_ids
+    ]
+
+    for plugin_id in plugins_to_install:
+        lizard.plugin_manager.install_extracted_plugin(plugin_id)
+        lizard.activate_plugin_endpoints(plugin_id)
+
+
 @hook(priority=0)
 def before_lizard_shutdown(lizard) -> None:
     global _march_hare, _consumer_threads
@@ -204,7 +217,7 @@ def before_lizard_shutdown(lizard) -> None:
     _march_hare = None
 
 
-@hook(priority=0)
+@hook(priority=999)
 def lizard_notify_plugin_installation(plugin_id: str, plugin_path: str, lizard) -> None:
     global _march_hare
 
