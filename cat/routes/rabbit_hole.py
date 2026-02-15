@@ -168,7 +168,6 @@ async def upload_url(
 ) -> UploadUrlResponse:
     """Upload an url. Website content will be extracted and segmented into chunks.
     Chunks will be then vectorized and stored into documents memory."""
-    # check that URL is valid
     try:
         # Send a HEAD request to the specified URL
         async with httpx.AsyncClient() as client:
@@ -176,7 +175,8 @@ async def upload_url(
                 upload_config.url, headers={"User-Agent": "Magic Browser"}, follow_redirects=True
             )
 
-        if response.status_code == 200:
+            response.raise_for_status()
+
             # upload file to long-term memory, in the background
             background_tasks.add_task(
                 info.lizard.rabbit_hole.ingest_file,
@@ -185,10 +185,8 @@ async def upload_url(
                 metadata=upload_config.metadata,
             )
             return UploadUrlResponse(url=upload_config.url, info="URL is being ingested asynchronously")
-
-        raise CustomValidationException(f"Invalid URL: {upload_config.url}")
-    except httpx.RequestError:
-        raise CustomValidationException(f"Unable to reach the URL: {upload_config.url}")
+    except httpx.HTTPError as e:
+        raise CustomValidationException(f"Unable to reach the URL {upload_config.url}: {e}")
 
 
 @router.post("/memory", response_model=UploadSingleFileResponse)

@@ -5,6 +5,17 @@ from cat.exceptions import CustomValidationException
 from tests.utils import get_memory_contents, chat_id
 
 
+def _test_example_dot_com() -> str | None:
+    url = "https://www.example.com"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+
+        return url
+    except requests.RequestException:
+        return None
+
+
 def test_rabbithole_upload_invalid_url(secure_client, secure_client_headers):
     payload = {"url": "https://www.example.sbadabim"}
     response = secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
@@ -12,7 +23,7 @@ def test_rabbithole_upload_invalid_url(secure_client, secure_client_headers):
     # check response
     assert response.status_code == 400
     json = response.json()
-    assert json["detail"] == "Unable to reach the URL: https://www.example.sbadabim"
+    assert "https://www.example.sbadabim" in json["detail"]
 
     # check declarative memory is still empty
     declarative_memories = get_memory_contents(secure_client, secure_client_headers)
@@ -20,11 +31,7 @@ def test_rabbithole_upload_invalid_url(secure_client, secure_client_headers):
 
 
 def test_rabbithole_upload_url(secure_client, secure_client_headers):
-    url = "https://www.example.com"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-    except requests.RequestException:
+    if not (url := _test_example_dot_com()):
         assert True
         return
 
@@ -47,11 +54,7 @@ def test_rabbithole_upload_url(secure_client, secure_client_headers):
 
 
 def test_rabbithole_upload_url_to_stray(secure_client, secure_client_headers):
-    url = "https://www.example.com"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-    except requests.RequestException:
+    if not (url := _test_example_dot_com()):
         assert True
         return
 
@@ -74,12 +77,16 @@ def test_rabbithole_upload_url_to_stray(secure_client, secure_client_headers):
 
 
 def test_rabbithole_upload_url_with_metadata(secure_client, secure_client_headers):
+    if not (url := _test_example_dot_com()):
+        assert True
+        return
+
     metadata = {
         "domain": "example.com",
         "scraped_with": "scrapy",
         "categories": ["example", "test"],
     }
-    payload = {"url": "https://www.example.com", "metadata": metadata}
+    payload = {"url": url, "metadata": metadata}
 
     response = secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
 
@@ -100,16 +107,13 @@ def test_rabbithole_upload_url_with_metadata(secure_client, secure_client_header
 
 
 def test_rabbithole_get_uploaded_web_urls(secure_client, secure_client_headers):
-    try:
-        # First upload a URL
-        payload = {"url": "https://www.example.com"}
-        response = secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
-    except CustomValidationException:
-        logging.warning("Something went wrong with the URL upload. This can happen if the test environment has no internet access.")
+    if not (url := _test_example_dot_com()):
         assert True
-
         return
 
+    # First upload a URL
+    payload = {"url": url}
+    response = secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
     assert response.status_code == 200
 
     # Now get the uploaded URLs
