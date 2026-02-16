@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Dict, List
+from typing import List
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
 from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
 from apscheduler.jobstores.memory import MemoryJobStore
@@ -15,7 +15,7 @@ from cat.utils import singleton
 class Job(BaseModel):
     id: str
     name: str
-    next_run: int | float
+    next_run: datetime
 
 
 @singleton
@@ -133,7 +133,7 @@ class WhiteRabbit:
         job = self.scheduler.get_job(job_id)
         return Job(id=job.id, name=job.name, next_run=job.next_run_time) if job else None
 
-    def get_jobs(self) -> List[Dict[str, str]]:
+    def get_jobs(self) -> List[Job]:
         """
         Returns a list of scheduled jobs
 
@@ -143,10 +143,7 @@ class WhiteRabbit:
         """
         jobs = self.scheduler.get_jobs()
 
-        return [
-            {"id": job.id, "name": job.name, "next_run": job.next_run_time}
-            for job in jobs
-        ]
+        return [Job(id=job.id, name=job.name, next_run=job.next_run_time) for job in jobs]
 
     def pause_job(self, job_id: str) -> bool:
         """
