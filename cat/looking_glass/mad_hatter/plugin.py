@@ -8,7 +8,7 @@ import sys
 import tempfile
 from inspect import getmembers, isabstract
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any, Type
 from packaging.requirements import Requirement
 from pydantic import BaseModel, ValidationError
 
@@ -75,7 +75,7 @@ class Plugin:
         if "activated" in self.overrides:
             self.overrides["activated"].function(self)
 
-    def activate_settings(self, agent_id: str):
+    def activate_settings(self, agent_id: str) -> bool:
         # by default, plugin settings are saved inside the Redis database
         setting = crud_plugins.get_setting(agent_id, self._id)
 
@@ -134,7 +134,7 @@ class Plugin:
         crud_plugins.delete_setting(agent_id, self._id)
 
     # get plugin settings JSON schema
-    def settings_schema(self):
+    def settings_schema(self) -> Dict[str, Any]:
         # is "settings_schema" hook defined in the plugin?
         if "settings_schema" in self.overrides:
             return self.overrides["settings_schema"].function()
@@ -155,7 +155,7 @@ class Plugin:
         )
 
     # get plugin settings Pydantic model
-    def settings_model(self):
+    def settings_model(self) -> Type[BaseModel]:
         # is "settings_model" hook defined in the plugin?
         if "settings_model" in self.overrides:
             return self.overrides["settings_model"].function()
@@ -192,7 +192,7 @@ class Plugin:
         return PluginSettingsModel
 
     # load plugin settings
-    def load_settings(self, agent_id: str | None = None):
+    def load_settings(self, agent_id: str | None = None) -> Dict[str, Any]:
         if agent_id is None:
             try:
                 calling_agent = inspect_calling_agent()
@@ -228,7 +228,7 @@ class Plugin:
             raise e
 
     # save plugin settings
-    def save_settings(self, settings: Dict, agent_id: str):
+    def save_settings(self, settings: Dict, agent_id: str) -> Dict[str, Any]:
         # is "settings_save" hook defined in the plugin?
         if "save_settings" in self.overrides:
             return self.overrides["save_settings"].function(self._id, settings, agent_id)
@@ -393,71 +393,71 @@ class Plugin:
         self._endpoints = []
         self._plugin_overrides = {}
 
-    def plugin_specific_error_message(self):
+    def plugin_specific_error_message(self) -> str:
         name = self.manifest.name
         url = self.manifest.plugin_url
         if url:
             return f"To resolve any problem related to {name} plugin, contact the creator using github issue at the link {url}"
         return f"Error in {name} plugin, contact the creator"
 
-    def _clean_hook(self, hook: Tuple[str, CatHook]):
+    def _clean_hook(self, hook: Tuple[str, CatHook]) -> CatHook:
         # getmembers returns a tuple
         _, h = hook
         h.plugin_id = self._id
         return h
 
-    def _clean_procedure(self, procedure: Tuple[str, CatProcedure]):
+    def _clean_procedure(self, procedure: Tuple[str, CatProcedure]) -> CatProcedure:
         # getmembers returns a tuple
         _, p = procedure
         p.plugin_id = self._id
         return p
 
-    def _clean_endpoint(self, endpoint: Tuple[str, CatEndpoint]):
+    def _clean_endpoint(self, endpoint: Tuple[str, CatEndpoint]) -> CatEndpoint:
         # getmembers returns a tuple
         _, e = endpoint
         e.plugin_id = self._id
         return e
 
     @property
-    def path(self):
+    def path(self) -> str:
         return self._path
 
     @property
-    def id(self):
+    def id(self) -> str:
         return self._id
 
     @property
-    def manifest(self):
+    def manifest(self) -> PluginManifest:
         return self._manifest
 
     @property
-    def active(self):
+    def active(self) -> bool:
         return self._active
 
     @property
-    def hooks(self):
+    def hooks(self) -> List[CatHook]:
         return self._hooks
 
     @property
-    def procedures(self):
+    def procedures(self) -> List[CatProcedure]:
         return self._procedures
 
     @property
-    def tools(self):
+    def tools(self) -> List[CatTool]:
         return [p for p in self._procedures if isinstance(p, CatTool)]
 
     @property
-    def forms(self):
+    def forms(self) -> List[CatForm]:
         return [p for p in self._procedures if isinstance(p, CatForm)]
 
     @property
-    def mcp_clients(self):
+    def mcp_clients(self) -> List[CatMcpClient]:
         return [p for p in self._procedures if isinstance(p, CatMcpClient)]
 
     @property
-    def endpoints(self):
+    def endpoints(self) -> List[CatEndpoint]:
         return self._endpoints
 
     @property
-    def overrides(self):
+    def overrides(self) -> Dict[str, CatPluginDecorator]:
         return self._plugin_overrides

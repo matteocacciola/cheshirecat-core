@@ -44,7 +44,7 @@ def before_lizard_shutdown(lizard) -> None:
     operations or cleanup tasks related to the provided cat before the shutdown process begins.
 
     Args:
-        lizard: The object or parameter related to a cat that might need specific operations to be performed before the shutdown.
+        lizard: The object that might need specific operations to be performed before the shutdown.
     """
     lizard.plugin_registry = None
 

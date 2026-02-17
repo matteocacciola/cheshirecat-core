@@ -382,9 +382,5 @@ class BillTheLizard(OrchestratorMixin):
         self._plugin_registry = registry
 
     @property
-    def config_key(self):
-        return self.agent_key
-
-    @property
     def agent_key(self):
         return DEFAULT_SYSTEM_KEY

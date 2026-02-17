@@ -212,7 +212,7 @@ def test_upsert_setting_by_name(cheshire_cat):
 
 
 def test_get_users(lizard):
-    users = crud_users.get_users(lizard.config_key)
+    users = crud_users.get_users(lizard.agent_key)
     assert users != {}
 
     ids = list(users.keys())
@@ -223,13 +223,13 @@ def test_get_users(lizard):
 
 def test_get_user(lizard):
     # admin already exists as username
-    user = crud_users.create_user(lizard.config_key, {
+    user = crud_users.create_user(lizard.agent_key, {
         "username": "admin",
         "password": hash_password("admin"),
         "permissions": get_full_permissions()
     })
     assert user is None
-    users = crud_users.get_users(lizard.config_key)
+    users = crud_users.get_users(lizard.agent_key)
     assert len(users) == 1
 
     # create
@@ -238,13 +238,13 @@ def test_get_user(lizard):
         "password": hash_password("admin2"),
         "permissions": get_full_permissions()
     }
-    user = crud_users.create_user(lizard.config_key, expected_user)
+    user = crud_users.create_user(lizard.agent_key, expected_user)
     assert user["username"] == expected_user["username"]
     assert user["permissions"] == expected_user["permissions"]
-    users = list(crud_users.get_users(lizard.config_key).values())
+    users = list(crud_users.get_users(lizard.agent_key).values())
     assert len(users) == 2
 
-    user = crud_users.get_user(lizard.config_key, users[1]["id"])
+    user = crud_users.get_user(lizard.agent_key, users[1]["id"])
     assert user["username"] == expected_user["username"]
     assert user["permissions"] == expected_user["permissions"]
 
@@ -258,9 +258,9 @@ def test_get_user_by_username(lizard):
         "password": hash_password("admin2"),
         "permissions": get_full_permissions()
     }
-    crud_users.create_user(lizard.config_key, expected_user)
+    crud_users.create_user(lizard.agent_key, expected_user)
 
-    user = crud_users.get_user_by_username(lizard.config_key, username)
+    user = crud_users.get_user_by_username(lizard.agent_key, username)
     assert user["username"] == expected_user["username"]
     assert user["permissions"] == expected_user["permissions"]
 
@@ -272,13 +272,13 @@ def test_update_user(lizard):
         "password": hash_password("admin2"),
         "permissions": get_full_permissions()
     }
-    user = crud_users.create_user(lizard.config_key, new_user)
+    user = crud_users.create_user(lizard.agent_key, new_user)
 
     expected_user = user.copy()
     expected_user["username"] = "admin3"
 
-    crud_users.update_user(lizard.config_key, user["id"], expected_user)
-    user = crud_users.get_user_by_username(lizard.config_key, "admin3")
+    crud_users.update_user(lizard.agent_key, user["id"], expected_user)
+    user = crud_users.get_user_by_username(lizard.agent_key, "admin3")
 
     assert user is not None
 
@@ -290,10 +290,10 @@ def test_delete_user(lizard):
         "password": hash_password("admin2"),
         "permissions": get_full_permissions()
     }
-    user = crud_users.create_user(lizard.config_key, new_user)
+    user = crud_users.create_user(lizard.agent_key, new_user)
 
-    crud_users.delete_user(lizard.config_key, user["id"])
-    user = crud_users.get_user_by_username(lizard.config_key, "admin2")
+    crud_users.delete_user(lizard.agent_key, user["id"])
+    user = crud_users.get_user_by_username(lizard.agent_key, "admin2")
 
     assert user is None
 
@@ -305,9 +305,9 @@ def test_get_user_by_credentials(lizard):
         "password": hash_password("admin2"),
         "permissions": get_full_permissions()
     }
-    crud_users.create_user(lizard.config_key, new_user)
+    crud_users.create_user(lizard.agent_key, new_user)
 
-    user = crud_users.get_user_by_credentials(lizard.config_key, new_user["username"], "admin2")
+    user = crud_users.get_user_by_credentials(lizard.agent_key, new_user["username"], "admin2")
     assert user is not None
     assert user["username"] == new_user["username"]
     assert user["permissions"] == new_user["permissions"]

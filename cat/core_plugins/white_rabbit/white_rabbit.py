@@ -1,21 +1,29 @@
 from datetime import datetime, timedelta
 from typing import List
-from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
+from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, EVENT_JOB_SUBMITTED
 from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
-from apscheduler.jobstores.memory import MemoryJobStore
+from apscheduler.jobstores.redis import RedisJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pytz import utc
 
-from cat import log
+from cat import log, utils
 from cat.db.database import get_db
 from cat.utils import singleton
+
+
+class JobStatus(utils.Enum):
+    SCHEDULED = "scheduled"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    REMOVED = "removed"
 
 
 class Job(BaseModel):
     id: str
     name: str
-    next_run: datetime
+    next_run: datetime | None = None
+    status: JobStatus = Field(default=JobStatus.SCHEDULED)
 
 
 @singleton
@@ -30,19 +38,24 @@ class WhiteRabbit:
     def __init__(self):
         log.debug("Initializing WhiteRabbit...")
 
-        # Where the jobs are stored. We can also use an external db to have persistence
-        jobstores = {"default": MemoryJobStore()}
+        self._client_db = get_db()
+        self._prefix_lock_key = "white_rabbit:lock"
+        self._prefix_status_key = "white_rabbit:status"
 
-        # Define execution pools
+        # Use Redis as job store for persistence across restarts
+        jobstores = {
+            "default": RedisJobStore(
+                jobs_key="white_rabbit:jobs", run_times_key="white_rabbit:run_times", redis_client=self._client_db
+            )
+        }
+
         executors = {
             "default": ThreadPoolExecutor(20),
             "processpool": ProcessPoolExecutor(5),
         }
 
-        # Define basic rules for jobs
         job_defaults = {"coalesce": False, "max_instances": 10}
 
-        # Creating the effective scheduler
         self.scheduler = BackgroundScheduler(
             jobstores=jobstores,
             executors=executors,
@@ -50,19 +63,14 @@ class WhiteRabbit:
             timezone=utc,
         )
 
-        self._client_db = get_db()
-        self._prefix_lock_key = "white_rabbit:lock"
-
-        # Add our listener to the scheduler
-        self.scheduler.add_listener(
-            self._job_ended_listener, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR
-        )
+        # Listen to submission, execution and error events to track status accurately
+        self.scheduler.add_listener(self._job_submitted_listener, EVENT_JOB_SUBMITTED)
+        self.scheduler.add_listener(self._job_ended_listener, EVENT_JOB_EXECUTED | EVENT_JOB_ERROR)
 
         self.jobs: List[str] = []
 
         log.debug("WhiteRabbit: Starting scheduler")
 
-        # Start the scheduler
         try:
             self.scheduler.start()
             log.debug("WhiteRabbit: Scheduler started")
@@ -74,10 +82,50 @@ class WhiteRabbit:
     def __del__(self):
         self.shutdown()
 
+    def _status_key(self, job_id: str) -> str:
+        return f"{self._prefix_status_key}:{job_id}"
+
+    def _set_job_status(self, job_id: str, status: JobStatus):
+        if status in [JobStatus.COMPLETED, JobStatus.REMOVED]:
+            # No need to retain completed or removed status; clean up
+            self._client_db.delete(self._status_key(job_id))
+        else:
+            self._client_db.set(self._status_key(job_id), str(status))
+
+    def _get_job_status(self, job_id: str) -> JobStatus:
+        raw = self._client_db.get(self._status_key(job_id))
+        if raw is None:
+            return JobStatus.SCHEDULED  # Default for jobs with no explicit status set yet
+        return JobStatus(raw.decode() if isinstance(raw, bytes) else raw)
+
+    def _job_submitted_listener(self, event):
+        """Triggered when a job is submitted for execution."""
+        self._set_job_status(event.job_id, JobStatus.RUNNING)
+        log.debug(f"WhiteRabbit: job {event.job_id} is now running.")
+
+    def _job_ended_listener(self, event):
+        """Triggered when a job ends (success or error)."""
+        if event.exception:
+            log.error(
+                f"WhiteRabbit: error during the execution of job {event.job_id} "
+                f"started at {event.scheduled_run_time}. Error: {event.traceback}"
+            )
+        else:
+            log.info(
+                f"WhiteRabbit: executed job {event.job_id} started at {event.scheduled_run_time}. "
+                f"Value returned: {event.retval}"
+            )
+
+        self._set_job_status(event.job_id, JobStatus.COMPLETED)
+
+        # Remove one-shot jobs from our tracking list after completion
+        if event.job_id in self.jobs:
+            job = self.scheduler.get_job(event.job_id)
+            if job is None:
+                self.jobs.remove(event.job_id)
+
     def acquire_lock(self, event: str) -> bool:
         lock_key = f"{self._prefix_lock_key}:{event}"
-        # for security reasons, the lock automatically expires after 1 hour
-        # nx=True guarantees that only the first node that acquires the lock will proceed
         lock_acquired = self._client_db.set(lock_key, "locked", nx=True, ex=3600)
 
         debug_message = (
@@ -94,23 +142,6 @@ class WhiteRabbit:
         self._client_db.delete(lock_key)
         log.debug(f"WhiteRabbit: Lock released for '{event}' event.")
 
-    def _job_ended_listener(self, event):
-        """
-        Triggered when a job ends
-
-        Args:
-            event (apscheduler.events.JobExecutionEvent): Passed by the scheduler when the job ends. It contains information about the job.
-        """
-        if event.exception:
-            log.error(
-                f"WhiteRabbit: error during the execution of job {event.job_id} started at {event.scheduled_run_time}. Error: {event.traceback}"
-            )
-            return
-
-        log.info(
-            f"WhiteRabbit: executed job {event.job_id} started at {event.scheduled_run_time}. Value returned: {event.retval}"
-        )
-
     def shutdown(self):
         for job_id in self.jobs.copy():
             self.remove_job(job_id)
@@ -122,32 +153,45 @@ class WhiteRabbit:
 
     def get_job(self, job_id: str) -> Job | None:
         """
-        Gets a scheduled job
+        Gets a scheduled job.
 
         Args:
             job_id (str): The id assigned to the job.
 
         Returns:
-            Job | None: A Job object with id, name and next_run if the job exists, otherwise None.
+            Job | None: A Job object if the job exists, otherwise None.
         """
         job = self.scheduler.get_job(job_id)
-        return Job(id=job.id, name=job.name, next_run=job.next_run_time) if job else None
+        if not job:
+            return None
+
+        return Job(
+            id=job.id,
+            name=job.name,
+            next_run=job.next_run_time,
+            status=self._get_job_status(job.id),
+        )
 
     def get_jobs(self) -> List[Job]:
         """
-        Returns a list of scheduled jobs
+        Returns a list of scheduled jobs.
 
         Returns:
-            List[Dict[str, str]]
-                A list of jobs. Each job is a dictionary with id, name and next_run.
+            List[Job]: A list of Job objects.
         """
-        jobs = self.scheduler.get_jobs()
-
-        return [Job(id=job.id, name=job.name, next_run=job.next_run_time) for job in jobs]
+        return [
+            Job(
+                id=job.id,
+                name=job.name,
+                next_run=job.next_run_time,
+                status=self._get_job_status(job.id),
+            )
+            for job in self.scheduler.get_jobs()
+        ]
 
     def pause_job(self, job_id: str) -> bool:
         """
-        Pauses a scheduled job
+        Pauses a scheduled job.
 
         Args:
             job_id (str): The id assigned to the job.
@@ -165,7 +209,7 @@ class WhiteRabbit:
 
     def resume_job(self, job_id: str) -> bool:
         """
-        Resumes a paused job
+        Resumes a paused job.
 
         Args:
             job_id (str): The id assigned to the job.
@@ -183,17 +227,18 @@ class WhiteRabbit:
 
     def remove_job(self, job_id: str) -> bool:
         """
-        Removes a scheduled job
+        Removes a scheduled job.
 
         Args:
             job_id (str): The id assigned to the job.
 
         Returns:
-            bool: the outcome of the removal.
+            bool: The outcome of the removal.
         """
         try:
             self.scheduler.remove_job(job_id)
             self.jobs.remove(job_id)
+            self._set_job_status(job_id, JobStatus.REMOVED)
             log.info(f"WhiteRabbit: Removed job {job_id}")
             return True
         except Exception as e:
@@ -213,7 +258,7 @@ class WhiteRabbit:
         **kwargs,
     ) -> str:
         """
-        Schedule a job
+        Schedule a one-shot job.
 
         Args:
             job (function): The function to be called.
@@ -223,13 +268,12 @@ class WhiteRabbit:
             minutes (int): Minutes to wait.
             seconds (int): Seconds to wait.
             milliseconds (int): Milliseconds to wait.
-            microseconds (int) Microseconds to wait.
+            microseconds (int): Microseconds to wait.
             **kwargs: The arguments to pass to the function.
 
         Returns:
             The job id.
         """
-        # Calculate time
         schedule = datetime.today() + timedelta(
             days=days,
             hours=hours,
@@ -267,17 +311,17 @@ class WhiteRabbit:
         **kwargs,
     ) -> str:
         """
-        Schedule an interval job
+        Schedule an interval job.
 
         Args:
             job (function): The function to be called.
             job_id (str): The id assigned to the job.
-            start_date (datetime): Start date. If None the job can start instantaneously
+            start_date (datetime): Start date. If None the job starts instantaneously.
             end_date (datetime): End date. If None the job never ends.
-            days (int): Days to wait.
-            hours (int): Hours to wait.
-            minutes (int): Minutes to wait.
-            seconds (int): Seconds to wait.
+            days (int): Days interval.
+            hours (int): Hours interval.
+            minutes (int): Minutes interval.
+            seconds (int): Seconds interval.
             **kwargs: The arguments to pass to the function.
 
         Returns:
@@ -326,12 +370,12 @@ class WhiteRabbit:
         **kwargs,
     ) -> str:
         """
-        Schedule a cron job
+        Schedule a cron job.
 
         Args:
             job (function): The function to be called.
             job_id (str): The id assigned to the job.
-            start_date (datetime): Start date. If None the job can start instantaneously
+            start_date (datetime): Start date. If None the job starts instantaneously.
             end_date (datetime): End date. If None the job never ends.
             year (int | str): 4-digit year
             month (int | str): month (1-12)
@@ -388,7 +432,7 @@ class WhiteRabbit:
         microseconds=0,
     ) -> str:
         """
-        Schedule a chat message
+        Schedule a chat message.
 
         Args:
             content (str): The message to be sent.

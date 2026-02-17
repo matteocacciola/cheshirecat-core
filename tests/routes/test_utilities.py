@@ -88,7 +88,7 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
     assert len(settings) == 0
 
     # check that the Lizard has been correctly recreated from scratch
-    settings = crud_settings.get_settings(lizard.config_key)
+    settings = crud_settings.get_settings(lizard.agent_key)
     assert len(settings) > 0
 
     # check that the vector database is not empty

@@ -110,6 +110,7 @@ async def upsert_cheshirecat_plugin_settings(
         raise CustomValidationException("\n".join(list(map(lambda x: x["msg"], e.errors()))))
 
     final_settings = plugin.save_settings(payload, ccat.agent_key)
+    ccat.plugin_manager.execute_hook("after_plugin_settings_update", plugin_id, final_settings, caller=ccat)
 
     return GetSettingResponse(name=plugin_id, value=final_settings)
 
@@ -123,7 +124,7 @@ async def reset_cheshirecat_plugin_settings(
     plugin_id = slugify(plugin_id, separator="_")
 
     # Get the factory settings of the plugin
-    factory_settings = crud_plugins.get_setting(info.lizard.config_key, plugin_id)
+    factory_settings = crud_plugins.get_setting(info.lizard.agent_key, plugin_id)
     if factory_settings is None:
         raise CustomNotFoundException("Plugin not found.")
 
@@ -133,6 +134,8 @@ async def reset_cheshirecat_plugin_settings(
         raise CustomNotFoundException("Plugin not found")
 
     crud_plugins.set_setting(ccat.agent_key, plugin_id, factory_settings)
+    ccat.plugin_manager.execute_hook("after_plugin_settings_update", plugin_id, factory_settings, caller=ccat)
+
     return GetSettingResponse(name=plugin_id, value=factory_settings)
 
 
@@ -200,7 +203,7 @@ async def get_lizard_plugins_settings(
 ) -> PluginsSettingsResponse:
     """Returns the default settings of all the plugins"""
     lizard = info.lizard
-    return get_plugins_settings(lizard.plugin_manager, lizard.config_key)
+    return get_plugins_settings(lizard.plugin_manager, lizard.agent_key)
 
 
 @router.get("/system/settings/{plugin_id}", response_model=GetSettingResponse)
@@ -214,7 +217,7 @@ async def get_lizard_plugin_settings(
     if not plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
-    return get_plugin_settings(plugin_manager, plugin_id, lizard.config_key)
+    return get_plugin_settings(plugin_manager, plugin_id, lizard.agent_key)
 
 
 @router.get("/system/details/{plugin_id}", response_model=GetPluginDetailsResponse)

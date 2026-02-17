@@ -63,7 +63,7 @@ class ConnectionAuth(ABC):
                 connection,
                 self.resource,
                 self.permission,
-                lizard.config_key,
+                lizard.agent_key,
             )
 
         # fallback to agent-specific auth if needed and available
