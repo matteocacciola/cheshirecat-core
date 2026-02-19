@@ -45,7 +45,9 @@ class WhiteRabbit:
         # Use Redis as job store for persistence across restarts
         jobstores = {
             "default": RedisJobStore(
-                jobs_key="white_rabbit:jobs", run_times_key="white_rabbit:run_times", redis_client=self._client_db
+                jobs_key="white_rabbit:jobs",
+                run_times_key="white_rabbit:run_times",
+                **self._client_db.get_connection_kwargs(),
             )
         }
 
