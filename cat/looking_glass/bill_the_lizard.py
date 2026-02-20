@@ -309,8 +309,11 @@ class BillTheLizard(OrchestratorMixin):
         # toggle (activate or deactivate) the plugin
         self.plugin_manager.toggle_plugin(plugin_id)
 
+        # if the plugin is now active, activate it in the Cheshire Cats
         if plugin_id in self.plugin_manager.active_plugins:
             self.on_plugin_activate(plugin_id)
+
+        self.plugin_manager.execute_hook("after_plugin_toggling_on_system", plugin_id, caller=self)
 
     def activate_plugin_endpoints(self, plugin_id: str):
         # Store endpoints for later activation

@@ -2,14 +2,16 @@ from cat import hook, log, run_sync_or_async, BillTheLizard, CatProcedureType
 from cat.core_plugins.white_rabbit.white_rabbit import WhiteRabbit
 import cat.db.cruds.settings as crud_settings
 
-
+scheduled_job_id = "re_embed_mcp_tools"
 
 
 # IMPORTANT: This function MUST live at a module level (not inside another function) so that APScheduler + Redis can
 # pickle/serialize it by its fully qualified import path.
 # All runtime context is passed explicitly via kwargs.
-def re_embed_mcp_tools(scheduled_job_id: str):
+def re_embed_mcp_tools():
     """Re-embed MCP tools for all CheshireCat instances"""
+    global scheduled_job_id
+
     lizard = BillTheLizard()
 
     lock_acquired = lizard.white_rabbit.acquire_lock(scheduled_job_id)
@@ -33,8 +35,6 @@ def re_embed_mcp_tools(scheduled_job_id: str):
 
 @hook
 def after_lizard_bootstrap(lizard: BillTheLizard):
-    scheduled_job_id = "re_embed_mcp_tools"
-
     # Start scheduling system and attach it to the BillTheLizard core class
     lizard.white_rabbit = WhiteRabbit()
 
@@ -51,7 +51,6 @@ def after_lizard_bootstrap(lizard: BillTheLizard):
         job=re_embed_mcp_tools,
         job_id=scheduled_job_id,
         days=interval_job_days,
-        scheduled_job_id=scheduled_job_id,
     )
 
 
@@ -59,3 +58,14 @@ def after_lizard_bootstrap(lizard: BillTheLizard):
 def before_lizard_shutdown(lizard) -> None:
     lizard.white_rabbit.shutdown()
     lizard.white_rabbit = None
+
+
+@hook(priority=0)
+def after_plugin_toggling_on_system(plugin_id: str, lizard: BillTheLizard) -> None:
+    global scheduled_job_id
+
+    this_plugin = lizard.plugin_manager.get_plugin()
+
+    active_plugins = lizard.plugin_manager.active_plugins
+    if plugin_id == this_plugin.id and plugin_id not in active_plugins and lizard.white_rabbit.get_job(scheduled_job_id):
+        lizard.white_rabbit.remove_job(scheduled_job_id)

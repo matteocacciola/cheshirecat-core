@@ -49,37 +49,6 @@ def before_lizard_shutdown(lizard) -> None:
     lizard.plugin_registry = None
 
 
-@hook(priority=0)
-def lizard_notify_plugin_installation(plugin_id: str, plugin_path: str, lizard) -> None:
-    """
-    Handles the notification process when a plugin is installed.
-
-    This function is triggered when a plugin is installed and a hook is activated. The notification ensures that
-    relevant stakeholders, systems, or components are informed about the installation event.
-
-    Args:
-        plugin_id: The ID of the plugin that is being installed.
-        plugin_path: The path to the plugin's installation directory.
-        lizard: The specific category or context associated with the installed plugin.
-    """
-    pass
-
-
-@hook(priority=0)
-def lizard_notify_plugin_uninstallation(plugin_id: str, lizard) -> None:
-    """
-    Handles the notification process when a plugin is installed.
-
-    This function is triggered when a plugin is installed and a hook is de-activated. The notification ensures that
-    relevant stakeholders, systems, or components are informed about the uninstallation event.
-
-    Args:
-        plugin_id: The ID of the plugin that is being uninstalled.
-        lizard: The specific category or context associated with the uninstalled plugin.
-    """
-    pass
-
-
 # Called before cat bootstrap
 @hook(priority=0)
 def before_cat_bootstrap(cat) -> None:

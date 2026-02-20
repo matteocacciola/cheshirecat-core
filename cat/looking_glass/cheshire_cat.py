@@ -285,6 +285,8 @@ class CheshireCat(BotMixin):
         await self.vector_memory_handler.delete_tenant_points(str(VectorMemoryType.PROCEDURAL))
         await self.embed_procedures()
 
+        self.plugin_manager.execute_hook("after_plugin_toggling_on_agent", plugin_id, caller=self)
+
     def _find_stray_cat(self, chat_id: str) -> StrayCat | None:
         """Finds a stray cat by chat id.
 
