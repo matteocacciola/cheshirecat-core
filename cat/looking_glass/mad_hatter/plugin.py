@@ -209,15 +209,9 @@ class Plugin:
         # by default, plugin settings are saved inside the Redis database
         settings = crud_plugins.get_setting(agent_id, self._id) or self._get_settings_from_model()
         if settings is None:
-            log.debug(f"{self.id} settings model have missing default values, no settings created")
+            log.debug(f"Agent {agent_id} - Plugin {self._id} settings model is not stored or has no default values, returning empty settings")
             return {}
 
-        # If each field have a default value and the model is correct, create the settings with default values
-        crud_plugins.set_setting(agent_id, self._id, settings)
-        log.debug(f"Agent {agent_id} - {self.id} have no settings, created with settings model default values")
-
-        # load settings from Redis database, in case of new settings, the already grabbed values are loaded otherwise
-        settings = settings if settings else (crud_plugins.get_setting(agent_id, self._id) or {})
         try:
             # Validate the settings
             self.settings_model().model_validate(settings)
