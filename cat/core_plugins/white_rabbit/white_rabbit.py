@@ -42,12 +42,17 @@ class WhiteRabbit:
         self._prefix_lock_key = "white_rabbit:lock"
         self._prefix_status_key = "white_rabbit:status"
 
-        # Use Redis as job store for persistence across restarts
+        # Get connection kwargs from the existing client, but create a SEPARATE raw (decode_responses=False) connection
+        # exclusively for APScheduler's RedisJobStore, which stores pickled binary data and cannot use a UTF-8 decoding
+        # client.
+        connection_kwargs = self._client_db.get_connection_kwargs()
+        connection_kwargs["decode_responses"] = False
+
         jobstores = {
             "default": RedisJobStore(
                 jobs_key="white_rabbit:jobs",
                 run_times_key="white_rabbit:run_times",
-                **self._client_db.get_connection_kwargs(),
+                **connection_kwargs,
             )
         }
 

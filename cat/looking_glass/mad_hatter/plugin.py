@@ -214,7 +214,7 @@ class Plugin:
 
         # If each field have a default value and the model is correct, create the settings with default values
         crud_plugins.set_setting(agent_id, self._id, settings)
-        log.debug(f"{self.id} have no settings, created with settings model default values")
+        log.debug(f"Agent {agent_id} - {self.id} have no settings, created with settings model default values")
 
         # load settings from Redis database, in case of new settings, the already grabbed values are loaded otherwise
         settings = settings if settings else (crud_plugins.get_setting(agent_id, self._id) or {})
@@ -223,7 +223,7 @@ class Plugin:
             self.settings_model().model_validate(settings)
             return settings
         except Exception as e:
-            log.error(f"Unable to load plugin {self._id} settings: {e}")
+            log.error(f"Agent {agent_id} - Unable to load plugin {self._id} settings: {e}")
             log.warning(self.plugin_specific_error_message())
             raise e
 

@@ -3,13 +3,12 @@ from cat.core_plugins.white_rabbit.white_rabbit import WhiteRabbit
 import cat.db.cruds.settings as crud_settings
 
 
-scheduled_job_id = "re_embed_mcp_tools"
 
 
 # IMPORTANT: This function MUST live at a module level (not inside another function) so that APScheduler + Redis can
 # pickle/serialize it by its fully qualified import path.
 # All runtime context is passed explicitly via kwargs.
-def re_embed_mcp_tools():
+def re_embed_mcp_tools(scheduled_job_id: str):
     """Re-embed MCP tools for all CheshireCat instances"""
     lizard = BillTheLizard()
 
@@ -34,6 +33,8 @@ def re_embed_mcp_tools():
 
 @hook
 def after_lizard_bootstrap(lizard: BillTheLizard):
+    scheduled_job_id = "re_embed_mcp_tools"
+
     # Start scheduling system and attach it to the BillTheLizard core class
     lizard.white_rabbit = WhiteRabbit()
 
