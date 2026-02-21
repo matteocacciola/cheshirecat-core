@@ -8,8 +8,7 @@ import time
 import uuid
 from io import BytesIO
 from typing import List, Dict, Tuple
-from urllib.error import HTTPError
-import httpx
+from httpx import AsyncClient
 from langchain_community.document_loaders.parsers.generic import MimeTypeBasedParser
 from langchain_core.documents.base import Document, Blob
 
@@ -201,67 +200,45 @@ class RabbitHole:
             base = re.sub(r"[.\s]+", "_", base)
             return base + ext
 
-        source = None
-        file_bytes = None
+        async def parse() -> Tuple[str | None, bytes | None, str | None, bool]:
+            if isinstance(file, BytesIO):
+                # Get the source of UploadFile, file bytes and whether it's a URL
+                return sanitize_filename(filename), file.read(), content_type, False
+            if fnc_is_url(file):
+                try:
+                    # Make a request with a fake browser name - use async httpx
+                    async with AsyncClient() as client:
+                        response = await client.get(file, headers={"User-Agent": "Magic Browser"})
+                        response.raise_for_status()
+                        # Define mime type and source of url
+                        # Add fallback for empty/None content_type
+                        ct = response.headers.get(
+                            "Content-Type", "text/html" if file.startswith("http") else "text/plain"
+                        ).split(";")[0]
+                        # Get binary content of url
+                        return file, response.content, ct, True
+                except Exception as e:
+                    log.error(f"Agent id: {self.cat.agent_key}. Error: {e}")
+                    return None, None, content_type, True
+            # Get file bytes - use async file reading
+            fb = await asyncio.to_thread(lambda: open(file, "rb").read())
+            return sanitize_filename(os.path.basename(file)), fb, mimetypes.guess_type(file)[0], False
 
         if not isinstance(file, BytesIO) and not isinstance(file, str):
             raise ValueError(f"{type(file)} is not a valid type.")
 
-        # Check type of incoming file.
-        is_url = False
-        if isinstance(file, BytesIO):
-            # Get mime type and source of UploadFile
-            source = sanitize_filename(filename)
-
-            # Get file bytes
-            file_bytes = file.read()
-        else:
-            is_url = fnc_is_url(file)
-            if is_url:
-                try:
-                    # Make a request with a fake browser name - use async httpx
-                    async with httpx.AsyncClient() as client:
-                        response = await client.get(file, headers={"User-Agent": "Magic Browser"})
-                        response.raise_for_status()
-
-                        # Define mime type and source of url
-                        # Add fallback for empty/None content_type
-                        content_type = response.headers.get(
-                            "Content-Type", "text/html" if file.startswith("http") else "text/plain"
-                        ).split(";")[0]
-                        source = file
-
-                        # Get binary content of url
-                        file_bytes = response.content
-                except HTTPError as e:
-                    log.error(f"Agent id: {self.cat.agent_key}. Error: {e}")
-            else:
-                # Get mime type from file extension and source
-                content_type = mimetypes.guess_type(file)[0]
-                source = sanitize_filename(os.path.basename(file))
-
-                # Get file bytes - use async file reading
-                file_bytes = await asyncio.to_thread(lambda: open(file, "rb").read())
-
+        # Check the characteristics of the incoming file.
+        source, file_bytes, content_type, is_url = await parse()
         if not file_bytes:
-            raise ValueError(f"Something went wrong with the file {source}")
+            raise ValueError(f"Something went wrong with the source '{source}'")
 
-        log.debug(f"Attempting to parse file: {source}")
-        log.debug(f"Detected MIME type: {content_type}")
-        log.debug(f"Available handlers: {list(self.cat.file_handlers.keys())}")
+        log.debug(f"Attempting to parse source: {source}. Detected MIME type: {content_type}. Available handlers: {list(self.cat.file_handlers.keys())}")
 
-        # Load the bytes in the Blob schema
-        blob = Blob(data=file_bytes, mimetype=content_type).from_data(
-            data=file_bytes, mime_type=content_type, path=source
+        # Load the bytes in the Blob schema and parse the content. Parser based on the mime type
+        await self._send_ws_message("I'm parsing the content. Big content could require some minutes...")
+        super_docs = MimeTypeBasedParser(handlers=self.cat.file_handlers).parse(
+            Blob(data=file_bytes, mimetype=content_type).from_data(data=file_bytes, mime_type=content_type, path=source)
         )
-        # Parser based on the mime type
-        parser = MimeTypeBasedParser(handlers=self.cat.file_handlers)
-
-        # Parse the content
-        await self._send_ws_message(
-            "I'm parsing the content. Big content could require some minutes..."
-        )
-        super_docs = parser.parse(blob)
 
         # Split
         await self._send_ws_message("Parsing completed. Now let's go with reading process...")
