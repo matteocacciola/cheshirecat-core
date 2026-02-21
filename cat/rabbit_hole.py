@@ -144,7 +144,7 @@ class RabbitHole:
             # store in memory
             sha256 = hashlib.sha256()
             sha256.update(file_bytes)
-            points = await self._store_documents(
+            points = await self.store_documents(
                 docs=docs, source=source, file_hash=sha256.hexdigest(), metadata=metadata,
             )
 
@@ -245,12 +245,12 @@ class RabbitHole:
         docs = self._split_text(docs=super_docs)
         return source, file_bytes, content_type, docs, is_url
 
-    async def _store_documents(
+    async def store_documents(
         self,
         docs: List[Document],
         source: str,
-        file_hash: str,
-        metadata: Dict,
+        file_hash: str | None = None,
+        metadata: Dict | None = None,
     ) -> List[PointStruct]:
         """Add documents to the Cat's declarative memory.
 
@@ -260,8 +260,8 @@ class RabbitHole:
         Args:
             docs (List[Document]): List of Langchain `Document` to be inserted in the Cat's declarative memory.
             source (str): Source name to be added as a metadata. It can be a file name or an URL.
-            file_hash (str): Hash of the file to be added as a metadata.
-            metadata (Dict): Metadata to be stored with each chunk.
+            file_hash (str | None): Optional hash of the source to be added as a metadata.
+            metadata (Dict | None): Optional metadata to be stored with each chunk.
 
         Returns:
             stored_points (List[PointStruct]): List of points stored in the Cat's declarative memory.
