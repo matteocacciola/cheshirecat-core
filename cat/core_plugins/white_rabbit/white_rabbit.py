@@ -44,15 +44,12 @@ class WhiteRabbit:
 
         # Get connection kwargs from the existing client, but create a SEPARATE raw (decode_responses=False) connection
         # exclusively for APScheduler's RedisJobStore, which stores pickled binary data and cannot use a UTF-8 decoding
-        # client.
-        connection_kwargs = self._client_db.get_connection_kwargs()
-        connection_kwargs["decode_responses"] = False
-
+        # client. This avoids any interference with the main client connection used by the rest of the system.
         jobstores = {
             "default": RedisJobStore(
                 jobs_key="white_rabbit:jobs",
                 run_times_key="white_rabbit:run_times",
-                **connection_kwargs,
+                **(self._client_db.get_connection_kwargs() | {"decode_responses": False}),
             )
         }
 
