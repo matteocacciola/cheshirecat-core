@@ -25,7 +25,7 @@ class WorkingMemory(BaseModelDict):
         A list that maintains the conversation history between the Human and the AI.
     user_message: Optional[UserMessage], default=None
         An optional UserMessage object representing the last user message.
-    declarative_memories: List
+    context_memories: List
         A list for storing declarative memories.
     model_interactions: List
         A list of interactions with models.
@@ -38,7 +38,7 @@ class WorkingMemory(BaseModelDict):
     history: List[ConversationMessage] | None = Field(default_factory=list)
     user_message: UserMessage | None = None
 
-    declarative_memories: List[DocumentRecall] = Field(default_factory=list)
+    context_memories: List[DocumentRecall] = Field(default_factory=list)
 
     # track models usage
     model_interactions: Set[ModelInteraction] = Field(default_factory=set)

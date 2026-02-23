@@ -114,6 +114,11 @@ class PointStruct(BaseModel, extra="forbid"):
     vector: VectorStruct = Field(..., description="")
     payload: Payload | None = Field(default=None, description="Payload values (optional)")
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        if self.payload.get("id") is None:
+            self.payload["id"] = self.id
+
 
 class UpdateResult(BaseModel):
     operation_id: int = Field(default=None, description="Sequential number of the operation")

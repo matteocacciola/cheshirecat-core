@@ -816,9 +816,12 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         Returns:
             PointStruct: The stored point.
         """
+        id_point = id_point or uuid.uuid4().hex
+
         point = QdrantPointStruct(
-            id=id_point or uuid.uuid4().hex,
+            id=id_point,
             payload={
+                "id": id_point,
                 "page_content": content,
                 "metadata": metadata,
                 "tenant_id": self.agent_id,
@@ -889,6 +892,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             document=LangChainDocument(
                 page_content=page_content,
                 metadata=metadata,
+                id=m.id,
             ),
             vector=m.vector,
             id=m.id,

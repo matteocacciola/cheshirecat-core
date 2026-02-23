@@ -1,17 +1,15 @@
-from typing import Dict
-
-from cat import hook, MessageWhy
+from cat import hook, MessageWhy, CatMessage, AgenticWorkflowOutput
 
 
 @hook(priority=1)
-def before_cat_sends_message(message, agent_output, cat) -> Dict:
+def before_cat_sends_message(message: CatMessage, agent_output: AgenticWorkflowOutput, cat) -> CatMessage:
     memory = [
         dict(d.document)
         | {
             "score": float(d.score) if d.score else None,
             "id": d.id,
         }
-        for d in cat.working_memory.declarative_memories
+        for d in cat.working_memory.context_memories
     ]
 
     # why this response?

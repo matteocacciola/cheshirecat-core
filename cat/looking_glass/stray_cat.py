@@ -105,29 +105,27 @@ class StrayCat(BotMixin):
         )
 
         # recall episodic memory from vector collections
-        config.metadata = (config.metadata or {}) | {"chat_id": self.id}
         chat_memories = await self.agentic_workflow.context_retrieval(
-            collection=VectorMemoryType.EPISODIC, params=config,
+            collection=VectorMemoryType.EPISODIC,
+            params=config.model_copy(deep=True, update={"metadata": {"chat_id": self.id}}),
         )
 
-        self.working_memory.declarative_memories = list(set(agent_memories) | set(chat_memories))
+        self.working_memory.context_memories = list(set(agent_memories) | set(chat_memories))
 
     async def get_procedures(self, config: RecallSettings) -> List[StructuredTool]:
         """
-        Retrieves a list of structured tools based on procedural memories and integrates relevant tools
-        from the MCP clients by performing context retrieval, reconstruction, and lazy loading.
+        Retrieves a list of structured tools based on procedural memories by performing context retrieval,
+        reconstruction, and lazy loading.
 
-        The function first retrieves procedural memories in the form of embeddings from specified recall
-        settings. Next, it attempts to reconstruct and convert these memories into structured tools
-        (`CatProcedure` instances). Additionally, it integrates structured tools from MCP clients using
-        lazy loading, driven by a user-specified query.
+        The function first retrieves procedural memories in the form of embeddings from specified recall settings. Next,
+        it attempts to reconstruct and convert these memories into structured tools (`CatProcedure` instances).
 
         Args:
             config (RecallSettings): Settings used to retrieve procedural memories from the agent's workflow.
 
         Returns:
-            List[StructuredTool]: A list of structured tools, combining reconstructed procedural memories
-                and tools retrieved from MCP clients.
+            List[StructuredTool]: A list of structured tools, combining reconstructed procedural memories from tools
+            implemented in plugins as well as provided by MCP clients.
         """
         memories = await self.agentic_workflow.context_retrieval(collection=VectorMemoryType.PROCEDURAL, params=config)
 
@@ -208,7 +206,7 @@ class StrayCat(BotMixin):
             agent_input = AgenticWorkflowTask(
                 system_prompt=system_prompt,
                 user_prompt=self.working_memory.user_message.text,
-                context=[m.document for m in self.working_memory.declarative_memories],
+                context=[m.document for m in self.working_memory.context_memories],
                 history=[h.langchainfy() for h in self.working_memory.history[-config.latest_n_history:]],
                 tools=tools,
             )

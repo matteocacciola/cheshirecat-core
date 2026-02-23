@@ -41,7 +41,7 @@ def agent_fast_reply(cat) -> AgenticWorkflowOutput | None:
     if settings["enable_llm_knowledge"]:
         return None
 
-    num_declarative_memories = len(cat.working_memory.declarative_memories)
+    num_declarative_memories = len(cat.working_memory.context_memories)
     if num_declarative_memories == 0:
         return AgenticWorkflowOutput(output=settings["fast_reply_message"])
 
