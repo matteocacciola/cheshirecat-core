@@ -229,7 +229,7 @@ def test_get_collection_points(secure_client, secure_client_headers, cheshire_ca
         assert "vector" in point
 
     # check points payload
-    points_payloads = [p["payload"] for p in points]
+    points_payloads = [{k: v for k, v in p["payload"].items() if k != "id"} for p in points]
     # sort the list and compare payload
     points_payloads.sort(key=lambda p: p["page_content"])
     expected_payloads.sort(key=lambda p: p["page_content"])
@@ -298,7 +298,7 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, ches
         assert "vector" in point
 
     # check points payload
-    points_payloads = [p["payload"] for p in all_points]
+    points_payloads = [{k: v for k, v in p["payload"].items() if k != "id"} for p in all_points]
     # sort the list and compare payload
     points_payloads.sort(key=lambda p: p["page_content"])
     expected_payloads.sort(key=lambda p: p["page_content"])
