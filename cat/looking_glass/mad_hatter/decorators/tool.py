@@ -1,4 +1,5 @@
 import importlib
+import inspect
 from typing import Callable, List, Dict
 from langchain_core.documents import Document as LangChainDocument
 from langchain_core.tools import StructuredTool
@@ -42,7 +43,7 @@ class CatTool(CatProcedure):
         parsed_function = ParsedFunction.from_function(
             func,
             exclude_args=["cat"],  # awesome, will only be used at execution
-            validate=False
+            validate=False,
         )
 
         return cls(
@@ -114,6 +115,23 @@ class CatTool(CatProcedure):
             examples=input_params["examples"],
         )
 
+    def _get_function(self) -> Callable:
+        # create a closure to capture self.stray
+        def func_with_cat(*args, **kwargs):
+            sig = inspect.signature(original_func)
+            valid_params = set(sig.parameters.keys())
+            filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_params}
+            filtered_kwargs["cat"] = stray
+            return original_func(*args, **filtered_kwargs)
+
+        # wrap func to inject the cat instance if func has the cat argument
+        original_func = self.func
+        if "cat" not in original_func.__code__.co_varnames or self.stray is None:
+            return self.func
+
+        stray = self.stray
+        return func_with_cat
+
     def langchainfy(self) -> StructuredTool:
         """
         Convert CatProcedure to a langchain compatible StructuredTool object.
@@ -125,18 +143,10 @@ class CatTool(CatProcedure):
         for example in self.examples:
             description += f"- {example}\n"
 
-        # wrap func to inject the cat instance if func has the cat argument
-        func: Callable = self.func
-        if "cat" in func.__code__.co_varnames and self.stray is not None:
-            # create a closure to capture self.stray
-            def func_with_cat(*args, **kwargs):
-                return func(*args, **kwargs, cat=self.stray)
-            func = func_with_cat
-
         return StructuredTool.from_function(
             name=self.name,
             description=description,
-            func=func,
+            func=self._get_function(),
             args_schema=self.input_schema,
         )
 

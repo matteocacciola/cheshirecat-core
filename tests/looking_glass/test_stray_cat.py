@@ -1,4 +1,5 @@
 import pytest
+from langchain_core.tools import StructuredTool
 
 from cat import AgenticWorkflowTask
 from cat.db.cruds import users as crud_users
@@ -31,6 +32,23 @@ async def test_stray_nlp(lizard, stray_no_memory):
     embedding = lizard.embedder.embed_documents(["hey"])
     assert isinstance(embedding[0], list)
     assert isinstance(embedding[0][0], float)
+
+
+@pytest.mark.asyncio
+async def test_stray_get_procedures(lizard, stray_no_memory):
+    # send message
+    message = "what time is it?"
+    config = RecallSettings(
+        embedding=lizard.embedder.embed_query(message),
+        metadata={}
+    )
+
+    procedures = await stray_no_memory.get_procedures(config)
+    assert isinstance(procedures, list)
+    assert len(procedures) > 0
+    for proc in procedures:
+        assert isinstance(proc, StructuredTool)
+        assert proc.name == "get_the_time"
 
 
 @pytest.mark.asyncio

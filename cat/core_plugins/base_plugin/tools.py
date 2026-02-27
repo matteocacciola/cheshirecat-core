@@ -5,7 +5,7 @@ from cat import tool
 
 @tool(examples=["what time is it", "get the time"])
 def get_the_time(cat):
-    """Useful to get the current time when asked. Input is always None."""
+    """Useful to get the current time when asked. Takes no input."""
     return f"The current time is {str(datetime.now())}"
 
 

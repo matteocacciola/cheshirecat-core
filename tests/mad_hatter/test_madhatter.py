@@ -11,8 +11,7 @@ from cat.looking_glass.mad_hatter.procedures import CatProcedure
 from tests.utils import create_mock_plugin_zip
 
 
-def test_instantiation_discovery(lizard):
-    plugin_manager = lizard.plugin_manager
+def _test_on_plugin_manager(plugin_manager):
     all_plugins = plugin_manager.get_core_plugins_ids
 
     assert len(plugin_manager.plugins.keys()) == len(all_plugins)
@@ -42,10 +41,9 @@ def test_instantiation_discovery(lizard):
     for procedure in plugin_manager.procedures_registry.values():
         assert isinstance(procedure, CatProcedure)
         if isinstance(procedure, CatTool):
-            assert procedure.name in ["get_the_time", "get_weather", "read_working_memory"]
+            assert procedure.name in ["get_the_time", "get_weather"]
             assert procedure.description in [
-                "Useful to get the current time when asked. Input is always None.",
-                "Get the content of the Working Memory.",
+                "Useful to get the current time when asked. Takes no input.",
                 "Get the weather for a given city and date."
             ]
             assert isfunction(procedure.func)
@@ -55,10 +53,14 @@ def test_instantiation_discovery(lizard):
                 assert "get the time" in procedure.examples
             elif procedure.name == "get_weather":
                 assert len(procedure.examples) == 0
-            elif procedure.name == "read_working_memory":
-                assert len(procedure.examples) == 2
-                assert "log working memory" in procedure.examples
-                assert "show me the contents of working memory" in procedure.examples
+
+
+def test_instantiation_discovery_for_lizard(lizard):
+    _test_on_plugin_manager(lizard.plugin_manager)
+
+
+def test_instantiation_discovery_for_cheshirecat(cheshire_cat):
+    _test_on_plugin_manager(cheshire_cat.plugin_manager)
 
 
 # installation tests will be run for both flat and nested plugin

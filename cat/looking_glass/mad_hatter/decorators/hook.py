@@ -9,6 +9,20 @@ class CatHook:
         self.priority = priority
         self.plugin_id = plugin_id
 
+    def __eq__(self, other) -> bool:
+        """Two hooks are equal if they have the same name, priority, plugin_id and function"""
+        if not isinstance(other, CatHook):
+            return False
+        return (
+                self.name == other.name
+                and self.priority == other.priority
+                and self.plugin_id == other.plugin_id
+                and self.function == other.function
+        )
+
+    def __hash__(self) -> int:
+        return hash((self.name, self.priority, self.plugin_id, self.function))
+
     def __repr__(self) -> str:
         return f"CatHook(name={self.name}, priority={self.priority}, plugin_id={self.plugin_id})"
 

@@ -4,7 +4,12 @@ from typing import Type, List, Dict, Tuple
 from langchain_classic.agents import create_tool_calling_agent, AgentExecutor
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models import BaseLanguageModel
-from langchain_core.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    SystemMessagePromptTemplate,
+)
 from langchain_core.runnables import RunnableConfig
 from pydantic import ConfigDict, Field
 
@@ -165,7 +170,7 @@ class CoreAgenticWorkflow(BaseAgenticWorkflowHandler):
     async def _run_with_bind(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
         # Deepcopy the prompt to avoid modifying the original
         prompt = ChatPromptTemplate.from_messages(
-            prompt.messages + [HumanMessagePromptTemplate.from_template("{agent_scratchpad}")]
+            prompt.messages + [MessagesPlaceholder(variable_name="agent_scratchpad")]
         )
 
         # Create the agent with the proper prompt structure

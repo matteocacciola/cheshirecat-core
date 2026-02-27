@@ -47,6 +47,9 @@ def after_lizard_bootstrap(lizard: BillTheLizard):
     if not interval_job_days:
         return
 
+    if lizard.white_rabbit.get_job(scheduled_job_id):
+        lizard.white_rabbit.remove_job(scheduled_job_id)
+
     lizard.white_rabbit.schedule_interval_job(
         job=re_embed_mcp_tools,
         job_id=scheduled_job_id,
@@ -65,7 +68,9 @@ def after_plugin_toggling_on_system(plugin_id: str, lizard: BillTheLizard) -> No
     global scheduled_job_id
 
     this_plugin = lizard.plugin_manager.get_plugin()
+    if plugin_id != this_plugin.id:
+        return
 
     active_plugins = lizard.plugin_manager.active_plugins
-    if plugin_id == this_plugin.id and plugin_id not in active_plugins and lizard.white_rabbit.get_job(scheduled_job_id):
+    if plugin_id not in active_plugins and lizard.white_rabbit.get_job(scheduled_job_id):
         lizard.white_rabbit.remove_job(scheduled_job_id)

@@ -3,7 +3,7 @@ import os
 import shutil
 from copy import deepcopy
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Set
 from pydantic import BaseModel, Field, ConfigDict
 
 from cat import utils
@@ -37,9 +37,9 @@ class MadHatter:
         # a unified registry for all procedures (local tools, forms, remote clients)
         self.procedures_registry: Dict[str, CatProcedure] = {}
         # dict of active plugins hooks (hook_name -> [CatHook, CatHook, ...])
-        self.hooks: Dict[str, List[CatHook]] = {}
+        self._hooks: Dict[str, Set[CatHook]] = {}
         # list of active plugins endpoints
-        self.endpoints: List[CatEndpoint] = []
+        self._endpoints: Set[CatEndpoint] = set()
 
         self.active_plugins: List[str] = []
 
@@ -219,32 +219,32 @@ class MadHatter:
         log.info(self.active_plugins)
 
         # update cache and embeddings
-        self.hooks = {}
+        self._hooks = {}
         self.procedures_registry = {}
-        self.endpoints = []
+        self._endpoints = set()
 
         for plugin_id in self.active_plugins:
             plugin = self.plugins[plugin_id]
+
             # Load local tools, forms and mcp clients as procedures
             self.procedures_registry |= {p.name: p for p in plugin.procedures}
-            self.endpoints += plugin.endpoints
+
+            # cache endpoints
+            for endpoint in plugin.endpoints:
+                self._endpoints.add(endpoint)
 
             # cache hooks (indexed by hook name)
             for h in plugin.hooks:
-                self.hooks.setdefault(h.name, []).append(h)
-
-        # sort each hooks list by priority
-        for hook_name in self.hooks.keys():
-            self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
+                self._hooks.setdefault(h.name, set()).add(h)
 
     # execute requested hook
     def execute_hook(self, hook_name: str, *args, caller: "ContextMixin") -> Any:
-        if hook_name not in self.hooks.keys():
+        if hook_name not in self._hooks.keys():
             raise Exception(f"Hook {hook_name} not present in any plugin")
 
         tea_cup = deepcopy(args[0]) if len(args) > 0 else None
 
-        for hook in self.hooks[hook_name]:
+        for hook in self._hooks[hook_name]:
             try:
                 log.debug(f"Executing {hook.plugin_id}::{hook.name} with priority {hook.priority}")
                 tea_spoon = (
@@ -408,3 +408,19 @@ class MadHatter:
     @property
     def context_execute_hook(self) -> str:
         return "lizard" if self.agent_key == DEFAULT_SYSTEM_KEY else "cat"
+
+    @property
+    def endpoints(self) -> List[CatEndpoint]:
+        return list(self._endpoints)
+
+    @property
+    def hooks(self) -> Dict[str, List[CatHook]]:
+        result = {}
+
+        # sort each hooks list by priority
+        for hook_name in self._hooks.keys():
+            hooks = list(self._hooks[hook_name])
+            hooks.sort(key=lambda x: x.priority, reverse=True)
+            result[hook_name] = hooks
+
+        return result
