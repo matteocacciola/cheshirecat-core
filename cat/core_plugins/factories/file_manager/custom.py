@@ -94,9 +94,11 @@ class LocalFileManager(BaseFileManager):
     def _read_file(self, file_path: str) -> bytes:
         with open(file_path, "rb") as f:
             return f.read()
-    
+
     def _write_file(self, file_content: str | bytes, file_path: str) -> None:
-        with open(file_path, "wb", encoding="utf-8") as f:
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        mode, encoding = ("wb", None) if isinstance(file_content, bytes) else ("w", "utf-8")
+        with open(file_path, mode, encoding=encoding) as f:
             f.write(file_content)
 
 
