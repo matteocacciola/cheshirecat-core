@@ -1,4 +1,4 @@
-name: Cheshire-Cat Action on Pull Requests
+name: Grinning-Cat Action on Pull Requests
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -37,7 +37,7 @@ jobs:
       - name: Build and test
         run: |
           docker compose build --pull --no-cache
-          docker compose run --rm cheshire-cat-core uv run python -m pytest --color=yes -W ignore --disable-warnings .
+          docker compose run --rm grinning-cat-core uv run python -m pytest --color=yes -W ignore --disable-warnings .
       - name: Cleanup after tests
         if: always()
         run: |

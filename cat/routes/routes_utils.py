@@ -293,7 +293,7 @@ async def create_jwt_content(credentials: UserCredentials, redis_search_service:
         final_valid_matches.append(json.dumps(valid_match_json))
 
     # using seconds for easier testing
-    expire_delta_in_seconds = float(get_env("CCAT_JWT_EXPIRE_MINUTES")) * 60
+    expire_delta_in_seconds = float(get_env("CAT_JWT_EXPIRE_MINUTES")) * 60
     now = datetime.now(timezone.utc)
 
     expires = now + timedelta(seconds=expire_delta_in_seconds)

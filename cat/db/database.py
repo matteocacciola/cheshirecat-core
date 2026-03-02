@@ -17,18 +17,18 @@ class Database:
         self.db = self.get_redis_client()
 
     def get_redis_client(self) -> redis.Redis:
-        host = get_env("CCAT_REDIS_HOST")
+        host = get_env("CAT_REDIS_HOST")
         if host is None:
-            raise ValueError("CCAT_REDIS_HOST environment variable is not set.")
+            raise ValueError("CAT_REDIS_HOST environment variable is not set.")
 
-        password = get_env("CCAT_REDIS_PASSWORD")
-        tls = get_env("CCAT_REDIS_TLS")
+        password = get_env("CAT_REDIS_PASSWORD")
+        tls = get_env("CAT_REDIS_TLS")
 
         if password:
             return redis.Redis(
                 host=host,
-                port=int(get_env("CCAT_REDIS_PORT")),
-                db=get_env("CCAT_REDIS_DB"),
+                port=int(get_env("CAT_REDIS_PORT")),
+                db=get_env("CAT_REDIS_DB"),
                 password=password,
                 encoding="utf-8",
                 decode_responses=True,
@@ -37,8 +37,8 @@ class Database:
 
         return redis.Redis(
             host=host,
-            port=int(get_env("CCAT_REDIS_PORT")),
-            db=get_env("CCAT_REDIS_DB"),
+            port=int(get_env("CAT_REDIS_PORT")),
+            db=get_env("CAT_REDIS_DB"),
             encoding="utf-8",
             decode_responses=True,
             ssl=tls,
@@ -46,13 +46,13 @@ class Database:
 
     @property
     def connection_string(self):
-        secure = "s" if get_env("CCAT_REDIS_TLS") else ""
+        secure = "s" if get_env("CAT_REDIS_TLS") else ""
 
-        host = get_env("CCAT_REDIS_HOST")
-        port = get_env("CCAT_REDIS_PORT")
-        db = get_env("CCAT_REDIS_DB")
+        host = get_env("CAT_REDIS_HOST")
+        port = get_env("CAT_REDIS_PORT")
+        db = get_env("CAT_REDIS_DB")
 
-        password = get_env("CCAT_REDIS_PASSWORD")
+        password = get_env("CAT_REDIS_PASSWORD")
 
         return (
             f"redis{secure}://{host}:{port}/{db}"

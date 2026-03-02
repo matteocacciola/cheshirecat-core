@@ -29,7 +29,7 @@ router = APIRouter()
 class HealthCheckLocal(HealthCheckAbstract):
     @property
     def service(self) -> str:
-        return "cheshire-cat"
+        return "grinning-cat"
 
     @property
     def connection_uri(self) -> str:
@@ -37,7 +37,7 @@ class HealthCheckLocal(HealthCheckAbstract):
 
     @property
     def tags(self) -> List[str]:
-        return ["cheshire-cat", "local"]
+        return ["grinning-cat", "local"]
 
     @property
     def comments(self) -> list[str]:

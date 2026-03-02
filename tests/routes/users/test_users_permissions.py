@@ -8,7 +8,7 @@ from tests.utils import agent_id, create_new_user, new_user_password
 
 # test endpoints with different user permissions
 # NOTE: we are using here the secure_client:
-# - CCAT_API_KEY and CCAT_JWT_SECRET are active
+# - CAT_API_KEY and CAT_JWT_SECRET are active
 # - we will auth with JWT
 
 @pytest.mark.parametrize("endpoint", [
@@ -42,7 +42,7 @@ from tests.utils import agent_id, create_new_user, new_user_password
 
 def test_users_permissions(secure_client, secure_client_headers, endpoint):
     # create new user that will be edited by calling the endpoints
-    # we create it using directly CCAT_API_KEY
+    # we create it using directly CAT_API_KEY
     response = secure_client.post(
         "/users",
         json={"username": "Caterpillar", "password": "U R U", "permissions": get_base_permissions()},

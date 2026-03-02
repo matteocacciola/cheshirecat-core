@@ -19,7 +19,7 @@ class NewTokenHandler(BaseCallbackHandler):
 
 class LoggingCallbackHandler(BaseCallbackHandler):
     def on_chat_model_start(self, serialized, messages, **kwargs):
-        if get_env_bool("CCAT_DEBUG"):
+        if get_env_bool("CAT_DEBUG"):
             lc_prompt = messages[0] if isinstance(messages, list) else messages
             print(colored_text("\n============== LLM INPUT ===============", "green"))
             for m in lc_prompt:
@@ -28,7 +28,7 @@ class LoggingCallbackHandler(BaseCallbackHandler):
 
     def on_llm_end(self, response, **kwargs):
         """Log LLM final response."""
-        if get_env_bool("CCAT_DEBUG"):
+        if get_env_bool("CAT_DEBUG"):
             print(colored_text("\n============== LLM OUTPUT ===============", "blue"))
             print(response)
             print(colored_text("========================================", "blue"))

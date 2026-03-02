@@ -86,7 +86,7 @@ class BillTheLizard(OrchestratorMixin):
 
         crud_users.create_user(self.agent_key, {
             "username": DEFAULT_ADMIN_USERNAME,
-            "password": hash_password(get_env("CCAT_ADMIN_DEFAULT_PASSWORD")),
+            "password": hash_password(get_env("CAT_ADMIN_DEFAULT_PASSWORD")),
             "permissions": permissions,  # base admin has all permissions, but CHAT
         })
 

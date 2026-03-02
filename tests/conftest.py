@@ -18,7 +18,7 @@ from cat.db.database import Database
 from cat.env import get_env
 from cat.looking_glass import BillTheLizard, StrayCat
 from cat.looking_glass.mad_hatter.plugin import Plugin
-from cat.startup import cheshire_cat_api
+from cat.startup import grinning_cat_api
 from cat.services.memory.messages import UserMessage
 from cat.services.factory.vector_db import QdrantHandler
 import cat.utils as utils
@@ -35,7 +35,7 @@ from tests.utils import (
 
 pytest_plugins = ["pytest_asyncio"]
 
-redis_client = redis.Redis(host=get_env("CCAT_REDIS_HOST"), db=1, encoding="utf-8", decode_responses=True)
+redis_client = redis.Redis(host=get_env("CAT_REDIS_HOST"), db=1, encoding="utf-8", decode_responses=True)
 memory_client = AsyncQdrantClient(":memory:")
 
 
@@ -122,8 +122,8 @@ async def encapsulate_each_test(request, monkeypatch):
     mock_classes(monkeypatch)
 
     # env variables
-    current_debug = get_env("CCAT_DEBUG")
-    os.environ["CCAT_DEBUG"] = "false"  # do not autoreload
+    current_debug = get_env("CAT_DEBUG")
+    os.environ["CAT_DEBUG"] = "false"  # do not autoreload
 
     # clean up tmp files, folders and redis database
     await clean_up()
@@ -137,16 +137,16 @@ async def encapsulate_each_test(request, monkeypatch):
     await clean_up()
 
     if current_debug:
-        os.environ["CCAT_DEBUG"] = current_debug
+        os.environ["CAT_DEBUG"] = current_debug
     else:
-        del os.environ["CCAT_DEBUG"]
+        del os.environ["CAT_DEBUG"]
 
 
 @pytest_asyncio.fixture(scope="function")
 async def lizard(encapsulate_each_test):
     l = BillTheLizard()
     l.bootstrap_services()
-    l.fastapi_app = cheshire_cat_api
+    l.fastapi_app = grinning_cat_api
     yield l
 
 
@@ -163,32 +163,32 @@ async def client(cheshire_cat):
     """
     Create a new FastAPI TestClient.
     """
-    with TestClient(cheshire_cat_api) as client:
+    with TestClient(grinning_cat_api) as client:
         yield client
 
 
-# This fixture sets the CCAT_API_KEY environment variable,
+# This fixture sets the CAT_API_KEY environment variable,
 # making mandatory for clients to possess api key or JWT
 @pytest_asyncio.fixture(scope="function")
 async def secure_client(client):
-    current_api_key = os.getenv("CCAT_API_KEY")
-    current_jwt_secret = os.getenv("CCAT_JWT_SECRET")
+    current_api_key = os.getenv("CAT_API_KEY")
+    current_jwt_secret = os.getenv("CAT_JWT_SECRET")
 
     # set ENV variables
-    os.environ["CCAT_API_KEY"] = api_key
-    os.environ["CCAT_JWT_SECRET"] = jwt_secret
+    os.environ["CAT_API_KEY"] = api_key
+    os.environ["CAT_JWT_SECRET"] = jwt_secret
 
     yield client
 
     # clean up
     if current_api_key:
-        os.environ["CCAT_API_KEY"] = current_api_key
+        os.environ["CAT_API_KEY"] = current_api_key
     else:
-        del os.environ["CCAT_API_KEY"]
+        del os.environ["CAT_API_KEY"]
     if current_jwt_secret:
-        os.environ["CCAT_JWT_SECRET"] = current_jwt_secret
+        os.environ["CAT_JWT_SECRET"] = current_jwt_secret
     else:
-        del os.environ["CCAT_JWT_SECRET"]
+        del os.environ["CAT_JWT_SECRET"]
 
 
 @pytest.fixture(scope="function")

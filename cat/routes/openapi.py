@@ -3,11 +3,11 @@ from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
 
 
-def get_openapi_configuration_function(cheshire_cat_api: FastAPI):
+def get_openapi_configuration_function(grinning_cat_api: FastAPI):
     # Configure openAPI schema for swagger and redoc
     def custom_openapi():
-        if cheshire_cat_api.openapi_schema:
-            return cheshire_cat_api.openapi_schema
+        if grinning_cat_api.openapi_schema:
+            return grinning_cat_api.openapi_schema
 
         with open("pyproject.toml", "rb") as f:
             project_toml = tomli.load(f)["project"]
@@ -16,7 +16,7 @@ def get_openapi_configuration_function(cheshire_cat_api: FastAPI):
             title=f"😸 {project_toml['name']} API",
             version=project_toml["version"],
             description=project_toml["description"],
-            routes=cheshire_cat_api.routes,
+            routes=grinning_cat_api.routes,
         )
 
         # Image should be an url and it's mostly used for redoc
@@ -25,7 +25,7 @@ def get_openapi_configuration_function(cheshire_cat_api: FastAPI):
         }
 
         # force security None on endpoints if API_KEY is not present
-        # API_KEY = get_env("CCAT_API_KEY")
+        # API_KEY = get_env("CAT_API_KEY")
         # if not API_KEY:
         #    openapi_schema["components"]["securitySchemes"] = None
 
@@ -34,7 +34,7 @@ def get_openapi_configuration_function(cheshire_cat_api: FastAPI):
         #        for __, verb in path.items():
         #            verb["security"] = None  # default is [{'APIKeyHeader': []}]
 
-        cheshire_cat_api.openapi_schema = openapi_schema
-        return cheshire_cat_api.openapi_schema
+        grinning_cat_api.openapi_schema = openapi_schema
+        return grinning_cat_api.openapi_schema
 
     return custom_openapi

@@ -233,7 +233,7 @@ def test_no_access_if_api_keys_active(secure_client, secure_client_headers):
     )
     assert response.status_code == 401
 
-    # check default list giving the correct CCAT_API_KEY
+    # check default list giving the correct CAT_API_KEY
     headers = {"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id}
     response = secure_client.get("/users", headers=headers)
     assert response.status_code == 200

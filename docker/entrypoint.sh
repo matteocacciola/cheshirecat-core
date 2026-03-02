@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "--- 🐱 Cheshire Cat Boot Sequence ---"
+echo "--- 🐱 Grinning Cat Boot Sequence ---"
 
 if [ -d "./cat/plugins" ]; then
     echo "Checking dependencies in the installed plugins..."
@@ -12,6 +12,6 @@ fi
 uv cache clean
 rm -rf /tmp/* /var/tmp/*
 
-echo "--- 🐱 Starting Cheshire Cat ---"
+echo "--- 🐱 Starting Grinning Cat ---"
 
 exec "$@"

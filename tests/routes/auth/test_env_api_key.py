@@ -11,14 +11,14 @@ from tests.utils import send_websocket_message, agent_id, create_new_user, new_u
 
 def set_api_key(key: str, value: str) -> str | None:
     current_api_key = get_env(key)
-    # set CCAT_API_KEY
+    # set CAT_API_KEY
     os.environ[key] = value
 
     return current_api_key
 
 
 def reset_api_key(key, value: str | None) -> None:
-    # remove CCAT_API_KEY
+    # remove CAT_API_KEY
     if value:
         os.environ[key] = value
     else:
@@ -34,7 +34,7 @@ def test_api_key_http(secure_client, client):
         permissions=get_base_permissions(),
     )
 
-    old_api_key = set_api_key("CCAT_API_KEY", api_key)
+    old_api_key = set_api_key("CAT_API_KEY", api_key)
 
     header_name = "Authorization"
     key_prefix = "Bearer"
@@ -50,7 +50,7 @@ def test_api_key_http(secure_client, client):
         assert status_code == 401
         assert json["detail"] == "Unauthorized"
 
-    # allow access if CCAT_API_KEY is right
+    # allow access if CAT_API_KEY is right
     res = client.post(
         "/auth/token", json={"username": "user", "password": new_user_password},
     )
@@ -62,7 +62,7 @@ def test_api_key_http(secure_client, client):
     assert json["chat_id"] is not None
     assert "You did not configure" in json["message"]["text"]
 
-    reset_api_key("CCAT_API_KEY", old_api_key)
+    reset_api_key("CAT_API_KEY", old_api_key)
 
 
 def test_api_key_ws(secure_client, secure_client_headers, client):
@@ -74,8 +74,8 @@ def test_api_key_ws(secure_client, secure_client_headers, client):
         permissions=get_base_permissions(),
     )
 
-    # set CCAT_API_KEY
-    old_api_key = set_api_key("CCAT_API_KEY", api_key)
+    # set CAT_API_KEY
+    old_api_key = set_api_key("CAT_API_KEY", api_key)
 
     mex = {"text": "Where do I go?"}
 
@@ -88,7 +88,7 @@ def test_api_key_ws(secure_client, secure_client_headers, client):
         with pytest.raises(WebSocketDisconnect):
             send_websocket_message(mex, secure_client, token)
 
-    # allow access if CCAT_API_KEY is right
+    # allow access if CAT_API_KEY is right
     res = client.post(
         "/auth/token", json={"username": "user", "password": new_user_password},
     )
@@ -98,4 +98,4 @@ def test_api_key_ws(secure_client, secure_client_headers, client):
     assert res["chat_id"] is not None
     assert "You did not configure" in res["message"]["text"]
 
-    reset_api_key("CCAT_API_KEY", old_api_key)
+    reset_api_key("CAT_API_KEY", old_api_key)

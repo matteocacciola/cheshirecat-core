@@ -28,11 +28,11 @@ forth.
 You can **configure the Redis database by environment variables**. The [`compose.yml`](./compose.yml) file is provided as an example. 
 Hence, the current version is multi-tenant, meaning that you can manage multiple RAGs and other language models at the same time.
 
-The Cheshire Cat is still stateless, so it can be easily scaled. In case of a cluster environment, we suggest to use a shared storage,
+The Grinning Cat is still stateless, so it can be easily scaled. In case of a cluster environment, we suggest to use a shared storage,
 mounted in the `cat/plugins` folder, to share the plugins.
 
 A **RabbitMQ message broker** is recommended in a cluster environment, so that the installation
-of plugins can be synchronized along all the PODs and the management of the Cheshire Cat can be done in a distributed way. Its
+of plugins can be synchronized along all the PODs and the management of the Grinning Cat can be done in a distributed way. Its
 configuration is done via environment variables, too. The [`compose.yml`](./compose.yml) file is provided as an example.
 
 ## RAG Customization
@@ -43,7 +43,7 @@ This version allows you to configure the RAG per chatbot, meaning that you can u
 - **multiple chunking strategies**, such as text splitting or Semantic chunking.
 
 ## MCP clients
-In this version, the Cheshire Cat can integrate several MCP clients, such as
+The Grinning Cat can integrate several MCP clients, such as
 [LangSmith](https://www.langchain.com/langsmith) or [LlamaIndex](https://www.llamaindex.ai/).
 The original version did not support any MCP client.
 MCP clients can be added via plugins, by using the `@mcp_client` decorator, similarly to the `@form` decorator.
@@ -74,7 +74,7 @@ class MyMcpClient(CatMcpClient):
 The original project is developed as a framework that could be used for a personal use as well as for single-tenant production.
 In the latter case, the original [documentation](https://cheshire-cat-ai.github.io/docs/) clearly states to set up a secure environment
 by using an API Key. **If not configured properly (e.g. by setting up an API Key), the current version will not work, indeed**.
-In this way, I tried to make the Cheshire Cat more secure and production-ready.
+In this way, I tried to make the Grinning Cat more secure and production-ready.
 
 ## Customizable LLM
 The original version used a fixed LLM implementation, meaning that it could only use a specific language model.

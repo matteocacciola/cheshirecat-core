@@ -1,9 +1,9 @@
 services:
 
-  cheshire-cat-core:
+  grinning-cat-core:
     build:
       context: .
-    container_name: cheshire_cat_core
+    container_name: grinning_cat_core
     # Uncomment the two lines below to use your .env (see .env.example)
     # env_file:
     #   - .env
@@ -13,10 +13,10 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway" # This adds an entry to /etc/hosts file in the container mapping host.docker.internal to the host machine IP addr, allowing the container to access services running on the host, not only on Win and Mac but also Linux. See https://docs.docker.com/desktop/networking/#i-want-to-connect-from-a-container-to-a-service-on-the-host and https://docs.docker.com/reference/cli/docker/container/run/#add-host
     environment:
-      - CCAT_API_KEY=test
-      - CCAT_REDIS_HOST=cheshire_cat_redis
-      - CCAT_REDIS_PORT=6379
-      - CCAT_LOG_LEVEL=DEBUG
+      - CAT_API_KEY=test
+      - CAT_REDIS_HOST=grinning_cat_redis
+      - CAT_REDIS_PORT=6379
+      - CAT_LOG_LEVEL=DEBUG
     volumes:
       - ./cat:/app/cat
       - ./data:/app/data
@@ -24,16 +24,16 @@ services:
       - ./migrations:/app/migrations
     restart: unless-stopped
     depends_on:
-      cheshire-cat-redis:
+      grinning-cat-redis:
         condition: service_healthy
-      cheshire-cat-healthcheck:
+      grinning-cat-healthcheck:
         condition: service_healthy
-      cheshire-cat-rabbitmq:
+      grinning-cat-rabbitmq:
         condition: service_healthy
 
-  cheshire-cat-redis:
+  grinning-cat-redis:
     image: redis/redis-stack-server:latest
-    container_name: cheshire_cat_redis
+    container_name: grinning_cat_redis
     command: >
       sh -c 'redis-stack-server --protected-mode no --save 60 1 --dir /data --appendonly yes --appendfsync everysec'
     ports:
@@ -47,32 +47,32 @@ services:
       timeout: 5s
       retries: 5
 
-  cheshire-cat-vector-memory:
+  grinning-cat-vector-memory:
     image: qdrant/qdrant:latest
-    container_name: cheshire_cat_vector_memory
+    container_name: grinning_cat_vector_memory
     ports:
       - "6333:6333"
     volumes:
       - ./data/long_term_memory/vector:/qdrant/storage
     restart: unless-stopped
 
-  cheshire-cat-healthcheck:
+  grinning-cat-healthcheck:
     image: curlimages/curl:latest
-    container_name: cheshire_cat_healthcheck
+    container_name: grinning_cat_healthcheck
     entrypoint: [ "/bin/sh", "-c", "--", "while true; do sleep 30; done;" ]
     depends_on:
-      - cheshire-cat-vector-memory
+      - grinning-cat-vector-memory
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://cheshire-cat-vector-memory:6333/readyz" ]
+      test: [ "CMD", "curl", "-f", "http://grinning-cat-vector-memory:6333/readyz" ]
       interval: 10s
       timeout: 2s
       retries: 5
     restart: always
 
-  cheshire-cat-rabbitmq:
+  grinning-cat-rabbitmq:
     image: rabbitmq:4.1.2-management
     hostname: rabbitmq
-    container_name: cheshire_cat_rabbitmq
+    container_name: grinning_cat_rabbitmq
     restart: always
     ports:
       - "5672:5672"

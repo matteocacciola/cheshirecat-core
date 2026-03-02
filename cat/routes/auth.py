@@ -28,5 +28,5 @@ async def auth_token(
     """
     jwt_content = await create_jwt_content(credentials, redis_search_service)
 
-    access_token = jwt.encode(jwt_content, get_env("CCAT_JWT_SECRET"), algorithm=DEFAULT_JWT_ALGORITHM)
+    access_token = jwt.encode(jwt_content, get_env("CAT_JWT_SECRET"), algorithm=DEFAULT_JWT_ALGORITHM)
     return JWTResponse(access_token=access_token)

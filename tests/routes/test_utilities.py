@@ -70,7 +70,7 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
 
     creds = {
         "username": "admin",
-        "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
+        "password": get_env("CAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
     res = client.post("/auth/token", json=creds)
@@ -100,7 +100,7 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
 async def test_agent_destroy_success(client, lizard, cheshire_cat):
     creds = {
         "username": "admin",
-        "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
+        "password": get_env("CAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
     res = client.post("/auth/token", json=creds)
@@ -138,7 +138,7 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
 async def test_agent_reset_success(client, lizard, cheshire_cat):
     creds = {
         "username": "admin",
-        "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
+        "password": get_env("CAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
     res = client.post("/auth/token", json=creds)
@@ -185,7 +185,7 @@ async def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard
 async def test_agent_destroy_error_because_of_not_existing_agent(client, lizard, cheshire_cat):
     creds = {
         "username": "admin",
-        "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
+        "password": get_env("CAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
     res = client.post("/auth/token", json=creds)
@@ -205,7 +205,7 @@ async def test_agent_destroy_error_because_of_not_existing_agent(client, lizard,
 async def test_agent_create_success(client, lizard):
     creds = {
         "username": "admin",
-        "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
+        "password": get_env("CAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
     new_agent_id = str(uuid.uuid4())

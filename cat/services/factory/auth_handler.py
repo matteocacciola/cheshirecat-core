@@ -121,7 +121,7 @@ class CoreAuthHandler(BaseAuthHandler):
     ) -> AuthUserInfo | None:
         try:
             # decode token
-            payload = jwt.decode(token, get_env("CCAT_JWT_SECRET"), algorithms=[DEFAULT_JWT_ALGORITHM])
+            payload = jwt.decode(token, get_env("CAT_JWT_SECRET"), algorithms=[DEFAULT_JWT_ALGORITHM])
         except jwt.ExpiredSignatureError:
             log.error("Token expired")
             return None
@@ -165,7 +165,7 @@ class CoreAuthHandler(BaseAuthHandler):
         auth_permission: AuthPermission,
         agent_key: str,
     ) -> AuthUserInfo | None:
-        if not (current_api_key := get_env("CCAT_API_KEY")):
+        if not (current_api_key := get_env("CAT_API_KEY")):
             return None
         if api_key != current_api_key:
             return None

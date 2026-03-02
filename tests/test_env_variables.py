@@ -11,17 +11,17 @@ def test_get_env():
 
     # unexisting
     assert get_env("UNEXISTING_ENV") is None
-    assert get_env("CCAT_UNEXISTING_ENV") is None
+    assert get_env("CAT_UNEXISTING_ENV") is None
 
     # set new
     os.environ["FAKE_ENV"] = "meow1"
-    os.environ["CCAT_FAKE_ENV"] = "meow2"
+    os.environ["CAT_FAKE_ENV"] = "meow2"
     assert get_env("FAKE_ENV") == "meow1"
-    assert get_env("CCAT_FAKE_ENV") == "meow2"
+    assert get_env("CAT_FAKE_ENV") == "meow2"
 
     # default env variables
     for k, v in get_supported_env_variables().items():
-        if k == "CCAT_DEBUG":
+        if k == "CAT_DEBUG":
             assert get_env(k) == "false"  # we test installation with autoreload off
         else:
             assert get_env(k) == os.getenv(k, v)

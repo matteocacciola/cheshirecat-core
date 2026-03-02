@@ -168,7 +168,7 @@ def get_fake_memory_export(client, embedder_name = "DumbEmbedder", dim = 2367):
 def get_client_admin_headers(client):
     creds = {
         "username": "admin",
-        "password": get_env("CCAT_ADMIN_DEFAULT_PASSWORD"),
+        "password": get_env("CAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
     res = client.post("/auth/token", json=creds)

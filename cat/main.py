@@ -6,7 +6,7 @@ from cat.utils import get_base_path, get_plugins_path
 if __name__ == "__main__":
     # debugging utilities, to deactivate put `DEBUG=false` in .env
     debug_config = {}
-    if get_env_bool("CCAT_DEBUG"):
+    if get_env_bool("CAT_DEBUG"):
         debug_config = {
             "reload": True,
             "reload_dirs": [get_base_path()],
@@ -15,18 +15,18 @@ if __name__ == "__main__":
 
     # uvicorn running behind an https proxy
     proxy_pass_config = {}
-    if get_env_bool("CCAT_HTTPS_PROXY_MODE"):
+    if get_env_bool("CAT_HTTPS_PROXY_MODE"):
         proxy_pass_config = {
             "proxy_headers": True,  # Essential for load balancers
-            "forwarded_allow_ips": get_env("CCAT_CORS_FORWARDED_ALLOW_IPS"),
+            "forwarded_allow_ips": get_env("CAT_CORS_FORWARDED_ALLOW_IPS"),
         }
 
     uvicorn.run(
-        "cat.startup:cheshire_cat_api",
+        "cat.startup:grinning_cat_api",
         host="0.0.0.0",
         port=80,
         use_colors=True,
-        log_level=get_env("CCAT_LOG_LEVEL").lower(),
+        log_level=get_env("CAT_LOG_LEVEL").lower(),
         **debug_config,
         **proxy_pass_config,
     )

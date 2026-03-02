@@ -32,7 +32,7 @@ restart:  ## Restart service(s) [args="<name_of_service>"].
 	@docker compose ${docker-compose-files} restart ${args}
 
 test:  ## Run tests.
-	@docker exec cheshire_cat_core uv run python -m pytest --color=yes -vvv -W ignore --disable-warnings ${args}
+	@docker exec grinning_cat_core uv run python -m pytest --color=yes -vvv -W ignore --disable-warnings ${args}
 
 install: ## Update the local virtual environment with the latest requirements.
 	@uv sync --link-mode=copy --frozen --no-install-project --no-upgrade --no-cache
@@ -49,11 +49,11 @@ check: ## Check requirements for the local virtual environment.
 	@uv sync --check
 
 migrate:  ## Apply database migrations
-	@docker exec -it cheshire_cat_core uv run python migrations/manage_migrations.py upgrade head
+	@docker exec -it grinning_cat_core uv run python migrations/manage_migrations.py upgrade head
 
 make-migration:  ## Create the migration file after changing the models. Argument `args` is mandatory as the comment of the migration.
 	@if [ -z "${args}" ]; then \
 		echo "Error: 'args' is required for 'run'. Example: make make-migration args=\"The comment to the migration\"" >&2; \
 		exit 1; \
 	fi
-	@docker exec -it cheshire_cat_core uv run python migrations/manage_migrations.py revision -m "${args}"
+	@docker exec -it grinning_cat_core uv run python migrations/manage_migrations.py revision -m "${args}"

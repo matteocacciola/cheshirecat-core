@@ -9,19 +9,20 @@ from cat.services.memory.messages import ConversationMessage
 
 
 def _get_expiration() -> int | None:
-    expiration = getenv("CCAT_HISTORY_EXPIRATION")
+    expiration = getenv("CAT_HISTORY_EXPIRATION")
     if expiration is None:
         return None
 
     try:
         expiration = int(expiration) * 60
         if expiration <= 0:
-            raise ValueError("CCAT_HISTORY_EXPIRATION must be positive")
+            raise ValueError("CAT_HISTORY_EXPIRATION must be positive")
 
         return expiration
     except ValueError as e:
-        log.error(f"Invalid CCAT_HISTORY_EXPIRATION: {e}")
-        raise ValueError(f"Invalid CCAT_HISTORY_EXPIRATION: {e}")
+        message = f"Invalid CAT_HISTORY_EXPIRATION: {e}"
+        log.error(message)
+        raise ValueError(message)
 
 
 def format_key(agent_id: str, user_id: str, chat_id: str) -> str:
@@ -201,7 +202,7 @@ def set_messages(
         Stored messages.
 
     Raises:
-        ValueError: If CCAT_HISTORY_EXPIRATION is invalid.
+        ValueError: If CAT_HISTORY_EXPIRATION is invalid.
         RedisError: If Redis connection fails.
     """
 

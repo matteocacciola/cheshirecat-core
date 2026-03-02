@@ -1,16 +1,22 @@
-# Cheshire Cat: AI agent as a microservice
+# Grinning Cat: AI agent as a microservice
 
-![GitHub Repo stars](https://img.shields.io/github/stars/matteocacciola/cheshirecat-core?style=social)
-![GitHub Release](https://img.shields.io/github/v/release/matteocacciola/cheshirecat-core)
-![GitHub commits since latest release](https://img.shields.io/github/commits-since/matteocacciola/cheshirecat-core/latest)
-![GitHub issues](https://img.shields.io/github/issues/matteocacciola/cheshirecat-core)
-![GitHub Release Date](https://img.shields.io/github/release-date/matteocacciola/cheshirecat-core.svg)
-![GitHub tag (with filter)](https://img.shields.io/github/v/tag/matteocacciola/cheshirecat-core)
-![GitHub top language](https://img.shields.io/github/languages/top/matteocacciola/cheshirecat-core)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/matteocacciola/cheshirecat-core)
+![GitHub Repo stars](https://img.shields.io/github/stars/matteocacciola/grinning-cat-core?style=social)
+![GitHub Release](https://img.shields.io/github/v/release/matteocacciola/grinning-cat-core)
+![GitHub commits since latest release](https://img.shields.io/github/commits-since/matteocacciola/grinning-cat-core/latest)
+![GitHub issues](https://img.shields.io/github/issues/matteocacciola/grinning-cat-core)
+![GitHub Release Date](https://img.shields.io/github/release-date/matteocacciola/grinning-cat-core.svg)
+![GitHub tag (with filter)](https://img.shields.io/github/v/tag/matteocacciola/grinning-cat-core)
+![GitHub top language](https://img.shields.io/github/languages/top/matteocacciola/grinning-cat-core)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/matteocacciola/grinning-cat-core)
 
-# Why use the Cheshire Cat?
-The Cheshire Cat is a framework to build custom AI agents:
+# Origin
+
+This project originated as a fork of the Cheshire Cat AI core (https://github.com/cheshire-cat-ai/core).
+
+It has since evolved independently with significant architectural and functional changes.
+
+# Why use the Grinning Cat?
+The Grinning Cat is a framework to build custom AI agents:
 
 - 🤖 Build your own AI agent in minutes, not months
 - 🧠 Make it smart with Retrieval Augmented Generation (RAG)
@@ -28,8 +34,8 @@ The Cheshire Cat is a framework to build custom AI agents:
   - 🛠 Custom tools, forms, endpoints, MCP clients
   - 🪛 LLM callbacks
 - 🌐 Customizable integration of **MCP clients**, such as LangSmith or LlamaIndex 
-- 🏛 Easy to use Admin Panel (available with the repository [matteocacciola/cheshirecat-admin](https://www.github.com/matteocacciola/cheshirecat-admin))
-- 🦄 Easy to understand [docs](https://deepwiki.com/matteocacciola/cheshirecat-core)
+- 🏛 Easy to use Admin Panel (available with the repository [matteocacciola/grinning-cat-admin](https://www.github.com/matteocacciola/grinning-cat-admin))
+- 🦄 Easy to understand [docs](https://deepwiki.com/matteocacciola/grinning-cat-core)
 - 🌍 Supports any language model via LangChain
 
 We are committed to openness, privacy and creativity, we want to bring AI to the long tail. If you want to know more
@@ -40,20 +46,19 @@ The current version is a multi-tenant fork of the original [Cheshire Cat](https:
 The main differences are reported in the [CHANGELOG](CHANGELOG.md).
 
 # Quickstart
-To make Cheshire Cat run on your machine, you just need [`docker`](https://docs.docker.com/get-docker/) installed:
+To make Grinning Cat run on your machine, you just need [`docker`](https://docs.docker.com/get-docker/) installed:
 
 ```bash
-docker run --rm -it -p 1865:80 ghcr.io/matteocacciola/cheshirecat-core:latest
+docker run --rm -it -p 1865:80 ghcr.io/matteocacciola/grinning-cat-core:latest
 ```
-- Chat with the Cheshire Cat by downloading the [Admin Panel](https://www.github.com/matteocacciola/cheshirecat-admin) or by using the
-  [widget](https://www.github.com/matteocacciola/cheshirecat-widget-vue).
+- Chat with the Grinning Cat by downloading the [Admin Panel](https://www.github.com/matteocacciola/grinning-cat-admin).
 - Try out the REST API on [localhost:1865/docs](http://localhost:1865/docs).
 
 This fork is intended as a microservice.
 
-As a first thing, set the **Embedder** for the Cheshire Cat. A favourite **LLM** must be set for each chatbot; each
+As a first thing, set the **Embedder** for the Grinning Cat. A favourite **LLM** must be set for each chatbot; each
 chatbot can have its own language model, with custom settings.
-Everything can be done via the [Admin Panel](https://www.github.com/matteocacciola/cheshirecat-admin) or via the REST API endpoints.
+Everything can be done via the [Admin Panel](https://www.github.com/matteocacciola/grinning-cat-admin) or via the REST API endpoints.
 
 > [!IMPORTANT]
 > The following `core plugins` are enabled by default:
@@ -62,23 +67,19 @@ Everything can be done via the [Admin Panel](https://www.github.com/matteocaccio
 > - `Interactions`: add the interaction handler to the language model;
 > - `March Hare`: handling events via RabbitMQ;
 > - `Memory`: interacting with Working Memory and adding a handler to trace the activities of the Embedder;
-> - `Multimodality`: a plugin that adds multimodal capabilities to the Cheshire Cat framework, enabling the processing of images;
+> - `Multimodality`: a plugin that adds multimodal capabilities to the Grinning Cat framework, enabling the processing of images;
 > - `White Rabbit`: cron and schedule tasks;
 > - `Why`: add the context and the reasoning behind the answers of the LLM.
-> - `Analytics`: recover the analytics data about the usage of the Cheshire Cat, which depends on the `Interactions` and `Memory` plugins.
+> - `Analytics`: recover the analytics data about the usage of the Grinning Cat, which depends on the `Interactions` and `Memory` plugins.
 >
 > You can disable one or more (e.g., `March Hare` if you don't need to autoscale over cloud PODs) by using the Admin Toggle endpoint.
 
-Enjoy the Cheshire Cat!
-Follow instructions on how to run it with [docker compose and volumes](https://cheshire-cat-ai.github.io/docs/quickstart/installation-configuration/).
+Enjoy the Grinning Cat!
 
 # Admin panel and UI widget
-You can install an admin panel by using the [`cheshirecat-admin`](https://www.github.com/matteocacciola/cheshirecat-admin) repository.
-The admin panel is a separate project that allows you to manage the Cheshire Cat and its settings, plugins, and chatbots.
+You can install an admin panel by using the [`grinning-cat-admin`](https://www.github.com/matteocacciola/grinning-cat-admin) repository.
+The admin panel is a separate project that allows you to manage the Grinning Cat and its settings, plugins, and chatbots.
 It is built with Streamlit and is designed to be easy to use and customizable.
-
-Moreover, a suitable widget for the current fork is available in [my Github account](https://github.com/matteocacciola/cheshirecat-widget-vue)
-to chat the Cheshire Cat.
 
 # API Usage
 
@@ -111,7 +112,7 @@ to be called when the event occurs. To register a webhook,, you need to provide 
 Likewise you can register a webhook, you can delete it by using the `/webhooks` endpoint with a `DELETE` request and
 the same payload as the `POST` request.
 
-The webhook will be called by the CheshireCat with a `POST` request, authenticated with the provided header and secret
+The webhook will be called by the Grinning Cat with a `POST` request, authenticated with the provided header and secret
 and containing one of the following payloads:
 - `knowledge_source_loaded`:
 ```json
@@ -139,7 +140,7 @@ and containing one of the following payloads:
 ```
 
 > [!IMPORTANT]
-> If you do not use the API Key to communicate with the Cheshire Cat, you need to be authenticated as an user with
+> If you do not use the API Key to communicate with the Grinning Cat, you need to be authenticated as an user with
 > SYSTEM:WRITE permission to register or delete webhooks.
 > 
 > Do not forget to specify the `X-Agent-ID` header for registering webhooks for the `knowledge_source_loaded` event.
@@ -153,11 +154,11 @@ Please, refer to [COMPATIBILITY.md](COMPATIBILITY.md) for more information.
 ## Custom endpoints and permissions
 
 When implementing custom endpoints, you can use the `@endpoint` decorator to create a new endpoint. Please, refer to the
-[documentation](https://deepwiki.com/matteocacciola/cheshirecat-core) for more information.
+[documentation](https://deepwiki.com/matteocacciola/grinning-cat-core) for more information.
 
 > [!IMPORTANT]
 > **Each implemented custom endpoint must use the `check_permissions` method to authenticate**. See this
-[`example`](https://github.com/matteocacciola/cheshirecat-core/blob/main/tests/mocks/mock_plugin/mock_endpoint.py#L28).
+[`example`](https://github.com/matteocacciola/grinning-cat-core/blob/main/tests/mocks/mock_plugin/mock_endpoint.py#L28).
 
 ## Minimal plugin example
 
@@ -282,21 +283,21 @@ def settings_schema():
 </details>
 
 > [!IMPORTANT]
-> A new feature has been added to the plugins of the Cheshire Cat: the possibility to **list the dependencies on other plugins**. This feature allows specifying that a plugin requires other plugins to be installed to work properly. This feature is optional, but it is recommended to use it to avoid issues with missing dependencies. To specify the dependencies of a plugin, you can use the `dependencies` attribute in the `plugin.json` file, listing the names of the plugins that the current plugin requires.
+> A new feature has been added to the plugins of the Grinning Cat: the possibility to **list the dependencies on other plugins**. This feature allows specifying that a plugin requires other plugins to be installed to work properly. This feature is optional, but it is recommended to use it to avoid issues with missing dependencies. To specify the dependencies of a plugin, you can use the `dependencies` attribute in the `plugin.json` file, listing the names of the plugins that the current plugin requires.
 
 # Docs and Resources
 
-**For your PHP based projects**, I developed a [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk) that allows you to
-easily interact with the Cat. Please, refer to the [SDK documentation](https://www.github.com/matteocacciola/cheshirecat-php-sdk/blob/master/README.md) for more information.
+**For your PHP based projects**, I developed a [PHP SDK](https://www.github.com/matteocacciola/grinning-cat-php-sdk) that allows you to
+easily interact with the Cat. Please, refer to the [SDK documentation](https://www.github.com/matteocacciola/grinning-cat-php-sdk/blob/master/README.md) for more information.
 
-**For your Node.js / React.js / Vue.js based projects**, I developed a [Typescript library](https://www.github.com/matteocacciola/cheshirecat-typescript-client) that allows you to
-easily interact with the Cheshire Cat. Please, refer to the [library documentation](https://www.github.com/matteocacciola/cheshirecat-typescript-client/blob/master/README.md) for more information.
+**For your Node.js / React.js / Vue.js based projects**, I developed a [Typescript library](https://www.github.com/matteocacciola/grinning-cat-typescript-client) that allows you to
+easily interact with the Grinning Cat. Please, refer to the [library documentation](https://www.github.com/matteocacciola/grinning-cat-typescript-client/blob/master/README.md) for more information.
 
 List of resources:
-- [Official Documentation](https://deepwiki.com/matteocacciola/cheshirecat-core) of the current fork
-- [PHP SDK](https://www.github.com/matteocacciola/cheshirecat-php-sdk)
-- [Typescript SDK](https://www.github.com/matteocacciola/cheshirecat-typescript-client)
-- [Python SDK](https://www.github.com/matteocacciola/cheshirecat-python-sdk)
+- [Official Documentation](https://deepwiki.com/matteocacciola/grinning-cat-core) of the current fork
+- [PHP SDK](https://www.github.com/matteocacciola/grinning-cat-php-sdk)
+- [Typescript SDK](https://www.github.com/matteocacciola/grinning-cat-typescript-client)
+- [Python SDK](https://www.github.com/matteocacciola/grinning-cat-python-sdk)
 - [Tutorial - Write your first plugin](https://cheshirecat.ai/write-your-first-plugin/)
 
 # Roadmap & Contributing
@@ -309,5 +310,5 @@ If you like this fork, give it a star ⭐! It is very important to have your sup
 # License and trademark
 
 Code is licensed under [GPL3](LICENSE).  
-The Cheshire Cat AI logo and name are property of Piero Savastano (founder and maintainer). The current fork is created,
+The Grinning Cat AI logo and name are property of Piero Savastano (founder and maintainer). The current fork is created,
 refactored and maintained by [Matteo Cacciola](mailto:matteo.cacciola@gmail.com).

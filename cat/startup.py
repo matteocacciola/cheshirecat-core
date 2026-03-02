@@ -63,21 +63,21 @@ def custom_generate_unique_id(route: APIRoute):
 
 
 # REST API
-cheshire_cat_api = FastAPI(
+grinning_cat_api = FastAPI(
     lifespan=lifespan,
     generate_unique_id_function=custom_generate_unique_id,
     docs_url=None,
     redoc_url=None,
-    title="Cheshire-Cat API",
+    title="Grinning Cat API",
     license_info={"name": "GPL-3", "url": "https://www.gnu.org/licenses/gpl-3.0.en.html"},
 )
 
 # Configures the CORS middleware for the FastAPI app
-cors_enabled = get_env("CCAT_CORS_ENABLED")
+cors_enabled = get_env("CAT_CORS_ENABLED")
 if cors_enabled == "true":
-    cors_allowed_origins_str = get_env("CCAT_CORS_ALLOWED_ORIGINS")
+    cors_allowed_origins_str = get_env("CAT_CORS_ALLOWED_ORIGINS")
     origins = cors_allowed_origins_str.split(",") if cors_allowed_origins_str else ["*"]
-    cheshire_cat_api.add_middleware(
+    grinning_cat_api.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
         allow_credentials=True,
@@ -86,35 +86,35 @@ if cors_enabled == "true":
     )
 
 # Add routers to the middleware stack.
-cheshire_cat_api.include_router(base.router)
-cheshire_cat_api.include_router(agentic_workflow.router)
-cheshire_cat_api.include_router(auth_handler.router)
-cheshire_cat_api.include_router(embedder.router)
-cheshire_cat_api.include_router(chunker.router)
-cheshire_cat_api.include_router(file_manager.router)
-cheshire_cat_api.include_router(llm.router)
-cheshire_cat_api.include_router(plugins.router)
-cheshire_cat_api.include_router(rabbit_hole.router)
-cheshire_cat_api.include_router(auth.router)
-cheshire_cat_api.include_router(users.router)
-cheshire_cat_api.include_router(utilities.router)
-cheshire_cat_api.include_router(vector_database.router)
-cheshire_cat_api.include_router(websocket.router)
+grinning_cat_api.include_router(base.router)
+grinning_cat_api.include_router(agentic_workflow.router)
+grinning_cat_api.include_router(auth_handler.router)
+grinning_cat_api.include_router(embedder.router)
+grinning_cat_api.include_router(chunker.router)
+grinning_cat_api.include_router(file_manager.router)
+grinning_cat_api.include_router(llm.router)
+grinning_cat_api.include_router(plugins.router)
+grinning_cat_api.include_router(rabbit_hole.router)
+grinning_cat_api.include_router(auth.router)
+grinning_cat_api.include_router(users.router)
+grinning_cat_api.include_router(utilities.router)
+grinning_cat_api.include_router(vector_database.router)
+grinning_cat_api.include_router(websocket.router)
 
 
-@cheshire_cat_api.exception_handler(Exception)
+@grinning_cat_api.exception_handler(Exception)
 async def generic_exception_handler(request, exc):
     log.error(f"An unexpected error occurred: {exc}")
     return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 
-@cheshire_cat_api.exception_handler(ValueError)
+@grinning_cat_api.exception_handler(ValueError)
 async def value_error_exception_handler(request, exc):
     log.error(f"An unexpected value error occurred: {exc}")
     return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 
-@cheshire_cat_api.exception_handler(RequestValidationError)
+@grinning_cat_api.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
     # Convert error objects to JSON-serializable format
     serializable_errors = []
@@ -140,44 +140,44 @@ async def validation_exception_handler(request, exc):
     )
 
 
-@cheshire_cat_api.exception_handler(LoadMemoryException)
+@grinning_cat_api.exception_handler(LoadMemoryException)
 async def load_memory_exception_handler(request, exc):
     log.error(exc)
     return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 
-@cheshire_cat_api.exception_handler(CustomValidationException)
+@grinning_cat_api.exception_handler(CustomValidationException)
 async def custom_validation_exception_handler(request, exc):
     log.error(exc)
     return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 
-@cheshire_cat_api.exception_handler(CustomNotFoundException)
+@grinning_cat_api.exception_handler(CustomNotFoundException)
 async def custom_not_found_exception_handler(request, exc):
     log.error(exc)
     return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 
-@cheshire_cat_api.exception_handler(CustomForbiddenException)
+@grinning_cat_api.exception_handler(CustomForbiddenException)
 async def custom_forbidden_exception_handler(request, exc):
     log.error(exc)
     return JSONResponse(status_code=403, content={"detail": str(exc)})
 
 
-@cheshire_cat_api.exception_handler(CustomUnauthorizedException)
+@grinning_cat_api.exception_handler(CustomUnauthorizedException)
 async def custom_unauthorized_exception_handler(request, exc):
     log.error(exc)
     return JSONResponse(status_code=401, content={"detail": str(exc)})
 
 
 # openapi customization
-cheshire_cat_api.openapi = get_openapi_configuration_function(cheshire_cat_api)
+grinning_cat_api.openapi = get_openapi_configuration_function(grinning_cat_api)
 
-if get_env("CCAT_DEBUG") == "true":
-    @cheshire_cat_api.get("/docs", include_in_schema=False)
+if get_env("CAT_DEBUG") == "true":
+    @grinning_cat_api.get("/docs", include_in_schema=False)
     async def scalar_docs():
         return get_scalar_api_reference(
-            openapi_url=cheshire_cat_api.openapi_url,
-            title=cheshire_cat_api.title,
+            openapi_url=grinning_cat_api.openapi_url,
+            title=grinning_cat_api.title,
             scalar_favicon_url="https://cheshirecat.ai/wp-content/uploads/2023/10/Logo-Cheshire-Cat.svg",
         )

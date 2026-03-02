@@ -2,7 +2,7 @@
     "name": "Multimodality Plugin",
     "description": "A plugin that adds multimodal capabilities to the Cheshire Cat framework, enabling the processing of images.",
     "author_name": "Matteo Cacciola",
-    "plugin_url": "https://github.com/matteocacciola/cheshirecat-core",
+    "plugin_url": "https://github.com/matteocacciola/grinning-cat-core",
     "tags": "multimodality, images, plugin",
     "thumb": "",
     "version": "0.0.1"

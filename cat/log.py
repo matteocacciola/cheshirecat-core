@@ -14,7 +14,7 @@ from cat.env import get_env
 
 def get_log_level():
     """Return the global LOG level."""
-    return get_env("CCAT_LOG_LEVEL")
+    return get_env("CAT_LOG_LEVEL")
 
 
 class CatLogEngine:
@@ -40,7 +40,7 @@ class CatLogEngine:
         - `ERROR`
         - `CRITICAL`
 
-    Default to `CCAT_LOG_LEVEL` env variable (`INFO`).
+    Default to `CAT_LOG_LEVEL` env variable (`INFO`).
     """
     def __init__(self):
         self.LOG_LEVEL = get_log_level()

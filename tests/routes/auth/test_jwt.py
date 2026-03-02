@@ -72,7 +72,7 @@ def test_issue_jwt(secure_client, client, cheshire_cat):
     try:
         payload = jwt.decode(
             received_token,
-            get_env("CCAT_JWT_SECRET"),
+            get_env("CAT_JWT_SECRET"),
             algorithms=[DEFAULT_JWT_ALGORITHM],
         )
         assert payload["sub"] == "user"
@@ -117,8 +117,8 @@ def test_jwt_expiration(secure_client, client, cheshire_cat):
     message = {"text": "hey"}
 
     # set ultrashort JWT expiration time
-    current_jwt_expire_minutes = os.getenv("CCAT_JWT_EXPIRE_MINUTES")
-    os.environ["CCAT_JWT_EXPIRE_MINUTES"] = "0.05"  # 3 seconds
+    current_jwt_expire_minutes = os.getenv("CAT_JWT_EXPIRE_MINUTES")
+    os.environ["CAT_JWT_EXPIRE_MINUTES"] = "0.05"  # 3 seconds
 
     # not allowed
     status_code, response_json = http_message(client, message, {"X-Agent-ID": agent_id, "X-Chat-ID": chat_id})
@@ -156,9 +156,9 @@ def test_jwt_expiration(secure_client, client, cheshire_cat):
 
     # restore default env
     if current_jwt_expire_minutes:
-        os.environ["CCAT_JWT_EXPIRE_MINUTES"] = current_jwt_expire_minutes
+        os.environ["CAT_JWT_EXPIRE_MINUTES"] = current_jwt_expire_minutes
     else:
-        del os.environ["CCAT_JWT_EXPIRE_MINUTES"]
+        del os.environ["CAT_JWT_EXPIRE_MINUTES"]
 
 
 # test ws and http endpoints can get user_id from JWT
