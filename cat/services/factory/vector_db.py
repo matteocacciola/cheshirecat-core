@@ -1160,7 +1160,7 @@ class VectorDatabaseSettings(BaseFactoryConfigModel, ABC):
 
 
 class QdrantConfig(VectorDatabaseSettings):
-    host: str = "cheshire_cat_vector_memory"
+    host: str = "grinning_cat_vector_memory"
     port: int = 6333
     api_key: str | None = None
     client_timeout: int | None = 100
