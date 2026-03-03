@@ -97,12 +97,16 @@ class CatMcpClient(Client, CatProcedure, ABC):
             """Create a closure that calls the MCP tool."""
             async def tool_caller(**kwargs):
                 try:
-                    async with self:
-                        return await self.call_tool(tool_name, **kwargs)
+                    async with this:
+                        return await original_func(tool_name, **kwargs)
                 except Exception as ex:
-                    log.error(f"{self.name} - Error calling tool {tool_name}: {ex}")
-                    return {"error": f"Error calling tool {tool_name}: {str(ex)}"}
+                    msg = f"{this.name} - Error calling tool {tool_name}: {ex}"
+                    log.error(msg)
+                    return {"error": msg}
             return tool_caller
+
+        this = self
+        original_func = self.call_tool
 
         for mcp_tool in self.mcp_tools:
             if self.source_name(mcp_tool) == self.expected_tool_name:
