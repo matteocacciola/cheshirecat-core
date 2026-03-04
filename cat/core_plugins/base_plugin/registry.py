@@ -11,7 +11,7 @@ from cat.utils import write_temp_file
 class CheshireCatPluginRegistry(PluginRegistry):
     @property
     def registry_url(self) :
-        return "https://registry.cheshirecat.ai"
+        return "https://grinning-cat-plugins-backend-latest.onrender.com"
 
     async def search_plugins(self, query: str = None) -> List[PluginManifest]:
         plugins = []
