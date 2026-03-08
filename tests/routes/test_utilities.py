@@ -22,8 +22,8 @@ async def checks_on_agent_create(lizard, new_agent_id):
     histories = get_db().get(crud_conversations.format_key(new_agent_id, "*", "*"))
     assert histories is None
 
-    plugins = get_db().get(crud_plugins.format_key(new_agent_id, "*"))
-    assert plugins is None
+    plugins = crud_plugins.get_settings(new_agent_id)
+    assert plugins == {}
 
     users = crud_users.get_users(new_agent_id)
     assert len(users) == 0
@@ -121,11 +121,11 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
     conversations = get_db().get(crud_conversations.format_key(cheshire_cat.agent_key, "*", "*"))
     assert conversations is None
 
-    plugins = get_db().get(crud_plugins.format_key(cheshire_cat.agent_key, "*"))
-    assert plugins is None
+    plugins = crud_plugins.get_settings(cheshire_cat.agent_key)
+    assert plugins == {}
 
-    users = get_db().get(crud_users.format_key(cheshire_cat.agent_key))
-    assert users is None
+    users = crud_users.get_users(cheshire_cat.agent_key)
+    assert users == {}
 
     qdrant_filter = Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=cheshire_cat.agent_key))])
     count_response = await cheshire_cat.vector_memory_handler._client.count(

@@ -74,10 +74,9 @@ async def read_users(
     info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.READ),
 ) -> List[UserResponse]:
     agent_id = info.cheshire_cat.agent_key if info.cheshire_cat else info.lizard.agent_key
-    users_db = crud_users.get_users(agent_id, with_timestamps=True)
+    users_db = crud_users.get_users(agent_id, with_timestamps=True, limit=limit, offset=skip)
 
-    users = list(users_db.values())[skip: skip + limit]
-    return [UserResponse(**u) for u in users]
+    return [UserResponse(**u) for u in users_db.values()]
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -86,11 +85,11 @@ async def read_user(
     info: AuthorizedInfo = check_permissions(AuthResource.USERS, AuthPermission.READ),
 ) -> UserResponse:
     agent_id = info.cheshire_cat.agent_key if info.cheshire_cat else info.lizard.agent_key
-    users_db = crud_users.get_users(agent_id, with_timestamps=True)
+    user_db = crud_users.get_user(agent_id, user_id, full=True)
 
-    if user_id not in users_db:
+    if not user_db:
         raise CustomNotFoundException("User not found")
-    return UserResponse(**users_db[user_id])
+    return UserResponse(**user_db)
 
 
 @router.put("/{user_id}", response_model=UserResponse)

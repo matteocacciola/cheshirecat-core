@@ -71,7 +71,7 @@ class BillTheLizard(OrchestratorMixin):
         self.core_auth_handler = CoreAuthHandler()
 
         # Initialize the default admin if not present
-        if not crud_users.get_users(self.agent_key):
+        if not crud_users.get_users(self.agent_key, limit=1):
             self.initialize_users()
 
         self.plugin_manager.execute_hook("after_lizard_bootstrap", caller=self)
@@ -80,8 +80,6 @@ class BillTheLizard(OrchestratorMixin):
         self.service_provider.bootstrap_services_orchestrator()
 
     def initialize_users(self):
-        crud_users.initialize_empty_users(self.agent_key)
-
         permissions = sanitize_permissions(get_full_permissions(), self.agent_key)
 
         crud_users.create_user(self.agent_key, {
