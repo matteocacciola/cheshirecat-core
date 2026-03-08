@@ -244,7 +244,8 @@ def test_get_user(lizard):
     users = list(crud_users.get_users(lizard.agent_key).values())
     assert len(users) == 2
 
-    user = crud_users.get_user(lizard.agent_key, users[1]["id"])
+    new_user_id = [user["id"] for user in users if user["username"] == expected_user["username"]][0]
+    user = crud_users.get_user(lizard.agent_key, new_user_id)
     assert user["username"] == expected_user["username"]
     assert user["permissions"] == expected_user["permissions"]
 
