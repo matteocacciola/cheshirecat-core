@@ -13,7 +13,7 @@ from cat.utils import singleton
 USERNAME_SEARCH_SCRIPT = f"""
 local matches = {{}}
 local cursor = "0"
-local pattern = "{DEFAULT_AGENTS_KEY}:*:users"
+local pattern = "{DEFAULT_AGENTS_KEY}:*:users:*"
 local username = ARGV[1]
 
 repeat
@@ -25,17 +25,16 @@ repeat
         local data = redis.call("JSON.GET", key)
 
         if data then
-            local users_obj = cjson.decode(data)
+            local user = cjson.decode(data)
 
-            for user_id, user in pairs(users_obj) do
-                if user.username == username then
-                    local agent_name = string.match(key, "([^:]+):users$")
+            if user.username == username then
+                -- Extract agent_name from key pattern: agents:<agent_name>:users:<user_id>
+                local agent_name = string.match(key, "^{DEFAULT_AGENTS_KEY}:([^:]+):users:")
 
-                    table.insert(matches, cjson.encode({{
-                        user = user,
-                        agent_name = agent_name,
-                    }}))
-                end
+                table.insert(matches, cjson.encode({{
+                    user = user,
+                    agent_name = agent_name,
+                }}))
             end
         end
     end
