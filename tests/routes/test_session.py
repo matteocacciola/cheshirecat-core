@@ -1,3 +1,5 @@
+import json
+
 from cat.auth.permissions import AuthUserInfo
 from cat import StrayCat
 
@@ -27,11 +29,12 @@ def test_session_creation_from_websocket(
     # send websocket message
     mex = {"text": "Where do I go?"}
     res = send_websocket_message(mex, client, received_token, query_params={"user_id": user_id}, ch_id=chat_id)
+    content = json.loads(res["content"])
 
     # check response
-    assert res["user_id"] == user_id
-    assert res["chat_id"] == chat_id
-    assert "You did not configure" in res["message"]["text"]
+    assert content["user_id"] == user_id
+    assert content["chat_id"] == chat_id
+    assert "You did not configure" in content["message"]["text"]
 
     # verify session
     user = AuthUserInfo(id=user_id, name=data["username"], permissions=data["permissions"])

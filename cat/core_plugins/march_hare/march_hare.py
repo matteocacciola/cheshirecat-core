@@ -196,19 +196,6 @@ def before_lizard_bootstrap(lizard) -> None:
     _start_consumer_threads(lizard)
 
 
-@hook(priority=999)
-def after_lizard_bootstrap(lizard: BillTheLizard):
-    plugins_to_install = [
-        plugin_id
-        for plugin_id in lizard.plugin_manager.active_plugins
-        if plugin_id not in lizard.plugin_manager.get_core_plugins_ids
-    ]
-
-    for plugin_id in plugins_to_install:
-        lizard.plugin_manager.install_extracted_plugin(plugin_id)
-        lizard.activate_plugin_endpoints(plugin_id)
-
-
 @hook(priority=0)
 def before_lizard_shutdown(lizard) -> None:
     global _march_hare, _consumer_threads

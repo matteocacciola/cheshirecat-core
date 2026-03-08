@@ -154,7 +154,7 @@ class RabbitHole:
                 self.cat.save_file(file_bytes, content_type, source, chat_id)
 
             # notify client
-            await self._send_ws_message(f"Finished reading {source}, I made {len(docs)} thoughts on it.")
+            await self._send_notification_message(f"Finished reading {source}, I made {len(docs)} thoughts on it.")
 
             log.info(f"Agent id: {self.cat.agent_key}. Successfully ingested file: {filename}")
         except Exception as e:
@@ -235,13 +235,13 @@ class RabbitHole:
         log.debug(f"Attempting to parse source: {source}. Detected MIME type: {content_type}. Available handlers: {list(self.cat.file_handlers.keys())}")
 
         # Load the bytes in the Blob schema and parse the content. Parser based on the mime type
-        await self._send_ws_message("I'm parsing the content. Big content could require some minutes...")
+        await self._send_notification_message("I'm parsing the content. Big content could require some minutes...")
         super_docs = MimeTypeBasedParser(handlers=self.cat.file_handlers).parse(
             Blob(data=file_bytes, mimetype=content_type).from_data(data=file_bytes, mime_type=content_type, path=source)
         )
 
         # Split
-        await self._send_ws_message("Parsing completed. Now let's go with reading process...")
+        await self._send_notification_message("Parsing completed. Now let's go with reading process...")
         docs = self._split_text(docs=super_docs)
         return source, file_bytes, content_type, docs, is_url
 
@@ -432,6 +432,6 @@ class RabbitHole:
 
         return Document(page_content=merged_content, metadata=merged_metadata)
 
-    async def _send_ws_message(self, message: str):
+    async def _send_notification_message(self, message: str):
         if self.stray and self.stray.notifier.has_ws_connection():
-            await self.stray.notifier.send_ws_message(message)
+            await self.stray.notifier.send_notification(message)

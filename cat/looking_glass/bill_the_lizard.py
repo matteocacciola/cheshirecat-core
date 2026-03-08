@@ -119,6 +119,8 @@ class BillTheLizard(OrchestratorMixin):
             await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
             await ccat.embed_procedures()
 
+            self.plugin_manager.execute_hook("after_cheshire_cat_creation", ccat, caller=self)
+
             return ccat
         except Exception as e:
             log.error(f"Error creating Cheshire Cat `{agent_id}`: {e}")

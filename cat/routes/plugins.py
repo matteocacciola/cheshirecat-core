@@ -1,6 +1,6 @@
 import mimetypes
 from typing import Dict
-from fastapi import Body, APIRouter, UploadFile
+from fastapi import Body, APIRouter, UploadFile, BackgroundTasks
 from pydantic import ValidationError
 from slugify import slugify
 
@@ -155,6 +155,7 @@ async def get_lizard_available_plugins(
 
 @router.post("/install/upload", response_model=InstallPluginResponse)
 async def install_plugin(
+    background_tasks: BackgroundTasks,
     file: UploadFile,
     info: AuthorizedInfo = check_permissions(AuthResource.SYSTEM, AuthPermission.WRITE),
 ) -> InstallPluginResponse:
@@ -171,7 +172,7 @@ async def install_plugin(
     log.info(f"Uploading {content_type} plugin {filename}")
     try:
         plugin_archive_path = await write_temp_file(filename, await file.read())
-        info.lizard.install_plugin(plugin_archive_path)
+        background_tasks.add_task(info.lizard.install_plugin, plugin_archive_path)
     except Exception as e:
         raise CustomValidationException(f"Could not install plugin from file: {e}")
 
@@ -183,6 +184,7 @@ async def install_plugin(
 
 @router.post("/install/registry", response_model=InstallPluginFromRegistryResponse)
 async def install_plugin_from_registry(
+    background_tasks: BackgroundTasks,
     payload: Dict = Body({"url": "https://github.com/plugin-dev-account/plugin-repo"}),
     info: AuthorizedInfo = check_permissions(AuthResource.SYSTEM, AuthPermission.WRITE),
 ) -> InstallPluginFromRegistryResponse:
@@ -190,7 +192,7 @@ async def install_plugin_from_registry(
     # download zip from registry
     try:
         tmp_plugin_path = await info.lizard.plugin_registry.download_plugin(payload["url"])
-        info.lizard.install_plugin(tmp_plugin_path)
+        background_tasks.add_task(info.lizard.install_plugin, tmp_plugin_path)
     except Exception as e:
         raise CustomValidationException(f"Could not install plugin from registry: {e}")
 

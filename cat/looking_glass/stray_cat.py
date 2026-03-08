@@ -6,7 +6,6 @@ from websockets.exceptions import ConnectionClosedOK
 from cat import utils
 from cat.auth.permissions import AuthUserInfo
 from cat.log import log
-from cat.looking_glass.callbacks import NewTokenHandler
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.procedures import CatProcedure
 from cat.looking_glass.models import AgenticWorkflowTask, AgenticWorkflowOutput, ChatResponse
@@ -214,9 +213,7 @@ class StrayCat(BotMixin):
             agent_output = await self.agentic_workflow.run(
                 task=agent_input,
                 llm=self.large_language_model,
-                callbacks=plugin_manager.execute_hook(
-                    "llm_callbacks", [NewTokenHandler(self.notifier)], caller=self
-                ),
+                callbacks=plugin_manager.execute_hook("llm_callbacks", [], caller=self),
             )
 
             if agent_output.output == utils.default_llm_answer_prompt():

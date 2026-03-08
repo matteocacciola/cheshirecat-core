@@ -1,3 +1,4 @@
+import json
 import time
 import uuid
 
@@ -44,11 +45,12 @@ def test_websocket(secure_client, secure_client_headers):
     msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
     # send websocket message
     res = send_websocket_message(msg, secure_client, api_key, query_params={"user_id": user["id"]})
+    content = json.loads(res["content"])
 
-    assert res["agent_id"] == agent_id
-    assert res["user_id"] is not None
-    assert res["chat_id"] is not None
-    check_correct_websocket_reply(res["message"])
+    assert content["agent_id"] == agent_id
+    assert content["user_id"] is not None
+    assert content["chat_id"] is not None
+    check_correct_websocket_reply(content["message"])
 
     # check analytics
     response = secure_client.get("/analytics/llm", headers=secure_client_headers)
@@ -99,11 +101,12 @@ def test_websocket_with_additional_items_in_message(secure_client):
     }
     # send websocket message
     res = send_websocket_message(msg, secure_client, api_key, query_params={"user_id": user["id"]})
+    content = json.loads(res["content"])
 
-    assert res["agent_id"] == agent_id
-    assert res["user_id"] is not None
-    assert res["chat_id"] is not None
-    check_correct_websocket_reply(res["message"])
+    assert content["agent_id"] == agent_id
+    assert content["user_id"] is not None
+    assert content["chat_id"] is not None
+    check_correct_websocket_reply(content["message"])
 
 
 def test_websocket_with_non_saved_user(secure_client):
@@ -129,7 +132,8 @@ def test_websocket_multiple_messages(secure_client):
     replies = send_n_websocket_messages(3, secure_client, query_params={"user_id": user["id"]})
 
     for res in replies:
-        check_correct_websocket_reply(res["message"])
+        content = json.loads(res["content"])
+        check_correct_websocket_reply(content["message"])
 
 
 def test_websocket_multiple_connections(secure_client, secure_client_headers, lizard):
@@ -148,6 +152,7 @@ def test_websocket_multiple_connections(secure_client, secure_client_headers, li
             websocket2.send_json(mex)
             # get reply
             reply2 = websocket2.receive_json()
+            content2 = json.loads(reply2["content"])
 
             # two connections open
             ws_users = lizard.websocket_manager.connections.keys()
@@ -160,9 +165,10 @@ def test_websocket_multiple_connections(secure_client, secure_client_headers, li
 
         # get reply
         reply = websocket.receive_json()
+        content = json.loads(reply["content"])
 
-    check_correct_websocket_reply(reply["message"])
-    check_correct_websocket_reply(reply2["message"])
+    check_correct_websocket_reply(content["message"])
+    check_correct_websocket_reply(content2["message"])
 
     # websocket connection is closed
     time.sleep(0.5)

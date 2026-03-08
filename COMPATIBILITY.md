@@ -24,6 +24,7 @@ The current version introduces also the following additional hooks:
 ## Bill The Lizard
 - `before_lizard_bootstrap`: to add custom logic before the Lizard bootsraps the conversation
 - `after_lizard_bootstrap`: to add custom logic after the Lizard bootsraps the conversation
+- `after_cheshire_cat_creation`: to add custom logic after the Cheshire Cat is created
 - `lizard_notify_plugin_installation`: to add custom logic when a plugin is installed
 - `lizard_notify_plugin_uninstallation`: to add custom logic when a plugin is uninstalled
 - `before_lizard_shutdown`: to add custom logic before the Lizard shuts down

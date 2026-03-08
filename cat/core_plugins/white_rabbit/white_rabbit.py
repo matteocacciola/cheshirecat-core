@@ -466,11 +466,11 @@ class WhiteRabbit:
 
         # Schedule the job
         self.scheduler.add_job(
-            cat.notifier.send_ws_message,
-            "date",
+            cat.notifier.send_chat_message,
+            trigger="date",
             id=job_id,
             run_date=schedule,
-            kwargs={"content": content, "msg_type": "chat"},
+            kwargs={"message": content},
         )
         self.jobs.append(job_id)
 

@@ -1,3 +1,4 @@
+import json
 import os
 import pytest
 from fastapi import WebSocketDisconnect
@@ -95,7 +96,9 @@ def test_api_key_ws(secure_client, secure_client_headers, client):
     received_token = res.json()["access_token"]
 
     res = send_websocket_message(mex, secure_client, received_token)
-    assert res["chat_id"] is not None
-    assert "You did not configure" in res["message"]["text"]
+    content = json.loads(res["content"])
+
+    assert content["chat_id"] is not None
+    assert "You did not configure" in content["message"]["text"]
 
     reset_api_key("CAT_API_KEY", old_api_key)

@@ -1,4 +1,5 @@
-from typing import Any, Literal, Final, get_args
+import json
+from typing import Literal, Final, get_args
 
 from cat.auth.permissions import AuthUserInfo
 from cat.log import log
@@ -18,20 +19,7 @@ class NotifierService:
 
         return BillTheLizard().websocket_manager.get_connection(self.user.id) is not None
 
-    async def _send_ws_json(self, data: Any):
-        from cat.looking_glass.bill_the_lizard import BillTheLizard
-
-        ws_connection = BillTheLizard().websocket_manager.get_connection(self.user.id)
-        if not ws_connection:
-            log.debug(f"No websocket connection is open for user {self.user.id}")
-            return
-
-        try:
-            await ws_connection.send_json(data)
-        except RuntimeError as e:
-            log.error(f"Runtime error occurred while sending data: {e}")
-
-    async def send_ws_message(self, content: str, msg_type: MSG_TYPES = "notification"):
+    async def _send_ws_message(self, content: str, msg_type: MSG_TYPES):
         """
         Send a message via websocket.
 
@@ -41,32 +29,36 @@ class NotifierService:
         Args:
             content (str): The content of the message.
             msg_type (str): The type of the message. Should be either `notification` (default), `chat`, `chat_token` or `error`
-
-        Examples
-        --------
-        Send a notification via websocket
-        >> cat.send_ws_message("Hello, I'm a notification!")
-        Send a chat message via websocket
-        >> cat.send_ws_message("Meooow!", msg_type="chat")
-
-        Send an error message via websocket
-        >> cat.send_ws_message("Something went wrong", msg_type="error")
-        Send custom data
-        >> cat.send_ws_message({"What day it is?": "It's my unbirthday"})
         """
-        options = get_args(MSG_TYPES)
+        from cat.looking_glass.bill_the_lizard import BillTheLizard
 
+        options = get_args(MSG_TYPES)
         if msg_type not in options:
             raise ValueError(
                 f"The message type `{msg_type}` is not valid. Valid types: {', '.join(options)}"
             )
 
-        if msg_type == "error":
-            await self._send_ws_json(
-                {"type": msg_type, "name": "GenericError", "description": str(content)}
-            )
+        ws_connection = BillTheLizard().websocket_manager.get_connection(self.user.id)
+        if not ws_connection:
+            log.debug(f"No websocket connection is open for user {self.user.id}")
             return
-        await self._send_ws_json({"type": msg_type, "content": content})
+
+        try:
+            await ws_connection.send_json({"type": msg_type, "content": content})
+        except RuntimeError as e:
+            log.error(f"Runtime error occurred while sending data: {e}")
+
+    async def send_chat_token(self, chat_token: str):
+        """
+        Sends a chat token through a WebSocket connection.
+
+        This asynchronous method sends the provided chat token to a WebSocket connection using the specified message
+        type.
+
+        Args:
+            chat_token (str): The chat token to be sent.
+        """
+        await self._send_ws_message(chat_token, msg_type="chat_token")
 
     async def send_chat_message(self, message: str | CatMessage):
         """
@@ -96,7 +88,7 @@ class NotifierService:
             message=message,
         )
 
-        await self._send_ws_json(response.model_dump())
+        await self._send_ws_message(json.dumps(response.model_dump()), msg_type="chat")
 
     async def send_notification(self, content: str):
         """
@@ -111,7 +103,7 @@ class NotifierService:
         Send a notification to the user
         >> cat.send_notification("It's late!")
         """
-        await self.send_ws_message(content=content, msg_type="notification")
+        await self._send_ws_message(content=content, msg_type="notification")
 
     async def send_error(self, error: str | Exception):
         """
@@ -119,7 +111,7 @@ class NotifierService:
         In case there is no connection, the message is skipped and a warning is logged.
 
         Args:
-            error (Union[str, Exception]): message to send
+            error (str | Exception): message to send
 
         Examples
         --------
@@ -128,14 +120,4 @@ class NotifierService:
         or
         >> cat.send_error(CustomException("Something went wrong!"))
         """
-        error_message = {
-            "type": "error",
-            "name": "GenericError",
-            "description": error,
-        } if isinstance(error, str) else {
-            "type": "error",
-            "name": error.__class__.__name__,
-            "description": str(error),
-        }
-
-        await self._send_ws_json(error_message)
+        await self._send_ws_message(str(error), msg_type="error")

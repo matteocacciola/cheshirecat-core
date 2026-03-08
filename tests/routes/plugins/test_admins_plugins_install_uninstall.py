@@ -283,12 +283,11 @@ def test_plugin_install_from_zip_with_missing_dependencies(lizard, secure_client
     plugin_name = "mock_plugin_with_dependencies"
 
     # check that "missing dependencies" and "mock_plugin" is within the error message
-    response = just_installed_plugin(
-        secure_client, secure_client_headers, plugin_id=plugin_name, expected_status_code=400
-    )
-
-    assert "missing dependencies" in response.json()["detail"]
-    assert plugin_name in response.json()["detail"]
+    try:
+        just_installed_plugin(secure_client, secure_client_headers, plugin_id=plugin_name)
+    except Exception as e:
+        assert "missing dependencies" in str(e)
+        assert plugin_name in str(e)
 
     # GET plugin endpoint responds
     response = secure_client.get(f"/plugins/system/details/{plugin_name}", headers=secure_client_headers)

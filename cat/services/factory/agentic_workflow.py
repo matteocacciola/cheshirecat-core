@@ -64,11 +64,6 @@ class BaseAgenticWorkflowHandler(ABC):
             AgentOutput
                 The final output from the agent, including text and any actions taken.
         """
-        from cat.looking_glass.callbacks import LoggingCallbackHandler
-
-        callbacks = callbacks or []
-        callbacks.append(LoggingCallbackHandler())
-
         self._task = task
         self._llm = llm
         self._callbacks = callbacks or []

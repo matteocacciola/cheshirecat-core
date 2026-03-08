@@ -5,8 +5,9 @@ Here is a collection of methods to hook into the Cat execution pipeline.
 """
 from typing import Dict, List
 
-from cat import hook, UserMessage, RecallSettings
+from cat import hook, UserMessage, RecallSettings, BillTheLizard, CheshireCat
 from cat.core_plugins.base_plugin.registry import CheshireCatPluginRegistry
+from cat.looking_glass.callbacks import LoggingCallbackHandler, NewTokenHandler
 
 
 @hook(priority=0)
@@ -237,4 +238,19 @@ def llm_callbacks(callbacks: List, cat) -> List:
     Returns:
         callbacks (List): Edited list of callbacks to be passed to the LLM/ChatModel
     """
+    callbacks.extend([NewTokenHandler(cat.notifier), LoggingCallbackHandler()])
     return callbacks
+
+
+@hook(priority=0)
+def after_cheshire_cat_creation(cat: CheshireCat, lizard: BillTheLizard) -> None:
+    """
+    Hook triggered after the creation of a CheshireCat instance. This function allows for any post-processing or tasks
+    that need to be carried out immediately after the creation of a CheshireCat object, involving interaction with both
+    the created CheshireCat instance and a BillTheLizard instance.
+
+    Args:
+        cat: The newly created CheshireCat instance.
+        lizard: The BillTheLizard instance to be used in post-processing.
+    """
+    pass

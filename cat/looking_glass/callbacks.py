@@ -14,7 +14,7 @@ class NewTokenHandler(BaseCallbackHandler):
         self.notifier = notifier
 
     async def on_llm_new_token(self, token: str, **kwargs) -> None:
-        await self.notifier.send_ws_message(token, msg_type="chat_token")
+        await self.notifier.send_chat_token(token)
 
 
 class LoggingCallbackHandler(BaseCallbackHandler):
