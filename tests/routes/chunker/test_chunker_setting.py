@@ -55,7 +55,7 @@ def test_upsert_chunker_settings_success(secure_client, secure_client_headers):
     invented_model_name = "this_should_be_a_model"
 
     # set a different chunker
-    new_chunker = "SemanticChunkerSettings"
+    new_chunker = "RecursiveTextChunkerSettings"
     payload = {"model_name": invented_model_name}
     response = secure_client.put(f"/chunking/settings/{new_chunker}", json=payload, headers=secure_client_headers)
 

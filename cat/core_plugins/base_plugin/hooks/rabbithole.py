@@ -6,16 +6,14 @@ These hooks allow to intercept the uploaded documents at different places before
 
 """
 from typing import List, Dict
-from langchain_community.document_loaders.parsers.audio import FasterWhisperParser
 from langchain_community.document_loaders.parsers.html.bs4 import BS4HTMLParser
 from langchain_community.document_loaders.parsers.language.language_parser import LanguageParser
-from langchain_community.document_loaders.parsers.msword import MsWordParser
 from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
 from langchain_community.document_loaders.parsers.txt import TextParser
 from langchain_core.documents import Document
 
 from cat import hook, PointStruct
-from cat.core_plugins.base_plugin.parsers import YoutubeParser, TableParser, JSONParser, PowerPointParser
+from cat.core_plugins.base_plugin.parsers import TableParser, JSONParser
 
 
 @hook(priority=999)
@@ -36,25 +34,13 @@ def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
     """
     file_handlers.update({
         "application/json": JSONParser(),
-        "application/msword": MsWordParser(),
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": MsWordParser(),
-        "application/vnd.ms-powerpoint": PowerPointParser(),
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation": PowerPointParser(),
         "application/pdf": PyMuPDFParser(),
-        "application/vnd.ms-excel": TableParser(),
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": TableParser(),
         "text/csv": TableParser(),
         "text/html": BS4HTMLParser(),
         "text/javascript": LanguageParser(language="js"),
         "text/markdown": TextParser(),
         "text/plain": TextParser(),
         "text/x-python": LanguageParser(language="python"),
-        "video/mp4": YoutubeParser(),
-        "audio/mpeg": FasterWhisperParser(),
-        "audio/mp3": FasterWhisperParser(),
-        "audio/ogg": FasterWhisperParser(),
-        "audio/wav": FasterWhisperParser(),
-        "audio/webm": FasterWhisperParser(),
     })
     return file_handlers
 

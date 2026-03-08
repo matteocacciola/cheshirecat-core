@@ -1,9 +1,0 @@
-{
-    "name": "Factories",
-    "description": "Create and manage LLMs, Embedders, Chunkers, File Manager.",
-    "author_name": "Matteo Cacciola",
-    "plugin_url": "https://github.com/matteocacciola/grinning-cat-core",
-    "tags": "core, default, language model, embedder, chunker, file storage, vector storage, langchain",
-    "thumb": "",
-    "version": "0.0.1"
-}

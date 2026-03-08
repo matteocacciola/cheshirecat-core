@@ -1,2 +1,0 @@
-nltk==3.9.2
-unstructured[docx,image,pdf,pptx,xlsx]==0.18.27

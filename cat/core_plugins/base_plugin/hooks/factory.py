@@ -10,6 +10,8 @@ from cat import (
     VectorDatabaseSettings,
     hook,
 )
+from cat.core_plugins.base_plugin.embedders.configs import EmbedderFakeConfig
+from cat.core_plugins.base_plugin.file_managers.configs import LocalFileManagerConfig
 
 
 @hook(priority=0)
@@ -38,7 +40,7 @@ def factory_allowed_embedders(allowed: List[EmbedderSettings], lizard) -> List:
     Returns:
         list of allowed EmbedderSettings classes for the allowed embedders
     """
-    return allowed
+    return allowed + [EmbedderFakeConfig]
 
 
 @hook(priority=0)
@@ -66,7 +68,7 @@ def factory_allowed_file_managers(allowed: List[FileManagerConfig], cat) -> List
     Returns:
         supported: List of FileManagerConfig classes for the allowed file managers
     """
-    return allowed
+    return allowed + [LocalFileManagerConfig]
 
 
 @hook(priority=0)

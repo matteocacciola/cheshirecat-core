@@ -1,10 +1,8 @@
 import pytest
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.embeddings import Embeddings
-from langchain_community.document_loaders import UnstructuredPDFLoader
 from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
 
-from cat.core_plugins.multimodality.unstructured_parser import UnstructuredParser
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.looking_glass import MadHatter
 from cat.services.factory.chunker import BaseChunker
@@ -73,6 +71,3 @@ def test_file_handler_pdf(lizard, cheshire_cat, secure_client, secure_client_hea
 
     file_handlers = cheshire_cat.file_handlers
     assert "application/pdf" in file_handlers
-    assert "multimodality" in lizard.plugin_manager.plugins.keys()
-    assert file_handlers["application/pdf"].__class__.__name__ == UnstructuredParser.__name__
-    assert file_handlers["application/pdf"].document_loader_type == UnstructuredPDFLoader
