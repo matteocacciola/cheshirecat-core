@@ -5,7 +5,7 @@ from cat.auth.permissions import AuthUserInfo
 from cat.log import log
 from cat.services.memory.messages import CatMessage
 
-MSG_TYPES = Literal["notification", "chat", "error", "chat_token"]
+MSG_TYPES = Literal["notification", "chat", "error", "chat_token", "memory_recall", "tool", "thought"]
 
 
 class NotifierService:
@@ -121,3 +121,51 @@ class NotifierService:
         >> cat.send_error(CustomException("Something went wrong!"))
         """
         await self._send_ws_message(str(error), msg_type="error")
+
+    async def send_context(self, content: str):
+        """
+        Sends a context message to the user using the active WebSocket connection.
+
+        Args:
+            content (str): message to send to the user via websocket
+
+        Examples
+        --------
+        Send a debug message to the user
+        >> cat.send_debug("This is a debug message!")
+        """
+        await self._send_ws_message(content, msg_type="memory_recall")
+
+    async def send_tool_message(self, content: str):
+        """
+        Sends a tool message to the user using the active WebSocket connection.
+        In case there is no connection, the message is skipped and a warning is logged.
+
+        Args:
+            content (str): message to send to the user via websocket
+
+        Examples
+        --------
+        Send a tool message to the user
+        >> cat.send_tool_message("I'm using a tool!")
+        """
+        await self._send_ws_message(content, msg_type="tool")
+
+    async def send_thought_message(self, content: str):
+        """
+        Sends a thought message to the user using the active WebSocket connection.
+        In case there is no connection, the message is skipped and a warning is logged.
+
+        Args:
+            content (str): message to send to the user via websocket
+
+        Examples
+        --------
+        Send a thought message to the user
+        >> cat.send_thinking_message("I'm thinking...")
+        """
+        await self._send_ws_message(content, msg_type="thought")
+
+
+def get_notifier(user: AuthUserInfo, agent_key: str, chat_id: str) -> NotifierService:
+    return NotifierService(user, agent_key, chat_id)

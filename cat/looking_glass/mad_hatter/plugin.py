@@ -324,7 +324,10 @@ class Plugin:
 
             # Uninstall the previously installed packages
             log.info(f"Uninstalling requirements for: {self.id}")
-            subprocess.run(["uv", "pip", "uninstall", "-r", tmp_name], check=True)
+            try:
+                subprocess.run(["uv", "pip", "uninstall", "-r", tmp_name], check=True)
+            except subprocess.CalledProcessError as e_:
+                log.error(f"Error while uninstalling plugin {self.id} requirements: {e_}")
 
             raise Exception(f"Error during plugin {self.id} requirements installation")
         finally:

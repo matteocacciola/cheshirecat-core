@@ -7,7 +7,7 @@ from typing import Dict, List
 
 from cat import hook, UserMessage, RecallSettings, BillTheLizard, CheshireCat
 from cat.core_plugins.base_plugin.registry import CheshireCatPluginRegistry
-from cat.looking_glass.callbacks import LoggingCallbackHandler, NewTokenHandler
+from cat.looking_glass.callbacks import WebSocketCallbackManager
 
 
 @hook(priority=0)
@@ -238,7 +238,7 @@ def llm_callbacks(callbacks: List, cat) -> List:
     Returns:
         callbacks (List): Edited list of callbacks to be passed to the LLM/ChatModel
     """
-    callbacks.extend([NewTokenHandler(cat.notifier), LoggingCallbackHandler()])
+    callbacks.extend([WebSocketCallbackManager(cat.notifier)])
     return callbacks
 
 

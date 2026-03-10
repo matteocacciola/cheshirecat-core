@@ -29,7 +29,7 @@ COPY ./cat/core_plugins ./cat/core_plugins
 
 ### INSTALL DEPENDENCIES (CORE + CORE PLUGINS) ###
 RUN pip install -U pip uv && \
-    uv sync --frozen --no-install-project --no-upgrade --no-cache && \
+    uv sync --frozen --no-install-project --no-upgrade --no-cache --no-dev && \
     find ./cat/core_plugins -name requirements.txt | sed 's/^/-r /' | xargs uv pip install --no-cache --no-upgrade && \
     rm -rf *.egg-info && \
     uv cache clean && \
@@ -45,11 +45,6 @@ RUN apt-get purge -y build-essential && \
 COPY ./cat ./cat
 COPY ./data ./data
 COPY ./migrations ./migrations
-
-### SETUP ENTRYPOINT ###
-COPY ./docker/entrypoint.sh ./docker/entrypoint.sh
-RUN chmod +x ./docker/entrypoint.sh
-ENTRYPOINT ["./docker/entrypoint.sh"]
 
 ### DEFAULT COMMAND ###
 CMD ["uv", "run", "python", "-m", "cat.main"]
