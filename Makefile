@@ -36,14 +36,16 @@ test:  ## Run tests.
 
 install: ## Update the local virtual environment with the latest requirements.
 	@uv sync --link-mode=copy --frozen --no-install-project --no-upgrade --no-cache
-	@find $(PWD)/cat/core_plugins -name requirements.txt -exec uv pip install --link-mode=copy -r {} \;
+	@find $(PWD)/cat/core_plugins -name requirements.txt -exec uv pip install --link-mode=copy --no-cache --no-upgrade -r {} \;
 	@uv cache clean
 	@pip cache purge
 
 update: ## Update and compile requirements for the local virtual environment.
-	@uv sync --upgrade --link-mode=copy
+	@uv sync --upgrade --link-mode=copy --no-install-project --no-cache
+	@find $(PWD)/cat/core_plugins -name requirements.txt -exec uv pip install --link-mode=copy --no-cache --no-upgrade -r {} \;
 	@uv cache clean
 	@pip cache purge
+	@rm -rf *.egg-info
 
 check: ## Check requirements for the local virtual environment.
 	@uv sync --check

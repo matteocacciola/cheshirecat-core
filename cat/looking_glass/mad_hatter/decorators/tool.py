@@ -3,7 +3,7 @@ import inspect
 from typing import Callable, List, Dict
 from langchain_core.documents import Document as LangChainDocument
 from langchain_core.tools import StructuredTool
-from fastmcp.tools.tool import ParsedFunction
+from fastmcp.tools.function_tool import ParsedFunction
 from pydantic import ConfigDict
 from slugify import slugify
 

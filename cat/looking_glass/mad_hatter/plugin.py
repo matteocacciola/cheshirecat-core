@@ -5,11 +5,10 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
+import time
 from inspect import getmembers, isabstract
 from pathlib import Path
 from typing import Dict, List, Tuple, Any, Type
-from packaging.requirements import Requirement
 from pydantic import BaseModel, ValidationError
 
 from cat.db.cruds import plugins as crud_plugins
@@ -284,60 +283,38 @@ class Plugin:
         if not os.path.exists(req_file):
             return
 
-        installed_packages = {x.name for x in importlib.metadata.distributions()}
-        filtered_requirements = []
-        try:
-            with open(req_file, "r") as read_file:
-                requirements = read_file.readlines()
-
-            log.info(f"Installing requirements for plugin {self.id}")
-            for req in requirements:
-                req = req.strip()
-                if not req or req.startswith('#'):
-                    continue
-
-                # get package name
-                package_name = Requirement(req).name
-
-                # check if package is installed
-                if package_name not in installed_packages:
-                    filtered_requirements.append(req)
-                    continue
-        except Exception as e:
-            log.error(f"Error during requirements check: {e}, for {self.id}")
-
-        if len(filtered_requirements) == 0:
-            return
-
-        # Use delete=False and close the file before subprocess reads it
-        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as tmp:
-            tmp.write("\n".join(filtered_requirements))
-            tmp_name = tmp.name
+        start_time = time.time()
+        log.info(f"Installing requirements for plugin {self.id}")
 
         try:
+            # We use 'check=True' to ensure we don't proceed on failure
             subprocess.run(
-                ["uv", "pip", "install", "--no-cache", "-r", tmp_name],
-                check=True
+                ["uv", "pip", "install", "--no-cache", "--no-upgrade", "-r", req_file],
+                check=True,
+                capture_output=True,
+                text=True
             )
+            duration = time.time() - start_time
+            log.info(f"Installation of requirements for {self.id} completed in {duration:.2f}s")
+            has_error = False
         except subprocess.CalledProcessError as e:
             log.error(f"Error while installing plugin {self.id} requirements: {e}")
 
             # Uninstall the previously installed packages
             log.info(f"Uninstalling requirements for: {self.id}")
             try:
-                subprocess.run(["uv", "pip", "uninstall", "-r", tmp_name], check=True)
-            except subprocess.CalledProcessError as e_:
+                subprocess.run(["uv", "pip", "uninstall", "-r", "requirements.txt"], check=True)
+            except Exception as e_:
                 log.error(f"Error while uninstalling plugin {self.id} requirements: {e_}")
 
-            raise Exception(f"Error during plugin {self.id} requirements installation")
+            has_error = True
         finally:
-            # Clean up the temporary file
-            if os.path.exists(tmp_name):
-                os.unlink(tmp_name)
-
             # Clean __pycache__ directories (cross-platform approach)
             for pycache in Path("/app").rglob("__pycache__"):
                 shutil.rmtree(pycache, ignore_errors=True)
+
+        if has_error:
+            raise Exception(f"Error while installing plugin {self.id} requirements")
 
     # lists of hooks and tools
     def _load_decorated_functions(self):
