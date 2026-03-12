@@ -31,7 +31,7 @@ Hence, the current version is multi-tenant, meaning that you can manage multiple
 The Grinning Cat is still stateless, so it can be easily scaled. In case of a cluster environment, we suggest to use a shared storage,
 mounted in the `cat/plugins` folder, to share the plugins.
 
-A **RabbitMQ message broker** is recommended in a cluster environment, so that the installation
+Enabling the **MarchHare** is recommended in a cluster environment, so that the installation
 of plugins can be synchronized along all the PODs and the management of the Grinning Cat can be done in a distributed way. Its
 configuration is done via environment variables, too. The [`compose.yml`](./compose.yml) file is provided as an example.
 

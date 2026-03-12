@@ -3,9 +3,8 @@ from typing import List
 from redis import RedisError
 
 from cat.auth.auth_utils import check_password
-from cat.db.crud import get_db
 import cat.db.cruds.users as crud_users
-from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY
+from cat.db.database import get_db, DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY
 from cat.log import log
 from cat.utils import singleton
 

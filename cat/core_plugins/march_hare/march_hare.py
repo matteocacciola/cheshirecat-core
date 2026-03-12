@@ -1,13 +1,15 @@
 import json
+import redis
 import threading
 import time
-from ssl import SSLContext, PROTOCOL_TLSv1_2
 from typing import Dict, Callable
-import pika
-from pika.exceptions import AMQPConnectionError
 
 from cat import log, hook
+from cat.db.database import get_db
 from cat.utils import pod_id
+
+# Max messages to keep in the stream to prevent memory explosion
+STREAM_MAX_LEN = 1000
 
 
 class MarchHareConfig:
@@ -24,98 +26,60 @@ class MarchHareConfig:
 
 
 class MarchHare:
-    def __init__(self, host: str, port: int, username: str, password: str, is_tls: bool = False):
-        self._connection_parameters = None
+    def __init__(self):
         self.pod_id = pod_id()
+        self._redis_client = get_db()
 
-        parameters = pika.ConnectionParameters(
-            host=host,
-            port=port,
-            credentials=pika.PlainCredentials(
-                username=username,
-                password=password,
-            )
-        )
-
-        if is_tls:
-            # SSL Context for TLS configuration of Amazon MQ for RabbitMQ
-            ssl_context = SSLContext(PROTOCOL_TLSv1_2)
-            ssl_context.set_ciphers("ECDHE+AESGCM:!ECDSA")
-
-            parameters.ssl_options = pika.SSLOptions(context=ssl_context)
-
-        self._connection_parameters = parameters
-
-    def notify_event(self, event_type: str, payload: Dict, exchange: str, exchange_type: str = "fanout"):
+    def notify_event(self, event_type: str, payload: Dict, stream_name: str):
         """
-        Publish an event to RabbitMQ.
-
-        Args:
-            event_type (str): The type of the event to be sent.
-            payload (Dict): The payload of the event to be sent.
-            exchange (str): The name of the exchange to publish the event to.
-            exchange_type (str): The type of the exchange to use. Defaults to "fanout".
+        Publish an event to Redis Stream.
         """
-        if self._connection_parameters is None:
-            return
-
-        connection = None
         try:
-            connection = pika.BlockingConnection(self._connection_parameters)
-            channel = connection.channel()
-
-            channel.exchange_declare(exchange=exchange, exchange_type=exchange_type)
-
             event = {
                 "event_type": event_type,
-                "payload": payload,
+                "payload": json.dumps(payload),
                 "source_pod": self.pod_id,
             }
-            message = json.dumps(event)
 
-            channel.basic_publish(
-                exchange=exchange,
-                routing_key="",
-                body=message,  # type: ignore
+            # XADD with approximate trimming (~ operator) for performance
+            self._redis_client.xadd(
+                name=stream_name,
+                fields=event,
+                maxlen=MarchHareConfig.STREAM_MAX_LEN,
+                approximate=True
             )
-            log.debug(f"Event {event_type} sent to exchange {exchange} with payload: {payload}")
-        except AMQPConnectionError as e:
-            log.error(f"Connection error to RabbitMQ: {e}")
-        finally:
-            if connection:
-                connection.close()
 
-    def consume_event(self, callback: Callable, exchange: str, exchange_type: str = "fanout"):
-        if self._connection_parameters is None:
-            return
+            log.debug(f"Event {event_type} sent to stream {stream_name}")
+        except Exception as e:
+            log.error(f"Error publishing to Redis: {e}")
 
-        connection = None
+    def consume_event(self, callback: Callable, stream_name: str):
+        """
+        Read new messages from the stream starting from 'now'.
+        """
+        # '$' tells Redis to only return messages that arrive after we start reading
+        last_id = '$'
+
+        log.debug(f"[*] Started Redis Stream consumer on {stream_name}. Waiting for events...")
+
         while True:
             try:
-                connection = pika.BlockingConnection(self._connection_parameters)
-                channel = connection.channel()
+                # XREAD blocks for 1 second (1000ms) waiting for new data
+                events = self._redis_client.xread({stream_name: last_id}, count=1, block=1000)
 
-                channel.exchange_declare(exchange=exchange, exchange_type=exchange_type)
+                for stream, messages in events:
+                    for message_id, data in messages:
+                        # Process message
+                        callback(data)
+                        # Update last_id to the one we just processed to move the cursor forward
+                        last_id = message_id
 
-                # create a temporary and anonymous queue
-                # "exclusive=True" means the queue will be deleted when the consumer disconnects.
-                # This ensures that each node has its own queue and receives all messages.
-                result = channel.queue_declare(queue="", exclusive=True)
-                queue_name = result.method.queue
-
-                # Link the queue to the `exchange` exchange
-                channel.queue_bind(exchange=exchange, queue=queue_name)
-
-                log.debug('[*] Waiting for events. Press CTRL+C to exit.')
-
-                channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
-                channel.start_consuming()
-            except pika.exceptions.AMQPConnectionError as e:
-                log.warning(f"Connection error to RabbitMQ: {e}. Retrying in 5 seconds...")
+            except redis.ConnectionError as e:
+                log.warning(f"Redis connection lost: {e}. Retrying in 5 seconds...")
                 time.sleep(5)
-            finally:
-                if connection:
-                    connection.close()
+            except Exception as e:
+                log.error(f"Error in Redis consumer loop: {e}")
+                time.sleep(1)
 
 
 _march_hare: MarchHare | None = None
@@ -126,35 +90,33 @@ def _consume_plugin_events(lizard):
     """
     Consumer thread that listens for activation events from RabbitMQ.
     """
-    global _march_hare, _consumer_threads
+    global _march_hare
 
     _pod_id = pod_id()
 
-    def callback(ch, method, properties, body):
+    def callback(data):
         """Handle the received message."""
         try:
-            event = json.loads(body)
+            # Redis Stream fields are key-value pairs
+            event_type = data.get("event_type")
+            source_pod = data.get("source_pod")
+            payload = json.loads(data.get("payload", "{}"))
 
-            if event.get("source_pod") == _pod_id:
-                log.debug(f"Ignoring event with payload {event['payload']} from the same pod {_pod_id}")
+            if source_pod == _pod_id:
                 return
 
-            if event["event_type"] == MarchHareConfig.events["PLUGIN_INSTALLATION"]:
-                payload = event["payload"]
+            if event_type == MarchHareConfig.events["PLUGIN_INSTALLATION"]:
                 lizard.plugin_manager.install_extracted_plugin(payload["plugin_id"])
                 lizard.activate_plugin_endpoints(payload["plugin_id"])
                 return
 
-            if event["event_type"] == MarchHareConfig.events["PLUGIN_UNINSTALLATION"]:
-                payload = event["payload"]
+            if event_type == MarchHareConfig.events["PLUGIN_UNINSTALLATION"]:
                 lizard.plugin_manager.uninstall_plugin(payload["plugin_id"], dispatch_event=False)
                 return
 
-            log.warning(f"Unknown event type: {event['event_type']}. Message body: {body}")
-        except json.JSONDecodeError as e:
-            log.error(f"Failed to decode JSON message: {e}. Message body: {body}")
+            log.warning(f"Unknown event type: {event_type}")
         except Exception as e:
-            log.error(f"Error processing message: {e}. Message body: {body}")
+            log.error(f"Error processing Redis message: {e}")
 
     _march_hare.consume_event(callback, MarchHareConfig.channels["PLUGIN_EVENTS"])
 
@@ -179,26 +141,18 @@ def _end_consumer_threads():
 
 @hook(priority=0)
 def before_lizard_bootstrap(lizard) -> None:
-    global _march_hare, _consumer_threads
-
+    global _march_hare
     settings = lizard.plugin_manager.get_plugin().load_settings()
     if settings["is_disabled"]:
         return
 
-    _march_hare = MarchHare(
-        host=settings["host"],
-        port=settings["port"],
-        username=settings["username"],
-        password=settings["password"],
-        is_tls=settings["is_tls"],
-    )
-
+    _march_hare = MarchHare()
     _start_consumer_threads(lizard)
 
 
 @hook(priority=0)
 def before_lizard_shutdown(lizard) -> None:
-    global _march_hare, _consumer_threads
+    global _march_hare
 
     _end_consumer_threads()
     _march_hare = None
@@ -218,7 +172,7 @@ def lizard_notify_plugin_installation(plugin_id: str, plugin_path: str, lizard) 
                 "plugin_id": plugin_id,
                 "plugin_path": plugin_path
             },
-            exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
+            stream_name=MarchHareConfig.channels["PLUGIN_EVENTS"],
         )
 
 
@@ -233,5 +187,5 @@ def lizard_notify_plugin_uninstallation(plugin_id, lizard) -> None:
         _march_hare.notify_event(
             event_type=MarchHareConfig.events["PLUGIN_UNINSTALLATION"],
             payload={"plugin_id": plugin_id},
-            exchange=MarchHareConfig.channels["PLUGIN_EVENTS"],
+            stream_name=MarchHareConfig.channels["PLUGIN_EVENTS"],
         )
