@@ -1,12 +1,13 @@
 import json
+import random
 import redis
 import threading
 import time
-from typing import Dict, Callable
+from typing import Dict, Callable, Optional
 
 from cat import log, hook
 from cat.db.database import get_db
-from cat.utils import pod_id
+from cat.utils import pod_id, singleton
 
 # Max messages to keep in the stream to prevent memory explosion
 STREAM_MAX_LEN = 1000
@@ -25,10 +26,17 @@ class MarchHareConfig:
     }
 
 
+@singleton
 class MarchHare:
     def __init__(self):
         self.pod_id = pod_id()
         self._redis_client = get_db()
+
+        # Backoff settings
+        self._base_delay = 1.0  # Start with 1 second
+        self._max_delay = 60.0  # Cap at 1 minute
+        self._factor = 2  # Double the wait each time
+        self._retries = 0
 
     def notify_event(self, event_type: str, payload: Dict, stream_name: str):
         """
@@ -45,7 +53,7 @@ class MarchHare:
             self._redis_client.xadd(
                 name=stream_name,
                 fields=event,
-                maxlen=MarchHareConfig.STREAM_MAX_LEN,
+                maxlen=STREAM_MAX_LEN,
                 approximate=True
             )
 
@@ -55,17 +63,22 @@ class MarchHare:
 
     def consume_event(self, callback: Callable, stream_name: str):
         """
-        Read new messages from the stream starting from 'now'.
+        Read new messages from the stream starting from "now".
         """
-        # '$' tells Redis to only return messages that arrive after we start reading
-        last_id = '$'
+        # "$" tells Redis to only return messages that arrive after we start reading
+        last_id = "$"
 
-        log.debug(f"[*] Started Redis Stream consumer on {stream_name}. Waiting for events...")
+        log.debug(f"[*] Started Redis Stream consumer on {stream_name}.")
 
         while True:
             try:
-                # XREAD blocks for 1 second (1000ms) waiting for new data
+                # Attempt to read from stream
                 events = self._redis_client.xread({stream_name: last_id}, count=1, block=1000)
+
+                # If we reached this point, the connection is active
+                if self._retries > 0:
+                    log.info("Redis connection re-established. Resetting backoff.")
+                    retries = 0
 
                 for stream, messages in events:
                     for message_id, data in messages:
@@ -73,16 +86,22 @@ class MarchHare:
                         callback(data)
                         # Update last_id to the one we just processed to move the cursor forward
                         last_id = message_id
+            except (redis.ConnectionError, redis.TimeoutError) as e:
+                # Calculate exponential delay: (base * factor^retries) + jitter
+                # Jitter prevents all pods from reconnecting at the exact same millisecond
+                jitter = random.uniform(0, 1)
+                delay = min(self._max_delay, (self._base_delay * (self._factor ** self._retries)) + jitter)
 
-            except redis.ConnectionError as e:
-                log.warning(f"Redis connection lost: {e}. Retrying in 5 seconds...")
-                time.sleep(5)
+                log.warning(f"Redis unavailable: {e}. Retrying in {delay:.2f}s (Attempt {self._retries + 1})")
+
+                time.sleep(delay)
+                self._retries += 1
             except Exception as e:
-                log.error(f"Error in Redis consumer loop: {e}")
-                time.sleep(1)
+                log.error(f"Unexpected error in consumer loop: {e}")
+                time.sleep(2)  # Brief pause for non-connection logic errors
 
 
-_march_hare: MarchHare | None = None
+_march_hare: Optional[MarchHare] = None
 _consumer_threads = []
 
 
