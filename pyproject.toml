@@ -2,7 +2,7 @@
 name = "Grinning-Cat"
 description = "Production ready AI assistant framework"
 version = "2.0.1"
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.11,<3.14"
 license-files = ["LICENSE"]
 authors = [
     { name = "Matteo Cacciola" },

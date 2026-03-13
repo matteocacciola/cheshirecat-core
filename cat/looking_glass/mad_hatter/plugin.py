@@ -287,23 +287,37 @@ class Plugin:
         log.info(f"Installing requirements for plugin {self.id}")
 
         try:
-            # We use 'check=True' to ensure we don't proceed on failure
-            subprocess.run(
-                ["uv", "pip", "install", "--no-cache", "--no-upgrade", "-r", req_file],
-                check=True,
-                capture_output=True,
-                text=True
-            )
+            with subprocess.Popen(
+                    ["uv", "pip", "install", "--no-cache", "--no-upgrade", "-r", req_file],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+            ) as proc:
+                for line in proc.stdout:
+                    log.debug(line.strip())
+                proc.wait()
+                if proc.returncode != 0:
+                    raise subprocess.CalledProcessError(proc.returncode, proc.args)
+
             duration = time.time() - start_time
             log.info(f"Installation of requirements for {self.id} completed in {duration:.2f}s")
             has_error = False
         except subprocess.CalledProcessError as e:
             log.error(f"Error while installing plugin {self.id} requirements: {e}")
 
-            # Uninstall the previously installed packages
             log.info(f"Uninstalling requirements for: {self.id}")
             try:
-                subprocess.run(["uv", "pip", "uninstall", "-r", "requirements.txt"], check=True)
+                with subprocess.Popen(
+                        ["uv", "pip", "uninstall", "-r", "requirements.txt"],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True
+                ) as proc:
+                    for line in proc.stdout:
+                        log.debug(line.strip())
+                    proc.wait()
+                    if proc.returncode != 0:
+                        raise subprocess.CalledProcessError(proc.returncode, proc.args)
             except Exception as e_:
                 log.error(f"Error while uninstalling plugin {self.id} requirements: {e_}")
 

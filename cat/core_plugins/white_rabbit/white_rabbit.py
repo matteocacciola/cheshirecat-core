@@ -241,7 +241,8 @@ class WhiteRabbit:
         """
         try:
             self.scheduler.remove_job(job_id)
-            self.jobs.remove(job_id)
+            if job_id in self.jobs:
+                self.jobs.remove(job_id)
             self._set_job_status(job_id, JobStatus.REMOVED)
             log.info(f"WhiteRabbit: Removed job {job_id}")
             return True

@@ -14,9 +14,9 @@ STREAM_MAX_LEN = 1000
 
 
 class MarchHareConfig:
-    # List of channels for event management
-    channels = {
-        "PLUGIN_EVENTS": "plugin_events"
+    # List of streams for event management
+    streams = {
+        "PLUGIN_EVENTS": "streams:plugin_events"
     }
 
     # list of event types for plugin management
@@ -137,7 +137,7 @@ def _consume_plugin_events(lizard):
         except Exception as e:
             log.error(f"Error processing Redis message: {e}")
 
-    _march_hare.consume_event(callback, MarchHareConfig.channels["PLUGIN_EVENTS"])
+    _march_hare.consume_event(callback, MarchHareConfig.streams["PLUGIN_EVENTS"])
 
 
 def _start_consumer_threads(lizard):
@@ -191,7 +191,7 @@ def lizard_notify_plugin_installation(plugin_id: str, plugin_path: str, lizard) 
                 "plugin_id": plugin_id,
                 "plugin_path": plugin_path
             },
-            stream_name=MarchHareConfig.channels["PLUGIN_EVENTS"],
+            stream_name=MarchHareConfig.streams["PLUGIN_EVENTS"],
         )
 
 
@@ -206,5 +206,5 @@ def lizard_notify_plugin_uninstallation(plugin_id, lizard) -> None:
         _march_hare.notify_event(
             event_type=MarchHareConfig.events["PLUGIN_UNINSTALLATION"],
             payload={"plugin_id": plugin_id},
-            stream_name=MarchHareConfig.channels["PLUGIN_EVENTS"],
+            stream_name=MarchHareConfig.streams["PLUGIN_EVENTS"],
         )
