@@ -142,12 +142,15 @@ def test_websocket_multiple_connections(secure_client, secure_client_headers, li
     data = create_new_user(secure_client, "/users", username="Alice", headers=secure_client_headers)
     data2 = create_new_user(secure_client, "/users", username="Caterpillar", headers=secure_client_headers)
 
+    chat_id = str(uuid.uuid4())
+    chat_id2 = str(uuid.uuid4())
+
     headers = {"Authorization": f"Bearer {api_key}"}
-    with secure_client.websocket_connect(f"/ws/{agent_id}?user_id={data['id']}", headers=headers) as websocket:
+    with secure_client.websocket_connect(f"/ws/{agent_id}/{chat_id}?user_id={data['id']}", headers=headers) as websocket:
         # send ws message
         websocket.send_json(mex)
 
-        with secure_client.websocket_connect(f"/ws/{agent_id}?user_id={data2['id']}", headers=headers) as websocket2:
+        with secure_client.websocket_connect(f"/ws/{agent_id}/{chat_id2}?user_id={data2['id']}", headers=headers) as websocket2:
             # send ws message
             websocket2.send_json(mex)
             # get reply
@@ -155,13 +158,13 @@ def test_websocket_multiple_connections(secure_client, secure_client_headers, li
             content2 = json.loads(reply2["content"])
 
             # two connections open
-            ws_users = lizard.websocket_manager.connections.keys()
-            assert set(ws_users) == {data["id"], data2["id"]}
+            ws_chats = lizard.websocket_manager.connections.keys()
+            assert set(ws_chats) == {chat_id, chat_id2}
 
         # one connection open
         time.sleep(0.5)
-        ws_users = lizard.websocket_manager.connections.keys()
-        assert set(ws_users) == {data["id"]}
+        ws_chats = lizard.websocket_manager.connections.keys()
+        assert set(ws_chats) == {chat_id}
 
         # get reply
         reply = websocket.receive_json()

@@ -25,7 +25,7 @@ class WebSocketManager:
         for connection in self.connections.values():
             connection.send_json(message)
 
-    async def close_all_connections(self):
+    async def close_connections(self):
         """Close all WebSocket connections"""
         for connection in self.connections.values():
             await connection.close()
@@ -38,7 +38,7 @@ class WebSocketManager:
             await connection.close()
             self.remove_connection(id_conn)
 
-    async def close_connections(self, ids: List[str]):
+    async def close_connections_by_ids(self, ids: List[str]):
         """Close multiple WebSocket connections by user id_conn"""
         for id_conn in ids:
             await self.close_connection(id_conn)

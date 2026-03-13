@@ -17,7 +17,7 @@ class NotifierService:
     def has_ws_connection(self) -> bool:
         from cat.looking_glass.bill_the_lizard import BillTheLizard
 
-        return BillTheLizard().websocket_manager.get_connection(self.user.id) is not None
+        return BillTheLizard().websocket_manager.get_connection(self.chat_id) is not None
 
     async def _send_ws_message(self, content: str, msg_type: MSG_TYPES):
         """
@@ -38,9 +38,9 @@ class NotifierService:
                 f"The message type `{msg_type}` is not valid. Valid types: {', '.join(options)}"
             )
 
-        ws_connection = BillTheLizard().websocket_manager.get_connection(self.user.id)
+        ws_connection = BillTheLizard().websocket_manager.get_connection(self.chat_id)
         if not ws_connection:
-            log.debug(f"No websocket connection is open for user {self.user.id}")
+            log.debug(f"No websocket connection is open for conversation {self.chat_id}. Skipping sending message: {content}")
             return
 
         try:

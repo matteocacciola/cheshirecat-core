@@ -76,6 +76,8 @@ class StrayCat(BotMixin):
         self.working_memory = WorkingMemory(agent_id=self.agent_key, user_id=self.user.id, chat_id=self.id)
         self.latest_n_history = 1
 
+        self._agentic_workflow = self.agentic_workflow
+
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""
         return self.user.id == other.user.id and self.agent_key == other.agent_key and self.id == other.id
@@ -99,12 +101,12 @@ class StrayCat(BotMixin):
                 metadata to refine the memory extraction process.
         """
         # recall declarative memory from vector collections
-        agent_memories = await self.agentic_workflow.context_retrieval(
+        agent_memories = await self._agentic_workflow.context_retrieval(
             collection=VectorMemoryType.DECLARATIVE, params=config,
         )
 
         # recall episodic memory from vector collections
-        chat_memories = await self.agentic_workflow.context_retrieval(
+        chat_memories = await self._agentic_workflow.context_retrieval(
             collection=VectorMemoryType.EPISODIC,
             params=config.model_copy(deep=True, update={"metadata": {"chat_id": self.id}}),
         )
@@ -126,7 +128,10 @@ class StrayCat(BotMixin):
             List[StructuredTool]: A list of structured tools, combining reconstructed procedural memories from tools
             implemented in plugins as well as provided by MCP clients.
         """
-        memories = await self.agentic_workflow.context_retrieval(collection=VectorMemoryType.PROCEDURAL, params=config)
+        if not self._agentic_workflow.use_tools:
+            return []
+
+        memories = await self._agentic_workflow.context_retrieval(collection=VectorMemoryType.PROCEDURAL, params=config)
 
         # these are procedures from embeddings, i.e., only from CatTool or CatForm instances
         procedures = []
@@ -210,7 +215,7 @@ class StrayCat(BotMixin):
                 tools=tools,
             )
 
-            agent_output = await self.agentic_workflow.run(
+            agent_output = await self._agentic_workflow.run(
                 task=agent_input,
                 llm=self.large_language_model,
                 callbacks=plugin_manager.execute_hook("llm_callbacks", [], caller=self),

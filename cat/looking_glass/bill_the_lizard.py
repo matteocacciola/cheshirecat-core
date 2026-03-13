@@ -357,7 +357,7 @@ class BillTheLizard(OrchestratorMixin):
         """
         self.plugin_manager.execute_hook("before_lizard_shutdown", caller=self)
         if self.websocket_manager:
-            await self.websocket_manager.close_all_connections()
+            await self.websocket_manager.close_connections()
 
         self.core_auth_handler = None
         self.plugin_manager = None

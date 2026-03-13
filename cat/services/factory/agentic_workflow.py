@@ -30,8 +30,9 @@ class BaseAgenticWorkflowHandler(ABC):
     _vector_memory_handler: BaseVectorDatabaseHandler
         The vector memory handler to manage vector database operations.
     """
-    def __init__(self, metadata: Dict | None = None):
+    def __init__(self, metadata: Dict | None = None, use_tools: bool | None = None):
         self._metadata = metadata or {}
+        self._use_tools = use_tools
 
         self._vector_memory_handler = None
 
@@ -47,6 +48,40 @@ class BaseAgenticWorkflowHandler(ABC):
     @vector_memory_handler.setter
     def vector_memory_handler(self, vmh: BaseVectorDatabaseHandler):
         self._vector_memory_handler = vmh
+
+    @property
+    def metadata(self) -> Dict:
+        return self._metadata
+
+    @property
+    def use_tools(self) -> bool:
+        return self._use_tools
+
+    @staticmethod
+    def _clean_response(response: str) -> str:
+        # parse the `response` string and get the text from <answer></answer> tag
+        if "<answer>" in response and "</answer>" in response:
+            start = response.index("<answer>") + len("<answer>")
+            end = response.index("</answer>")
+            return response[start:end].strip()
+
+        # otherwise, remove from `response` all the text between whichever tag and then return the remaining string
+        # This pattern matches any complete tag pair: <tagname>content</tagname>
+        cleaned = re.sub(r'<([^>]+)>.*?</\1>', '', response, flags=re.DOTALL)
+        return cleaned.strip()
+
+    @staticmethod
+    def _extract_info(action) -> Tuple[Tuple[str | None, Dict, Dict] | None, str]:
+        if not isinstance(action, tuple) or len(action) < 2:
+            return None, str(action)
+
+        # Extract the main fields from the first element of the tuple
+        tool = getattr(action[0], "tool")
+        tool_input = getattr(action[0], "tool_input", {})
+        usage_metadata = getattr(action[0], "usage_metadata", {})
+
+        # Create a tuple with the extracted information
+        return (tool, tool_input, usage_metadata), action[1]
 
     async def run(
         self, task: AgenticWorkflowTask, llm: BaseLanguageModel, callbacks: List[BaseCallbackHandler] = None
@@ -74,11 +109,25 @@ class BaseAgenticWorkflowHandler(ABC):
             *self._task.history,
         ])
 
+        # Direct LLM invocation
+        if not self._use_tools:
+            res = await self._run_no_tool_binding(prompt)
+            return res
+
         # Intrinsic detection of tool binding support
         self._can_bind_tools = task.tools and hasattr(llm, "bind_tools")
+        if not self._can_bind_tools:
+            res = await self._run_no_tool_binding(prompt)
+            return res
 
-        result = await self._run(prompt)
-        return result
+        try:
+            res = await self._run_tool_binding(prompt)
+            return res
+        except Exception as e:
+            log.warning(f"Tool binding failed with error: {e}. Falling back to direct LLM invocation.")
+
+            res = await self._run_no_tool_binding(prompt)
+            return res
 
     @abstractmethod
     async def context_retrieval(
@@ -100,10 +149,24 @@ class BaseAgenticWorkflowHandler(ABC):
         pass
 
     @abstractmethod
-    async def _run(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
+    async def _run_no_tool_binding(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
         """
-        The internal run method to be implemented by subclasses.
-        Executes the agentic workflow logic.
+        Executes the agentic workflow without using tool binding. This method is used when tools are not enabled
+        or when the language model does not support tool binding.
+
+        Args:
+            prompt (ChatPromptTemplate): The prompt template to use for the agent.
+
+        Returns:
+            AgenticWorkflowOutput: The output of the agentic workflow execution.
+        """
+        pass
+
+    @abstractmethod
+    async def _run_tool_binding(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
+        """
+        Executes the agentic workflow using tool binding. This method is used when tools are enabled and the
+        language model supports tool binding.
 
         Args:
             prompt (ChatPromptTemplate): The prompt template to use for the agent.
@@ -129,31 +192,7 @@ class CoreAgenticWorkflow(BaseAgenticWorkflowHandler):
         memories = await self.vector_memory_handler.recall_tenant_memory(str(collection))
         return memories
 
-    def _clean_response(self, response: str) -> str:
-        # parse the `response` string and get the text from <answer></answer> tag
-        if "<answer>" in response and "</answer>" in response:
-            start = response.index("<answer>") + len("<answer>")
-            end = response.index("</answer>")
-            return response[start:end].strip()
-
-        # otherwise, remove from `response` all the text between whichever tag and then return the remaining string
-        # This pattern matches any complete tag pair: <tagname>content</tagname>
-        cleaned = re.sub(r'<([^>]+)>.*?</\1>', '', response, flags=re.DOTALL)
-        return cleaned.strip()
-
-    def _extract_info(self, action) -> Tuple[Tuple[str | None, Dict, Dict] | None, str]:
-        if not isinstance(action, tuple) or len(action) < 2:
-            return None, str(action)
-
-        # Extract the main fields from the first element of the tuple
-        tool = getattr(action[0], "tool")
-        tool_input = getattr(action[0], "tool_input", {})
-        usage_metadata = getattr(action[0], "usage_metadata", {})
-
-        # Create a tuple with the extracted information
-        return (tool, tool_input, usage_metadata), action[1]
-
-    async def _run_no_bind(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
+    async def _run_no_tool_binding(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
         prompt_variables = self._task.prompt_variables or {}
 
         chain = prompt | self._llm
@@ -162,7 +201,7 @@ class CoreAgenticWorkflow(BaseAgenticWorkflowHandler):
         output = getattr(langchain_msg, "content", str(langchain_msg))
         return AgenticWorkflowOutput(output=self._clean_response(output))
 
-    async def _run_with_bind(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
+    async def _run_tool_binding(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
         # Deepcopy the prompt to avoid modifying the original
         prompt = ChatPromptTemplate.from_messages(
             prompt.messages + [MessagesPlaceholder(variable_name="agent_scratchpad")]
@@ -188,24 +227,10 @@ class CoreAgenticWorkflow(BaseAgenticWorkflowHandler):
         extracted_steps = [self._extract_info(step) for step in langchain_msg.get("intermediate_steps", [])]
         return AgenticWorkflowOutput(output=cleaned_output, intermediate_steps=extracted_steps)
 
-    async def _run(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
-        # Direct LLM invocation
-        if not self._can_bind_tools:
-            res = await self._run_no_bind(prompt)
-            return res
-
-        try:
-            res = await self._run_with_bind(prompt)
-            return res
-        except Exception as e:
-            log.warning(f"Tool binding failed with error: {e}. Falling back to direct LLM invocation.")
-
-            res = await self._run_no_bind(prompt)
-            return res
-
 
 class AgenticWorkflowConfig(BaseFactoryConfigModel, ABC):
     metadata: Dict | None = Field(default={}, description="Metadata associated with the workflow.")
+    use_tools: bool | None = Field(default=True, description="Whether to use tools in the workflow.")
 
     @classmethod
     def base_class(cls) -> Type[BaseAgenticWorkflowHandler]:
