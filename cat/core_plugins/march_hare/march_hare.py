@@ -78,7 +78,7 @@ class MarchHare:
                 # If we reached this point, the connection is active
                 if self._retries > 0:
                     log.info("Redis connection re-established. Resetting backoff.")
-                    retries = 0
+                    self._retries = 0
 
                 for stream, messages in events:
                     for message_id, data in messages:
