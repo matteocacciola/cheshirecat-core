@@ -58,10 +58,10 @@ def mock_classes(monkeypatch):
     # Mock the RabbitMQ
     def mock_notify_event(self, event_type: str, payload: Dict, exchange: str, exchange_type: str = "fanout"):
         pass
-    monkeypatch.setattr(MarchHare, "notify_event", mock_notify_event)
+    monkeypatch.setattr(get_class_from_decorated_singleton(MarchHare), "notify_event", mock_notify_event)
     def mock_consume_event(self, callback: Callable, exchange: str, exchange_type: str = "fanout"):
         pass
-    monkeypatch.setattr(MarchHare, "consume_event", mock_consume_event)
+    monkeypatch.setattr(get_class_from_decorated_singleton(MarchHare), "consume_event", mock_consume_event)
 
     utils.get_plugins_path = lambda: "tests/mocks/mock_plugin_folder/"
     utils.get_file_manager_root_storage_path = lambda: "tests/data/storage"
