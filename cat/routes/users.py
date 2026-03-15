@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator
 from cat.auth.auth_utils import hash_password
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions, check_permissions
+from cat.db.cruds import conversations as crud_conversations
 from cat.db.cruds import users as crud_users
 from cat.exceptions import CustomNotFoundException, CustomValidationException
 from cat.routes.routes_utils import validate_permissions as fnc_validate_permissions
@@ -127,4 +128,5 @@ async def delete_user(
     if not deleted_user:
         raise CustomNotFoundException("User not found")
 
+    crud_conversations.delete_conversations(agent_id, user_id)
     return UserResponse(**deleted_user)

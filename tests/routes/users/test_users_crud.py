@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from cat.auth.permissions import AuthResource, AuthPermission
+from cat.db.cruds import conversations as crud_conversations
 from cat.routes.users import UserBase, UserUpdate
 
 from tests.utils import agent_id, api_key, create_new_user, check_user_fields, new_user_password
@@ -209,6 +210,10 @@ def test_delete_user(secure_client, secure_client_headers):
     data = response.json()
     assert isinstance(data, list)
     assert len(data) == 0
+
+    # check there is no conversation related to the user
+    conversations = crud_conversations.get_conversations_attributes(agent_id=agent_id, user_id=user_id)
+    assert conversations == []
 
 
 # note: using secure secure_client (api key set both for http and ws)
