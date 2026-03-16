@@ -1,7 +1,6 @@
 import asyncio
 import json
 import os
-import socket
 import sys
 import uuid
 from abc import ABC, abstractmethod
