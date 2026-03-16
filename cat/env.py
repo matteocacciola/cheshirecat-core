@@ -16,6 +16,7 @@ def get_supported_env_variables():
         "CAT_REDIS_DB": "0",
         "CAT_REDIS_TLS": False,
         "CAT_QDRANT_HOST": "grinning_cat_vector_memory",
+        "CAT_QDRANT_API_KEY": None,
         "CAT_JWT_SECRET": "this_is_a_secret_key",
         "CAT_JWT_EXPIRE_MINUTES": str(60 * 24),  # JWT expires after 1 day
         "CAT_HTTPS_PROXY_MODE": "false",

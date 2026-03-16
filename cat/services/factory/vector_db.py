@@ -1159,7 +1159,7 @@ class VectorDatabaseSettings(BaseFactoryConfigModel, ABC):
 class QdrantConfig(VectorDatabaseSettings):
     host: str = get_env("CAT_QDRANT_HOST")
     port: int = 6333
-    api_key: str | None = None
+    api_key: str | None = get_env("CAT_QDRANT_API_KEY")
     client_timeout: int | None = 100
 
     model_config = ConfigDict(
