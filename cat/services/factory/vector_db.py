@@ -35,6 +35,7 @@ from qdrant_client.http.models import (
     Prefetch,
 )
 
+from cat.env import get_env
 from cat.log import log
 from cat.services.factory.models import BaseFactoryConfigModel
 from cat.services.memory.models import (
