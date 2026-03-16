@@ -529,6 +529,9 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         client_timeout: int | None = 100,
         save_memory_snapshots: bool = False,
     ):
+        if host is None:
+            raise ValueError("CAT_QDRANT_HOST environment variable is not set.")
+
         super().__init__(save_memory_snapshots)
 
         try:
@@ -541,26 +544,20 @@ class QdrantHandler(BaseVectorDatabaseHandler):
 
         qdrant_client_timeout = int(client_timeout) if client_timeout is not None else None
 
-        s = None
         try:
-            s = socket.socket()
-            s.connect((qdrant_host, port))
+            self._client = AsyncQdrantClient(
+                host=qdrant_host,
+                port=port,
+                https=qdrant_https,
+                api_key=api_key or None,
+                prefer_grpc=True,
+                force_disable_check_same_thread=True,
+                timeout=qdrant_client_timeout,
+            )
         except:
             log.error(f"Qdrant does not respond to {qdrant_host}:{port}")
             sys.exit(-1)
-        finally:
-            if s:
-                s.close()
 
-        self._client = AsyncQdrantClient(
-            host=qdrant_host,
-            port=port,
-            https=qdrant_https,
-            api_key=api_key or None,
-            prefer_grpc=True,
-            force_disable_check_same_thread=True,
-            timeout=qdrant_client_timeout,
-        )
 
     @property
     def client(self):
@@ -1160,7 +1157,7 @@ class VectorDatabaseSettings(BaseFactoryConfigModel, ABC):
 
 
 class QdrantConfig(VectorDatabaseSettings):
-    host: str = "grinning_cat_vector_memory"
+    host: str = get_env("CAT_QDRANT_HOST")
     port: int = 6333
     api_key: str | None = None
     client_timeout: int | None = 100
