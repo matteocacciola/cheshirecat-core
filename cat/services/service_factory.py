@@ -130,7 +130,14 @@ class ServiceFactory:
 
     @property
     def default_config(self) -> Dict:
-        return {k: v.default for k, v in self.default_config_class.model_fields.items()}
+        return {
+            k: (
+                self.default_config_class.crypto.encrypt(v.default)
+                if isinstance(v.default, str) and any(suffix in k for suffix in ["_key", "_secret"]) and v.default
+                else v.default
+            )
+            for k, v in self.default_config_class.model_fields.items()
+        }
 
     @property
     def agent_key(self):
