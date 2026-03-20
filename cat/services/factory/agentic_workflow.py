@@ -104,11 +104,6 @@ class BaseAgenticWorkflowHandler(ABC):
             *self._task.history,
         ])
 
-        # Direct LLM invocation
-        if not self._use_tools:
-            res = await self._run_no_tool_binding(prompt)
-            return res
-
         # Intrinsic detection of tool binding support
         self._can_bind_tools = task.tools and hasattr(llm, "bind_tools")
         if not self._can_bind_tools:
