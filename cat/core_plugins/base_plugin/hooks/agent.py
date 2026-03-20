@@ -4,8 +4,9 @@ Here is a collection of methods to hook into the *Agent* execution pipeline.
 
 """
 from typing import List
+from langchain_core.tools import StructuredTool
 
-from cat import hook, AgenticWorkflowOutput
+from cat import hook, AgenticWorkflowOutput, StrayCat
 
 
 @hook(priority=0)
@@ -36,20 +37,20 @@ def agent_fast_reply(cat) -> AgenticWorkflowOutput | None:
 
 
 @hook(priority=0)
-def agent_allowed_tools(allowed_tools: List[str], cat) -> List[str]:
+def agent_allowed_tools(allowed_tools: List[StructuredTool], cat: StrayCat) -> List[StructuredTool]:
     """
     Hook the allowed tools.
 
-    Allows to decide which tools end up in the *Agent* prompt.
+    Allows deciding which tools end up in the *Agent* prompt.
 
-    To decide, you can filter the list of tools' names, but you can also check the context in `cat.working_memory`
+    To decide, you can filter the list of tools, but you can also check the context in `cat.working_memory`
     and launch custom chains with `cat.llm`.
 
     Args:
-        allowed_tools (List[str]): List of tools that are allowed to be used by the *
+        allowed_tools (List[StructuredTool]): List of tools that have been picked to be used by the Agent. By default, all tools are allowed.
         cat (StrayCat): Stray Cat instance.
 
     Returns:
-        tools (List[str]): List of allowed Langchain tools.
+        tools (List[StructuredTool]): List of allowed Langchain tools.
     """
     return allowed_tools

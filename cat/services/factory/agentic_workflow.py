@@ -30,9 +30,8 @@ class BaseAgenticWorkflowHandler(ABC):
     _vector_memory_handler: BaseVectorDatabaseHandler
         The vector memory handler to manage vector database operations.
     """
-    def __init__(self, metadata: Dict | None = None, use_tools: bool | None = None):
+    def __init__(self, metadata: Dict | None = None):
         self._metadata = metadata or {}
-        self._use_tools = use_tools
 
         self._vector_memory_handler = None
 
@@ -52,10 +51,6 @@ class BaseAgenticWorkflowHandler(ABC):
     @property
     def metadata(self) -> Dict:
         return self._metadata
-
-    @property
-    def use_tools(self) -> bool:
-        return self._use_tools
 
     @staticmethod
     def _clean_response(response: str) -> str:
@@ -230,7 +225,6 @@ class CoreAgenticWorkflow(BaseAgenticWorkflowHandler):
 
 class AgenticWorkflowConfig(BaseFactoryConfigModel, ABC):
     metadata: Dict | None = Field(default={}, description="Metadata associated with the workflow.")
-    use_tools: bool | None = Field(default=True, description="Whether to use tools in the workflow.")
 
     @classmethod
     def base_class(cls) -> Type[BaseAgenticWorkflowHandler]:

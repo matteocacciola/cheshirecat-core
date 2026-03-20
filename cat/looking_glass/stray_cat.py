@@ -128,21 +128,20 @@ class StrayCat(BotMixin):
             List[StructuredTool]: A list of structured tools, combining reconstructed procedural memories from tools
             implemented in plugins as well as provided by MCP clients.
         """
-        if not self._agentic_workflow.use_tools:
-            return []
-
         memories = await self._agentic_workflow.context_retrieval(collection=VectorMemoryType.PROCEDURAL, params=config)
 
         # these are procedures from embeddings, i.e., only from CatTool or CatForm instances
-        procedures = []
+        tools = []
         for m in memories:
             try:
                 if lp := CatProcedure.from_document_recall(document=m, stray=self).langchainfy():
-                    procedures.append(lp)
+                    tools.append(lp)
             except Exception as e:
                 log.warning(f"Agent id: {self.agent_key}. Could not reconstruct procedure from memory. Error: {e}")
 
-        return procedures
+        tools = self.plugin_manager.execute_hook("agent_allowed_tools", tools, caller=self)
+
+        return tools
 
     async def __call__(self, user_message: UserMessage, **kwargs) -> CatMessage:
         """
