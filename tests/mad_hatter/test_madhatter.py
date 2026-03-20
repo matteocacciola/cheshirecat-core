@@ -4,9 +4,7 @@ from inspect import isfunction
 
 import cat.utils as utils
 from cat.looking_glass.mad_hatter.decorators.hook import CatHook
-from cat.looking_glass.mad_hatter.decorators.tool import CatTool
 from cat.looking_glass.mad_hatter.plugin import Plugin
-from cat.looking_glass.mad_hatter.procedures import CatProcedure
 
 from tests.utils import create_mock_plugin_zip
 

@@ -10,7 +10,7 @@ from pydantic import BaseModel, model_serializer
 
 from cat import utils
 from cat.auth.permissions import AuthPermission
-from cat.env import get_env
+from cat.env import get_env_float
 from cat.exceptions import CustomValidationException, CustomUnauthorizedException
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.plugin import Plugin
@@ -293,7 +293,7 @@ async def create_jwt_content(credentials: UserCredentials, redis_search_service:
         final_valid_matches.append(json.dumps(valid_match_json))
 
     # using seconds for easier testing
-    expire_delta_in_seconds = float(get_env("CAT_JWT_EXPIRE_MINUTES")) * 60
+    expire_delta_in_seconds = get_env_float("CAT_JWT_EXPIRE_MINUTES") * 60
     now = datetime.now(timezone.utc)
 
     expires = now + timedelta(seconds=expire_delta_in_seconds)

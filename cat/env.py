@@ -42,3 +42,19 @@ def get_env(name):
 
 def get_env_bool(name):
     return get_env(name) in ("1", "true")
+
+
+def get_env_float(name: str) -> float | None:
+    value = get_env(name)
+    if value is None:
+        return None
+
+    return float(value)
+
+
+def get_env_int(name: str) -> int | None:
+    value = get_env(name)
+    if value is None:
+        return None
+
+    return int(value)

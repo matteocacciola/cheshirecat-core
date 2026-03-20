@@ -1,5 +1,4 @@
 import pytest
-from langchain_core.tools import StructuredTool
 
 from cat import AgenticWorkflowTask
 from cat.db.cruds import users as crud_users

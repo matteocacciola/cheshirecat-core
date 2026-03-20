@@ -1,6 +1,6 @@
 import redis
 
-from cat.env import get_env
+from cat.env import get_env, get_env_int
 from cat.utils import singleton
 
 DEFAULT_AGENTS_KEY = "agents"
@@ -27,7 +27,7 @@ class Database:
         if password:
             return redis.Redis(
                 host=host,
-                port=int(get_env("CAT_REDIS_PORT")),
+                port=get_env_int("CAT_REDIS_PORT"),
                 db=get_env("CAT_REDIS_DB"),
                 password=password,
                 encoding="utf-8",
@@ -37,7 +37,7 @@ class Database:
 
         return redis.Redis(
             host=host,
-            port=int(get_env("CAT_REDIS_PORT")),
+            port=get_env_int("CAT_REDIS_PORT"),
             db=get_env("CAT_REDIS_DB"),
             encoding="utf-8",
             decode_responses=True,

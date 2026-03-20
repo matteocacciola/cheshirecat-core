@@ -489,6 +489,9 @@ def colored_text(text: str, color: str):
         "green": "32;1",
         "red": "31;1",
     }
+    if color not in colors:
+        supported = ", ".join(sorted(colors))
+        raise ValueError(f"Unsupported color: {color!r}. Supported colors are: {supported}")
 
     color_str = colors[color]
     return f"\u001b[{color_str}m\033[1;3m{text}\u001b[0m"

@@ -1,20 +1,20 @@
-from os import getenv
 from typing import Dict, List, Any
 from redis.exceptions import RedisError
 
 from cat.db import crud
 from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_CONVERSATIONS_KEY
+from cat.env import get_env_int
 from cat.log import log
 from cat.services.memory.messages import ConversationMessage
 
 
 def _get_expiration() -> int | None:
-    expiration = getenv("CAT_HISTORY_EXPIRATION")
+    expiration = get_env_int("CAT_HISTORY_EXPIRATION")
     if expiration is None:
         return None
 
     try:
-        expiration = int(expiration) * 60
+        expiration = expiration * 60
         if expiration <= 0:
             raise ValueError("CAT_HISTORY_EXPIRATION must be positive")
 
