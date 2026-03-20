@@ -37,22 +37,7 @@ def _test_on_plugin_manager(plugin_manager):
         assert h.priority >= 0.0
 
     # finds procedures
-    assert len(plugin_manager.procedures_registry) == 2
-    for procedure in plugin_manager.procedures_registry.values():
-        assert isinstance(procedure, CatProcedure)
-        if isinstance(procedure, CatTool):
-            assert procedure.name in ["get_the_time", "get_weather"]
-            assert procedure.description in [
-                "Useful to get the current time when asked. Takes no input.",
-                "Get the weather for a given city and date."
-            ]
-            assert isfunction(procedure.func)
-            if procedure.name == "get_the_time":
-                assert len(procedure.examples) == 2
-                assert "what time is it" in procedure.examples
-                assert "get the time" in procedure.examples
-            elif procedure.name == "get_weather":
-                assert len(procedure.examples) == 0
+    assert len(plugin_manager.procedures_registry) == 0  # no procedure in core plugins, i.e., no tools or forms
 
 
 def test_instantiation_discovery_for_lizard(lizard):
@@ -163,7 +148,7 @@ def test_plugin_uninstall(lizard, plugin_is_flat):
     for h_name, h_list in plugin_manager.hooks.items():
         assert len(h_list) >= 1
         assert h_list[0].plugin_id in core_plugins
-    assert len(plugin_manager.procedures_registry) == 2
+    assert len(plugin_manager.procedures_registry) == 0  # no procedure in core plugins, i.e., no tools or forms
 
     # list of active plugins in DB is correct
     active_plugins = plugin_manager.load_active_plugins_ids_from_db()

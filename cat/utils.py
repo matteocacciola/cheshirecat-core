@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import socket
 import base64
 import hashlib
@@ -559,3 +560,13 @@ async def write_temp_file(filename: str, content: bytes) -> str:
         await f.write(content)
 
     return tmp_path
+
+
+def safe_deepcopy(obj):
+    try:
+        return copy.deepcopy(obj)
+    except Exception:
+        try:
+            return copy.copy(obj)  # shallow copy as fallback
+        except Exception:
+            return obj  # last fallback: return the original object if it can't be copied

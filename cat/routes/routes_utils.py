@@ -1,7 +1,6 @@
 import asyncio
 import json
 from ast import literal_eval
-from copy import deepcopy
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Any, Type
 from fastapi import Query
@@ -18,6 +17,7 @@ from cat.looking_glass.mad_hatter.plugin import Plugin
 from cat.looking_glass.mad_hatter.registry import PluginRegistry
 from cat.looking_glass.models import PluginManifest
 from cat.services.redis_search import RedisSearchService
+from cat.utils import safe_deepcopy
 
 
 class Plugins(BaseModel):
@@ -110,7 +110,7 @@ def create_plugin_manifest(
     query: str | None = None
 ) -> PluginManifest:
     # get manifest
-    manifest: PluginManifest = deepcopy(plugin.manifest)  # we make a copy to avoid modifying the plugin obj
+    manifest: PluginManifest = safe_deepcopy(plugin.manifest)  # we make a copy to avoid modifying the plugin obj
     manifest.local_info = {
         "active": (plugin.id in active_plugins),  # pass along if plugin is active or not
         "hooks": [{"name": hook.name, "priority": hook.priority} for hook in plugin.hooks],

@@ -74,7 +74,7 @@ class WebSocketCallbackManager(AsyncCallbackHandler):
         run_data = self.active_runs.pop(str(run_id), None)
         if run_data:
             tool_name = run_data.name
-            duration = time.perf_counter() - run_data["start_time"]
+            duration = time.perf_counter() - run_data.start_time
 
             notification = ToolMessage(tool=tool_name, input=run_data.input, output=output, duration=duration)
             await self.notifier.send_tool_message(notification.model_dump_json())

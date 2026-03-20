@@ -35,23 +35,6 @@ async def test_stray_nlp(lizard, stray_no_memory):
 
 
 @pytest.mark.asyncio
-async def test_stray_get_procedures(lizard, stray_no_memory):
-    # send message
-    message = "what time is it?"
-    config = RecallSettings(
-        embedding=lizard.embedder.embed_query(message),
-        metadata={}
-    )
-
-    procedures = await stray_no_memory.get_procedures(config)
-    assert isinstance(procedures, list)
-    assert len(procedures) > 0
-    for proc in procedures:
-        assert isinstance(proc, StructuredTool)
-        assert proc.name == "get_the_time"
-
-
-@pytest.mark.asyncio
 async def test_stray_call(secure_client, stray_no_memory):
     crud_users.create_user(
         stray_no_memory.agent_key,

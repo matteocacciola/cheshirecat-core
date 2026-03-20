@@ -1,7 +1,6 @@
 import glob
 import os
 import shutil
-from copy import deepcopy
 from pathlib import Path
 from typing import List, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
@@ -242,7 +241,7 @@ class MadHatter:
         if hook_name not in self.hooks.keys():
             raise Exception(f"Hook {hook_name} not present in any plugin")
 
-        tea_cup = deepcopy(args[0]) if len(args) > 0 else None
+        tea_cup = utils.safe_deepcopy(args[0]) if len(args) > 0 else None
 
         for hook in self.hooks[hook_name]:
             try:
@@ -250,7 +249,11 @@ class MadHatter:
                 tea_spoon = (
                     utils.run_sync_or_async(hook.function, **{self.context_execute_hook: caller})
                     if len(args) == 0
-                    else utils.run_sync_or_async(hook.function, deepcopy(tea_cup), *deepcopy(args[1:]), **{self.context_execute_hook: caller})
+                    else utils.run_sync_or_async(
+                        hook.function,
+                        utils.safe_deepcopy(tea_cup),
+                        *utils.safe_deepcopy(args[1:]), **{self.context_execute_hook: caller}
+                    )
                 )
                 if tea_spoon is not None:
                     tea_cup = tea_spoon

@@ -1,5 +1,4 @@
 import asyncio
-from copy import deepcopy
 from typing import List, Dict
 from fastapi import FastAPI
 
@@ -19,7 +18,7 @@ from cat.services.factory.auth_handler import CoreAuthHandler
 from cat.services.memory.models import VectorMemoryType, PointStruct
 from cat.services.mixin import OrchestratorMixin
 from cat.services.websocket_manager import WebSocketManager
-from cat.utils import singleton, sanitize_permissions
+from cat.utils import singleton, sanitize_permissions, safe_deepcopy
 
 
 @singleton
@@ -55,7 +54,7 @@ class BillTheLizard(OrchestratorMixin):
         self.plugin_manager.discover_plugins()
 
         # Store endpoints for later activation
-        self._pending_endpoints = deepcopy(self.plugin_manager.endpoints)
+        self._pending_endpoints = safe_deepcopy(self.plugin_manager.endpoints)
 
         # allows plugins to do something before cat components are loaded
         self.plugin_manager.execute_hook("before_lizard_bootstrap", caller=self)
@@ -317,7 +316,7 @@ class BillTheLizard(OrchestratorMixin):
 
     def activate_plugin_endpoints(self, plugin_id: str):
         # Store endpoints for later activation
-        self._pending_endpoints = deepcopy(self.plugin_manager.plugins[plugin_id].endpoints)
+        self._pending_endpoints = safe_deepcopy(self.plugin_manager.plugins[plugin_id].endpoints)
         self._activate_pending_endpoints()
 
     def on_plugin_activate(self, plugin_id: str) -> None:

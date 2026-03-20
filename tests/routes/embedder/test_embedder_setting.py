@@ -96,7 +96,7 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
     embedded_procedures_before = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.PROCEDURAL)
     )
-    assert embedded_procedures_before > 0
+    assert embedded_procedures_before == 0
 
     # set a new file manager
     file_manager_name = "LocalFileManagerConfig"
