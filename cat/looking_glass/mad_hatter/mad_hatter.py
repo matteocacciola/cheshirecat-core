@@ -252,7 +252,8 @@ class MadHatter:
                     else utils.run_sync_or_async(
                         hook.function,
                         utils.safe_deepcopy(tea_cup),
-                        *utils.safe_deepcopy(args[1:]), **{self.context_execute_hook: caller}
+                        *utils.safe_deepcopy(args[1:]),
+                        **{self.context_execute_hook: caller},
                     )
                 )
                 if tea_spoon is not None:
