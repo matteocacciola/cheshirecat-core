@@ -22,6 +22,7 @@ dependencies = [
     "httpx",
     "langchain",
     "langchain-community",
+    "lxml",
     "loguru",
     "perflint",
     "pillow",
