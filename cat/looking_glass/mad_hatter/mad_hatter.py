@@ -214,8 +214,8 @@ class MadHatter:
         active_plugins = list(set(self.active_plugins))
         crud_settings.upsert_setting_by_name(self.agent_key, Setting(name="active_plugins", value=active_plugins))
 
-        log.info(f"Agent '{self.agent_key}' - ACTIVE PLUGINS:")
-        log.info(self.active_plugins)
+        log.debug(f"Agent '{self.agent_key}' - ACTIVE PLUGINS:")
+        log.debug(self.active_plugins)
 
         # update cache and embeddings
         self.hooks = {}
