@@ -330,11 +330,6 @@ class CheshireCat(BotMixin):
     def plugin_exists(self, plugin_id: str):
         return plugin_id in self.plugin_manager.plugins.keys()
 
-    # each time we access the file handlers, plugins can intervene
-    @property
-    def file_handlers(self) -> Dict:
-        return self.plugin_manager.execute_hook("rabbithole_instantiates_parsers", {}, caller=self)
-
     @property
     def agent_key(self) -> str:
         """
