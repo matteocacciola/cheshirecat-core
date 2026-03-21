@@ -36,7 +36,7 @@ def rabbithole_instantiates_parsers(file_handlers: Dict, cat) -> Dict:
         "application/json": JSONParser(),
         "application/pdf": PyMuPDFParser(),
         "text/csv": TableParser(),
-        "text/html": BS4HTMLParser(bs_kwargs={"features": "lxml"}),
+        "text/html": BS4HTMLParser(features="lxml"),
         "text/javascript": LanguageParser(language="js"),
         "text/markdown": TextParser(),
         "text/plain": TextParser(),
