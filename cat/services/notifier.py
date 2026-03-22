@@ -5,7 +5,7 @@ from cat.auth.permissions import AuthUserInfo
 from cat.log import log
 from cat.services.memory.messages import CatMessage
 
-MSG_TYPES = Literal["notification", "chat", "error", "chat_token", "memory_recall", "tool", "thought"]
+MSG_TYPES = Literal["notification", "chat", "error", "chat_token", "memory_recall", "tool", "thought", "llm_thinking"]
 
 
 class NotifierService:
@@ -165,6 +165,22 @@ class NotifierService:
         >> cat.send_thinking_message("I'm thinking...")
         """
         await self._send_ws_message(content, msg_type="thought")
+
+    async def send_llm_thinking(self, content: str):
+        """
+        Sends an LLM thinking/reasoning step to the user using the active WebSocket connection.
+        Used to surface internal reasoning from models that support extended thinking
+        (e.g. Anthropic Claude extended thinking, DeepSeek R1 <think> tags, OpenAI o-series reasoning).
+
+        Args:
+            content (str): JSON-serialised ThinkingMessage to send to the user via websocket
+
+        Examples
+        --------
+        Send an LLM thinking step to the user
+        >> cat.send_llm_thinking('{"content": "I should check the docs...", "step": 1}')
+        """
+        await self._send_ws_message(content, msg_type="llm_thinking")
 
 
 def get_notifier(user: AuthUserInfo, agent_key: str, chat_id: str) -> NotifierService:
