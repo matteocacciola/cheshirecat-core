@@ -50,6 +50,7 @@ services:
     container_name: grinning_cat_vector_memory
     ports:
       - "6333:6333"
+      - "6334:6334"
     volumes:
       - ./data/long_term_memory/vector:/qdrant/storage
     restart: unless-stopped
