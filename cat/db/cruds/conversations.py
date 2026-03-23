@@ -205,7 +205,6 @@ def set_messages(
         ValueError: If CAT_HISTORY_EXPIRATION is invalid.
         RedisError: If Redis connection fails.
     """
-
     try:
         formatted = [message.model_dump() for message in messages]
         expiration = _get_expiration()
@@ -236,7 +235,7 @@ def set_attributes(
     first_time: bool = False,
 ):
     """
-    Set the name of a conversation in Redis.
+    Set the name and/or metadata of a conversation in Redis.
 
     Args:
         agent_id: ID of the chatbot.
@@ -273,13 +272,16 @@ def update_messages(
     agent_id: str, user_id: str, chat_id: str, updated_info: ConversationMessage
 ) -> List[Dict[str, Any]]:
     """
-    Append a new item to the conversation in Redis atomically.
+    Append a new message to the conversation in Redis atomically.
+
+    Uses JSON.SET NX to initialise the structure if absent, then JSON.ARRAPPEND to append the message. Both operations
+    are atomic on the Redis side, so concurrent calls from multiple replicas cannot produce lost updates.
 
     Args:
         agent_id: ID of the chatbot.
         user_id: ID of the user.
         chat_id: ID of the chat session.
-        updated_info: New conversation item to append.
+        updated_info: New conversation message to append.
 
     Returns:
         Updated conversation messages.
@@ -289,17 +291,26 @@ def update_messages(
         ValueError: If serialization or TTL configuration fails.
     """
     try:
-        updated_info = crud.serialize_to_redis_json(updated_info.model_dump())
-        history_db = get_messages(agent_id, user_id, chat_id)
-        history_db.append(updated_info)
+        key = format_key(agent_id, user_id, chat_id)
+        serialized = crud.serialize_to_redis_json(updated_info.model_dump())
+        expiration = _get_expiration()
+
+        db = crud.get_db()
+
+        # Atomically initialise the root structure only if the key does not exist yet.
+        # If two replicas race here, only one SET NX will succeed; the other is a no-op,
+        # and both will then safely append via ARRAPPEND.
+        db.json().set(key, "$", {"name": chat_id, "messages": []}, nx=True)
+
+        # ARRAPPEND is a single atomic Redis command: no read-modify-write, no lost updates.
+        db.json().arrappend(key, "$.messages", serialized)
+
+        if expiration:
+            db.expire(key, expiration)
 
         log.debug(f"Appended conversation item for {agent_id}:{user_id}")
-        return set_messages(
-            agent_id,
-            user_id,
-            chat_id,
-            [ConversationMessage(**item) for item in history_db],
-        )
+        return get_messages(agent_id, user_id, chat_id)
+
     except (RedisError, ValueError) as e:
         log.error(f"Redis error updating conversation '{chat_id}' for '{agent_id}:{user_id}': {e}")
         raise
@@ -326,7 +337,7 @@ def delete_conversation(agent_id: str, user_id: str, chat_id: str):
 
 def delete_conversations(agent_id: str, user_id: str):
     """
-    Delete conversation for a specific user and agent.
+    Delete all conversations for a specific user and agent.
 
     Args:
         agent_id: ID of the chatbot.

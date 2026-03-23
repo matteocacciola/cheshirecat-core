@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Dict
 from uuid import uuid4
-from redis.exceptions import RedisError
+from redis.exceptions import LockError, RedisError
 
 from cat.auth.auth_utils import check_password
 from cat.db import crud
@@ -217,6 +217,7 @@ def create_user(agent_id: str, new_user: Dict) -> Dict | None:
         Created user dictionary (without the password), or None if the user exists.
 
     Raises:
+        LockError: If the distributed lock cannot be acquired.
         RedisError: If Redis connection fails.
         ValueError: If user data is invalid or serialization fails.
     """
@@ -224,27 +225,31 @@ def create_user(agent_id: str, new_user: Dict) -> Dict | None:
         if not new_user.get("username") or not new_user.get("password"):
             raise ValueError("Username and password are required")
 
-        if get_user_by_username(agent_id, new_user["username"], with_password=True):
-            log.debug(f"User {new_user['username']} already exists for {agent_id}")
-            return None
+        username = new_user["username"]
+        lock_pattern = format_key(agent_id, f"username_lock:{username}")
 
-        existing_id = new_user.get("id")
-        if existing_id and get_user(agent_id, existing_id):
-            log.debug(f"User ID {existing_id} already exists for {agent_id}")
-            return None
+        with crud.distributed_lock(lock_pattern):
+            if get_user_by_username(agent_id, username, with_password=True):
+                log.debug(f"User {username} already exists for {agent_id}")
+                return None
 
-        new_id = existing_id or str(uuid4())
-        new_user_copy = new_user.copy()
-        new_user_copy["id"] = new_id
-        new_user_copy["created_at"] = datetime.now(timezone.utc).timestamp()
-        new_user_copy["updated_at"] = new_user_copy["created_at"]
+            existing_id = new_user.get("id")
+            if existing_id and get_user(agent_id, existing_id):
+                log.debug(f"User ID {existing_id} already exists for {agent_id}")
+                return None
 
-        # Store user in its own Redis key
-        crud.store(format_key(agent_id, new_id), new_user_copy)
-        log.debug(f"Created user {new_id} for {agent_id}")
+            new_id = existing_id or str(uuid4())
+            new_user_copy = new_user.copy()
+            new_user_copy["id"] = new_id
+            new_user_copy["created_at"] = datetime.now(timezone.utc).timestamp()
+            new_user_copy["updated_at"] = new_user_copy["created_at"]
 
-        return _extract_user_data(new_user_copy)
-    except (RedisError, ValueError) as e:
+            # Store user in its own Redis key
+            crud.store(format_key(agent_id, new_id), new_user_copy)
+            log.debug(f"Created user {new_id} for {agent_id}")
+
+            return _extract_user_data(new_user_copy)
+    except (LockError, RedisError, ValueError) as e:
         log.error(f"Error creating user for {agent_id}: {e}")
         raise
 

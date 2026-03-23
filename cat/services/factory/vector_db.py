@@ -676,7 +676,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     async def create_hybrid_collection(
         self, collection_name: str, dense_vector_config_name: str, sparse_vector_config_name: str
     ):
-        if self._client.collection_exists(collection_name):
+        if await self._client.collection_exists(collection_name):
             return
 
         embedding_size = (
@@ -736,11 +736,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         host = self._client._client._host
         port = self._client._client._port
 
-        if os.path.isdir(folder):
-            log.debug(f"Directory {folder} exists")
-        else:
-            log.debug(f"Directory {folder} does NOT exists, creating it.")
-            os.mkdir(folder)
+        os.makedirs(folder, exist_ok=True)
 
         snapshot_info = await self._client.create_snapshot(collection_name=collection_name)
         snapshot_url_in = (
