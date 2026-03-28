@@ -3,7 +3,7 @@ from redis.exceptions import RedisError
 
 from cat.db import crud
 from cat.db.cruds import settings as crud_settings
-from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY, DEFAULT_PLUGINS_KEY
+from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_AGENT_KEY, DEFAULT_SYSTEM_KEY, DEFAULT_PLUGINS_KEY
 from cat.log import log
 
 
@@ -189,19 +189,42 @@ def destroy_plugin(plugin_id: str):
 
 def get_agents_plugin_keys(plugin_id: str) -> List[str]:
     """
-    Get all unique agent IDs from Redis keys that have the format agents:*:plugin_id:<plugin_name>.
+    Get all unique agent IDs where the plugin_id is listed in the active_plugins setting.
+
+    Uses a single SCAN on `agents:*:agent` keys followed by one JSON.MGET command to retrieve active_plugins from all
+    agents at once, then filters locally.
+    Total cost: 1 SCAN + 1 Redis command, regardless of the number of agents.
 
     Args:
         plugin_id: The name of the plugin to filter by.
 
     Returns:
-        List of unique agent IDs that have keys matching the plugin format.
+        List of unique agent IDs for which the plugin is active.
 
     Raises:
         RedisError: If Redis connection fails.
     """
-    pattern = format_key("*", plugin_id)
-    return crud_settings.get_agents_main_keys(pattern)
+    try:
+        db = crud.get_db()
+
+        # Scan directly for agent settings keys — no intermediate reconstruction needed
+        keys = [
+            k.decode() if isinstance(k, bytes) else k
+            for k in db.scan_iter(f"{DEFAULT_AGENTS_KEY}:*:{DEFAULT_AGENT_KEY}")
+        ]
+        if not keys:
+            return []
+
+        # Single Redis command: read active_plugins entry from every key at once
+        results = db.json().mget(keys, '$[?(@.name=="active_plugins")]')
+
+        active_agents = [
+            key.split(":")[1] for key, result in zip(keys, results) if result and plugin_id in (result[0].get("value") or [])
+        ]
+        return active_agents
+    except RedisError as e:
+        log.error(f"Redis error in get_agents_plugin_keys for plugin {plugin_id}: {e}")
+        raise
 
 
 def get_active_plugins_from_db(agent_id: str) -> List[str]:
