@@ -65,11 +65,12 @@ async def upsert_embedder_setting(
     current_embedder_name = lizard.embedder_name
     current_embedder_size = lizard.embedder_size
 
-    # if there is nothing to update, then just return the response
-    if previous_embedder_name == current_embedder_name and previous_embedder_size == current_embedder_size:
-        return UpsertSettingResponse(**result)
-
-    # otherwise, inform the Cheshire Cats about the new embedder available in the system
-    background_tasks.add_task(info.lizard.embed_all_in_cheshire_cats, current_embedder_name, current_embedder_size)
+    # a characterizing feature of the embedder has been updated: inform the Cheshire Cats
+    if previous_embedder_name != current_embedder_name or previous_embedder_size != current_embedder_size:
+        background_tasks.add_task(
+            info.lizard.embed_all_in_cheshire_cats,
+            current_embedder_name,
+            current_embedder_size
+        )
 
     return UpsertSettingResponse(**result)
