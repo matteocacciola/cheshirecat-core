@@ -1,7 +1,9 @@
 import asyncio
 import json
+import os
 from ast import literal_eval
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 from typing import Dict, List, Any, Type
 from fastapi import Query
 from langchain_core.caches import InMemoryCache
@@ -304,3 +306,42 @@ async def create_jwt_content(credentials: UserCredentials, redis_search_service:
         "iat": now,
         "agents": final_valid_matches,
     }
+
+
+def sanitize_source_name(source_name: str, path: str) -> str:
+    # Security: Validate and sanitize the source parameter
+    if not source_name or source_name.strip() == "":
+        raise CustomValidationException("Invalid filename")
+
+    # Remove any path separators and resolve path components
+    # This prevents directory traversal attacks like "../../../etc/passwd"
+    sanitized_source = os.path.basename(source_name.strip())
+    sanitized_source, sanitized_extension = os.path.splitext(sanitized_source)
+
+    # Additional validation: reject suspicious patterns
+    forbidden_patterns = ['.', '..', '/', '\\', '\x00']
+    if any(pattern in sanitized_source for pattern in forbidden_patterns):
+        raise CustomValidationException("Invalid filename")
+
+    # Validate filename characters (allow only alphanumeric, dash, underscore, dot)
+    if not sanitized_source.replace('.', '').replace('-', '').replace('_', '').isalnum():
+        raise CustomValidationException("Filename contains invalid characters")
+
+    # Prevent hidden files and ensure reasonable length
+    if sanitized_source.startswith('.') or len(sanitized_source) > 255:
+        raise CustomValidationException("Invalid filename")
+
+    # Optional: Additional path validation using pathlib for extra safety
+    sanitized_source = f"{sanitized_source}{sanitized_extension}"
+    try:
+        # This ensures the resolved path doesn't escape the intended directory
+        base_path = Path(path).resolve()
+        requested_path = (base_path / sanitized_source).resolve()
+
+        # Ensure the resolved path is within the base directory
+        if not str(requested_path).startswith(str(base_path)):
+            raise CustomValidationException("Access denied")
+    except (OSError, ValueError):
+        raise CustomValidationException("Invalid file path")
+
+    return sanitized_source

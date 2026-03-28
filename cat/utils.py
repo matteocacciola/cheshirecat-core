@@ -5,6 +5,7 @@ import base64
 import hashlib
 import inspect
 import os
+import subprocess
 import tempfile
 import threading
 from enum import Enum as BaseEnum, EnumMeta
@@ -573,3 +574,16 @@ def safe_deepcopy(obj):
             return copy.copy(obj)  # shallow copy as fallback
         except Exception:
             return obj  # last fallback: return the original object if it can't be copied
+
+
+def is_cuda_available():
+    try:
+        result = subprocess.check_output(["nvidia-smi"], stderr=subprocess.STDOUT)
+        # Check if the output contains "CUDA Version"
+        if b"CUDA Version" in result:
+            return True, result.decode("utf-8")
+        return False, "nvidia-smi executed but CUDA not found"
+    except subprocess.CalledProcessError:
+        return False, "nvidia-smi failed (no GPU NVIDIA or driver)"
+    except FileNotFoundError:
+        return False, "nvidia-smi not found"

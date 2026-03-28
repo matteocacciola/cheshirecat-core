@@ -1,6 +1,5 @@
 import os
 from io import BytesIO
-from pathlib import Path
 from typing import Dict, List, Tuple
 from fastapi import APIRouter, Body
 from pydantic import BaseModel
@@ -9,7 +8,7 @@ from starlette.responses import StreamingResponse
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
 from cat.exceptions import CustomNotFoundException, CustomValidationException
-from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
+from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse, sanitize_source_name
 from cat.services.factory.file_manager import FileResponse
 from cat.services.memory.models import VectorMemoryType
 from cat.services.service_factory import ServiceFactory
@@ -99,54 +98,21 @@ async def get_attributes(
     return FileManagerAttributes(files=list_files, size=sum(file.size for file in list_files))
 
 
-@router.get("/files/{source_name}")
+@router.get("/files/{source_name:path}")
 async def download_file(
     source_name: str,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> StreamingResponse:
     path, _, _ = get_from_info(info)
 
-    # Security: Validate and sanitize the source parameter
-    if not source_name or source_name.strip() == "":
-        raise CustomValidationException("Invalid filename")
-
-    # Remove any path separators and resolve path components
-    # This prevents directory traversal attacks like "../../../etc/passwd"
-    sanitized_source = os.path.basename(source_name.strip())
-    sanitized_source, sanitized_extension = os.path.splitext(sanitized_source)
-
-    # Additional validation: reject suspicious patterns
-    forbidden_patterns = ['.', '..', '/', '\\', '\x00']
-    if any(pattern in sanitized_source for pattern in forbidden_patterns):
-        raise CustomValidationException("Invalid filename")
-
-    # Validate filename characters (allow only alphanumeric, dash, underscore, dot)
-    if not sanitized_source.replace('.', '').replace('-', '').replace('_', '').isalnum():
-        raise CustomValidationException("Filename contains invalid characters")
-
-    # Prevent hidden files and ensure reasonable length
-    if sanitized_source.startswith('.') or len(sanitized_source) > 255:
-        raise CustomValidationException("Invalid filename")
-
-    # Optional: Additional path validation using pathlib for extra safety
-    sanitized_source = f"{sanitized_source}{sanitized_extension}"
-    try:
-        # This ensures the resolved path doesn't escape the intended directory
-        base_path = Path(path).resolve()
-        requested_path = (base_path / sanitized_source).resolve()
-
-        # Ensure the resolved path is within the base directory
-        if not str(requested_path).startswith(str(base_path)):
-            raise CustomValidationException("Access denied")
-    except (OSError, ValueError):
-        raise CustomValidationException("Invalid file path")
+    sanitized_source = sanitize_source_name(source_name, path=path)
 
     # Download the file
     file_content = info.cheshire_cat.file_manager.download_file(os.path.join(path, sanitized_source))
     if file_content is None:
         raise CustomNotFoundException("File not found")
 
-    # Sanitize filename for Content-Disposition header to prevent header injection
+    # Sanitize the filename for the Content-Disposition header to prevent header injection
     safe_filename = sanitized_source.encode("ascii", "ignore").decode("ascii")
     safe_filename = "".join(c for c in safe_filename if c.isalnum() or c in ".-_")
 
@@ -157,7 +123,7 @@ async def download_file(
     )
 
 
-@router.delete("/files/{source_name}")
+@router.delete("/files/{source_name:path}")
 async def delete_file(
     source_name: str,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
@@ -166,9 +132,11 @@ async def delete_file(
     path, collection_id, metadata = get_from_info(info)
     metadata = {"source": source_name} | metadata
 
+    sanitized_source = sanitize_source_name(source_name, path=path)
+
     try:
         # delete the file from the file storage
-        res = info.cheshire_cat.file_manager.remove_file(os.path.join(path, source_name))
+        res = info.cheshire_cat.file_manager.remove_file(os.path.join(path, sanitized_source))
 
         # delete points
         await info.cheshire_cat.vector_memory_handler.delete_tenant_points(str(collection_id), metadata)
