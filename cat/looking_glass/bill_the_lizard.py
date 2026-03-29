@@ -113,7 +113,7 @@ class BillTheLizard(OrchestratorMixin):
                     ccat.agent_key,
                     Setting(name="metadata", value=metadata),
                 )
-            await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
+            await ccat.vector_memory_handler.initialize(self.embedder.name, self.embedder.size)
             await ccat.embed_procedures()
 
             self.plugin_manager.execute_hook("after_cheshire_cat_creation", ccat, caller=self)
