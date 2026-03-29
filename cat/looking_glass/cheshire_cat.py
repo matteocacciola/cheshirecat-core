@@ -18,6 +18,8 @@ from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.procedures import CatProcedureType
 from cat.looking_glass.models import StoredSourceWithMetadata
 from cat.looking_glass.stray_cat import StrayCat
+from cat.services.factory.file_manager import BaseFileManager
+from cat.services.factory.vector_db import BaseVectorDatabaseHandler
 from cat.services.memory.models import VectorMemoryType, PointStruct
 from cat.services.mixin import BotMixin
 from cat.utils import guess_file_type, is_url
@@ -330,7 +332,7 @@ class CheshireCat(BotMixin):
     def plugin_exists(self, plugin_id: str):
         return plugin_id in self.plugin_manager.plugins.keys()
 
-    async def clone_from(ccat: CheshireCat):
+    async def clone_from(self, ccat: "CheshireCat"):
         await self.vector_memory_handler.initialize(self.embedder.name, self.embedder.size)
 
         log.info(f"Cloning vector memory from agent {ccat.agent_key} to agent {self.agent_key}")
@@ -346,6 +348,33 @@ class CheshireCat(BotMixin):
         # clone the files from the ccat to the provided agent
         log.info(f"Cloning files from agent {ccat.agent_key} to agent {self.agent_key}")
         ccat.file_manager.clone_folder(ccat.agent_key, self.agent_key)
+
+    def transfer_files_from(self, previous_file_manager: BaseFileManager):
+        try:
+            self.file_manager.transfer(previous_file_manager, self.agent_key)
+            success = True
+        except Exception as e:
+            log.error(f"Error while transferring files from previous file manager: {e}")
+            success = False
+
+        self.plugin_manager.execute_hook("after_file_manager_transfer_on_agent", success, caller=self)
+
+    async def transfer_vector_points_from(self, previous_vector_memory_handler: BaseVectorDatabaseHandler):
+        try:
+            await self.vector_memory_handler.initialize(self.embedder.name, self.embedder.size)
+            for collection_name in await previous_vector_memory_handler.get_collection_names():
+                points, _ = await previous_vector_memory_handler.get_all_tenant_points(collection_name, with_vectors=True)
+                if points:
+                    await self.vector_memory_handler.add_points_to_tenant(
+                        collection_name=collection_name,
+                        points=[PointStruct(**p.model_dump()) for p in points],
+                    )
+            success = True
+        except Exception as e:
+            log.error(f"Error while transferring vector points from previous vector memory handler: {e}")
+            success = False
+
+        self.plugin_manager.execute_hook("after_vector_memory_transfer_on_agent", success, caller=self)
 
     @property
     def agent_key(self) -> str:

@@ -1,11 +1,17 @@
 from abc import ABC, abstractmethod
 from typing import Type, List, Any
 from langchain_core.callbacks import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
-from langchain_core.language_models import BaseLanguageModel, LLM
+from langchain_core.language_models import BaseLanguageModel, LLM as LangChainLLM
 from pydantic import ConfigDict
 
 from cat.services.factory.models import BaseFactoryConfigModel
-from cat.utils import default_llm_answer_prompt
+from cat.utils import default_llm_answer_prompt, get_nlp_object_name
+
+
+class LLM(LangChainLLM, ABC):
+    @property
+    def name(self) -> str | None:
+        return get_nlp_object_name(self, "default_llm")
 
 
 class LLMDefault(LLM):

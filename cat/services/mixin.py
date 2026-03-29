@@ -12,7 +12,6 @@ from cat.services.factory.embedder import Embeddings
 from cat.services.factory.file_manager import BaseFileManager
 from cat.services.factory.vector_db import BaseVectorDatabaseHandler
 from cat.services.service_provider import ServiceProvider
-from cat.utils import get_nlp_object_name
 
 
 class ContextMixin(ABC):
@@ -140,10 +139,6 @@ class BotMixin(ContextMixin, ABC):
     @property
     def agentic_workflow(self) -> BaseAgenticWorkflowHandler:
         return self.service_provider.get_agentic_workflow()
-
-    @property
-    def large_language_model_name(self) -> str | None:
-        return get_nlp_object_name(self.large_language_model, "default_llm")
 
     @property
     def rabbit_hole(self) -> RabbitHole:

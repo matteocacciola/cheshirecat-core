@@ -10,6 +10,9 @@ from cat.services.factory.file_manager import BaseFileManager, FileResponse
 
 
 class LocalFileManager(BaseFileManager):
+    def _eq(self, other: "LocalFileManager") -> bool:
+        return self.__class__.__name__ == other.__class__.__name__
+
     def _download_file(self, file_path: str) -> bytes | None:
         try:
             if not os.path.exists(file_path):

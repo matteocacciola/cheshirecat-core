@@ -28,10 +28,16 @@ The current version introduces also the following additional hooks:
 - `lizard_notify_plugin_installation`: to add custom logic when a plugin is installed
 - `lizard_notify_plugin_uninstallation`: to add custom logic when a plugin is uninstalled
 - `before_lizard_shutdown`: to add custom logic before the Lizard shuts down
+- `after_all_cheshire_cats_embedded`: to add custom logic after all Cheshire Cats are embedded, executed after the
+   embedder has been updated
 
 ### CheshireCat:
 - `after_plugin_toggling_on_agent`: to add custom logic after a plugin is enabled on the Cheshire Cat
 - `after_plugin_settings_update`: to add custom logic after a plugin settings are updated
+- `after_file_manager_transfer_on_agent`: to add custom logic after a file manager is updated on the Cheshire Cat and
+  all the files have been transferred to the new file manager
+- `after_vector_memory_transfer_on_agent`: to add custom logic after a vector memory is updated on the Cheshire Cat and
+  all the documents have been transferred to the new vector memory
 
 ### Factories:
 - `factory_allowed_file_managers`: to extend the list of allowed file managers

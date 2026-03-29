@@ -21,7 +21,7 @@ def before_cat_sends_message(message, agent_output, cat) -> Dict:
     agent_id = cat.agent_key
     user_id = cat.user.id
     chat_id = cat.id
-    llm_id = cat.large_language_model_name
+    llm_id = cat.large_language_model.name
 
     input_tokens = 0
     output_tokens = 0

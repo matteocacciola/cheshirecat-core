@@ -65,10 +65,6 @@ async def upsert_embedder_setting(
 
     # a characterizing feature of the embedder has been updated: inform the Cheshire Cats
     if previous_embedder != current_embedder:
-        background_tasks.add_task(
-            info.lizard.embed_all_in_cheshire_cats,
-            current_embedder_name,
-            current_embedder_size
-        )
+        background_tasks.add_task(info.lizard.embed_all_in_cheshire_cats)
 
     return UpsertSettingResponse(**result)

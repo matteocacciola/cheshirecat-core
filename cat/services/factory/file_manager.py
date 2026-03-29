@@ -27,6 +27,29 @@ class BaseFileManager(ABC):
         self._excluded_files = [".gitignore", ".DS_Store", ".gitkeep", ".git", ".dockerignore"]
         self._root_dir = utils.get_file_manager_root_storage_path()
 
+    def __eq__(self, other):
+        if not isinstance(other, BaseFileManager):
+            return False
+
+        return self.__class__.__name__ == other.__class__.__name__ and self._eq(other)
+
+    @abstractmethod
+    def _eq(self, other: "BaseFileManager") -> bool:
+        """
+        Compares the current object with another object for equality.
+
+        This method is an abstract method and must be implemented by subclasses.
+        The equality comparison should be defined based on the specific criteria or attributes relevant to the subclass
+        implementation.
+
+        Args:
+            other: An object to compare against the current instance.
+
+        Returns:
+            bool: The result of the equality comparison.
+        """
+        pass
+
     def upload_file(
         self, file_path: str, remote_root_dir: str, remote_filename: str | None = None
     ) -> str | None:
@@ -321,6 +344,9 @@ class DummyFileManager(BaseFileManager):
     
     def _write_file(self, file_content: str | bytes, file_path: str) -> None:
         pass
+
+    def _eq(self, other: "DummyFileManager") -> bool:
+        return self.__class__.__name__ == other.__class__.__name__
 
 
 class FileManagerConfig(BaseFactoryConfigModel, ABC):

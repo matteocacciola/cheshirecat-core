@@ -14,6 +14,9 @@ from cat.utils import get_nlp_object_name
 class Embeddings(LangChainEmbeddings, ABC):
     """Base class for all embedders."""
     def __eq__(self, other):
+        if not isinstance(other, Embeddings):
+            return False
+
         return (
             self.name == other.name
             and self.size == other.size
