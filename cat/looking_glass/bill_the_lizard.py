@@ -203,21 +203,7 @@ class BillTheLizard(OrchestratorMixin):
 
         # clone the vector points from the ccat to the provided agent
         cloned_ccat = self.get_cheshire_cat(new_agent_id)
-        await cloned_ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
-
-        log.info(f"Cloning vector memory from agent {ccat.agent_key} to agent {new_agent_id}")
-        collection_name = str(VectorMemoryType.DECLARATIVE)
-        points, _ = await ccat.vector_memory_handler.get_all_tenant_points(collection_name, with_vectors=True)
-        if points:
-            await cloned_ccat.vector_memory_handler.add_points_to_tenant(
-                collection_name=collection_name,
-                points=[PointStruct(**p.model_dump()) for p in points],
-            )
-        await cloned_ccat.embed_procedures()
-
-        # clone the files from the ccat to the provided agent
-        log.info(f"Cloning files from agent {ccat.agent_key} to agent {new_agent_id}")
-        ccat.file_manager.clone_folder(ccat.agent_key, new_agent_id)
+        cloned_ccat.clone_from(ccat)
 
         return cloned_ccat
 
