@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import Dict
-from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
 
 from cat.core_plugins.white_rabbit.white_rabbit import WhiteRabbit
@@ -9,9 +8,11 @@ from cat.rabbit_hole import RabbitHole
 from cat.services.factory.agentic_workflow import BaseAgenticWorkflowHandler
 from cat.services.factory.auth_handler import BaseAuthHandler
 from cat.services.factory.chunker import BaseChunker
+from cat.services.factory.embedder import CatEmbeddings
 from cat.services.factory.file_manager import BaseFileManager
 from cat.services.factory.vector_db import BaseVectorDatabaseHandler
 from cat.services.service_provider import ServiceProvider
+from cat.utils import get_nlp_object_name
 
 
 class ContextMixin(ABC):
@@ -25,7 +26,7 @@ class ContextMixin(ABC):
 
     @property
     def embedder_name(self) -> str:
-        return self.service_provider.get_nlp_object_name(self.embedder, "default_embedder")
+        return get_nlp_object_name(self.embedder, "default_embedder")
 
     @property
     def embedder_size(self) -> int | None:
@@ -150,7 +151,7 @@ class BotMixin(ContextMixin, ABC):
 
     @property
     def large_language_model_name(self) -> str | None:
-        return self.service_provider.get_nlp_object_name(self.large_language_model, "default_llm")
+        return get_nlp_object_name(self.large_language_model, "default_llm")
 
     @property
     def rabbit_hole(self) -> RabbitHole:
