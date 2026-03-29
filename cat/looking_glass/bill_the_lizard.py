@@ -237,10 +237,7 @@ class BillTheLizard(OrchestratorMixin):
             # finally, I can re-embed all the stored files in an asynchronous way
             # limit concurrent embeddings to avoid overwhelming resources
             semaphore = asyncio.Semaphore(5)  # Max 5 concurrent
-            await asyncio.gather(*[
-                embed_with_limit(entry)
-                for entry in stored_files_by_ccat
-            ])
+            await asyncio.gather(*[embed_with_limit(entry) for entry in stored_files_by_ccat])
             success = True
         except Exception as e:
             log.error(f"Error embedding all stored files: {e}")
