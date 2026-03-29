@@ -201,7 +201,7 @@ class BillTheLizard(OrchestratorMixin):
         log.info(f"Cloning settings from agent {ccat.agent_key} to agent {new_agent_id}")
         crud_settings.clone_agent(ccat.agent_key, new_agent_id, [DEFAULT_CONVERSATIONS_KEY])
 
-        # clone the vector points from the ccat to the provided agent
+        # delegate cloning of in-memory data/resources from the source Cheshire Cat to the new one
         cloned_ccat = self.get_cheshire_cat(new_agent_id)
         await cloned_ccat.clone_from(ccat)
 
