@@ -15,16 +15,16 @@ class Embeddings(LangChainEmbeddings, ABC):
     """Base class for all embedders."""
     def __eq__(self, other):
         return (
-            self.embedder_name == other.embedder_name
-            and self.embedder_size == other.embedder_size
+            self.name == other.name
+            and self.size == other.size
         )
 
     @property
-    def embedder_name(self) -> str:
+    def name(self) -> str:
         return get_nlp_object_name(self, "default_embedder")
 
     @property
-    def embedder_size(self) -> int | None:
+    def size(self) -> int:
         return len(self.embed_query("hello world"))
 
 
