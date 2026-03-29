@@ -203,7 +203,7 @@ class BillTheLizard(OrchestratorMixin):
 
         # clone the vector points from the ccat to the provided agent
         cloned_ccat = self.get_cheshire_cat(new_agent_id)
-        cloned_ccat.clone_from(ccat)
+        await cloned_ccat.clone_from(ccat)
 
         return cloned_ccat
 
