@@ -1,5 +1,4 @@
 from typing import Any, Dict
-from langchain_core.embeddings import Embeddings
 from langchain_core.language_models import BaseLanguageModel
 from pydantic import BaseModel
 
@@ -8,6 +7,7 @@ from cat.db.cruds import settings as crud_settings
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.services.factory.agentic_workflow import BaseAgenticWorkflowHandler
 from cat.services.factory.auth_handler import BaseAuthHandler
+from cat.services.factory.embedder import Embeddings
 from cat.services.service_factory import ServiceFactory
 from cat.services.factory.chunker import BaseChunker
 from cat.services.factory.file_manager import BaseFileManager
@@ -52,23 +52,6 @@ class ServiceProvider:
             selected_config = crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)
 
         return factory.get_from_config_name(selected_config["name"])
-
-    def get_nlp_object_name(self, nlp_object: Any, default: str) -> str:
-        name = default
-        if hasattr(nlp_object, "repo_id"):
-            name = nlp_object.repo_id
-        elif hasattr(nlp_object, "model_path"):
-            name = nlp_object.model_path
-        elif hasattr(nlp_object, "model_name"):
-            name = nlp_object.model_name
-        elif hasattr(nlp_object, "model"):
-            name = nlp_object.model
-
-        replaces = ["/", "-", "."]
-        for v in replaces:
-            name = name.replace(v, "_")
-
-        return name.lower()
 
     def get_embedder(self) -> Embeddings:
         return self._get_service_object(self._list_factory_params["embedder"])
