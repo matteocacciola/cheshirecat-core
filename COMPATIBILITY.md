@@ -1,6 +1,6 @@
 # Code compatibility
-The `episodic_memories` has been removed from the `StrayCat`'s working memory.
-The `declarative_memories` and `procedural_memories` are still available.
+The `episodic_memories` is now used to store documents uploaded on-the-fly within a chat, so continuing working for the `StrayCat`'s working memory.
+The `declarative_memories` and `procedural_memories` are still available on a `CheshireCat` level.
 
 # Compatibility with plugins
 This new version is no more completely compatible with the original version, since the architecture has been deeply changed.
