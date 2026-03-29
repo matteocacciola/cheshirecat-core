@@ -101,10 +101,15 @@ Currently, the following events are supported:
 - `knowledge_source_loaded`, triggered when a knowledge source is loaded;
 - `plugin_installed`, triggered when a plugin is installed;
 - `plugin_uninstalled`, triggered when a plugin is uninstalled.
+- `embedder_updated`, triggered when the Embedder is updated.
+- `knowledge_source_files_transferred`, triggered when the file manager for a CheshireCat has been changed and the
+  process of file transferring from the previous storage to the new one has been completed.
+- `vector_memory_files_transferred`, triggered when the vector database for a CheshireCat has been changed and the
+  process of point transferring from the previous vector database to the new one has been completed.
 
 To register a webhook, use the `/webhooks` endpoint with a `POST` request. You can specify the event type and the URL
 to be called when the event occurs. To register a webhook,, you need to provide the following parameters:
-- `event`: the event type to listen for (e.g., `knowledge_source_loaded`, `plugin_installed`, `plugin_uninstalled`);
+- `event`: the event type to listen for (e.g., `knowledge_source_loaded`, etc.);
 - `url`: the URL to be called when the event occurs;
 - `header_key`: the header key to be used for authentication;
 - `secret`: the secret to be used for authentication.
@@ -135,6 +140,26 @@ and containing one of the following payloads:
 ```json
 {
   "plugin_id": <the id of the uninstalled plugin>,
+  "success": <true if the operation was successful, false otherwise>
+}
+```
+- `embedder_updated`:
+```json
+{
+  "success": <true if the operation was successful, false otherwise>
+}
+```
+- `after_file_manager_transfer_on_agent`:
+```json
+{
+  "agent": <the agent id>,
+  "success": <true if the operation was successful, false otherwise>
+}
+```
+- `after_vector_memory_transfer_on_agent`:
+```json
+{
+  "agent": <the agent id>,
   "success": <true if the operation was successful, false otherwise>
 }
 ```

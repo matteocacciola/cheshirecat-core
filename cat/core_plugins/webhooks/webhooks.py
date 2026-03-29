@@ -20,7 +20,20 @@ import cat.core_plugins.webhooks.crud as crud_webhook
 from cat.services.string_crypto import StringCrypto
 
 
-WEBHOOK_EVENT = Literal["knowledge_source_loaded", "plugin_installed", "plugin_uninstalled"]
+WEBHOOK_EVENT = Literal[
+    "knowledge_source_loaded",
+    "plugin_installed",
+    "plugin_uninstalled",
+    "embedder_updated",
+    "knowledge_source_files_transferred",
+    "vector_memory_files_transferred",
+]
+
+WEBHOOK_CHESHIRECAT_EVENTS = [
+    "knowledge_source_loaded",
+    "knowledge_source_files_transferred",
+    "vector_memory_files_transferred",
+]
 
 crypto = StringCrypto()
 
@@ -52,7 +65,7 @@ def trigger_webhook(webhook_data: WebhookPayload, payload: Dict[str, Any]):
 
 
 def parse_agent_key(info: AuthorizedInfo, webhook: WebhookPayload) -> str:
-    if webhook.event != "knowledge_source_loaded":
+    if webhook.event not in WEBHOOK_CHESHIRECAT_EVENTS:
         return info.lizard.agent_key
     if not info.cheshire_cat:
         raise ValueError("Cannot register / unregister the webhook without a CheshireCat instance")
@@ -146,3 +159,51 @@ def lizard_notify_plugin_uninstallation(plugin_id: str, lizard) -> None:
 
     success = lizard.plugin_manager.plugins.get(plugin_id) is None
     notify_plugin_event_to_webhooks(plugin_id, webhooks, success, "uninstallation")
+
+
+@hook(priority=0)
+def after_all_cheshire_cats_embedded(success: bool, lizard) -> None:
+    webhooks = crud_webhook.get_webhooks(lizard.agent_key, "embedder_updated")
+    if webhooks is None:
+        return
+
+    payload = {"success": success}
+
+    for webhook in webhooks:
+        try:
+            trigger_webhook(WebhookPayload(**webhook), payload)
+            log.info(f"Triggered webhook {webhook['url']} on embedder updated")
+        except Exception as e:
+            log.error(f"Failed to trigger the webhook '{webhook['url']}' on embedder updated: {e}")
+
+
+@hook(priority=0)
+def after_file_manager_transfer_on_agent(success: bool, cat) -> None:
+    webhooks = crud_webhook.get_webhooks(cat.agent_key, "knowledge_source_files_transferred")
+    if webhooks is None:
+        return
+
+    payload = {"agent": cat.agent_key, "success": success}
+
+    for webhook in webhooks:
+        try:
+            trigger_webhook(WebhookPayload(**webhook), payload)
+            log.info(f"Triggered the webhook '{webhook['url']}' for the agent '{cat.agent_key}' on knowledge source files transferred")
+        except Exception as e:
+            log.error(f"Failed to trigger the webhook '{webhook['url']}' for the agent '{cat.agent_key}' on knowledge source files transferred: {e}")
+
+
+@hook(priority=0)
+def after_vector_memory_transfer_on_agent(success: bool, cat) -> None:
+    webhooks = crud_webhook.get_webhooks(cat.agent_key, "vector_memory_files_transferred")
+    if webhooks is None:
+        return
+
+    payload = {"agent": cat.agent_key, "success": success}
+
+    for webhook in webhooks:
+        try:
+            trigger_webhook(WebhookPayload(**webhook), payload)
+            log.info(f"Triggered the webhook '{webhook['url']}' for the agent '{cat.agent_key}' on vector memory points transferred")
+        except Exception as e:
+            log.error(f"Failed to trigger the webhook '{webhook['url']}' for the agent '{cat.agent_key}' on vector memory points transferred: {e}")

@@ -254,3 +254,45 @@ def after_cheshire_cat_creation(cat: CheshireCat, lizard: BillTheLizard) -> None
         lizard: The BillTheLizard instance to be used in post-processing.
     """
     pass
+
+
+@hook(priority=0)
+def after_all_cheshire_cats_embedded(success: bool, lizard: BillTheLizard) -> None:
+    """
+    Hook triggered after all CheshireCat instances have been embedded. This function allows for any post-processing or
+    tasks that need to be carried out immediately after all CheshireCat objects have been embedded, involving interaction
+    with the BillTheLizard instance.
+
+    Args:
+        success: A boolean indicating whether the embedding process was successful.
+        lizard: The BillTheLizard instance to be used in post-processing.
+    """
+    pass
+
+
+@hook(priority=0)
+def after_file_manager_transfer_on_agent(success: bool, cat: CheshireCat) -> None:
+    """
+    Hook triggered after the file manager transfer process on an agent. This function allows for any post-processing or
+    tasks that need to be carried out immediately after the file manager transfer process has been completed on an agent,
+    involving interaction with the CheshireCat instance.
+
+    Args:
+        success: A boolean indicating whether the file manager transfer process was successful.
+        cat: The CheshireCat instance to be used in post-processing.
+    """
+    pass
+
+
+@hook(priority=0)
+def after_vector_memory_transfer_on_agent(success: bool, cat: CheshireCat) -> None:
+    """
+    Hook triggered after the vector memory transfer process on an agent. This function allows for any post-processing or
+    tasks that need to be carried out immediately after the vector memory transfer process has been completed on an agent,
+    involving interaction with the CheshireCat instance.
+
+    Args:
+        success: A boolean indicating whether the vector memory transfer process was successful.
+        cat: The CheshireCat instance to be used in post-processing.
+    """
+    pass

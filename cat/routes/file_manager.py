@@ -1,7 +1,7 @@
 import os
 from io import BytesIO
 from typing import Dict, List, Tuple
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, BackgroundTasks
 from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 
@@ -71,12 +71,15 @@ async def get_file_manager_settings(
 
 @router.put("/settings/{file_manager_name}", response_model=UpsertSettingResponse)
 async def upsert_file_manager_setting(
+    background_tasks: BackgroundTasks,
     file_manager_name: str,
     payload: Dict = Body(default={}),
     info: AuthorizedInfo = check_permissions(AuthResource.FILE_MANAGER, AuthPermission.WRITE),
 ) -> UpsertSettingResponse:
     """Upsert the File Manager setting"""
     ccat = info.cheshire_cat
+
+    previous_file_manager = ccat.file_manager
 
     result = ServiceFactory(
         agent_key=ccat.agent_key,
@@ -85,6 +88,11 @@ async def upsert_file_manager_setting(
         setting_category="file_manager",
         schema_name="fileManagerName",
     ).upsert_service(file_manager_name, payload)
+
+    current_file_manager = ccat.file_manager
+    if previous_file_manager != current_file_manager:
+        background_tasks.add_task(ccat.transfer_files_from, previous_file_manager)
+
     return UpsertSettingResponse(**result)
 
 

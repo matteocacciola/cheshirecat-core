@@ -116,7 +116,7 @@ async def recall_memory_points_from_text(
     return RecallResponse(
         query=RecallResponseQuery(text=text, vector=query_embedding),
         vectors=RecallResponseVectors(
-            embedder=lizard.embedder_name,
+            embedder=lizard.embedder.name,
             collections={
                 collection_name: [build_memory_dict(document_recall) for document_recall in dm]
             }

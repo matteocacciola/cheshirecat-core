@@ -1,15 +1,16 @@
 import pytest
 from langchain_core.language_models import BaseLanguageModel
-from langchain_core.embeddings import Embeddings
 from langchain_community.document_loaders.parsers.pdf import PyMuPDFParser
 
 from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.looking_glass import MadHatter
 from cat.services.factory.chunker import BaseChunker
+from cat.services.factory.embedder import Embeddings
 from cat.services.factory.file_manager import BaseFileManager
 from cat.services.factory.vector_db import BaseVectorDatabaseHandler
 from cat.services.factory.embedder import DumbEmbedder
 from cat.services.factory.llm import LLMDefault
+
 from tests.utils import create_mock_plugin_zip
 
 

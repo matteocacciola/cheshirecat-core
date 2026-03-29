@@ -5,10 +5,16 @@ from langchain_core.language_models import BaseLanguageModel, LLM
 from pydantic import ConfigDict
 
 from cat.services.factory.models import BaseFactoryConfigModel
-from cat.utils import default_llm_answer_prompt
+from cat.utils import default_llm_answer_prompt, get_nlp_object_name
 
 
-class LLMDefault(LLM):
+class LargeLanguageModel(LLM, ABC):
+    def model_post_init(self, __context: Any) -> None:
+        self.name = get_nlp_object_name(self, "default_llm")
+        super().model_post_init(__context)
+
+
+class LLMDefault(LargeLanguageModel):
     @property
     def _llm_type(self):
         return ""

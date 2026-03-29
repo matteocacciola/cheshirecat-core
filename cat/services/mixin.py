@@ -1,7 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import Dict
-from langchain_core.embeddings import Embeddings
-from langchain_core.language_models import BaseLanguageModel
 
 from cat.core_plugins.white_rabbit.white_rabbit import WhiteRabbit
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
@@ -9,7 +7,9 @@ from cat.rabbit_hole import RabbitHole
 from cat.services.factory.agentic_workflow import BaseAgenticWorkflowHandler
 from cat.services.factory.auth_handler import BaseAuthHandler
 from cat.services.factory.chunker import BaseChunker
+from cat.services.factory.embedder import Embeddings
 from cat.services.factory.file_manager import BaseFileManager
+from cat.services.factory.llm import LargeLanguageModel
 from cat.services.factory.vector_db import BaseVectorDatabaseHandler
 from cat.services.service_provider import ServiceProvider
 
@@ -22,14 +22,6 @@ class ContextMixin(ABC):
     def __init__(self):
         self.service_provider = ServiceProvider(self.agent_key, self.mad_hatter)
         self._white_rabbit = None
-
-    @property
-    def embedder_name(self) -> str:
-        return self.service_provider.get_nlp_object_name(self.embedder, "default_embedder")
-
-    @property
-    def embedder_size(self) -> int | None:
-        return len(self.embedder.embed_query("hello world"))
 
     @property
     def mad_hatter(self) -> MadHatter:
@@ -125,7 +117,7 @@ class BotMixin(ContextMixin, ABC):
         return self.lizard.embedder
 
     @property
-    def large_language_model(self) -> BaseLanguageModel:
+    def large_language_model(self) -> LargeLanguageModel:
         return self.service_provider.get_large_language_model()
 
     @property
@@ -147,10 +139,6 @@ class BotMixin(ContextMixin, ABC):
     @property
     def agentic_workflow(self) -> BaseAgenticWorkflowHandler:
         return self.service_provider.get_agentic_workflow()
-
-    @property
-    def large_language_model_name(self) -> str | None:
-        return self.service_provider.get_nlp_object_name(self.large_language_model, "default_llm")
 
     @property
     def rabbit_hole(self) -> RabbitHole:

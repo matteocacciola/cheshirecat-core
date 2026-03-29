@@ -587,3 +587,21 @@ def is_cuda_available():
         return False, "nvidia-smi failed (no GPU NVIDIA or driver)"
     except FileNotFoundError:
         return False, "nvidia-smi not found"
+
+
+def get_nlp_object_name(nlp_object: Any, default: str) -> str:
+    name = default
+    if hasattr(nlp_object, "repo_id"):
+        name = nlp_object.repo_id
+    elif hasattr(nlp_object, "model_path"):
+        name = nlp_object.model_path
+    elif hasattr(nlp_object, "model_name"):
+        name = nlp_object.model_name
+    elif hasattr(nlp_object, "model"):
+        name = nlp_object.model
+
+    replaces = ["/", "-", "."]
+    for v in replaces:
+        name = name.replace(v, "_")
+
+    return name.lower()

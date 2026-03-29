@@ -1,5 +1,6 @@
 import asyncio
 from json import dumps
+from unittest.mock import patch
 import pytest
 from fastapi.encoders import jsonable_encoder
 
@@ -183,7 +184,7 @@ async def test_upsert_embedder_settings_with_episodic_memory_without_conversatio
     )
     assert response.status_code == 200
 
-    # upload a file to the Knowledge Base of the agent
+    # upload a file to the Knowledge Base of an agent's chat
     content_type = "text/plain"
     file_name = "sample.txt"
     response, _ = send_file(file_name, content_type, secure_client, headers, ch_id=chat_id)
@@ -193,7 +194,7 @@ async def test_upsert_embedder_settings_with_episodic_memory_without_conversatio
     )
     assert episodic_memories_before > 0
 
-    # check that the file does not in the list of files, because it is episodic
+    # check that the file does not appear in the list of files, because it is episodic
     res = secure_client.request("GET", "/file_manager", headers=headers)
     assert res.status_code == 200
     json = res.json()
@@ -201,16 +202,17 @@ async def test_upsert_embedder_settings_with_episodic_memory_without_conversatio
     assert len(files) == 0
 
     # set a different embedder from default one (same class different size)
-    embedder_config = {"size": 64}
-    response = secure_client.put(
-        "/embedder/settings/EmbedderFakeConfig", json=embedder_config, headers=headers
-    )
-    assert response.status_code == 200
+    with patch("cat.services.factory.embedder.Embeddings.__eq__", return_value=False):
+        embedder_config = {"size": 64}
+        response = secure_client.put(
+            "/embedder/settings/EmbedderFakeConfig", json=embedder_config, headers=headers
+        )
+        assert response.status_code == 200
 
-    await asyncio.sleep(1)  # give some time for the background tasks to complete
+        await asyncio.sleep(1)  # give some time for the background tasks to complete
 
-    episodic_memories_after = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
-        str(VectorMemoryType.EPISODIC)
-    )
-    assert episodic_memories_after != episodic_memories_before
-    assert episodic_memories_after == 0
+        episodic_memories_after = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
+            str(VectorMemoryType.EPISODIC)
+        )
+        assert episodic_memories_after != episodic_memories_before
+        assert episodic_memories_after == 0

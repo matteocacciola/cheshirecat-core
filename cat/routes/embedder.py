@@ -51,8 +51,7 @@ async def upsert_embedder_setting(
 ) -> UpsertSettingResponse:
     """Upsert the Embedder setting"""
     lizard = info.lizard
-    previous_embedder_name = lizard.embedder_name
-    previous_embedder_size = lizard.embedder_size
+    previous_embedder = lizard.embedder
 
     result = ServiceFactory(
         agent_key=lizard.agent_key,
@@ -62,15 +61,10 @@ async def upsert_embedder_setting(
         schema_name="languageEmbedderName",
     ).upsert_service(embedder_name, payload)
 
-    current_embedder_name = lizard.embedder_name
-    current_embedder_size = lizard.embedder_size
+    current_embedder = lizard.embedder
 
     # a characterizing feature of the embedder has been updated: inform the Cheshire Cats
-    if previous_embedder_name != current_embedder_name or previous_embedder_size != current_embedder_size:
-        background_tasks.add_task(
-            info.lizard.embed_all_in_cheshire_cats,
-            current_embedder_name,
-            current_embedder_size
-        )
+    if previous_embedder != current_embedder:
+        background_tasks.add_task(info.lizard.embed_all_in_cheshire_cats)
 
     return UpsertSettingResponse(**result)

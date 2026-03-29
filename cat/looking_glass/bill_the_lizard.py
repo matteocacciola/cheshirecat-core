@@ -15,7 +15,6 @@ from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.registry import PluginRegistry
 from cat.rabbit_hole import RabbitHole
 from cat.services.factory.auth_handler import CoreAuthHandler
-from cat.services.memory.models import VectorMemoryType, PointStruct
 from cat.services.mixin import OrchestratorMixin
 from cat.services.websocket_manager import WebSocketManager
 from cat.utils import singleton, sanitize_permissions, safe_deepcopy
@@ -113,7 +112,7 @@ class BillTheLizard(OrchestratorMixin):
                     ccat.agent_key,
                     Setting(name="metadata", value=metadata),
                 )
-            await ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
+            await ccat.vector_memory_handler.initialize(self.embedder.name, self.embedder.size)
             await ccat.embed_procedures()
 
             self.plugin_manager.execute_hook("after_cheshire_cat_creation", ccat, caller=self)
@@ -201,57 +200,56 @@ class BillTheLizard(OrchestratorMixin):
         log.info(f"Cloning settings from agent {ccat.agent_key} to agent {new_agent_id}")
         crud_settings.clone_agent(ccat.agent_key, new_agent_id, [DEFAULT_CONVERSATIONS_KEY])
 
-        # clone the vector points from the ccat to the provided agent
+        # delegate cloning of in-memory data/resources from the source Cheshire Cat to the new one
         cloned_ccat = self.get_cheshire_cat(new_agent_id)
-        await cloned_ccat.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
-
-        log.info(f"Cloning vector memory from agent {ccat.agent_key} to agent {new_agent_id}")
-        collection_name = str(VectorMemoryType.DECLARATIVE)
-        points, _ = await ccat.vector_memory_handler.get_all_tenant_points(collection_name, with_vectors=True)
-        if points:
-            await cloned_ccat.vector_memory_handler.add_points_to_tenant(
-                collection_name=collection_name,
-                points=[PointStruct(**p.model_dump()) for p in points],
-            )
-        await cloned_ccat.embed_procedures()
-
-        # clone the files from the ccat to the provided agent
-        log.info(f"Cloning files from agent {ccat.agent_key} to agent {new_agent_id}")
-        ccat.file_manager.clone_folder(ccat.agent_key, new_agent_id)
+        await cloned_ccat.clone_from(ccat)
 
         return cloned_ccat
 
-    async def embed_all_in_cheshire_cats(self, embedder_name: str, embedder_size: int) -> None:
+    async def embed_all_in_cheshire_cats(self) -> None:
         """Re-embeds all the stored files and procedures in all the Cheshire Cats using the current embedder."""
         async def embed_with_limit(entry_):
             async with semaphore:
-                await entry_["ccat"].embed_all(entry_["stored_sources"])
+                # re-embed all the stored files
+                tasks = [
+                    entry_["ccat"].embed_stored_sources(collection_name, sources)
+                    for collection_name, sources in entry_["stored_sources"].items()
+                    if sources
+                ] + [entry_["ccat"].embed_procedures()]
+                await asyncio.gather(*tasks)
 
-        ccat_ids = crud_settings.get_agents_main_keys()
-        stored_files_by_ccat: List[Dict] = []
-        # first, I need to get all the stored files from all the Cheshire Cats with the metadata stored
-        # within the vector memory; I do not remove anything from the latter to avoid any race condition
-        for ccat_id in ccat_ids:
-            if (ccat := self.get_cheshire_cat(ccat_id)) is None:
-                continue
+        try:
+            embedder_name = self.embedder.name
+            embedder_size = self.embedder.size
 
-            stored_files_by_ccat.append({
-                "ccat": ccat,
-                "stored_sources": await ccat.get_stored_sources_with_metadata(),
-            })
+            ccat_ids = crud_settings.get_agents_main_keys()
+            stored_files_by_ccat: List[Dict] = []
+            # first, I need to get all the stored files from all the Cheshire Cats with the metadata stored
+            # within the vector memory; I do not remove anything from the latter to avoid any race condition
+            for ccat_id in ccat_ids:
+                if (ccat := self.get_cheshire_cat(ccat_id)) is None:
+                    continue
 
-        # now, I have to re-initialize all the vector databases in a serialized way, outside threads to avoid
-        # race conditions
-        for entry in stored_files_by_ccat:
-            await entry["ccat"].vector_memory_handler.initialize(embedder_name, embedder_size)
+                stored_files_by_ccat.append({
+                    "ccat": ccat,
+                    "stored_sources": await ccat.get_stored_sources_with_metadata(),
+                })
 
-        # finally, I can re-embed all the stored files in an asynchronous way
-        # limit concurrent embeddings to avoid overwhelming resources
-        semaphore = asyncio.Semaphore(5)  # Max 5 concurrent
-        await asyncio.gather(*[
-            embed_with_limit(entry)
-            for entry in stored_files_by_ccat
-        ])
+            # now, I have to re-initialize all the vector databases in a serialized way, outside threads to avoid
+            # race conditions
+            for entry in stored_files_by_ccat:
+                await entry["ccat"].vector_memory_handler.initialize(embedder_name, embedder_size)
+
+                # finally, I can re-embed all the stored files in an asynchronous way
+                # limit concurrent embeddings to avoid overwhelming resources
+                semaphore = asyncio.Semaphore(5)  # Max 5 concurrent
+                await asyncio.gather(*[embed_with_limit(entry) for entry in stored_files_by_ccat])
+                success = True
+        except Exception as e:
+            log.error(f"Error embedding all stored files: {e}")
+            success = False
+
+        self.plugin_manager.execute_hook("after_all_cheshire_cats_embedded", success, caller=self)
 
     def is_custom_endpoint(self, path: str, methods: List[str] | None = None):
         """

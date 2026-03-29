@@ -102,8 +102,8 @@ async def create_single_collection(
 
     lizard = info.cheshire_cat.lizard
     await vector_memory_handler.create_collection(
-        lizard.embedder_name,
-        lizard.embedder_size,
+        lizard.embedder.name,
+        lizard.embedder.size,
         collection_id
     )
 

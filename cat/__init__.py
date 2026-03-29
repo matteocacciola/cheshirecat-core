@@ -20,9 +20,9 @@ from .looking_glass.mad_hatter.registry import PluginRegistry
 from .services.factory.agentic_workflow import AgenticWorkflowConfig, BaseAgenticWorkflowHandler
 from .services.factory.auth_handler import AuthHandlerConfig, BaseAuthHandler
 from .services.factory.chunker import BaseChunker, ChunkerSettings
-from .services.factory.embedder import EmbedderSettings, EmbedderMultimodalSettings, MultimodalEmbeddings
+from .services.factory.embedder import EmbedderSettings, EmbedderMultimodalSettings, Embeddings, MultimodalEmbeddings
 from .services.factory.file_manager import BaseFileManager, FileManagerConfig
-from .services.factory.llm import LLMSettings
+from .services.factory.llm import LLMSettings, LargeLanguageModel
 from .services.factory.vector_db import BaseVectorDatabaseHandler, VectorDatabaseSettings
 from .services.memory.messages import CatMessage, ConversationMessage, MessageWhy, UserMessage
 from .services.memory.models import RecallSettings, PointStruct
@@ -51,7 +51,9 @@ __all__ = [
     "ConversationMessage",
     "EmbedderSettings",
     "EmbedderMultimodalSettings",
+    "Embeddings",
     "FileManagerConfig",
+    "LargeLanguageModel",
     "LLMSettings",
     "MessageWhy",
     "MultimodalEmbeddings",

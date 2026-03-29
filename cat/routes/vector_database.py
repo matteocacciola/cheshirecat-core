@@ -1,5 +1,5 @@
 from typing import Dict
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, BackgroundTasks
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
@@ -47,12 +47,15 @@ async def get_vector_database_settings(
     "/settings/{vector_database_name}", response_model=UpsertSettingResponse, summary="Upsert Vector Database Settings"
 )
 async def upsert_vector_database_setting(
+    background_tasks: BackgroundTasks,
     vector_database_name: str,
     payload: Dict = Body(default={}),
     info: AuthorizedInfo = check_permissions(AuthResource.VECTOR_DATABASE, AuthPermission.WRITE),
 ) -> UpsertSettingResponse:
     """Upsert the Vector Database setting"""
     ccat = info.cheshire_cat
+
+    previous_vector_db = ccat.vector_memory_handler
 
     result = ServiceFactory(
         agent_key=ccat.agent_key,
@@ -61,4 +64,9 @@ async def upsert_vector_database_setting(
         setting_category="vector_database",
         schema_name="vectorDatabaseName",
     ).upsert_service(vector_database_name, payload)
+
+    current_vector_db = ccat.vector_memory_handler
+    if previous_vector_db != current_vector_db:
+        background_tasks.add_task(ccat.transfer_vector_points_from, previous_vector_db)
+
     return UpsertSettingResponse(**result)
