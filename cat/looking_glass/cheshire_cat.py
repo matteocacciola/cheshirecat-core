@@ -330,6 +330,23 @@ class CheshireCat(BotMixin):
     def plugin_exists(self, plugin_id: str):
         return plugin_id in self.plugin_manager.plugins.keys()
 
+    async def clone_from(ccat: CheshireCat):
+        await self.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
+
+        log.info(f"Cloning vector memory from agent {ccat.agent_key} to agent {self.agent_key}")
+        collection_name = str(VectorMemoryType.DECLARATIVE)
+        points, _ = await ccat.vector_memory_handler.get_all_tenant_points(collection_name, with_vectors=True)
+        if points:
+            await self.vector_memory_handler.add_points_to_tenant(
+                collection_name=collection_name,
+                points=[PointStruct(**p.model_dump()) for p in points],
+            )
+        await self.embed_procedures()
+
+        # clone the files from the ccat to the provided agent
+        log.info(f"Cloning files from agent {ccat.agent_key} to agent {self.agent_key}")
+        ccat.file_manager.clone_folder(ccat.agent_key, self.agent_key)
+
     @property
     def agent_key(self) -> str:
         """
