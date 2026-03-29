@@ -59,7 +59,7 @@ def after_rabbithole_stored_documents(source: str, stored_points: List[PointStru
         return
 
     agent_id = cat.agent_key
-    embedder_id = cat.lizard.embedder_name
+    embedder_id = cat.lizard.embedder.name
 
     crud_embeddings.update_analytics(agent_id, embedder_id, source, total_tokens)
 
