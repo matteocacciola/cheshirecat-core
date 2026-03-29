@@ -331,7 +331,7 @@ class CheshireCat(BotMixin):
         return plugin_id in self.plugin_manager.plugins.keys()
 
     async def clone_from(ccat: CheshireCat):
-        await self.vector_memory_handler.initialize(self.embedder_name, self.embedder_size)
+        await self.vector_memory_handler.initialize(self.embedder.name, self.embedder.size)
 
         log.info(f"Cloning vector memory from agent {ccat.agent_key} to agent {self.agent_key}")
         collection_name = str(VectorMemoryType.DECLARATIVE)
