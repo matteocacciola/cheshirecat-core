@@ -1,5 +1,4 @@
 from typing import Any, Dict
-from langchain_core.language_models import BaseLanguageModel
 from pydantic import BaseModel
 
 from cat.db import models

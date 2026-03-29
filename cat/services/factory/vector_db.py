@@ -1,7 +1,6 @@
 import asyncio
 import json
 import os
-import sys
 import uuid
 from abc import ABC, abstractmethod
 from typing import Any, List, Iterable, Dict, Tuple, Type
