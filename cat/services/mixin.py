@@ -25,14 +25,6 @@ class ContextMixin(ABC):
         self._white_rabbit = None
 
     @property
-    def embedder_name(self) -> str:
-        return get_nlp_object_name(self.embedder, "default_embedder")
-
-    @property
-    def embedder_size(self) -> int | None:
-        return len(self.embedder.embed_query("hello world"))
-
-    @property
     def mad_hatter(self) -> MadHatter:
         """
         Gives access to the `MadHatter` plugin manager.
