@@ -8,6 +8,7 @@ from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.services.factory.agentic_workflow import BaseAgenticWorkflowHandler
 from cat.services.factory.auth_handler import BaseAuthHandler
 from cat.services.factory.embedder import Embeddings
+from cat.services.factory.llm import LLM
 from cat.services.service_factory import ServiceFactory
 from cat.services.factory.chunker import BaseChunker
 from cat.services.factory.file_manager import BaseFileManager
@@ -56,7 +57,7 @@ class ServiceProvider:
     def get_embedder(self) -> Embeddings:
         return self._get_service_object(self._list_factory_params["embedder"])
 
-    def get_large_language_model(self) -> BaseLanguageModel:
+    def get_large_language_model(self) -> LLM:
         return self._get_service_object(self._list_factory_params["large_language_model"])
 
     def get_custom_auth_handler(self) -> BaseAuthHandler:

@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import Dict
-from langchain_core.language_models import BaseLanguageModel
 
 from cat.core_plugins.white_rabbit.white_rabbit import WhiteRabbit
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
@@ -10,6 +9,7 @@ from cat.services.factory.auth_handler import BaseAuthHandler
 from cat.services.factory.chunker import BaseChunker
 from cat.services.factory.embedder import Embeddings
 from cat.services.factory.file_manager import BaseFileManager
+from cat.services.factory.llm import LLM
 from cat.services.factory.vector_db import BaseVectorDatabaseHandler
 from cat.services.service_provider import ServiceProvider
 
@@ -117,7 +117,7 @@ class BotMixin(ContextMixin, ABC):
         return self.lizard.embedder
 
     @property
-    def large_language_model(self) -> BaseLanguageModel:
+    def large_language_model(self) -> LLM:
         return self.service_provider.get_large_language_model()
 
     @property

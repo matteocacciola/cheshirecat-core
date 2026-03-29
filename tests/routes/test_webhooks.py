@@ -13,7 +13,7 @@ def test_webhooks_events(secure_client, secure_client_headers):
     assert res.status_code == 200
 
     json_response = res.json()
-    assert len(json_response) == 3
+    assert len(json_response) == len(WEBHOOK_EVENT)
 
     for event in get_args(WEBHOOK_EVENT):
         assert event in json_response
