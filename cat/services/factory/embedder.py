@@ -3,15 +3,33 @@ import string
 from abc import ABC, abstractmethod
 from itertools import combinations
 from typing import Type, List
-from langchain_core.embeddings import Embeddings
+from langchain_core.embeddings import Embeddings as LangChainEmbeddings
 from pydantic import ConfigDict
 from sklearn.feature_extraction.text import CountVectorizer
 
 from cat.services.factory.models import BaseFactoryConfigModel
+from cat.utils import get_nlp_object_name
+
+
+class Embeddings(LangChainEmbeddings, ABC):
+    """Base class for all embedders."""
+    def __eq__(self, other):
+        return (
+            self.embedder_name == other.embedder_name
+            and self.embedder_size == other.embedder_size
+        )
+
+    @property
+    def embedder_name(self) -> str:
+        return get_nlp_object_name(self, "default_embedder")
+
+    @property
+    def embedder_size(self) -> int | None:
+        return len(self.embed_query("hello world"))
 
 
 class MultimodalEmbeddings(Embeddings, ABC):
-    """Base class for all embedders."""
+    """Base class for all multimodal embedders."""
 
     @abstractmethod
     def embed_image(self, image: str | bytes) -> List[float]:
