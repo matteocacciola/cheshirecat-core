@@ -85,7 +85,7 @@ class RabbitHole:
             log.info(f"Agent id: {self.cat.agent_key}. Preparing to load {len(points)} vector memories")
 
             # Check embedding size is correct
-            embedder_size = lizard.embedder_size
+            embedder_size = lizard.embedder.size
             len_mismatch = [len(p.vector) == embedder_size for p in points]
 
             if not any(len_mismatch):
