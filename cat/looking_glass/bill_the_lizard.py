@@ -210,7 +210,13 @@ class BillTheLizard(OrchestratorMixin):
         """Re-embeds all the stored files and procedures in all the Cheshire Cats using the current embedder."""
         async def embed_with_limit(entry_):
             async with semaphore:
-                await entry_["ccat"].embed_all(entry_["stored_sources"])
+                # re-embed all the stored files
+                tasks = [
+                    entry_["ccat"].embed_stored_sources(collection_name, sources)
+                    for collection_name, sources in entry_["stored_sources"].items()
+                    if sources
+                ] + [entry_["ccat"].embed_procedures()]
+                await asyncio.gather(*tasks)
 
         try:
             embedder_name = self.embedder.name
@@ -234,11 +240,11 @@ class BillTheLizard(OrchestratorMixin):
             for entry in stored_files_by_ccat:
                 await entry["ccat"].vector_memory_handler.initialize(embedder_name, embedder_size)
 
-            # finally, I can re-embed all the stored files in an asynchronous way
-            # limit concurrent embeddings to avoid overwhelming resources
-            semaphore = asyncio.Semaphore(5)  # Max 5 concurrent
-            await asyncio.gather(*[embed_with_limit(entry) for entry in stored_files_by_ccat])
-            success = True
+                # finally, I can re-embed all the stored files in an asynchronous way
+                # limit concurrent embeddings to avoid overwhelming resources
+                semaphore = asyncio.Semaphore(5)  # Max 5 concurrent
+                await asyncio.gather(*[embed_with_limit(entry) for entry in stored_files_by_ccat])
+                success = True
         except Exception as e:
             log.error(f"Error embedding all stored files: {e}")
             success = False

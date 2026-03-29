@@ -1,4 +1,3 @@
-import asyncio
 import mimetypes
 import os
 import tempfile
@@ -165,7 +164,7 @@ class CheshireCat(BotMixin):
         await self.vector_memory_handler.add_points_to_tenant(collection_name=collection_name, points=points)
         log.info(f"Agent id: {self._id}. Embedded {len(points)} triggers in {collection_name} vector memory")
 
-    async def _embed_stored_sources(
+    async def embed_stored_sources(
         self, collection_name: VectorMemoryType, stored_sources: List[StoredSourceWithMetadata]
     ):
         """
@@ -201,7 +200,7 @@ class CheshireCat(BotMixin):
             cat = self
             if chat_id := source.metadata.get("chat_id"):
                 if not (stray_cat := self._find_stray_cat(chat_id)):
-                    log.warning(f"Stray cat with id {chat_id} not found. Skipping file {source.path}")
+                    log.warning(f"Stray cat with id {chat_id} not found. Skipping file {source.path}/{source.name}")
                     continue
 
                 cat = stray_cat
@@ -217,35 +216,6 @@ class CheshireCat(BotMixin):
             counter += 1
 
         log.info(f"Agent id: {self._id}. Embedded {counter} files to the vector memory")
-
-    async def embed_all(self, stored_sources: Dict[VectorMemoryType, List[StoredSourceWithMetadata]]):
-        """
-        Re-embeds all the stored files and procedures in the vector memory.
-        1. Re-initialize the vector memory handler with the current embedder
-        2. Re-embed all the stored files
-        3. Re-embed all the procedures
-
-        Args:
-            stored_sources (Dict[VectorMemoryType, List[StoredSourceWithMetadata]]): The list of stored sources of the
-                Knowledge Base, with metadata to embed, grouped by collection.
-
-        Notes
-        -----
-        This method is typically called when the embedder configuration changes to ensure that all embeddings are
-        updated to use the new embedder. That's why the `stored_sources` are passed as argument, to avoid race
-        conditions when multiple agents are updating their embedder at the same time on the same database.
-        """
-        # re-embed all the stored files
-        tasks = []
-
-        for collection_name, sources in stored_sources.items():
-            if sources:
-                tasks.append(self._embed_stored_sources(collection_name, sources))
-
-        tasks.append(self.embed_procedures())
-
-        # This allows concurrent embedding within each cat
-        await asyncio.gather(*tasks)
 
     def save_file(self, file_bytes: bytes, content_type: str, source: str, chat_id: str | None = None):
         """

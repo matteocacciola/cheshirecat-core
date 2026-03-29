@@ -22,7 +22,7 @@ from .services.factory.auth_handler import AuthHandlerConfig, BaseAuthHandler
 from .services.factory.chunker import BaseChunker, ChunkerSettings
 from .services.factory.embedder import EmbedderSettings, EmbedderMultimodalSettings, Embeddings, MultimodalEmbeddings
 from .services.factory.file_manager import BaseFileManager, FileManagerConfig
-from .services.factory.llm import LLMSettings, LLM
+from .services.factory.llm import LLMSettings, LargeLanguageModel
 from .services.factory.vector_db import BaseVectorDatabaseHandler, VectorDatabaseSettings
 from .services.memory.messages import CatMessage, ConversationMessage, MessageWhy, UserMessage
 from .services.memory.models import RecallSettings, PointStruct
@@ -53,7 +53,7 @@ __all__ = [
     "EmbedderMultimodalSettings",
     "Embeddings",
     "FileManagerConfig",
-    "LLM",
+    "LargeLanguageModel",
     "LLMSettings",
     "MessageWhy",
     "MultimodalEmbeddings",

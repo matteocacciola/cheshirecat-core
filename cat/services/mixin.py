@@ -9,7 +9,7 @@ from cat.services.factory.auth_handler import BaseAuthHandler
 from cat.services.factory.chunker import BaseChunker
 from cat.services.factory.embedder import Embeddings
 from cat.services.factory.file_manager import BaseFileManager
-from cat.services.factory.llm import LLM
+from cat.services.factory.llm import LargeLanguageModel
 from cat.services.factory.vector_db import BaseVectorDatabaseHandler
 from cat.services.service_provider import ServiceProvider
 
@@ -117,7 +117,7 @@ class BotMixin(ContextMixin, ABC):
         return self.lizard.embedder
 
     @property
-    def large_language_model(self) -> LLM:
+    def large_language_model(self) -> LargeLanguageModel:
         return self.service_provider.get_large_language_model()
 
     @property

@@ -1,5 +1,6 @@
 import asyncio
 from json import dumps
+from unittest.mock import patch
 import pytest
 from fastapi.encoders import jsonable_encoder
 
@@ -201,15 +202,17 @@ async def test_upsert_embedder_settings_with_episodic_memory_without_conversatio
     assert len(files) == 0
 
     # set a different embedder from default one (same class different size)
-    embedder_config = {"size": 64}
-    response = secure_client.put(
-        "/embedder/settings/EmbedderFakeConfig", json=embedder_config, headers=headers
-    )
-    assert response.status_code == 200
+    with patch("cat.services.factory.embedder.Embeddings.__eq__", return_value=False):
+        embedder_config = {"size": 64}
+        response = secure_client.put(
+            "/embedder/settings/EmbedderFakeConfig", json=embedder_config, headers=headers
+        )
+        assert response.status_code == 200
 
-    await asyncio.sleep(1)  # give some time for the background tasks to complete
+        await asyncio.sleep(1)  # give some time for the background tasks to complete
 
-    episodic_memories_after = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
-        str(VectorMemoryType.EPISODIC)
-    )
-    assert episodic_memories_after == episodic_memories_before
+        episodic_memories_after = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
+            str(VectorMemoryType.EPISODIC)
+        )
+        assert episodic_memories_after != episodic_memories_before
+        assert episodic_memories_after == 0

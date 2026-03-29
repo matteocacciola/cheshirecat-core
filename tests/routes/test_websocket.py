@@ -43,7 +43,7 @@ def test_websocket(secure_client, secure_client_headers):
     )
 
     msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
-    # send websocket message
+    # send a websocket message
     res = send_websocket_message(msg, secure_client, api_key, query_params={"user_id": user["id"]})
     content = json.loads(res["content"])
 
