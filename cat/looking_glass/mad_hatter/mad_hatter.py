@@ -64,7 +64,7 @@ class MadHatter:
             # the core plugins should be appended when the agent is created, i.e. has no active plugins in db
             active_plugins.extend(self.get_core_plugins_ids)
 
-        # ensure base_plugin is always active
+        # ensure all core untoggling plugins (e.g. base_plugin and other always-active plugins) are active
         active_plugins.extend(self.get_untoggling_plugin_ids)
 
         # Remove duplicates
