@@ -9,3 +9,11 @@ async def get_core_plugins(
 ) -> List[str]:
     """Get list of available core plugins"""
     return info.lizard.plugin_manager.get_core_plugins_ids
+
+
+@endpoint.get("/", prefix="/admins/core_plugins/untoggling", tags=["Admins - Plugins"])
+async def get_core_untoggling_plugins(
+    info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.READ),
+) -> List[str]:
+    """Get list of available core plugins which cannot be deactivated"""
+    return info.lizard.plugin_manager.get_untoggling_plugin_ids
