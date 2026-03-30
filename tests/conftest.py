@@ -1,4 +1,3 @@
-from typing import Dict, Callable
 from uuid import uuid4
 import pytest
 import pytest_asyncio
@@ -13,7 +12,6 @@ import time
 
 from cat.auth import auth_utils
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
-from cat.core_plugins.march_hare.march_hare import MarchHare
 from cat.db.database import Database
 from cat.env import get_env
 from cat.looking_glass import BillTheLizard, StrayCat
@@ -54,14 +52,6 @@ def mock_classes(monkeypatch):
     def mock_get_redis_client(self):
         return redis_client
     monkeypatch.setattr(get_class_from_decorated_singleton(Database), "get_redis_client", mock_get_redis_client)
-
-    # Mock the RabbitMQ
-    def mock_notify_event(self, event_type: str, payload: Dict, exchange: str, exchange_type: str = "fanout"):
-        pass
-    monkeypatch.setattr(get_class_from_decorated_singleton(MarchHare), "notify_event", mock_notify_event)
-    def mock_consume_event(self, callback: Callable, exchange: str, exchange_type: str = "fanout"):
-        pass
-    monkeypatch.setattr(get_class_from_decorated_singleton(MarchHare), "consume_event", mock_consume_event)
 
     utils.get_plugins_path = lambda: "tests/mocks/mock_plugin_folder/"
     utils.get_file_manager_root_storage_path = lambda: "tests/data/storage"
