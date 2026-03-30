@@ -65,7 +65,7 @@ class MadHatter:
             active_plugins.extend(self.get_core_plugins_ids)
 
         # ensure base_plugin is always active
-        active_plugins.append(self.get_base_core_plugin_id)
+        active_plugins.extend(self.get_untoggling_plugin_ids)
 
         # Remove duplicates
         active_plugins = list(set(active_plugins))
@@ -168,7 +168,7 @@ class MadHatter:
         if not self.plugin_exists(plugin_id):
             raise Exception(f"Plugin {plugin_id} not present in plugins folder")
 
-        if plugin_id not in self.active_plugins or plugin_id == self.get_base_core_plugin_id:
+        if plugin_id not in self.active_plugins or plugin_id in self.get_untoggling_plugin_ids:
             return
 
         # if the plugin is within the dependencies of other plugins, it cannot be deactivated (raise an exception)
@@ -197,8 +197,8 @@ class MadHatter:
 
     # activate / deactivate plugin
     def toggle_plugin(self, plugin_id: str):
-        if plugin_id == self.get_base_core_plugin_id:
-            raise Exception("base_plugin cannot be deactivated")
+        if plugin_id in self.get_untoggling_plugin_ids:
+            raise Exception(f"{', '.join(self.get_untoggling_plugin_ids)} cannot be deactivated")
 
         if not self.plugin_exists(plugin_id):
             raise Exception(f"Plugin {plugin_id} not active in the system")
@@ -381,6 +381,10 @@ class MadHatter:
     @property
     def get_base_core_plugin_id(self) -> str:
         return "base_plugin"
+
+    @property
+    def get_untoggling_plugin_ids(self) -> List[str]:
+        return [self.get_base_core_plugin_id] + ["why", "march_hare"]
 
     @property
     def get_core_plugins_ids(self) -> List[str]:
