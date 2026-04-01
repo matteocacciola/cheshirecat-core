@@ -1,3 +1,5 @@
+import pytest
+
 from cat.looking_glass.mad_hatter.decorators.endpoint import CatEndpoint
 
 
@@ -90,13 +92,14 @@ def test_delete_endpoint(plugin_manager):
     assert endpoint.tags == ["Tests"]
 
 
-def test_endpoints_deactivation_or_uninstall(lizard):
+@pytest.mark.asyncio
+async def test_endpoints_deactivation_or_uninstall(lizard):
     # custom endpoints are registered in mad_hatter, mock_plugin is installed into the plugin_manager fixture
     for e in lizard.plugin_manager.endpoints:
         assert isinstance(e, CatEndpoint)
         assert e.plugin_id in lizard.plugin_manager.get_core_plugins_ids + ["mock_plugin"]
 
-    lizard.uninstall_plugin("mock_plugin")
+    await lizard.uninstall_plugin("mock_plugin")
 
     # no more custom endpoints
     for e in lizard.plugin_manager.endpoints:

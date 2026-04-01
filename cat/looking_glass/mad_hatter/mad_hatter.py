@@ -1,8 +1,9 @@
 import glob
+from inspect import iscoroutinefunction
 import os
 import shutil
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from pydantic import BaseModel, Field, ConfigDict
 
 from cat import utils
@@ -236,32 +237,61 @@ class MadHatter:
         for hook_name in self.hooks.keys():
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
 
-    # execute requested hook
-    def execute_hook(self, hook_name: str, *args, caller: "ContextMixin") -> Any:
-        if hook_name not in self.hooks.keys():
+    def _validate_hook(self, hook_name: str, *args) -> Any | None:
+        if hook_name not in self.hooks:
             raise Exception(f"Hook {hook_name} not present in any plugin")
+        tea_cup = utils.safe_deepcopy(args[0]) if args else None
+        return tea_cup
 
-        tea_cup = utils.safe_deepcopy(args[0]) if len(args) > 0 else None
+    def _build_hook_call(self, tea_cup: Any, args: tuple, caller: "ContextMixin") -> Tuple[Tuple, Dict]:
+        """Return `(hook_args, kwargs)` ready to be unpacked into a hook call."""
+        hook_args = (utils.safe_deepcopy(tea_cup), *utils.safe_deepcopy(args[1:])) if args else ()
+        kwargs = {self.context_execute_hook: caller}
+        return hook_args, kwargs
 
+    def _handle_hook_error(self, hook: CatHook, e: Exception) -> None:
+        log.error(f"Error in plugin {hook.plugin_id}::{hook.name}: {e}")
+        log.warning(self.plugins[hook.plugin_id].plugin_specific_error_message())  # type: ignore[union-attr]
+
+    def execute_hook(self, hook_name: str, *args, caller: "ContextMixin") -> Any:
+        """Execute a hook from a **synchronous** call site."""
+        tea_cup = self._validate_hook(hook_name)
         for hook in self.hooks[hook_name]:
             try:
                 log.debug(f"Executing {hook.plugin_id}::{hook.name} with priority {hook.priority}")
+                hook_args, kwargs = self._build_hook_call(tea_cup, args, caller)
+                tea_spoon = utils.run_sync_or_async(hook.function, *hook_args, **kwargs)
+                if tea_spoon is not None:
+                    tea_cup = tea_spoon
+            except Exception as e:
+                self._handle_hook_error(hook, e)
+        return tea_cup
+
+    async def execute_hook_async(self, hook_name: str, *args, caller: "ContextMixin") -> Any:
+        """
+        Execute a hook from an **async** call site.
+
+        Async plugin hooks are **awaited directly** on the running event loop —
+        no new OS thread, no new event loop, no `thread.join()` blocking.
+        Synchronous plugin hooks are called in-line (safe for typical I/O-light bodies).
+
+        Use this instead of `execute_hook` whenever the caller is already inside
+        an `async` function.  Keep `execute_hook` for sync call sites (e.g. ``__init__``).
+        """
+        tea_cup = self._validate_hook(hook_name)
+        for hook in self.hooks[hook_name]:
+            try:
+                log.debug(f"Executing {hook.plugin_id}::{hook.name} with priority {hook.priority}")
+                hook_args, kwargs = self._build_hook_call(tea_cup, args, caller)
                 tea_spoon = (
-                    utils.run_sync_or_async(hook.function, **{self.context_execute_hook: caller})
-                    if len(args) == 0
-                    else utils.run_sync_or_async(
-                        hook.function,
-                        utils.safe_deepcopy(tea_cup),
-                        *utils.safe_deepcopy(args[1:]),
-                        **{self.context_execute_hook: caller},
-                    )
+                    await hook.function(*hook_args, **kwargs)
+                    if iscoroutinefunction(hook.function)
+                    else hook.function(*hook_args, **kwargs)
                 )
                 if tea_spoon is not None:
                     tea_cup = tea_spoon
             except Exception as e:
-                log.error(f"Error in plugin {hook.plugin_id}::{hook.name}: {e}")
-                plugin_obj = self.plugins[hook.plugin_id]
-                log.warning(plugin_obj.plugin_specific_error_message())
+                self._handle_hook_error(hook, e)
         return tea_cup
 
     def get_plugin(self):

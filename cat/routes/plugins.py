@@ -110,7 +110,7 @@ async def upsert_cheshirecat_plugin_settings(
         raise CustomValidationException("\n".join(list(map(lambda x: x["msg"], e.errors()))))
 
     final_settings = plugin.save_settings(payload, ccat.agent_key)
-    ccat.plugin_manager.execute_hook("after_plugin_settings_update", plugin_id, final_settings, caller=ccat)
+    await ccat.plugin_manager.execute_hook_async("after_plugin_settings_update", plugin_id, final_settings, caller=ccat)
 
     return GetSettingResponse(name=plugin_id, value=final_settings)
 
@@ -124,7 +124,7 @@ async def reset_cheshirecat_plugin_settings(
     plugin_id = slugify(plugin_id, separator="_")
 
     # Get the factory settings of the plugin
-    factory_settings = crud_plugins.get_setting(info.lizard.agent_key, plugin_id)
+    factory_settings = crud_plugins.get_setting(info.lizard.agent_key, plugin_id)   # type: ignore[arg-type]
     if factory_settings is None:
         raise CustomNotFoundException("Plugin not found.")
 
@@ -134,7 +134,7 @@ async def reset_cheshirecat_plugin_settings(
         raise CustomNotFoundException("Plugin not found")
 
     crud_plugins.set_setting(ccat.agent_key, plugin_id, factory_settings)
-    ccat.plugin_manager.execute_hook("after_plugin_settings_update", plugin_id, factory_settings, caller=ccat)
+    await ccat.plugin_manager.execute_hook_async("after_plugin_settings_update", plugin_id, factory_settings, caller=ccat)
 
     return GetSettingResponse(name=plugin_id, value=factory_settings)
 
@@ -162,7 +162,7 @@ async def install_plugin(
     """Install a new plugin from a zip file"""
     allowed_mime_types = get_allowed_plugins_mime_types()
 
-    content_type, _ = mimetypes.guess_type(file.filename)
+    content_type, _ = mimetypes.guess_type(file.filename)   # type: ignore[arg-type]
     if content_type not in allowed_mime_types:
         raise CustomValidationException(
             f'MIME type `{file.content_type}` not supported. Admitted types: {", ".join(allowed_mime_types)}'
@@ -171,14 +171,14 @@ async def install_plugin(
     filename = file.filename
     log.info(f"Uploading {content_type} plugin {filename}")
     try:
-        plugin_archive_path = await write_temp_file(filename, await file.read())
+        plugin_archive_path = await write_temp_file(filename, await file.read())  # type: ignore[union-attr]
         background_tasks.add_task(info.lizard.install_plugin, plugin_archive_path)
     except Exception as e:
         raise CustomValidationException(f"Could not install plugin from file: {e}")
 
     return InstallPluginResponse(
-        filename=filename,
-        content_type=content_type,
+        filename=filename,  # type: ignore[arg-type]
+        content_type=content_type,  # type: ignore[arg-type]
         info="Plugin is being installed asynchronously",
     )
 
@@ -205,7 +205,7 @@ async def get_lizard_plugins_settings(
 ) -> PluginsSettingsResponse:
     """Returns the default settings of all the plugins"""
     lizard = info.lizard
-    return get_plugins_settings(lizard.plugin_manager, lizard.agent_key)
+    return get_plugins_settings(lizard.plugin_manager, lizard.agent_key)   # type: ignore[arg-type]
 
 
 @router.get("/system/settings/{plugin_id}", response_model=GetSettingResponse)
@@ -219,7 +219,7 @@ async def get_lizard_plugin_settings(
     if not plugin_manager.plugin_exists(plugin_id):
         raise CustomNotFoundException("Plugin not found")
 
-    return get_plugin_settings(plugin_manager, plugin_id, lizard.agent_key)
+    return get_plugin_settings(plugin_manager, plugin_id, lizard.agent_key)   # type: ignore[arg-type]
 
 
 @router.get("/system/details/{plugin_id}", response_model=GetPluginDetailsResponse)
@@ -255,7 +255,7 @@ async def uninstall_plugin(
 
     try:
         # remove folder, hooks and tools
-        info.lizard.uninstall_plugin(plugin_id)
+        await info.lizard.uninstall_plugin(plugin_id)
     except Exception as e:
         raise CustomValidationException(f"Could not uninstall plugin: {e}")
 
@@ -276,5 +276,5 @@ async def toggle_plugin_admin(
         raise CustomNotFoundException("Plugin not found")
 
     # toggle plugin
-    info.lizard.toggle_plugin(plugin_id)
+    await info.lizard.toggle_plugin(plugin_id)
     return TogglePluginResponse(info=f"Plugin {plugin_id} toggled")

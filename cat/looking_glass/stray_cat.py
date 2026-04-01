@@ -141,7 +141,7 @@ class StrayCat(BotMixin):
             except Exception as e:
                 log.warning(f"Agent id: {self.agent_key}. Could not reconstruct procedure from memory. Error: {e}")
 
-        tools = self.plugin_manager.execute_hook("agent_allowed_tools", tools, caller=self)
+        tools = await self.plugin_manager.execute_hook_async("agent_allowed_tools", tools, caller=self)
 
         return tools
 
@@ -172,17 +172,17 @@ class StrayCat(BotMixin):
         plugin_manager = self.plugin_manager
 
         # Run a totally custom reply (skips all the side effects of the framework)
-        if fast_reply := plugin_manager.execute_hook("fast_reply", None, caller=self):
+        if fast_reply := await plugin_manager.execute_hook_async("fast_reply", None, caller=self):
             return CatMessage(text=fast_reply)
 
         # obtain prompt parts from plugins
-        prompt_prefix = plugin_manager.execute_hook("agent_prompt_prefix", prompts.MAIN_PROMPT, caller=self)
-        prompt_suffix = plugin_manager.execute_hook("agent_prompt_suffix", "", caller=self)
+        prompt_prefix = await plugin_manager.execute_hook_async("agent_prompt_prefix", prompts.MAIN_PROMPT, caller=self)
+        prompt_suffix = await plugin_manager.execute_hook_async("agent_prompt_suffix", "", caller=self)
         system_prompt = prompt_prefix + prompt_suffix
 
         # hook to modify/enrich user input; this is the latest user message
         self.working_memory.user_message = utils.restore_original_model(
-            plugin_manager.execute_hook("before_cat_reads_message", self.working_memory.user_message, caller=self),
+            await plugin_manager.execute_hook_async("before_cat_reads_message", self.working_memory.user_message, caller=self),
             UserMessage
         )
 
@@ -193,7 +193,7 @@ class StrayCat(BotMixin):
             )
 
             # hook to do something before recall begins
-            config = self.plugin_manager.execute_hook("before_cat_recalls_memories", config, caller=self)
+            config = await self.plugin_manager.execute_hook_async("before_cat_recalls_memories", config, caller=self)
 
             # Start the PROCEDURAL fetch immediately — it queries a different Qdrant collection
             # and is completely independent of the DECLARATIVE + EPISODIC recalls below.
@@ -203,10 +203,10 @@ class StrayCat(BotMixin):
             await self.recall_context_to_working_memory(config)
 
             # hook to modify/enrich retrieved memories
-            self.plugin_manager.execute_hook("after_cat_recalls_memories", config, caller=self)
+            await self.plugin_manager.execute_hook_async("after_cat_recalls_memories", config, caller=self)
 
             # if the agent is set to fast reply, skip everything and return the output
-            agent_output = plugin_manager.execute_hook("agent_fast_reply", caller=self)
+            agent_output = await plugin_manager.execute_hook_async("agent_fast_reply", caller=self)
             if agent_output:
                 procedures_task.cancel()
                 return CatMessage(text=agent_output.output)
@@ -227,7 +227,7 @@ class StrayCat(BotMixin):
             agent_output = await self._agentic_workflow.run(
                 task=agent_input,
                 llm=self.large_language_model,
-                callbacks=plugin_manager.execute_hook("llm_callbacks", [], caller=self),
+                callbacks=await plugin_manager.execute_hook_async("llm_callbacks", [], caller=self),
             )
 
             if agent_output.output == utils.default_llm_answer_prompt():
@@ -243,7 +243,7 @@ class StrayCat(BotMixin):
 
         # run a message through plugins
         final_output = utils.restore_original_model(
-            plugin_manager.execute_hook(
+            await plugin_manager.execute_hook_async(
                 "before_cat_sends_message", final_output, agent_output, caller=self
             ),
             CatMessage,

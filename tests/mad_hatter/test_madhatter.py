@@ -47,14 +47,15 @@ def test_instantiation_discovery_for_cheshirecat(cheshire_cat):
 
 
 # installation tests will be run for both flat and nested plugin
+@pytest.mark.asyncio
 @pytest.mark.parametrize("plugin_is_flat", [True, False])
-def test_plugin_install(lizard, plugin_is_flat):
+async def test_plugin_install(lizard, plugin_is_flat):
     plugin_manager = lizard.plugin_manager
     core_plugins = plugin_manager.get_core_plugins_ids
 
     # install plugin
     new_plugin_zip_path = create_mock_plugin_zip(flat=plugin_is_flat)
-    lizard.install_plugin(new_plugin_zip_path)
+    await lizard.install_plugin(new_plugin_zip_path)
 
     # archive extracted
     assert os.path.exists(os.path.join(utils.get_plugins_path(), "mock_plugin"))
@@ -108,13 +109,14 @@ def test_plugin_install(lizard, plugin_is_flat):
     assert "mock_plugin" in active_plugins
 
 
-def test_plugin_uninstall_non_existent(lizard):
+@pytest.mark.asyncio
+async def test_plugin_uninstall_non_existent(lizard):
     plugin_manager = lizard.plugin_manager
     core_plugins = plugin_manager.get_core_plugins_ids
 
     # should not throw error
     assert len(plugin_manager.plugins) == len(core_plugins)
-    lizard.uninstall_plugin("wrong_plugin")
+    await lizard.uninstall_plugin("wrong_plugin")
     assert len(plugin_manager.plugins) == len(core_plugins)
 
     # list of active plugins in DB is correct
@@ -124,17 +126,18 @@ def test_plugin_uninstall_non_existent(lizard):
         assert p in core_plugins
 
 
+@pytest.mark.asyncio
 @pytest.mark.parametrize("plugin_is_flat", [True, False])
-def test_plugin_uninstall(lizard, plugin_is_flat):
+async def test_plugin_uninstall(lizard, plugin_is_flat):
     plugin_manager = lizard.plugin_manager
     core_plugins = plugin_manager.get_core_plugins_ids
 
     # install plugin
     new_plugin_zip_path = create_mock_plugin_zip(flat=plugin_is_flat)
-    lizard.install_plugin(new_plugin_zip_path)
+    await lizard.install_plugin(new_plugin_zip_path)
 
     # uninstall
-    lizard.uninstall_plugin("mock_plugin")
+    await lizard.uninstall_plugin("mock_plugin")
 
     # directory removed
     assert not os.path.exists(os.path.join(utils.get_plugins_path(), "mock_plugin"))

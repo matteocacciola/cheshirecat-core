@@ -115,7 +115,7 @@ class BillTheLizard(OrchestratorMixin):
             await ccat.vector_memory_handler.initialize(self.embedder.name, self.embedder.size)
             await ccat.embed_procedures()
 
-            self.plugin_manager.execute_hook("after_cheshire_cat_creation", ccat, caller=self)
+            await self.plugin_manager.execute_hook_async("after_cheshire_cat_creation", ccat, caller=self)
 
             return ccat
         except Exception as e:
@@ -249,7 +249,7 @@ class BillTheLizard(OrchestratorMixin):
             log.error(f"Error embedding all stored files: {e}")
             success = False
 
-        self.plugin_manager.execute_hook("after_all_cheshire_cats_embedded", success, caller=self)
+        await self.plugin_manager.execute_hook_async("after_all_cheshire_cats_embedded", success, caller=self)
 
     def is_custom_endpoint(self, path: str, methods: List[str] | None = None):
         """
@@ -267,12 +267,12 @@ class BillTheLizard(OrchestratorMixin):
             for ep in self.plugin_manager.endpoints
         )
 
-    def install_plugin(self, plugin_path: str) -> str:
+    async def install_plugin(self, plugin_path: str) -> str:
         try:
             plugin_id = self.plugin_manager.install_plugin(plugin_path)
 
             self.on_plugin_activate(plugin_id)
-            self.plugin_manager.execute_hook(
+            await self.plugin_manager.execute_hook_async(
                 "lizard_notify_plugin_installation", plugin_id, plugin_path, caller=self,
             )
 
@@ -281,7 +281,7 @@ class BillTheLizard(OrchestratorMixin):
             log.error(f"Could not install plugin from {plugin_path}: {e}")
             raise e
 
-    def uninstall_plugin(self, plugin_id: str, dispatch_event: bool = True):
+    async def uninstall_plugin(self, plugin_id: str, dispatch_event: bool = True):
         try:
             # deactivate plugins in the Cheshire Cats
             if plugin_id in self.plugin_manager.active_plugins:
@@ -293,11 +293,11 @@ class BillTheLizard(OrchestratorMixin):
             raise e
         finally:
             if dispatch_event:
-                self.plugin_manager.execute_hook(
+                await self.plugin_manager.execute_hook_async(
                     "lizard_notify_plugin_uninstallation", plugin_id, caller=self,
                 )
 
-    def toggle_plugin(self, plugin_id: str):
+    async def toggle_plugin(self, plugin_id: str):
         # the plugin is active, and evidently I am deactivating it: deactivate it in the Cheshire Cats before
         # deactivating it on a system level
         if plugin_id in self.plugin_manager.active_plugins:
@@ -310,7 +310,7 @@ class BillTheLizard(OrchestratorMixin):
         if plugin_id in self.plugin_manager.active_plugins:
             self.on_plugin_activate(plugin_id)
 
-        self.plugin_manager.execute_hook("after_plugin_toggling_on_system", plugin_id, caller=self)
+        await self.plugin_manager.execute_hook_async("after_plugin_toggling_on_system", plugin_id, caller=self)
 
     def activate_plugin_endpoints(self, plugin_id: str):
         # Store endpoints for later activation
@@ -352,7 +352,7 @@ class BillTheLizard(OrchestratorMixin):
         Returns:
             None
         """
-        self.plugin_manager.execute_hook("before_lizard_shutdown", caller=self)
+        await self.plugin_manager.execute_hook_async("before_lizard_shutdown", caller=self)
         if self.websocket_manager:
             await self.websocket_manager.close_connections()
 

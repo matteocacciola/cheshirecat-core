@@ -186,13 +186,13 @@ def secure_client_headers():
     yield {"X-Agent-ID": agent_id, "Authorization": f"Bearer {api_key}"}
 
 
-@pytest.fixture(scope="function")
-def plugin_manager(lizard):
+@pytest_asyncio.fixture(scope="function")
+async def plugin_manager(lizard):
     plugin_manager = lizard.plugin_manager
 
     # install plugin
     new_plugin_zip_path = create_mock_plugin_zip(flat=True)
-    lizard.install_plugin(new_plugin_zip_path)
+    await lizard.install_plugin(new_plugin_zip_path)
 
     yield plugin_manager
 
@@ -205,7 +205,7 @@ async def agent_plugin_manager(cheshire_cat):
 
     # install plugin
     new_plugin_zip_path = create_mock_plugin_zip(flat=True)
-    plugin_id = cheshire_cat.lizard.install_plugin(new_plugin_zip_path)
+    plugin_id = await cheshire_cat.lizard.install_plugin(new_plugin_zip_path)
 
     # activate the plugin within the Cheshire Cat whose plugin manager is being used
     await cheshire_cat.toggle_plugin(plugin_id)

@@ -27,7 +27,7 @@ class FileManagerAttributes(BaseModel):
 
 def get_from_info(info: AuthorizedInfo) -> Tuple[str, VectorMemoryType, Dict]:
     ccat = info.cheshire_cat
-    path = ccat.agent_key
+    path = ccat.agent_key  # type: ignore[arg-type]
     if info.stray_cat:
         path = os.path.join(path, info.stray_cat.id)
 
@@ -45,8 +45,8 @@ async def get_file_managers_settings(
     """Get the list of the File Managers and their settings"""
     ccat = info.cheshire_cat
     return ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[arg-type]
+        hook_manager=ccat.plugin_manager,  # type: ignore[arg-type]
         factory_allowed_handler_name="factory_allowed_file_managers",
         setting_category="file_manager",
         schema_name="fileManagerName",
@@ -61,8 +61,8 @@ async def get_file_manager_settings(
     """Get settings and scheme of the specified File Manager"""
     ccat = info.cheshire_cat
     return ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[arg-type]
+        hook_manager=ccat.plugin_manager,  # type: ignore[arg-type]
         factory_allowed_handler_name="factory_allowed_file_managers",
         setting_category="file_manager",
         schema_name="fileManagerName",
@@ -79,19 +79,19 @@ async def upsert_file_manager_setting(
     """Upsert the File Manager setting"""
     ccat = info.cheshire_cat
 
-    previous_file_manager = ccat.file_manager
+    previous_file_manager = ccat.file_manager  # type: ignore[arg-type]
 
     result = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[arg-type]
+        hook_manager=ccat.plugin_manager,  # type: ignore[arg-type]
         factory_allowed_handler_name="factory_allowed_file_managers",
         setting_category="file_manager",
         schema_name="fileManagerName",
     ).upsert_service(file_manager_name, payload)
 
-    current_file_manager = ccat.file_manager
+    current_file_manager = ccat.file_manager  # type: ignore[assignment]
     if previous_file_manager != current_file_manager:
-        background_tasks.add_task(ccat.transfer_files_from, previous_file_manager)
+        background_tasks.add_task(ccat.transfer_files_from, previous_file_manager)  # type: ignore[arg-type]
 
     return UpsertSettingResponse(**result)
 
@@ -116,7 +116,7 @@ async def download_file(
     sanitized_source = sanitize_source_name(source_name, path=path)
 
     # Download the file
-    file_content = info.cheshire_cat.file_manager.download_file(os.path.join(path, sanitized_source))
+    file_content = info.cheshire_cat.file_manager.download_file(os.path.join(path, sanitized_source))   # type: ignore[arg-type]
     if file_content is None:
         raise CustomNotFoundException("File not found")
 
@@ -144,10 +144,10 @@ async def delete_file(
 
     try:
         # delete the file from the file storage
-        res = info.cheshire_cat.file_manager.remove_file(os.path.join(path, sanitized_source))
+        res = info.cheshire_cat.file_manager.remove_file(os.path.join(path, sanitized_source))  # type: ignore[arg-type]
 
         # delete points
-        await info.cheshire_cat.vector_memory_handler.delete_tenant_points(str(collection_id), metadata)
+        await info.cheshire_cat.vector_memory_handler.delete_tenant_points(str(collection_id), metadata)  # type: ignore[arg-type]
 
         return FileManagerDeletedFiles(deleted=res)
     except Exception as e:
@@ -163,15 +163,15 @@ async def delete_files(
 
     try:
         # get the list of files
-        files = info.cheshire_cat.file_manager.list_files(path)
+        files = info.cheshire_cat.file_manager.list_files(path)  # type: ignore[arg-type]
 
         # delete all the files from the file storage
-        res = info.cheshire_cat.file_manager.remove_folder(path)
+        res = info.cheshire_cat.file_manager.remove_folder(path)  # type: ignore[arg-type]
 
         # delete points
         for file in files:
             metadata |= {"source": file.name}
-            await info.cheshire_cat.vector_memory_handler.delete_tenant_points(str(collection_id), metadata)
+            await info.cheshire_cat.vector_memory_handler.delete_tenant_points(str(collection_id), metadata)  # type: ignore[arg-type]
 
         return FileManagerDeletedFiles(deleted=res)
     except Exception as e:

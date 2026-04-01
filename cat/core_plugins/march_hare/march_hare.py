@@ -148,7 +148,7 @@ def _consume_plugin_events(lizard):
         except Exception as e:
             log.error(f"Error processing Redis message: {e}")
 
-    _march_hare.consume_event(callback, MarchHareConfig.streams["PLUGIN_EVENTS"])
+    _march_hare.consume_event(callback, MarchHareConfig.streams["PLUGIN_EVENTS"])  # type: ignore[union-attr]
 
 
 def _start_consumer_threads(lizard):

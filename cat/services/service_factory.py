@@ -46,16 +46,17 @@ class ServiceFactory:
             "vector_database": QdrantConfig,
         }
 
-    def get_config_class_from_adapter(self, obj: Any) -> Type[BaseModel] | None:
+    async def get_config_class_from_adapter(self, obj: Any) -> Type[BaseModel] | None:
+        allowed_classes = self._get_allowed_classes()
         return next(
-            (config_class for config_class in self.get_allowed_classes() if config_class.pyclass() is type(obj)),
+            (config_class for config_class in allowed_classes if config_class.pyclass() is type(obj)),
             None
         )
 
     def get_schemas(self) -> Dict:
         # schemas contain metadata to let any client know which fields are required to create the class.
         schemas = {}
-        for config_class in self.get_allowed_classes():
+        for config_class in self._get_allowed_classes():
             schema = config_class.model_json_schema()
             # useful for clients in order to call the correct config endpoints
             schema[self.schema_name] = schema["title"]
@@ -65,7 +66,7 @@ class ServiceFactory:
 
     def get_from_config_name(self, config_name: str) -> Any:
         # get plugin file manager factory class
-        factory_class = next((cls for cls in self.get_allowed_classes() if cls.__name__ == config_name), None)
+        factory_class = next((cls for cls in self._get_allowed_classes() if cls.__name__ == config_name), None)
         if not factory_class:
             log.warning(
                 f"Class {config_name} not found in the list of allowed classes for setting '{self.setting_category}'"
@@ -82,7 +83,7 @@ class ServiceFactory:
         except:
             return self.default_config_class.get_from_config(self.default_config)
 
-    def get_allowed_classes(self) -> List[Type[BaseFactoryConfigModel]]:
+    def _get_allowed_classes(self) -> List[Type[BaseFactoryConfigModel]]:
         return self._hook_manager.execute_hook(
             self.factory_allowed_handler_name, [self.default_config_class], caller=None
         )

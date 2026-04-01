@@ -253,7 +253,7 @@ class CheshireCat(BotMixin):
         await self.vector_memory_handler.delete_tenant_points(str(VectorMemoryType.PROCEDURAL))
         await self.embed_procedures()
 
-        self.plugin_manager.execute_hook("after_plugin_toggling_on_agent", plugin_id, caller=self)
+        await self.plugin_manager.execute_hook_async("after_plugin_toggling_on_agent", plugin_id, caller=self)
 
     def _find_stray_cat(self, chat_id: str) -> StrayCat | None:
         """Finds a stray cat by chat id.
@@ -319,7 +319,7 @@ class CheshireCat(BotMixin):
         log.info(f"Cloning files from agent {ccat.agent_key} to agent {self.agent_key}")
         ccat.file_manager.clone_folder(ccat.agent_key, self.agent_key)
 
-    def transfer_files_from(self, previous_file_manager: BaseFileManager):
+    async def transfer_files_from(self, previous_file_manager: BaseFileManager):
         try:
             self.file_manager.transfer(previous_file_manager, self.agent_key)
             success = True
@@ -327,7 +327,7 @@ class CheshireCat(BotMixin):
             log.error(f"Error while transferring files from previous file manager: {e}")
             success = False
 
-        self.plugin_manager.execute_hook("after_file_manager_transfer_on_agent", success, caller=self)
+        await self.plugin_manager.execute_hook_async("after_file_manager_transfer_on_agent", success, caller=self)
 
     async def transfer_vector_points_from(self, previous_vector_memory_handler: BaseVectorDatabaseHandler):
         try:
@@ -344,7 +344,7 @@ class CheshireCat(BotMixin):
             log.error(f"Error while transferring vector points from previous vector memory handler: {e}")
             success = False
 
-        self.plugin_manager.execute_hook("after_vector_memory_transfer_on_agent", success, caller=self)
+        await self.plugin_manager.execute_hook_async("after_vector_memory_transfer_on_agent", success, caller=self)
 
     @property
     def agent_key(self) -> str:

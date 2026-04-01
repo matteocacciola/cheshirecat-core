@@ -86,7 +86,7 @@ class RabbitHole:
 
             # Check embedding size is correct
             embedder_size = lizard.embedder.size
-            len_mismatch = [len(p.vector) == embedder_size for p in points]
+            len_mismatch = [len(p.vector) == embedder_size for p in points]  # type: ignore[union-attr]
 
             if not any(len_mismatch):
                 raise Exception(f"Embedding size mismatch for file '{filename}': vectors length should be {embedder_size}")
@@ -167,7 +167,7 @@ class RabbitHole:
                     log.error(f"Failed to send error notification: {notify_error}")
         finally:
             # hook the points after they are stored in the vector memory
-            self.cat.plugin_manager.execute_hook(
+            await self.cat.plugin_manager.execute_hook_async(
                 "after_rabbithole_stored_documents", source, points, caller=self.stray or self.cat,
             )
 
@@ -221,8 +221,8 @@ class RabbitHole:
                     log.error(f"Agent id: {self.cat.agent_key}. Error: {e}")
                     return None, None, content_type, True
             # Get file bytes - use async file reading
-            fb = await asyncio.to_thread(lambda: open(file, "rb").read())
-            return sanitize_filename(os.path.basename(file)), fb, mimetypes.guess_type(file)[0], False
+            fb = await asyncio.to_thread(lambda: open(file, "rb").read())  # type: ignore[union-attr]
+            return sanitize_filename(os.path.basename(file)), fb, mimetypes.guess_type(file)[0], False  # type: ignore[return-value]
 
         if not isinstance(file, BytesIO) and not isinstance(file, str):
             raise ValueError(f"{type(file)} is not a valid type.")
@@ -242,8 +242,8 @@ class RabbitHole:
 
         # Split
         await self._send_notification_message("Parsing completed. Now let's go with reading process...")
-        docs = self._split_text(docs=super_docs)
-        return source, file_bytes, content_type, docs, is_url
+        docs = await self._split_text(docs=super_docs)
+        return source, file_bytes, content_type, docs, is_url  # type: ignore[return-value]
 
     async def store_documents(
         self,
@@ -291,7 +291,7 @@ class RabbitHole:
             )
 
         # hook the docs before they are stored in the vector memory
-        docs = plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, caller=self.stray or self.cat)
+        docs = await plugin_manager.execute_hook_async("before_rabbithole_stores_documents", docs, caller=self.stray or self.cat)
 
         # hook the points before they are stored in the vector memory
         valid_documents = list(filter(lambda doc_: doc_.page_content.strip(), docs))
@@ -309,7 +309,7 @@ class RabbitHole:
 
         return points
 
-    def _split_text(self, docs: List[Document]):
+    async def _split_text(self, docs: List[Document]):
         """Split LangChain documents in chunks.
 
         This method splits the incoming documents in chunks. Other two hooks are available to edit the
@@ -332,7 +332,7 @@ class RabbitHole:
         plugin_manager = self.cat.plugin_manager
 
         # do something on the docs before they are split
-        docs = plugin_manager.execute_hook("before_rabbithole_splits_documents", docs, caller=self.stray or self.cat)
+        docs = await plugin_manager.execute_hook_async("before_rabbithole_splits_documents", docs, caller=self.stray or self.cat)
 
         # split docs
         chunker = self.cat.chunker
