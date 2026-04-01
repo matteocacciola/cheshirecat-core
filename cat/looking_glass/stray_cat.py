@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from typing import List, Final, Callable
 from langchain_core.tools import StructuredTool
@@ -68,7 +69,7 @@ class StrayCat(BotMixin):
         self._agent_id: Final[str] = agent_id
         self.user: Final[AuthUserInfo] = user_data
         self.plugin_manager_generator: Final[Callable[[], MadHatter]] = plugin_manager_generator
-        self.notifier: Final[NotifierService] = NotifierService(self.user, self.agent_key, self.id)
+        self.notifier: Final[NotifierService] = NotifierService(self.user, self.agent_key, self.id)  # type: ignore[call-arg]
 
         # bootstrap stray cat
         super().__init__()
@@ -100,15 +101,16 @@ class StrayCat(BotMixin):
             config (RecallSettings): Configuration settings for memory retrieval. It includes retrieval parameters and
                 metadata to refine the memory extraction process.
         """
-        # recall declarative memory from vector collections
-        agent_memories = await self._agentic_workflow.context_retrieval(
-            collection=VectorMemoryType.DECLARATIVE, params=config,
-        )
-
-        # recall episodic memory from vector collections
-        chat_memories = await self._agentic_workflow.context_retrieval(
-            collection=VectorMemoryType.EPISODIC,
-            params=config.model_copy(deep=True, update={"metadata": {"chat_id": self.id}}),
+        # Recall declarative and episodic memories in parallel — they are fully independent
+        # Qdrant queries that hit different collections, so there is no reason to serialise them.
+        agent_memories, chat_memories = await asyncio.gather(
+            self._agentic_workflow.context_retrieval(
+                collection=VectorMemoryType.DECLARATIVE, params=config,
+            ),
+            self._agentic_workflow.context_retrieval(
+                collection=VectorMemoryType.EPISODIC,
+                params=config.model_copy(deep=True, update={"metadata": {"chat_id": self.id}}),
+            ),
         )
 
         self.working_memory.context_memories = list(set(agent_memories) | set(chat_memories))
@@ -193,6 +195,11 @@ class StrayCat(BotMixin):
             # hook to do something before recall begins
             config = self.plugin_manager.execute_hook("before_cat_recalls_memories", config, caller=self)
 
+            # Start the PROCEDURAL fetch immediately — it queries a different Qdrant collection
+            # and is completely independent of the DECLARATIVE + EPISODIC recalls below.
+            # Both sets of queries will run concurrently on the event loop.
+            procedures_task = asyncio.ensure_future(self.get_procedures(config))
+
             await self.recall_context_to_working_memory(config)
 
             # hook to modify/enrich retrieved memories
@@ -201,9 +208,12 @@ class StrayCat(BotMixin):
             # if the agent is set to fast reply, skip everything and return the output
             agent_output = plugin_manager.execute_hook("agent_fast_reply", caller=self)
             if agent_output:
+                procedures_task.cancel()
                 return CatMessage(text=agent_output.output)
 
-            tools = await self.get_procedures(config)
+            # By the time we reach here the PROCEDURAL query has very likely already finished
+            # (it ran concurrently with recalls + hooks); this await is typically instant.
+            tools = await procedures_task
 
             # prepare agent input
             agent_input = AgenticWorkflowTask(
