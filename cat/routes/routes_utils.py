@@ -243,6 +243,11 @@ async def startup_app(app):
     bill_the_lizard.bootstrap_services()
     bill_the_lizard.fastapi_app = app
 
+    # Start Redis Pub/Sub listener so WebSocket messages are delivered
+    # cross-replica in Docker Swarm deployments.  Degrades gracefully to
+    # local-only mode if Redis pub/sub is unavailable.
+    await bill_the_lizard.websocket_manager.start()
+
     # load the Manager and the Job Handler
     app.state.lizard = bill_the_lizard
 

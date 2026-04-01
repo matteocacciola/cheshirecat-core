@@ -15,20 +15,29 @@ class NotifierService:
         self.chat_id: Final[str] = chat_id
 
     def has_ws_connection(self) -> bool:
+        """
+        Check whether *this replica* holds an active WebSocket for this chat.
+
+        Since a ``StrayCat`` is always co-located with its WebSocket connection
+        this local check is sufficient.  Cross-replica message delivery is
+        handled transparently by Redis Pub/Sub inside ``_send_ws_message``.
+        """
         from cat.looking_glass.bill_the_lizard import BillTheLizard
 
-        return BillTheLizard().websocket_manager.get_connection(self.chat_id) is not None
+        return BillTheLizard().websocket_manager.is_connected(self.chat_id)
 
     async def _send_ws_message(self, content: str, msg_type: MSG_TYPES):
         """
-        Send a message via websocket.
+        Send a message via WebSocket.
 
-        This method is useful for sending a message via websocket directly without passing through the LLM.
-        In case there is no connection, the message is skipped and a warning is logged.
+        The message is routed through the WebSocket manager which publishes it
+        to the Redis `ws:msg:<chat_id>` channel.  The replica that holds the
+        actual WebSocket connection will receive the pub/sub event and deliver
+        it locally.  In single-replica / no-Redis mode delivery is direct.
 
         Args:
             content (str): The content of the message.
-            msg_type (str): The type of the message. Should be either `notification` (default), `chat`, `chat_token` or `error`
+            msg_type (str): The type of the message. Should be one of the `MSG_TYPES` literals (e.g. `"chat"`, `"chat_token"`).
         """
         from cat.looking_glass.bill_the_lizard import BillTheLizard
 
@@ -38,13 +47,10 @@ class NotifierService:
                 f"The message type `{msg_type}` is not valid. Valid types: {', '.join(options)}"
             )
 
-        ws_connection = BillTheLizard().websocket_manager.get_connection(self.chat_id)
-        if not ws_connection:
-            log.debug(f"No websocket connection is open for conversation {self.chat_id}. Skipping sending message: {content}")
-            return
-
         try:
-            await ws_connection.send_json({"type": msg_type, "content": content})
+            await BillTheLizard().websocket_manager.send_to(
+                self.chat_id, {"type": msg_type, "content": content}
+            )
         except RuntimeError as e:
             log.error(f"Runtime error occurred while sending data: {e}")
 
@@ -80,6 +86,8 @@ class NotifierService:
 
         if isinstance(message, str):
             message = CatMessage(text=message)
+
+        assert isinstance(message, CatMessage)
 
         response = ChatResponse(
             agent_id=self.agent_key,
