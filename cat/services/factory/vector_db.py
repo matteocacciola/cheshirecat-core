@@ -1,4 +1,3 @@
-import asyncio
 import json
 import os
 import uuid
@@ -1004,8 +1003,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             # Set offset for the next iteration
             offset = next_offset
 
-            # Optional: Add a small delay to avoid overwhelming the system
-            await asyncio.sleep(0.1)
         return memory_points, None
 
     # retrieve all the points in the collection

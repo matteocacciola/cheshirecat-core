@@ -1,3 +1,4 @@
+import asyncio
 import mimetypes
 import os
 import tempfile
@@ -145,15 +146,31 @@ class CheshireCat(BotMixin):
         return {k: list(v) for k, v in results.items()}
 
     async def embed_procedures(self, pt: CatProcedureType | None = None):
+        # Collect all texts up-front so we can embed them in one batch call
+        # instead of N individual embed_query calls.
+        documents = [
+            t.document
+            for p in self.plugin_manager.procedures
+            for t in p.to_document_recall()
+            if pt is None or p.type == pt
+        ]
+        if not documents:
+            return
+
+        # Single batched embed call — much cheaper than N × embed_query, and offloaded
+        # to a thread so the event loop is not blocked by the (synchronous) embedder.
+        vectors = await asyncio.to_thread(
+            self.lizard.embedder.embed_documents, [document.page_content for document in documents]
+        )
+
         points = [
             PointStruct(
                 id=uuid.uuid4().hex,
-                payload=t.document.model_dump(),
-                vector=self.lizard.embedder.embed_query(t.document.page_content),
-            ) for p in self.plugin_manager.procedures for t in p.to_document_recall() if pt is None or p.type == pt
+                payload=d.model_dump(),
+                vector=vector,
+            )
+            for d, vector in zip(documents, vectors)
         ]
-        if not points:
-            return
 
         log.info(f"Agent id: {self._id}. Embedding procedures in vector memory")
         collection_name = str(VectorMemoryType.PROCEDURAL)

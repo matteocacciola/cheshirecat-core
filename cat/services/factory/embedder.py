@@ -1,6 +1,7 @@
 import re
 import string
 from abc import ABC, abstractmethod
+from functools import cached_property
 from itertools import combinations
 from typing import Type, List
 from langchain_core.embeddings import Embeddings as LangChainEmbeddings
@@ -26,8 +27,9 @@ class Embeddings(LangChainEmbeddings, ABC):
     def name(self) -> str:
         return get_nlp_object_name(self, "default_embedder")
 
-    @property
+    @cached_property
     def size(self) -> int:
+        """Embedding dimensionality — computed once per instance, then cached."""
         return len(self.embed_query("hello world"))
 
 

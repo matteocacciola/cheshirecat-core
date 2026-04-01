@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from cat.auth.connection import AuthorizedInfo
@@ -48,10 +49,15 @@ async def websocket_chat(
 
             user_message = UserMessage(**payload)
 
-            # Run the `stray` object's method in a threadpool since it might be a CPU-bound operation.
-            await stray_cat.run_websocket(user_message)
+            # asyncio.shield keeps the LLM call alive even if the outer task is cancelled
+            # (e.g. on server shutdown or mid-stream client disconnect), so the response is
+            # still fully processed and persisted to memory.
+            await asyncio.shield(stray_cat.run_websocket(user_message))
     except WebSocketDisconnect:
         log.info(f"WebSocket connection closed for conversation {stray_cat.id}")
+    except asyncio.CancelledError:
+        log.info(f"WebSocket handler cancelled for conversation {stray_cat.id}; ongoing LLM call will complete")
+        raise  # propagate so the server can finish its shutdown sequence
     finally:
         # Remove connection on disconnect
         websocket_manager.remove_connection(stray_cat.id)
