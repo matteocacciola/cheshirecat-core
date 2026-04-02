@@ -3,7 +3,7 @@ from redis.exceptions import RedisError
 
 from cat.db import crud
 from cat.db.cruds import settings as crud_settings
-from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_AGENT_KEY, DEFAULT_SYSTEM_KEY, DEFAULT_PLUGINS_KEY
+from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_AGENT_KEY, DEFAULT_SYSTEM_KEY, DEFAULT_PLUGINS_KEY, get_db
 from cat.log import log
 
 
@@ -205,7 +205,7 @@ async def get_agents_plugin_keys(plugin_id: str) -> List[str]:
         RedisError: If Redis connection fails.
     """
     try:
-        db = crud.get_db()
+        db = get_db()
 
         # Scan directly for agent settings keys — no intermediate reconstruction needed
         keys = [

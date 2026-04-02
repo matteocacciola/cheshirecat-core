@@ -2,7 +2,7 @@ from typing import Dict, Any, List, Tuple
 from redis.exceptions import RedisError
 
 from cat.core_plugins.analytics.constants import KEY_PREFIX
-from cat.db import crud
+from cat.db.database import get_db
 from cat.log import log
 
 
@@ -159,7 +159,7 @@ def _build_nested_result(
 
 
 async def get_nested_analytics(pattern: str, expected_parts: int) -> Dict:
-    db = crud.get_db()
+    db = get_db()
 
     # Scan for all matching keys
     keys = await _scan_keys_with_pattern(db, pattern)

@@ -99,9 +99,9 @@ class MadHatter:
             raise Exception(f"Cannot install plugin {plugin_id} because of missing dependencies: {missing_deps}")
 
         # install the extracted plugin
-        return self.install_extracted_plugin(plugin_id)
+        return await self.install_extracted_plugin(plugin_id)
 
-    def install_extracted_plugin(self, plugin_id: str) -> str:
+    async def install_extracted_plugin(self, plugin_id: str) -> str:
         """
         Installs and activates a plugin if it is not already activated. This method verifies if the given plugin ID
         exists among core plugin IDs, and if not, activates the corresponding plugin.
@@ -116,7 +116,7 @@ class MadHatter:
         if plugin_id in self.get_core_plugins_ids:
             return plugin_id
 
-        self.activate_plugin(plugin_id)  # type: ignore[unused-coroutine]
+        await self.activate_plugin(plugin_id)  # type: ignore[unused-coroutine]
 
         return plugin_id
 

@@ -16,9 +16,8 @@ from cat import utils
 from cat.auth.auth_utils import is_jwt, extract_token_from_request
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
-from cat.db import crud
 import cat.db.cruds.settings as crud_settings
-from cat.db.database import DEFAULT_SYSTEM_KEY
+from cat.db.database import DEFAULT_SYSTEM_KEY, get_db_connection_string
 from cat.exceptions import CustomUnauthorizedException, CustomNotFoundException
 from cat.looking_glass import StrayCat, ChatResponse
 from cat.services.memory.messages import UserMessage
@@ -53,7 +52,7 @@ class HealthCheckLocal(HealthCheckAbstract):
 _healthChecks = HealthCheckRegistry()
 _healthChecks.add_many([
     HealthCheckLocal(),
-    HealthCheckRedis(crud.get_db_connection_string())
+    HealthCheckRedis(get_db_connection_string())
 ])
 
 router.add_api_route(

@@ -33,12 +33,8 @@ from tests.utils import (
 
 pytest_plugins = ["pytest_asyncio"]
 
-redis_client = aioredis.Redis(host=get_env("CAT_REDIS_HOST"), db=1, encoding="utf-8", decode_responses=True)
-memory_client = AsyncQdrantClient(":memory:")
-
-
 # substitute classes' methods where necessary for testing purposes
-def mock_classes(monkeypatch):
+def mock_classes(monkeypatch, redis_client, memory_client):
     # Mock the entire __init__ method to set _client to memory client
     def mock_init_vector_database(self, *args, **kwargs):
         # Call the parent __init__
@@ -65,7 +61,7 @@ def mock_classes(monkeypatch):
     auth_utils.extract_agent_id_from_request = lambda: agent_id
 
 
-async def clean_up():
+async def clean_up(redis_client, memory_client):
     # clean up service files and mocks
     to_be_removed = [
         "tests/mocks/mock_plugin.zip",
@@ -88,7 +84,7 @@ async def clean_up():
                 os.remove(tbr)
 
     # flush redis database
-    await  redis_client.flushdb()
+    await redis_client.flushdb()
 
     # delete all the collections in Qdrant
     collections = await memory_client.get_collections()
@@ -108,15 +104,19 @@ async def encapsulate_each_test(request, monkeypatch):
 
         return
 
+    # Create fresh async clients bound to the current event loop
+    redis_client = aioredis.Redis(host=get_env("CAT_REDIS_HOST"), db=1, encoding="utf-8", decode_responses=True)
+    memory_client = AsyncQdrantClient(":memory:")
+
     # monkeypatch classes
-    mock_classes(monkeypatch)
+    mock_classes(monkeypatch, redis_client, memory_client)
 
     # env variables
     current_debug = get_env("CAT_DEBUG")
     os.environ["CAT_DEBUG"] = "false"  # do not autoreload
 
     # clean up tmp files, folders and redis database
-    await clean_up()
+    await clean_up(redis_client, memory_client)
 
     # delete all singletons!!!
     utils.singleton.instances.clear()
@@ -124,7 +124,11 @@ async def encapsulate_each_test(request, monkeypatch):
     yield
 
     # clean up tmp files, folders and redis database
-    await clean_up()
+    await clean_up(redis_client, memory_client)
+
+    # Close clients to free resources
+    await redis_client.aclose()
+    await memory_client.close()
 
     if current_debug:
         os.environ["CAT_DEBUG"] = current_debug
@@ -149,10 +153,43 @@ async def cheshire_cat(lizard):
 
 # Main fixture for the FastAPI app
 @pytest_asyncio.fixture(scope="function")
-async def client(cheshire_cat):
+async def client(cheshire_cat, monkeypatch):
     """
     Create a new FastAPI TestClient.
+
+    TestClient (backed by anyio) runs the ASGI lifespan in a *separate* event
+    loop.  The Redis client created by `encapsulate_each_test` is bound to the
+    *test* event loop, so any Redis I/O attempted in the TestClient's loop
+    raises "Future attached to a different loop".
+
+    The system is already fully bootstrapped by the `lizard` / `cheshire_cat`
+    fixtures, so we replace the three lifespan callables that touch Redis
+    (`startup_app`, `shutdown_app`, `get_db`) with lightweight stubs that only
+    wire up the FastAPI app-state.
     """
+    import cat.startup as _startup_module
+    from cat.looking_glass import BillTheLizard
+
+    async def _mock_startup(app):
+        bill = BillTheLizard()  # returns the already-bootstrapped singleton
+        bill.fastapi_app = app
+        app.state.lizard = bill
+
+    async def _mock_shutdown(app):
+        # Singleton lifecycle is managed by encapsulate_each_test; do not
+        # clear instances or close the Redis client here.
+        if hasattr(app.state, "lizard"):
+            del app.state.lizard
+
+    class _NoopRedis:
+        """Dummy Redis client so that `await get_db().aclose()` is a no-op."""
+        async def aclose(self):
+            pass
+
+    monkeypatch.setattr(_startup_module, "startup_app", _mock_startup)
+    monkeypatch.setattr(_startup_module, "shutdown_app", _mock_shutdown)
+    monkeypatch.setattr(_startup_module, "get_db", lambda: _NoopRedis())
+
     with TestClient(grinning_cat_api) as client:
         yield client
 

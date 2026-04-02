@@ -2,7 +2,7 @@ from typing import Dict, List, Any
 from redis.exceptions import RedisError
 
 from cat.db import crud, models
-from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY, DEFAULT_AGENT_KEY
+from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY, DEFAULT_AGENT_KEY, get_db
 from cat.log import log
 
 
@@ -328,7 +328,7 @@ async def get_agents_main_keys(pattern: str | None = None) -> List[str]:
 
     try:
         return sorted(
-            list({k.split(":")[1] async for k in crud.get_db().scan_iter(pattern)})
+            list({k.split(":")[1] async for k in get_db().scan_iter(pattern)})
         )
     except RedisError as e:
         log.error(f"Redis error in get_agents_main_keys: {e}")
@@ -348,7 +348,7 @@ async def get_agents() -> List[Dict[str, Any]]:
         RedisError: If Redis connection fails.
     """
     try:
-        db = crud.get_db()
+        db = get_db()
 
         # One SCAN to collect all agent-settings keys
         keys = [k async for k in db.scan_iter(f"{DEFAULT_AGENTS_KEY}:*:{DEFAULT_AGENT_KEY}")]
@@ -384,7 +384,7 @@ async def clone_agent(source_prefix: str, target_prefix: str, skip_keys: List[st
     """
     skip_keys = skip_keys or []
     try:
-        db = crud.get_db()
+        db = get_db()
 
         # Find all keys with the source prefix
         pattern = f"{DEFAULT_AGENTS_KEY}:{source_prefix}:*"

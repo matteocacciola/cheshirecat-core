@@ -129,7 +129,7 @@ class BotMixin(ContextMixin, ABC):
         return BillTheLizard()
 
     async def embedder(self) -> Embeddings:
-        return await self.lizard.embedder
+        return await self.lizard.embedder()
 
     async def large_language_model(self) -> LargeLanguageModel:
         return await self.service_provider.get_large_language_model()

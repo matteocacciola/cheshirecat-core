@@ -5,7 +5,7 @@ import redis.asyncio as aioredis
 from typing import Dict, Callable, Optional, List
 
 from cat import log, hook
-from cat.db.database import get_db
+from cat.db.database import get_db, get_redis_kwargs
 from cat.utils import pod_id, singleton
 
 # Max messages to keep in the stream to prevent memory explosion
@@ -38,6 +38,14 @@ class MarchHare:
         self._factor = 2  # Double the wait each time
         self._retries = 0
 
+    def _new_redis_client(self) -> aioredis.Redis:
+        """
+        Create a fresh Redis client bound to the currently-running event loop.
+        This avoids the "Future attached to a different loop" error that occurs
+        when a client/connection-pool created on a previous loop is reused.
+        """
+        return aioredis.Redis(**get_redis_kwargs())
+
     def stop(self):
         """Signal the consumer loop to stop."""
         self._stop_event.set()
@@ -68,47 +76,58 @@ class MarchHare:
     async def consume_event(self, callback: Callable, stream_name: str):
         """
         Read new messages from the stream starting from "now".
+
+        A dedicated Redis client is created here so that its connection pool is
+        always bound to the event loop that is actually running this coroutine,
+        avoiding the "Future attached to a different loop" error.
         """
         # "$" tells Redis to only return messages that arrive after we start reading
         last_id = "$"
 
+        # Create a fresh client on the current event loop (avoids loop-mismatch errors)
+        redis_client = self._new_redis_client()
+
         log.debug(f"[*] Started Redis Stream consumer on {stream_name}.")
 
-        while not self._stop_event.is_set():
-            try:
-                # block=100ms so the stop flag is checked frequently
-                events = await self._redis_client.xread({stream_name: last_id}, count=1, block=100)
+        try:
+            while not self._stop_event.is_set():
+                try:
+                    # block=100ms so the stop flag is checked frequently
+                    events = await redis_client.xread({stream_name: last_id}, count=1, block=100)
 
-                # If we reached this point, the connection is active
-                if self._retries > 0:
-                    log.info("Redis connection re-established. Resetting backoff.")
-                    self._retries = 0
+                    # If we reached this point, the connection is active
+                    if self._retries > 0:
+                        log.info("Redis connection re-established. Resetting backoff.")
+                        self._retries = 0
 
-                for stream, messages in events:
-                    for message_id, data in messages:
-                        # Process message
-                        await callback(data)
-                        # Update last_id to the one we just processed to move the cursor forward
-                        last_id = message_id
-            except (aioredis.ConnectionError, aioredis.TimeoutError, ValueError) as e:
-                if self._stop_event.is_set():
-                    break  # voluntary shutdown, exit silently
+                    for stream, messages in events:
+                        for message_id, data in messages:
+                            # Process message
+                            await callback(data)
+                            # Update last_id to the one we just processed to move the cursor forward
+                            last_id = message_id
+                except (aioredis.ConnectionError, aioredis.TimeoutError, ValueError) as e:
+                    if self._stop_event.is_set():
+                        break  # voluntary shutdown, exit silently
 
-                # Calculate exponential delay: (base * factor^retries) + jitter
-                # Jitter prevents all pods from reconnecting at the exact same millisecond
-                jitter = random.uniform(0, 1)
-                delay = min(self._max_delay, (self._base_delay * (self._factor ** self._retries)) + jitter)
+                    # Calculate exponential delay: (base * factor^retries) + jitter
+                    # Jitter prevents all pods from reconnecting at the exact same millisecond
+                    jitter = random.uniform(0, 1)
+                    delay = min(self._max_delay, (self._base_delay * (self._factor ** self._retries)) + jitter)
 
-                log.warning(f"Redis unavailable: {e}. Retrying in {delay:.2f}s (Attempt {self._retries + 1})")
+                    log.warning(f"Redis unavailable: {e}. Retrying in {delay:.2f}s (Attempt {self._retries + 1})")
 
-                await asyncio.sleep(delay)
-                self._retries += 1
-            except Exception as e:
-                if self._stop_event.is_set():
-                    break  # voluntary shutdown, exit silently
+                    await asyncio.sleep(delay)
+                    self._retries += 1
+                except Exception as e:
+                    if self._stop_event.is_set():
+                        break  # voluntary shutdown, exit silently
 
-                log.error(f"Unexpected error in consumer loop: {e}")
-                await asyncio.sleep(2)  # Brief pause for non-connection logic errors
+                    log.error(f"Unexpected error in consumer loop: {e}")
+                    await asyncio.sleep(2)  # Brief pause for non-connection logic errors
+        finally:
+            # Always release the connection back to the pool on exit
+            await redis_client.aclose()
 
 
 _march_hare: Optional[MarchHare] = None
@@ -135,7 +154,7 @@ async def _consume_plugin_events(lizard):
                 return
 
             if event_type == MarchHareConfig.events["PLUGIN_INSTALLATION"]:
-                lizard.plugin_manager.install_extracted_plugin(payload["plugin_id"])
+                await lizard.plugin_manager.install_extracted_plugin(payload["plugin_id"])
                 lizard.activate_plugin_endpoints(payload["plugin_id"])
                 return
 

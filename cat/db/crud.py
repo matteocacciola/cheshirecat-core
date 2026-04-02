@@ -3,9 +3,8 @@ from enum import Enum
 from typing import List, Dict, Any
 from redis.exceptions import LockError, RedisError
 from redis.lock import Lock
-import redis.asyncio as aioredis
 
-from cat.db.database import get_db as get_db_base, get_db_connection_string as get_db_connection_string_base
+from cat.db.database import get_db
 from cat.log import log
 
 
@@ -193,17 +192,3 @@ async def destroy(key_pattern: str) -> int:
     except (RedisError, LockError) as e:
         log.error(f"Error destroying keys for pattern '{key_pattern}': {e}")
         raise
-
-
-def get_db() -> aioredis.Redis:
-    """
-    Return the shared async Redis client (redis.asyncio).
-
-    Returns:
-        async Redis database connection.
-    """
-    return get_db_base()
-
-
-def get_db_connection_string() -> str:
-    return get_db_connection_string_base()

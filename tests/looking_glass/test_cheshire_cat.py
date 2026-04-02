@@ -15,7 +15,7 @@ from tests.utils import create_mock_plugin_zip
 
 
 async def test_main_modules_loaded(cheshire_cat):
-    assert isinstance(await cheshire_cat.plugin_manager(), MadHatter)
+    assert isinstance(cheshire_cat.plugin_manager, MadHatter)
     assert isinstance(await cheshire_cat.large_language_model(), BaseLanguageModel)
     assert isinstance(await cheshire_cat.file_manager(), BaseFileManager)
     assert isinstance(await cheshire_cat.chunker(), BaseChunker)

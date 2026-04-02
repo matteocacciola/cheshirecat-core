@@ -2,7 +2,7 @@ from typing import Dict, List, Any
 from redis.exceptions import RedisError
 
 from cat.db import crud
-from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_CONVERSATIONS_KEY
+from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_CONVERSATIONS_KEY, get_db
 from cat.env import get_env_int
 from cat.log import log
 from cat.services.memory.messages import ConversationMessage
@@ -91,7 +91,7 @@ async def get_conversations_attributes(agent_id: str, user_id: str) -> List[Dict
         RedisError: If Redis connection fails.
     """
     try:
-        db = crud.get_db()
+        db = get_db()
         pattern = format_key(agent_id, user_id, "*")
 
         # One SCAN to collect all conversation keys
@@ -308,7 +308,7 @@ async def update_messages(
         serialized = crud.serialize_to_redis_json(updated_info.model_dump())
         expiration = _get_expiration()
 
-        db = crud.get_db()
+        db = get_db()
 
         # Atomically initialise the root structure only if the key does not exist yet.
         # If two replicas race here, only one SET NX will succeed; the other is a no-op,
@@ -385,5 +385,5 @@ async def destroy_all(agent_id: str):
 async def get_user_id_from_conversation_keys(agent_id: str, chat_id: str) -> str | None:
     pattern = format_key(agent_id, "*", chat_id)
 
-    user_ids = list({k.split(":")[3] async for k in crud.get_db().scan_iter(pattern)})
+    user_ids = list({k.split(":")[3] async for k in get_db().scan_iter(pattern)})
     return user_ids[0] if len(user_ids) == 1 else None

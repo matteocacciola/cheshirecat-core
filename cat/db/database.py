@@ -21,29 +21,24 @@ class Database:
     def get_redis_client(self) -> aioredis.Redis:
         return aioredis.Redis(**get_redis_kwargs())
 
-    @property
-    def connection_string(self):
-        secure = "s" if get_env_bool("CAT_REDIS_TLS") else ""
-
-        host = get_env("CAT_REDIS_HOST")
-        port = get_env("CAT_REDIS_PORT")
-        db = get_env_int("CAT_REDIS_DB")
-
-        password = get_env("CAT_REDIS_PASSWORD")
-
-        return (
-            f"redis{secure}://{host}:{port}/{db}"
-            if not password else f"redis{secure}://:{password}@{host}:{port}/{db}"
-        )
-
 
 def get_db() -> aioredis.Redis:
     return Database().db
 
 
 def get_db_connection_string() -> str:
-    return Database().connection_string
+    secure = "s" if get_env_bool("CAT_REDIS_TLS") else ""
 
+    host = get_env("CAT_REDIS_HOST")
+    port = get_env("CAT_REDIS_PORT")
+    db = get_env_int("CAT_REDIS_DB")
+
+    password = get_env("CAT_REDIS_PASSWORD")
+
+    return (
+        f"redis{secure}://{host}:{port}/{db}"
+        if not password else f"redis{secure}://:{password}@{host}:{port}/{db}"
+    )
 
 def get_redis_kwargs() -> Dict:
     host = get_env("CAT_REDIS_HOST")

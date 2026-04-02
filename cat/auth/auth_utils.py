@@ -75,7 +75,7 @@ async def extract_user_info_on_api_key(agent_key: str, user_id: str | None = Non
         user = await crud_users.get_user(agent_key, user_id)
     elif agent_key == DEFAULT_SYSTEM_KEY:
         # backward compatibility
-        user = crud_users.get_user_by_username(agent_key, DEFAULT_ADMIN_USERNAME)  # type: ignore[assignment]
+        user = await crud_users.get_user_by_username(agent_key, DEFAULT_ADMIN_USERNAME)
 
     if not user:
         return None
