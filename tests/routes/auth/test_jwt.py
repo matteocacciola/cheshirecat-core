@@ -1,6 +1,7 @@
 import os
 import time
 import jwt
+import pytest
 
 from cat.env import get_env
 from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions
@@ -39,7 +40,8 @@ def test_refuse_issue_jwt(secure_client, client):
     assert json["detail"] == "Invalid Credentials"
 
 
-def test_issue_jwt(secure_client, client, cheshire_cat):
+@pytest.mark.asyncio
+async def test_issue_jwt(secure_client, client, cheshire_cat):
     creds = {"username": "user", "password": new_user_password}
     create_new_user(
         secure_client,
@@ -61,8 +63,8 @@ def test_issue_jwt(secure_client, client, cheshire_cat):
     assert is_jwt(received_token)
 
     # is the JWT correct for core auth handler?
-    auth_handler = cheshire_cat.custom_auth_handler
-    user_info = auth_handler.authorize_user_from_jwt(
+    auth_handler = await cheshire_cat.custom_auth_handler()
+    user_info = await auth_handler.authorize_user_from_jwt(
         received_token, AuthResource.CHAT, AuthPermission.READ, key_id=agent_id
     )
     assert len(user_info.id) == 36 and len(user_info.id.split("-")) == 5  # uuid4

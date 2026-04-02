@@ -5,7 +5,7 @@ import threading
 import time
 from typing import Dict, Callable, Optional
 
-from cat import log, hook
+from cat import log, hook, run_sync_or_async
 from cat.db.database import get_db
 from cat.utils import pod_id, singleton
 
@@ -141,7 +141,7 @@ def _consume_plugin_events(lizard):
                 return
 
             if event_type == MarchHareConfig.events["PLUGIN_UNINSTALLATION"]:
-                lizard.plugin_manager.uninstall_plugin(payload["plugin_id"], dispatch_event=False)
+                run_sync_or_async(lizard.plugin_manager.uninstall_plugin, payload["plugin_id"], dispatch_event=False)
                 return
 
             log.warning(f"Unknown event type: {event_type}")

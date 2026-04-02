@@ -95,12 +95,13 @@ def test_activate_plugin(plugin):
     assert isinstance(mcp_client, CatMcpClient)
 
 
-def test_deactivate_plugin(plugin):
+@pytest.mark.asyncio
+async def test_deactivate_plugin(plugin):
     # The plugin is non active by default
     plugin.activate(DEFAULT_SYSTEM_KEY)
 
     # deactivate it
-    plugin.deactivate(DEFAULT_SYSTEM_KEY)
+    await plugin.deactivate(DEFAULT_SYSTEM_KEY)
 
     assert plugin.active is False
 
@@ -117,16 +118,18 @@ def test_settings_schema(plugin):
     assert settings_schema["type"] == "object"
 
 
-def test_load_settings(plugin):
-    settings = plugin.load_settings(DEFAULT_SYSTEM_KEY)
+@pytest.mark.asyncio
+async def test_load_settings(plugin):
+    settings = await plugin.load_settings(DEFAULT_SYSTEM_KEY)
     assert settings == {}
 
 
-def test_save_settings(plugin):
+@pytest.mark.asyncio
+async def test_save_settings(plugin):
     fake_settings = {"a": 42}
-    plugin.save_settings(fake_settings, DEFAULT_SYSTEM_KEY)
+    await plugin.save_settings(fake_settings, DEFAULT_SYSTEM_KEY)
 
-    settings = plugin.load_settings(DEFAULT_SYSTEM_KEY)
+    settings = await plugin.load_settings(DEFAULT_SYSTEM_KEY)
     assert settings["a"] == fake_settings["a"]
 
 

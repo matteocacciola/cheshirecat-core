@@ -37,7 +37,7 @@ class ConnectionAuth(ABC):
         self.permission = permission
         self.is_chat = is_chat
 
-    def __call__(self, connection: HTTPConnection) -> AuthorizedInfo:
+    async def __call__(self, connection: HTTPConnection) -> AuthorizedInfo:
         lizard: BillTheLizard = connection.app.state.lizard
 
         agent_id = extract_agent_id_from_request(connection)
@@ -59,7 +59,7 @@ class ConnectionAuth(ABC):
         user = None
         if not self.is_chat:
             # is that an admin able to manage agents?
-            user = lizard.core_auth_handler.authorize(
+            user = await lizard.core_auth_handler.authorize(
                 connection,
                 self.resource,
                 self.permission,
@@ -68,7 +68,7 @@ class ConnectionAuth(ABC):
 
         # fallback to agent-specific auth if needed and available
         if not user and ccat is not None:
-            user = ccat.custom_auth_handler.authorize(
+            user = await ccat.custom_auth_handler.authorize(
                 connection,
                 self.resource,
                 self.permission,
@@ -84,7 +84,7 @@ class ConnectionAuth(ABC):
             self._not_allowed(connection)
 
         if ccat is not None and (chat_id := extract_chat_id_from_request(connection)):
-            stray_cat = StrayCat(
+            stray_cat = await StrayCat.create(
                 user_data=user,
                 agent_id=ccat.agent_key,
                 stray_id=chat_id,

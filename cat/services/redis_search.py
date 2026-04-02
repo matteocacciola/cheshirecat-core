@@ -4,7 +4,7 @@ from redis import RedisError
 
 from cat.auth.auth_utils import check_password
 import cat.db.cruds.users as crud_users
-from cat.db.database import get_db, DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY
+from cat.db.database import get_db, get_db, DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY
 from cat.log import log
 from cat.utils import singleton
 
@@ -91,6 +91,44 @@ class RedisSearchService:
                 stored_hash = match["user"]["password"]
 
                 # Verify password with bcrypt
+                if check_password(password, stored_hash):
+                    valid_matches.append(match_str)
+
+            return valid_matches
+        except RedisError as e:
+            log.error(f"Redis error searching for username {username}: {e}")
+            return None
+
+    async def search_user_by_credentials_async(self, username: str, password: str) -> List[str] | None:
+        """
+        Async variant of search_user_by_credentials — uses the async Redis client so the
+        Lua script + evalsha calls do not block the event loop.
+        """
+        try:
+            adb = get_db()
+            username_search_sha = await adb.script_load(USERNAME_SEARCH_SCRIPT)
+
+            # Phase 1: find all users with this username across all agents
+            result = await adb.evalsha(username_search_sha, 0, username)
+
+            # Phase 2: find the user within the "system" agent (uses async CRUD)
+            system_user = await crud_users.get_user_by_credentials(DEFAULT_SYSTEM_KEY, username, password)
+
+            if not result and not system_user:
+                return None
+
+            matches_raw = json.loads(result) if result else []
+            if not matches_raw and not system_user:
+                return None
+
+            valid_matches = (
+                []
+                if not system_user
+                else [json.dumps({"agent_name": DEFAULT_SYSTEM_KEY, "user": system_user})]
+            )
+            for match_str in matches_raw:
+                match = json.loads(match_str)
+                stored_hash = match["user"]["password"]
                 if check_password(password, stored_hash):
                     valid_matches.append(match_str)
 

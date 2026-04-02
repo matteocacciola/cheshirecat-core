@@ -1,4 +1,4 @@
-import redis
+import redis.asyncio as aioredis
 
 from cat.env import get_env, get_env_int, get_env_bool
 from cat.utils import singleton
@@ -16,7 +16,7 @@ class Database:
     def __init__(self):
         self.db = self.get_redis_client()
 
-    def get_redis_client(self) -> redis.Redis:
+    def get_redis_client(self) -> aioredis.Redis:
         host = get_env("CAT_REDIS_HOST")
         if host is None:
             raise ValueError("CAT_REDIS_HOST environment variable is not set.")
@@ -24,18 +24,7 @@ class Database:
         password = get_env("CAT_REDIS_PASSWORD")
         tls = get_env_bool("CAT_REDIS_TLS")
 
-        if password:
-            return redis.Redis(
-                host=host,
-                port=get_env_int("CAT_REDIS_PORT"),
-                db=get_env_int("CAT_REDIS_DB"),
-                password=password,
-                encoding="utf-8",
-                decode_responses=True,
-                ssl=tls,
-            )
-
-        return redis.Redis(
+        kwargs = dict(
             host=host,
             port=get_env_int("CAT_REDIS_PORT"),
             db=get_env_int("CAT_REDIS_DB"),
@@ -43,6 +32,10 @@ class Database:
             decode_responses=True,
             ssl=tls,
         )
+        if password:
+            kwargs["password"] = password
+
+        return aioredis.Redis(**kwargs)
 
     @property
     def connection_string(self):
@@ -60,7 +53,7 @@ class Database:
         )
 
 
-def get_db() -> redis.Redis:
+def get_db() -> aioredis.Redis:
     return Database().db
 
 

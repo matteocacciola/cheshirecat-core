@@ -113,7 +113,7 @@ async def http_chat(
     info: AuthorizedInfo = check_permissions(AuthResource.CHAT, AuthPermission.WRITE, is_chat=True),
 ) -> ChatResponse:
     """Get a response from the Cat"""
-    stray_cat = info.stray_cat or StrayCat(
+    stray_cat = info.stray_cat or await StrayCat.create(
         user_data=info.user,
         agent_id=info.cheshire_cat.agent_key,
         plugin_manager_generator=info.cheshire_cat.plugin_manager_generator,

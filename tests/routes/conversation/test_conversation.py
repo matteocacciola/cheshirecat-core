@@ -1,4 +1,5 @@
 import time
+import pytest
 
 from cat import AuthResource, AuthPermission
 from cat.auth.permissions import get_base_permissions
@@ -89,7 +90,8 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
         assert isinstance(item["when"], float)  # timestamp
 
 
-def test_convo_delete(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+@pytest.mark.asyncio
+async def test_convo_delete(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     user = create_new_user(
         secure_client,
         "/users",
@@ -125,7 +127,7 @@ def test_convo_delete(secure_client, secure_client_headers, mocked_default_llm_a
     assert len(json["history"]) == 0
 
     # check there is not conversation with name = chat_id
-    conversation = crud_conversations.get_conversation(agent_id, user["id"], chat_id)
+    conversation = await crud_conversations.get_conversation(agent_id, user["id"], chat_id)
     assert conversation is None
 
 
@@ -217,7 +219,8 @@ def test_convo_history_by_user(secure_client, secure_client_headers, client, moc
     assert len(json["history"]) == convos["Alice"] * 2
 
 
-def test_change_attributes_to_conversation(secure_client, secure_client_headers, client, cheshire_cat):
+@pytest.mark.asyncio
+async def test_change_attributes_to_conversation(secure_client, secure_client_headers, client, cheshire_cat):
     user = create_new_user(
         secure_client,
         "/users",
@@ -241,7 +244,7 @@ def test_change_attributes_to_conversation(secure_client, secure_client_headers,
         ch_id=chat_id,
     )
 
-    conversation = crud_conversations.get_conversation(agent_id, user["id"], chat_id)
+    conversation = await crud_conversations.get_conversation(agent_id, user["id"], chat_id)
     assert conversation["name"] == chat_id
     assert conversation["metadata"] == {}
 
@@ -253,7 +256,7 @@ def test_change_attributes_to_conversation(secure_client, secure_client_headers,
     )
     assert response.status_code == 200
 
-    conversation = crud_conversations.get_conversation(agent_id, user["id"], chat_id)
+    conversation = await crud_conversations.get_conversation(agent_id, user["id"], chat_id)
     assert conversation["name"] == "this_is_a_new_name"
     assert conversation["metadata"] == {}
 
@@ -265,7 +268,7 @@ def test_change_attributes_to_conversation(secure_client, secure_client_headers,
     )
     assert response.status_code == 200
 
-    conversation = crud_conversations.get_conversation(agent_id, user["id"], chat_id)
+    conversation = await crud_conversations.get_conversation(agent_id, user["id"], chat_id)
     assert conversation["name"] == "this_is_a_new_name"
     assert conversation["metadata"] == {"topic": "greetings"}
 

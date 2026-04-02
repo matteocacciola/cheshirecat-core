@@ -1,4 +1,5 @@
 import json
+import pytest
 
 from cat.auth.permissions import AuthUserInfo
 from cat import StrayCat
@@ -6,7 +7,8 @@ from cat import StrayCat
 from tests.utils import send_websocket_message, api_key, agent_id, create_new_user, new_user_password, chat_id
 
 
-def test_session_creation_from_websocket(
+@pytest.mark.asyncio
+async def test_session_creation_from_websocket(
     secure_client, secure_client_headers, client, cheshire_cat, mocked_default_llm_answer_prompt
 ):
     # create a new user with username CCC
@@ -38,7 +40,7 @@ def test_session_creation_from_websocket(
 
     # verify session
     user = AuthUserInfo(id=user_id, name=data["username"], permissions=data["permissions"])
-    stray_cat = StrayCat(
+    stray_cat = await StrayCat.create(
         user_data=user,
         agent_id=agent_id,
         stray_id=chat_id,
@@ -51,7 +53,8 @@ def test_session_creation_from_websocket(
     assert convo[0].content.text == mex["text"]
 
 
-def test_session_creation_from_http(secure_client, secure_client_headers, cheshire_cat):
+@pytest.mark.asyncio
+async def test_session_creation_from_http(secure_client, secure_client_headers, cheshire_cat):
     # create a new user with username CCC
     username = "Alice"
     data = create_new_user(secure_client, "/users", username=username, headers=secure_client_headers)
@@ -75,7 +78,7 @@ def test_session_creation_from_http(secure_client, secure_client_headers, cheshi
 
     # verify session
     user = AuthUserInfo(id=user_id, name=data["username"], permissions=data["permissions"])
-    stray_cat = StrayCat(
+    stray_cat = await StrayCat.create(
         user_data=user, agent_id=agent_id, plugin_manager_generator=lambda: cheshire_cat.plugin_manager,
     )
 

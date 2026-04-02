@@ -44,7 +44,7 @@ class MadHatter:
         self.active_plugins: List[str] = []
 
     # discover all plugins
-    def discover_plugins(self):
+    async def discover_plugins(self):
         # emptying the plugin dictionary, plugins will be discovered from the disk
         # and stored in a dictionary plugin_id -> plugin_obj
         self.plugins = {}
@@ -52,13 +52,13 @@ class MadHatter:
         # plugins are found in the plugins folder,
         # plus the default core plugin (where default hooks and tools are defined)
         # plugin folder is "cat/plugins/" in production, "tests/mocks/mock_plugin_folder/" during tests
-        self.active_plugins = self.load_active_plugins_ids_from_db()
+        self.active_plugins = await self.load_active_plugins_ids_from_db()
 
-        self._on_discovering_plugins()
-        self._on_finish_discovering_plugins()
+        await self._on_discovering_plugins()
+        await self._on_finish_discovering_plugins()
 
-    def load_active_plugins_ids_from_db(self) -> List[str]:
-        active_plugins_from_db = crud_settings.get_setting_by_name(self.agent_key, "active_plugins")
+    async def load_active_plugins_ids_from_db(self) -> List[str]:
+        active_plugins_from_db = await crud_settings.get_setting_by_name(self.agent_key, "active_plugins")
         active_plugins: List[str] = [] if active_plugins_from_db is None else active_plugins_from_db["value"]
 
         if not active_plugins:
@@ -120,7 +120,7 @@ class MadHatter:
 
         return plugin_id
 
-    def uninstall_plugin(self, plugin_id: str):
+    async def uninstall_plugin(self, plugin_id: str):
         """
         Uninstalls the specified plugin by its ID. This includes removing the plugin folder, deactivating the plugin if
         it is active, and clearing it from any stored metadata. If the plugin is a dependency of other plugins, the
@@ -148,24 +148,24 @@ class MadHatter:
 
         # deactivate plugin if it is active (will sync cache)
         if plugin_id in self.active_plugins:
-            self.deactivate_plugin(plugin_id)
+            await self.deactivate_plugin(plugin_id)
 
         # remove plugin folder
         shutil.rmtree(plugin_path)
 
-        crud_plugins.destroy_plugin(plugin_id)
+        await crud_plugins.destroy_plugin(plugin_id)
 
-    def activate_plugin(self, plugin_id: str):
+    async def activate_plugin(self, plugin_id: str):
         if not self.plugin_exists(plugin_id):
             raise Exception(f"Plugin {plugin_id} not present in plugins folder")
 
-        if self._on_plugin_activation(plugin_id=plugin_id):
+        if await self._on_plugin_activation(plugin_id=plugin_id):
             # Add the plugin in the list of active plugins
             self.active_plugins.append(plugin_id)
 
-        self._on_finish_discovering_plugins()
+        await self._on_finish_discovering_plugins()
 
-    def deactivate_plugin(self, plugin_id: str):
+    async def deactivate_plugin(self, plugin_id: str):
         if not self.plugin_exists(plugin_id):
             raise Exception(f"Plugin {plugin_id} not present in plugins folder")
 
@@ -184,15 +184,15 @@ class MadHatter:
         log.warning(f"Toggle plugin '{plugin_id}' for agent '{self.agent_key}': Deactivate")
         try:
             if self.agent_key == DEFAULT_SYSTEM_KEY:
-                self.plugins[plugin_id].deactivate(self.agent_key)
+                await self.plugins[plugin_id].deactivate(self.agent_key)
             else:
-                self.plugins[plugin_id].deactivate_settings(self.agent_key)
+                await self.plugins[plugin_id].deactivate_settings(self.agent_key)
 
             # Remove the plugin from the list of active plugins
             self.active_plugins.remove(plugin_id)
             self.plugins.pop(plugin_id, None)
 
-            self._on_finish_discovering_plugins()
+            await self._on_finish_discovering_plugins()
         except Exception as e:
             log.error(f"Could not deactivate plugin {plugin_id}: {e}")
 
@@ -210,10 +210,10 @@ class MadHatter:
 
         self.activate_plugin(plugin_id)
 
-    def _on_finish_discovering_plugins(self):
+    async def _on_finish_discovering_plugins(self):
         # store active plugins in db
         active_plugins = list(set(self.active_plugins))
-        crud_settings.upsert_setting_by_name(self.agent_key, Setting(name="active_plugins", value=active_plugins))
+        await crud_settings.upsert_setting_by_name(self.agent_key, Setting(name="active_plugins", value=active_plugins))
 
         log.debug(f"Agent '{self.agent_key}' - ACTIVE PLUGINS:")
         log.debug(self.active_plugins)
@@ -348,7 +348,7 @@ class MadHatter:
                 dependent_plugins.append(p_id)
         return dependent_plugins
 
-    def _on_discovering_plugins(self):
+    async def _on_discovering_plugins(self):
         if self.agent_key == DEFAULT_SYSTEM_KEY:
             if not self.active_plugins:
                 self.active_plugins = self.load_active_plugins_ids_from_folders()
@@ -361,10 +361,10 @@ class MadHatter:
 
                 self.plugins[plugin.id] = plugin
                 try:
-                    self._on_plugin_activation(plugin_id)
+                    await self._on_plugin_activation(plugin_id)
                 except Exception as e:
                     # Couldn't activate the plugin -> Deactivate it
-                    self.deactivate_plugin(plugin_id)
+                    await self.deactivate_plugin(plugin_id)
                     self.active_plugins.remove(plugin_id)
                     raise e
 
@@ -377,13 +377,13 @@ class MadHatter:
             if plugin_id not in self.plugins.keys():
                 self.plugins[plugin_id] = plugin
             try:
-                self.plugins[plugin_id].activate_settings(self.agent_key)
+                await self.plugins[plugin_id].activate_settings(self.agent_key)
             except Exception as e:
                 # Couldn't activate the plugin -> Deactivate it
                 self.toggle_plugin(plugin_id)
                 raise e
 
-    def _on_plugin_activation(self, plugin_id: str) -> bool:
+    async def _on_plugin_activation(self, plugin_id: str) -> bool:
         plugin = (
             self.load_plugin(plugin_id).plugin
             if self.agent_key == DEFAULT_SYSTEM_KEY
@@ -395,9 +395,9 @@ class MadHatter:
         self.plugins[plugin_id] = plugin
         try:
             if self.agent_key == DEFAULT_SYSTEM_KEY:
-                self.plugins[plugin_id].activate(self.agent_key)
+                await self.plugins[plugin_id].activate(self.agent_key)
             else:
-                self.plugins[plugin_id].activate_settings(self.agent_key)
+                await self.plugins[plugin_id].activate_settings(self.agent_key)
             return True
         except Exception as e:
             log.error(f"Could not activate plugin {plugin_id}: {e}")

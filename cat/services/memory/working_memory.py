@@ -53,25 +53,32 @@ class WorkingMemory(BaseModelDict):
 
     def __init__(self, **data: Any):
         super().__init__(**data)
+        self.history =[]
 
-        self.history = [
+    @classmethod
+    async def create(cls, agent_id: str, user_id: str, chat_id: str) -> "WorkingMemory":
+        obj = cls(agent_id=agent_id, user_id=user_id, chat_id=chat_id)
+        obj.history =  [
             ConversationMessage(**info)
-            for info in crud_conversations.get_messages(self.agent_id, self.user_id, self.chat_id)
+            for info in await crud_conversations.get_messages(agent_id, user_id, chat_id)
         ]
+        return obj
 
-    def reset_history(self) -> "WorkingMemory":
+    async def reset_history(self) -> "WorkingMemory":
         """
         Reset the conversation history.
 
         Returns:
             The current instance of the WorkingMemory class.
         """
-        crud_conversations.set_messages(self.agent_id, self.user_id, self.chat_id, [])
+        await crud_conversations.set_messages(self.agent_id, self.user_id, self.chat_id, [])
         self.history = []
 
         return self
 
-    def update_history(self, who: Literal["user", "assistant"], content: BaseMessage) -> "WorkingMemory":
+    async def update_history(
+        self, who: Literal["user", "assistant"], content: BaseMessage
+    ) -> "WorkingMemory":
         """
         Update the conversation history.
 
@@ -87,20 +94,21 @@ class WorkingMemory(BaseModelDict):
         # append the latest message in conversation
         self.history = [
             ConversationMessage(**info)
-            for info in crud_conversations.update_messages(
+            for info in await crud_conversations.update_messages(
                 self.agent_id, self.user_id, self.chat_id, conversation_history_item
             )
         ]
         return self
 
-    def pop_last_message_if_human(self) -> "WorkingMemory":
+    async def pop_last_message_if_human(self) -> "WorkingMemory":
         """
         Pop the last message if it was said by the human.
         """
         if self.history and self.history[-1].who == "user":
             self.history.pop()
-            crud_conversations.set_messages(self.agent_id, self.user_id, self.chat_id, self.history)
-
+            await crud_conversations.set_messages(
+                self.agent_id, self.user_id, self.chat_id, self.history
+            )
         return self
 
     @property

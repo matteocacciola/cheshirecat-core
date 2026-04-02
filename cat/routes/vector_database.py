@@ -16,13 +16,14 @@ async def get_vector_databases_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Vector Databases settings and their configuration schemas"""
     ccat = info.cheshire_cat
-    return ServiceFactory(
+    sf = ServiceFactory(
         agent_key=ccat.agent_key,
         hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_vector_databases",
         setting_category="vector_database",
         schema_name="vectorDatabaseName",
-    ).get_factory_settings()
+    )
+    return await sf.get_factory_settings()
 
 
 @router.get(
@@ -34,13 +35,14 @@ async def get_vector_database_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Vector Database"""
     ccat = info.cheshire_cat
-    return ServiceFactory(
+    sf = ServiceFactory(
         agent_key=ccat.agent_key,
         hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_vector_databases",
         setting_category="vector_database",
         schema_name="vectorDatabaseName",
-    ).get_factory_setting(vector_database_name)
+    )
+    return await sf.get_factory_setting(vector_database_name)
 
 
 @router.put(
@@ -55,7 +57,7 @@ async def upsert_vector_database_setting(
     """Upsert the Vector Database setting"""
     ccat = info.cheshire_cat
 
-    previous_vector_db = ccat.vector_memory_handler
+    previous_vector_db = await ccat.vector_memory_handler()
 
     result = ServiceFactory(
         agent_key=ccat.agent_key,
@@ -65,8 +67,8 @@ async def upsert_vector_database_setting(
         schema_name="vectorDatabaseName",
     ).upsert_service(vector_database_name, payload)
 
-    current_vector_db = ccat.vector_memory_handler
+    current_vector_db = await ccat.vector_memory_handler()
     if previous_vector_db != current_vector_db:
-        background_tasks.add_task(ccat.transfer_vector_points_from, previous_vector_db)
+        background_tasks.add_task(ccat.transfer_vector_points_from, previous_vector_db)  # type: ignore[arg-type]
 
     return UpsertSettingResponse(**result)

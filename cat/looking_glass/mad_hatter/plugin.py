@@ -60,23 +60,23 @@ class Plugin:
         # plugin starts deactivated
         self._active = False
 
-    def activate(self, agent_id: str):
+    async def activate(self, agent_id: str):
         # install plugin requirements on activation
         self._install_requirements()
 
         # load hooks and tools
         self._load_decorated_functions()
 
-        self.activate_settings(agent_id)
+        await self.activate_settings(agent_id)
         self._active = True
 
         # run custom activation from @plugin
         if "activated" in self.overrides:
             self.overrides["activated"].function(self)
 
-    def activate_settings(self, agent_id: str) -> bool:
+    async def activate_settings(self, agent_id: str) -> bool:
         # by default, plugin settings are saved inside the Redis database
-        setting = crud_plugins.get_setting(agent_id, self._id)
+        setting = await crud_plugins.get_setting(agent_id, self._id)
 
         # store the new settings incrementally, without losing the values of the configurations still supported
         # the new setting coming from the model to be activated
@@ -104,12 +104,12 @@ class Plugin:
             return True
 
         # try to create the new incremental settings into the Redis database
-        crud_plugins.set_setting(agent_id, self._id, finalized_setting)
+        await crud_plugins.set_setting(agent_id, self._id, finalized_setting)  # type: ignore[arg]
         log.info(f"Plugin {self._id} for agent '{agent_id}', settings migrated from {setting} to {finalized_setting}")
 
         return True
 
-    def deactivate(self, agent_id: str):
+    async def deactivate(self, agent_id: str):
         # run custom deactivation from @plugin
         if "deactivated" in self.overrides:
             self.overrides["deactivated"].function(self)
@@ -126,11 +126,11 @@ class Plugin:
 
         self._unload_decorated_functions()
         self._active = False
-        self.deactivate_settings(agent_id)
+        await self.deactivate_settings(agent_id)
 
-    def deactivate_settings(self, agent_id: str):
+    async def deactivate_settings(self, agent_id: str):
         # remove the settings
-        crud_plugins.delete_setting(agent_id, self._id)
+        await crud_plugins.delete_setting(agent_id, self._id)
 
     # get plugin settings JSON schema
     def settings_schema(self) -> Dict[str, Any]:
@@ -167,7 +167,7 @@ class Plugin:
                 return PluginSettingsModel
 
             if isinstance(pydantic_class, BaseModel):
-                return pydantic_class
+                return pydantic_class  # type: ignore[return-value]
 
             if not isinstance(pydantic_class, str):
                 log.error(f"Invalid settings class {pydantic_class} from `settings_schema` hook in plugin {self.id}")
@@ -191,7 +191,7 @@ class Plugin:
         return PluginSettingsModel
 
     # load plugin settings
-    def load_settings(self, agent_id: str | None = None) -> Dict[str, Any]:
+    async def load_settings(self, agent_id: str | None = None) -> Dict[str, Any]:
         if agent_id is None:
             try:
                 calling_agent = inspect_calling_agent()
@@ -206,7 +206,7 @@ class Plugin:
             return self.overrides["load_settings"].function(self._id, agent_id)
 
         # by default, plugin settings are saved inside the Redis database
-        settings = crud_plugins.get_setting(agent_id, self._id) or self._get_settings_from_model()
+        settings = await crud_plugins.get_setting(agent_id, self._id) or self._get_settings_from_model()  # type: ignore[arg]
         if settings is None:
             log.debug(f"Agent {agent_id} - Plugin {self._id} settings model is not stored or has no default values, returning empty settings")
             return {}
@@ -221,7 +221,7 @@ class Plugin:
             raise e
 
     # save plugin settings
-    def save_settings(self, settings: Dict, agent_id: str) -> Dict[str, Any]:
+    async def save_settings(self, settings: Dict, agent_id: str) -> Dict[str, Any]:
         # is "settings_save" hook defined in the plugin?
         if "save_settings" in self.overrides:
             return self.overrides["save_settings"].function(self._id, settings, agent_id)
@@ -229,7 +229,7 @@ class Plugin:
         try:
             # overwrite settings over old ones
             # write settings into the Redis database
-            return crud_plugins.update_setting(agent_id, self._id, settings)
+            return await crud_plugins.update_setting(agent_id, self._id, settings)
         except Exception as e:
             log.error(f"Unable to save plugin {self._id} settings: {e}")
             log.warning(self.plugin_specific_error_message())
@@ -293,7 +293,7 @@ class Plugin:
                     stderr=subprocess.STDOUT,
                     text=True,
             ) as proc:
-                for line in proc.stdout:
+                for line in proc.stdout:  # type: ignore[attr-defined]
                     log.debug(line.strip())
                 proc.wait()
                 if proc.returncode != 0:
@@ -313,7 +313,7 @@ class Plugin:
                         stderr=subprocess.STDOUT,
                         text=True
                 ) as proc:
-                    for line in proc.stdout:
+                    for line in proc.stdout:  # type: ignore[attr-defined]
                         log.debug(line.strip())
                     proc.wait()
                     if proc.returncode != 0:

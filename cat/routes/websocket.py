@@ -20,7 +20,7 @@ async def websocket_chat(
     """
     Endpoint to handle incoming WebSocket connections by user id, process messages, and check for messages.
     """
-    stray_cat = info.stray_cat or StrayCat(
+    stray_cat = info.stray_cat or await StrayCat.create(
         user_data=info.user,
         agent_id=info.cheshire_cat.agent_key,
         plugin_manager_generator=info.cheshire_cat.plugin_manager_generator,

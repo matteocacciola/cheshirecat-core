@@ -15,9 +15,10 @@ async def test_execute_agent(stray):
     )
 
     # empty agent execution
-    out = await stray.agentic_workflow.run(
+    af = await stray.agentic_workflow()
+    out = await af.run(
         task=agent_input,
-        llm=stray.large_language_model,
+        llm=await stray.large_language_model(),
     )
     assert isinstance(out, AgenticWorkflowOutput)
     assert out.intermediate_steps == []
@@ -53,14 +54,16 @@ async def test_execute_agent_with_form_submit(secure_client, secure_client_heade
     message = "I want to order a pizza"
 
     # empty agent execution with form
-    tools = await stray.get_procedures(RecallSettings(embedding=stray.embedder.embed_query(message)))
+    embedder = await stray.embedder()
+    tools = await stray.get_procedures(RecallSettings(embedding=embedder.embed_query(message)))
     agent_input = AgenticWorkflowTask(
         user_prompt=message,
         tools=tools,
     )
-    out = await stray.agentic_workflow.run(
+    af = await stray.agentic_workflow()
+    out = await af.run(
         task=agent_input,
-        llm=stray.large_language_model,
+        llm=await stray.large_language_model(),
     )
     assert isinstance(out, AgenticWorkflowOutput)
     assert len(out.intermediate_steps) == 1
@@ -85,14 +88,16 @@ async def test_execute_main_agent_with_tool(stray, monkeypatch):
     message = "What is the current time?"
 
     # empty agent execution with tool
-    tools = await stray.get_procedures(RecallSettings(embedding=stray.embedder.embed_query(message)))
+    embedder = await stray.embedder()
+    tools = await stray.get_procedures(RecallSettings(embedding=embedder.embed_query(message)))
     agent_input = AgenticWorkflowTask(
         user_prompt=message,
         tools=tools,
     )
-    out = await stray.agentic_workflow.run(
+    af = await stray.agentic_workflow()
+    out = await af.run(
         task=agent_input,
-        llm=stray.large_language_model,
+        llm=await stray.large_language_model(),
     )
     assert isinstance(out, AgenticWorkflowOutput)
     assert len(out.intermediate_steps) == 1
@@ -121,14 +126,16 @@ async def test_execute_main_agent_with_mcp_client_tool(stray, secure_client, sec
     message = "Call mock_procedure with param1='test', param2=42"
 
     # empty agent execution with tool
-    tools = await stray.get_procedures(RecallSettings(embedding=stray.embedder.embed_query(message)))
+    embedder = await stray.embedder()
+    tools = await stray.get_procedures(RecallSettings(embedding=embedder.embed_query(message)))
     agent_input = AgenticWorkflowTask(
         user_prompt=message,
         tools=tools,
     )
-    out = await stray.agentic_workflow.run(
+    af = await stray.agentic_workflow()
+    out = await af.run(
         task=agent_input,
-        llm=stray.large_language_model,
+        llm=await stray.large_language_model(),
     )
     assert isinstance(out, AgenticWorkflowOutput)
     assert len(out.intermediate_steps) == 1

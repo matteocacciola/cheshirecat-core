@@ -27,12 +27,12 @@ def get_webhooks(agent_id: str, event: str) -> List[Dict[str, Any]] | None:
         raise
 
 
-def set_webhook(agent_id: str, event: str, settings: Dict[str, Any]) -> Dict[str, Any]:
+async def set_webhook(agent_id: str, event: str, settings: Dict[str, Any]) -> Dict[str, Any]:
     key = format_key(agent_id, event)
 
     try:
         # Check if the key exists
-        existing_data = crud.read(key)
+        existing_data = await crud.read(key)
         if existing_data is not None:
             # check if the url already exists
             for existing_setting in existing_data:
@@ -55,18 +55,18 @@ def set_webhook(agent_id: str, event: str, settings: Dict[str, Any]) -> Dict[str
         raise
 
 
-def delete_webhook(agent_id: str, event: str, url: str, secret: str) -> None:
+async def delete_webhook(agent_id: str, event: str, url: str, secret: str) -> None:
     key = format_key(agent_id, event)
 
     try:
-        settings = crud.read(key) or []
+        settings = await crud.read(key) or []
         settings = [
             setting
             for setting in settings
             if setting["url"] not in [url, f"{url}/"] and setting["secret"] != secret
         ]
 
-        crud.store(key, settings)
+        await crud.store(key, settings)
         log.debug(f"Deleted the URL '{url}' as webhook for {key.replace(KEY_PREFIX + ':', '')}")
     except RedisError as e:
         log.error(f"Redis error deleting the URL '{url}' as webhook for {key.replace(KEY_PREFIX + ':', '')}: {e}")

@@ -22,20 +22,21 @@ async def test_stray_nlp(lizard, stray_no_memory):
     agent_input = AgenticWorkflowTask(
         user_prompt="hey",
     )
-    res = await stray_no_memory.agentic_workflow.run(
+    af = await stray_no_memory.agentic_workflow()
+    res = await af.run(
         task=agent_input,
-        llm=stray_no_memory.large_language_model,
+        llm=await stray_no_memory.large_language_model(),
     )
     assert "You did not configure" in res.output
 
-    embedding = lizard.embedder.embed_documents(["hey"])
+    embedding = (await lizard.embedder()).embed_documents(["hey"])
     assert isinstance(embedding[0], list)
     assert isinstance(embedding[0][0], float)
 
 
 @pytest.mark.asyncio
 async def test_stray_call(secure_client, stray_no_memory):
-    crud_users.create_user(
+    await crud_users.create_user(
         stray_no_memory.agent_key,
         {
             "id": stray_no_memory.user.id,
@@ -75,8 +76,8 @@ async def test_stray_call(secure_client, stray_no_memory):
 async def test_stray_recall_all_memories(secure_client, secure_client_headers, stray, lizard):
     send_file("sample.pdf", "application/pdf", secure_client, secure_client_headers)
 
-    query = lizard.embedder.embed_query("")
-    memories = await stray.agentic_workflow.context_retrieval(
+    query = (await lizard.embedder()).embed_query("")
+    memories = await (await stray.agentic_workflow()).context_retrieval(
         VectorMemoryType.DECLARATIVE, RecallSettings(embedding=query, k=None)
     )
 
@@ -89,11 +90,13 @@ async def test_stray_recall_all_memories(secure_client, secure_client_headers, s
 @pytest.mark.asyncio
 async def test_stray_recall_by_metadata(secure_client, secure_client_headers, stray, lizard):
     content_type = "application/pdf"
-    query = lizard.embedder.embed_query("late")
+    query = (await lizard.embedder()).embed_query("late")
+
+    af = await stray.agentic_workflow()
 
     file_name = "sample.pdf"
     _, file_path = send_file(file_name, content_type, secure_client, secure_client_headers)
-    memories = await stray.agentic_workflow.context_retrieval(
+    memories = await af.context_retrieval(
         VectorMemoryType.DECLARATIVE,
         RecallSettings(threshold=0.1, embedding=query, metadata={"source": file_name}),
     )
@@ -105,7 +108,7 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
         files = {"file": ("sample2.pdf", f, content_type)}
         _ = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
 
-    memories = await stray.agentic_workflow.context_retrieval(
+    memories = await af.context_retrieval(
         VectorMemoryType.DECLARATIVE,
         RecallSettings(threshold=0.1, embedding=query, metadata={"source": file_name}),
     )
@@ -116,7 +119,7 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
 
 @pytest.mark.asyncio
 async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray):
-    crud_users.create_user(
+    await crud_users.create_user(
         stray.agent_key,
         {
             "id": stray.user.id,
@@ -153,7 +156,7 @@ async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray
     assert response_json["message"]["text"] == "This is a fast reply"
 
     # there should be NO side effects
-    upd_stray = StrayCat(
+    upd_stray = await StrayCat.create(
         user_data=stray.user,
         agent_id=stray.agent_key,
         stray_id=stray.id,

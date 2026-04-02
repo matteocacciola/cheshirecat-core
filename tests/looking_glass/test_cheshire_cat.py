@@ -14,21 +14,24 @@ from cat.services.factory.llm import LLMDefault
 from tests.utils import create_mock_plugin_zip
 
 
-def test_main_modules_loaded(cheshire_cat):
-    assert isinstance(cheshire_cat.plugin_manager, MadHatter)
-    assert isinstance(cheshire_cat.large_language_model, BaseLanguageModel)
-    assert isinstance(cheshire_cat.file_manager, BaseFileManager)
-    assert isinstance(cheshire_cat.chunker, BaseChunker)
-    assert isinstance(cheshire_cat.embedder, Embeddings)
-    assert isinstance(cheshire_cat.vector_memory_handler, BaseVectorDatabaseHandler)
+@pytest.mark.asyncio
+async def test_main_modules_loaded(cheshire_cat):
+    assert isinstance(await cheshire_cat.plugin_manager(), MadHatter)
+    assert isinstance(await cheshire_cat.large_language_model(), BaseLanguageModel)
+    assert isinstance(await cheshire_cat.file_manager(), BaseFileManager)
+    assert isinstance(await cheshire_cat.chunker(), BaseChunker)
+    assert isinstance(await cheshire_cat.embedder(), Embeddings)
+    assert isinstance(await cheshire_cat.vector_memory_handler(), BaseVectorDatabaseHandler)
 
 
-def test_default_llm_loaded(cheshire_cat):
-    assert isinstance(cheshire_cat.large_language_model, LLMDefault)
+@pytest.mark.asyncio
+async def test_default_llm_loaded(cheshire_cat):
+    assert isinstance(await cheshire_cat.large_language_model(), LLMDefault)
 
 
-def test_default_embedder_loaded(lizard):
-    embedder = lizard.embedder
+@pytest.mark.asyncio
+async def test_default_embedder_loaded(lizard):
+    embedder = await lizard.embedder()
     assert isinstance(embedder, DumbEmbedder)
 
     sentence = "I'm smarter than a random embedder BTW"
@@ -43,8 +46,9 @@ async def test_cheshire_cat_created_with_system_key(lizard):
         await lizard.create_cheshire_cat(DEFAULT_SYSTEM_KEY)
 
 
-def test_file_handler_pdf(lizard, cheshire_cat, secure_client, secure_client_headers):
-    file_handlers = cheshire_cat.file_handlers
+@pytest.mark.asyncio
+async def test_file_handler_pdf(lizard, cheshire_cat, secure_client, secure_client_headers):
+    file_handlers = await cheshire_cat.file_handlers()
     assert "application/pdf" in file_handlers
     assert file_handlers["application/pdf"].__class__.__name__ == PyMuPDFParser.__name__
 
@@ -70,5 +74,5 @@ def test_file_handler_pdf(lizard, cheshire_cat, secure_client, secure_client_hea
     )
     assert response.status_code == 200
 
-    file_handlers = cheshire_cat.file_handlers
+    file_handlers = await cheshire_cat.file_handlers()
     assert "application/pdf" in file_handlers

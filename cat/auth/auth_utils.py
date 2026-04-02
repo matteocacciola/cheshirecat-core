@@ -67,12 +67,12 @@ def extract_chat_id_from_request(request: HTTPConnection) -> str | None:
     return _extract_key_from_request(request, "chat_id", "X-Chat-ID")
 
 
-def extract_user_info_on_api_key(agent_key: str, user_id: str | None = None) -> UserInfo | None:
+async def extract_user_info_on_api_key(agent_key: str, user_id: str | None = None) -> UserInfo | None:
     from cat.db.cruds import users as crud_users
 
     user = None
     if user_id:
-        user = crud_users.get_user(agent_key, user_id)
+        user = await crud_users.get_user(agent_key, user_id)
     elif agent_key == DEFAULT_SYSTEM_KEY:
         # backward compatibility
         user = crud_users.get_user_by_username(agent_key, DEFAULT_ADMIN_USERNAME)

@@ -69,15 +69,15 @@ async def delete_conversation(
     cat = info.cheshire_cat
     try:
         # delete the files related to the conversation from the storage
-        cat.file_manager.remove_folder(os.path.join(cat.agent_key, stray_cat.id))
+        (await cat.file_manager()).remove_folder(os.path.join(cat.agent_key, stray_cat.id))
 
         # delete the elements of the conversation from the vector memory
-        await cat.vector_memory_handler.delete_tenant_points(
+        await (await cat.vector_memory_handler()).delete_tenant_points(
             str(VectorMemoryType.EPISODIC), {"chat_id": stray_cat.id},
         )
 
         # Delete conversation from the database
-        crud_conversations.delete_conversation(stray_cat.agent_key, stray_cat.user.id, stray_cat.id)
+        await crud_conversations.delete_conversation(stray_cat.agent_key, stray_cat.user.id, stray_cat.id)  # type: ignore[union-attr]
 
         return DeleteConversationHistoryResponse(deleted=True)
     except Exception as e:
@@ -109,7 +109,7 @@ async def get_conversation(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> GetConversationsResponse:
     """Get the specified user's conversation from working memory"""
-    attributes = crud_conversations.get_conversation_attributes(
+    attributes = await crud_conversations.get_conversation_attributes(
         info.cheshire_cat.agent_key, info.user.id, info.stray_cat.id,
     )
     if attributes is None:
@@ -136,7 +136,7 @@ async def change_attribute_conversation(
 
     cat = info.stray_cat
 
-    crud_conversations.set_attributes(
+    await crud_conversations.set_attributes(
         cat.agent_key, cat.user.id, cat.id, name=payload.name, metadata=payload.metadata,
     )
     return PutConversationResponse(changed=True)
@@ -155,6 +155,6 @@ async def get_conversations(
     """Get the specified user's conversation history from working memory"""
     agent_id = info.cheshire_cat.agent_key
     user_id = info.user.id
-    attributes_list = crud_conversations.get_conversations_attributes(agent_id, user_id)
+    attributes_list = await crud_conversations.get_conversations_attributes(agent_id, user_id)
 
     return [GetConversationsResponse(**attributes_item) for attributes_item in attributes_list]

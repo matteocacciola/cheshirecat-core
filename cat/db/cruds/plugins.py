@@ -25,7 +25,7 @@ def format_key(agent_id: str, plugin_id: str) -> str:
     )
 
 
-def get_settings(agent_id: str) -> Dict[str, Dict[str, Any]]:
+async def get_settings(agent_id: str) -> Dict[str, Dict[str, Any]]:
     """
     Retrieve all plugin settings for a specific agent from Redis.
 
@@ -37,7 +37,7 @@ def get_settings(agent_id: str) -> Dict[str, Dict[str, Any]]:
         RedisError: If Redis connection fails.
     """
     try:
-        all_settings = crud.read(format_key(agent_id, "*"))
+        all_settings = await crud.read(format_key(agent_id, "*"))
         if not all_settings:
             log.debug(f"No plugin settings found for agent {agent_id}")
             return {}
@@ -51,7 +51,7 @@ def get_settings(agent_id: str) -> Dict[str, Dict[str, Any]]:
         raise
 
 
-def get_setting(agent_id: str, plugin_id: str) -> Dict[str, Any] | None:
+async def get_setting(agent_id: str, plugin_id: str) -> Dict[str, Any] | None:
     """
     Retrieve plugin settings from Redis.
 
@@ -66,7 +66,7 @@ def get_setting(agent_id: str, plugin_id: str) -> Dict[str, Any] | None:
         RedisError: If Redis connection fails.
     """
     try:
-        settings = crud.read(format_key(agent_id, plugin_id))
+        settings = await crud.read(format_key(agent_id, plugin_id))
         if settings is None:
             log.debug(f"No settings found for {agent_id}:{plugin_id}")
             return None
@@ -80,7 +80,7 @@ def get_setting(agent_id: str, plugin_id: str) -> Dict[str, Any] | None:
         raise
 
 
-def set_setting(agent_id: str, plugin_id: str, settings: Dict[str, Any]) -> Dict[str, Any]:
+async def set_setting(agent_id: str, plugin_id: str, settings: Dict[str, Any]) -> Dict[str, Any]:
     """
     Store plugin settings in Redis.
 
@@ -97,7 +97,7 @@ def set_setting(agent_id: str, plugin_id: str, settings: Dict[str, Any]) -> Dict
         ValueError: If settings serialization fails.
     """
     try:
-        crud.store(format_key(agent_id, plugin_id), settings)
+        await crud.store(format_key(agent_id, plugin_id), settings)
 
         log.debug(f"Stored settings for {agent_id}:{plugin_id}")
         return settings
@@ -106,7 +106,7 @@ def set_setting(agent_id: str, plugin_id: str, settings: Dict[str, Any]) -> Dict
         raise
 
 
-def update_setting(agent_id: str, plugin_id: str, updated_settings: Dict[str, Any]) -> Dict[str, Any]:
+async def update_setting(agent_id: str, plugin_id: str, updated_settings: Dict[str, Any]) -> Dict[str, Any]:
     """
     Update plugin settings in Redis atomically.
 
@@ -123,16 +123,16 @@ def update_setting(agent_id: str, plugin_id: str, updated_settings: Dict[str, An
         ValueError: If serialization fails.
     """
     try:
-        settings_db = get_setting(agent_id, plugin_id) or {}
+        settings_db = await get_setting(agent_id, plugin_id) or {}
         settings_db.update(updated_settings)
 
-        return set_setting(agent_id, plugin_id, settings_db)
+        return await set_setting(agent_id, plugin_id, settings_db)
     except (RedisError, ValueError) as e:
         log.error(f"Error updating settings for {agent_id}:{plugin_id}: {e}")
         raise
 
 
-def delete_setting(agent_id: str, plugin_id: str):
+async def delete_setting(agent_id: str, plugin_id: str):
     """
     Delete plugin settings from Redis.
 
@@ -144,14 +144,14 @@ def delete_setting(agent_id: str, plugin_id: str):
         RedisError: If Redis connection fails.
     """
     try:
-        crud.delete(format_key(agent_id, plugin_id))
+        await crud.delete(format_key(agent_id, plugin_id))
         log.debug(f"Deleted settings for {agent_id}:{plugin_id}")
     except RedisError as e:
         log.error(f"Redis error deleting settings for {agent_id}:{plugin_id}: {e}")
         raise
 
 
-def destroy_all(agent_id: str):
+async def destroy_all(agent_id: str):
     """
     Delete all plugin settings for a specific agent.
 
@@ -162,14 +162,14 @@ def destroy_all(agent_id: str):
         RedisError: If Redis connection fails.
     """
     try:
-        crud.destroy(format_key(agent_id, "*"))
+        await crud.destroy(format_key(agent_id, "*"))
         log.debug(f"Destroyed plugin settings for {agent_id}")
     except RedisError as e:
         log.error(f"Redis error destroying settings for {agent_id}: {e}")
         raise
 
 
-def destroy_plugin(plugin_id: str):
+async def destroy_plugin(plugin_id: str):
     """
     Delete all settings for a specific plugin across all agents.
 
@@ -180,14 +180,14 @@ def destroy_plugin(plugin_id: str):
         RedisError: If Redis connection fails.
     """
     try:
-        crud.destroy(format_key("*", plugin_id))
+        await crud.destroy(format_key("*", plugin_id))
         log.debug(f"Destroyed plugin settings for plugin {plugin_id}")
     except RedisError as e:
         log.error(f"Redis error destroying settings for plugin {plugin_id}: {e}")
         raise
 
 
-def get_agents_plugin_keys(plugin_id: str) -> List[str]:
+async def get_agents_plugin_keys(plugin_id: str) -> List[str]:
     """
     Get all unique agent IDs where the plugin_id is listed in the active_plugins setting.
 
@@ -210,13 +210,13 @@ def get_agents_plugin_keys(plugin_id: str) -> List[str]:
         # Scan directly for agent settings keys — no intermediate reconstruction needed
         keys = [
             k.decode() if isinstance(k, bytes) else k
-            for k in db.scan_iter(f"{DEFAULT_AGENTS_KEY}:*:{DEFAULT_AGENT_KEY}")
+            async for k in db.scan_iter(f"{DEFAULT_AGENTS_KEY}:*:{DEFAULT_AGENT_KEY}")
         ]
         if not keys:
             return []
 
         # Single Redis command: read active_plugins entry from every key at once
-        results = db.json().mget(keys, '$[?(@.name=="active_plugins")]')
+        results = await db.json().mget(keys, '$[?(@.name=="active_plugins")]')
 
         active_agents = [
             key.split(":")[1] for key, result in zip(keys, results) if result and plugin_id in (result[0].get("value") or [])
@@ -227,7 +227,7 @@ def get_agents_plugin_keys(plugin_id: str) -> List[str]:
         raise
 
 
-def get_active_plugins_from_db(agent_id: str) -> List[str]:
+async def get_active_plugins_from_db(agent_id: str) -> List[str]:
     """
     Retrieve the list of active plugins for a specific agent from settings.
 
@@ -237,6 +237,6 @@ def get_active_plugins_from_db(agent_id: str) -> List[str]:
     Returns:
         List of active plugin IDs.
     """
-    active_plugins_from_db = crud_settings.get_setting_by_name(agent_id, "active_plugins")
+    active_plugins_from_db = await crud_settings.get_setting_by_name(agent_id, "active_plugins")
     active_plugins: List[str] = [] if active_plugins_from_db is None else active_plugins_from_db["value"]
     return active_plugins

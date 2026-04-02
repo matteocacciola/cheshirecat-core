@@ -1,15 +1,16 @@
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
 from enum import Enum
 from typing import List, Dict, Any
 from redis.exceptions import LockError, RedisError
 from redis.lock import Lock
+import redis.asyncio as aioredis
 
 from cat.db.database import get_db as get_db_base, get_db_connection_string as get_db_connection_string_base
 from cat.log import log
 
 
-@contextmanager
-def distributed_lock(key_pattern: str, timeout: float = 10.0, blocking_timeout: float = 15.0):
+@asynccontextmanager
+async def distributed_lock(key_pattern: str, timeout: float = 10.0, blocking_timeout: float = 15.0):
     """
     Acquire a distributed lock on a pattern-based operation.
 
@@ -34,14 +35,14 @@ def distributed_lock(key_pattern: str, timeout: float = 10.0, blocking_timeout: 
 
     acquired = False
     try:
-        acquired = lock.acquire()
+        acquired = await lock.acquire()
         if not acquired:
             raise LockError(f"Could not acquire lock for pattern '{key_pattern}'")
         yield lock
     finally:
         if acquired:
             try:
-                lock.release()
+                await lock.release()
             except LockError:
                 # Lock expired before we released it (timeout too short)
                 log.warning(f"Lock for '{key_pattern}' expired before explicit release")
@@ -70,7 +71,7 @@ def serialize_to_redis_json(data_dict: List | Dict) -> List | Dict:
         raise ValueError(f"Failed to serialize data: {e}")
 
 
-def read(key: str, path: str | None = "$") -> List | Dict | None:
+async def read(key: str, path: str | None = "$") -> List | Dict | None:
     """
     Read a JSON value from Redis.
 
@@ -85,7 +86,7 @@ def read(key: str, path: str | None = "$") -> List | Dict | None:
         RedisError: If Redis connection fails.
     """
     try:
-        value = get_db().json().get(key, path)
+        value = await get_db().json().get(key, path)
         if not value:
             return None
 
@@ -98,7 +99,7 @@ def read(key: str, path: str | None = "$") -> List | Dict | None:
         raise
 
 
-def store(
+async def store(
     key: str, value: Any, path: str | None = "$", nx: bool = False, xx: bool = False, expire: int | None = None
 ) -> List[Dict] | Dict | None:
     """
@@ -130,7 +131,7 @@ def store(
         if expire:
             pipeline.expire(key, expire)
 
-        if not pipeline.execute():
+        if not await pipe.execute():
             return None
 
         log.debug(f"Stored key {key}, value {value}, TTL: {expire}")
@@ -140,7 +141,7 @@ def store(
         raise
 
 
-def delete(key: str, path: str | None = "$"):
+async def delete(key: str, path: str | None = "$"):
     """
     Delete a JSON value or path from Redis.
 
@@ -155,14 +156,14 @@ def delete(key: str, path: str | None = "$"):
         RedisError: If Redis connection fails.
     """
     try:
-        get_db().json().delete(key, path)
+        await get_db().json().delete(key, path)
         log.debug(f"Deleted path {path} for key {key}")
     except RedisError as e:
         log.error(f"Redis delete error for key {key}: {e}")
         raise
 
 
-def destroy(key_pattern: str) -> int:
+async def destroy(key_pattern: str) -> int:
     """
     Delete all keys matching a pattern, serialized via a distributed lock.
 
@@ -182,20 +183,19 @@ def destroy(key_pattern: str) -> int:
         RedisError: If Redis connection fails.
     """
     try:
-        with distributed_lock(key_pattern):
-            deleted = 0
+        async with distributed_lock(key_pattern):
             db = get_db()
-            for k in db.scan_iter(key_pattern):
-                db.delete(k)
-                deleted += 1
-            log.debug(f"Destroyed {deleted} keys matching {key_pattern}")
-            return deleted
+            keys = [k async for k in db.scan_iter(key_pattern)]
+            if keys:
+                await db.delete(*keys)
+            log.debug(f"Destroyed {len(keys)} keys matching {key_pattern}")
+            return len(keys)
     except (RedisError, LockError) as e:
         log.error(f"Error destroying keys for pattern '{key_pattern}': {e}")
         raise
 
 
-def get_db():
+def get_db() -> aioredis.Redis:
     """
     Get the Redis database connection.
 

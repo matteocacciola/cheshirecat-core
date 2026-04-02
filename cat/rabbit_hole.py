@@ -66,7 +66,8 @@ class RabbitHole:
 
             # Check the embedder used for the uploaded memories is the same the Cat is using now
             upload_embedder = memories["embedder"]
-            cat_embedder = str(lizard.embedder.__class__.__name__)
+            embedder = await lizard.embedder()
+            cat_embedder = str(embedder.__class__.__name__)
             if upload_embedder != cat_embedder:
                 raise Exception(f"Embedder mismatch for file '{filename}': file embedder {upload_embedder} is different from {cat_embedder}")
 
@@ -85,14 +86,16 @@ class RabbitHole:
             log.info(f"Agent id: {self.cat.agent_key}. Preparing to load {len(points)} vector memories")
 
             # Check embedding size is correct
-            embedder_size = lizard.embedder.size
+            embedder = await lizard.embedder()
+            embedder_size = embedder.size
             len_mismatch = [len(p.vector) == embedder_size for p in points]  # type: ignore[union-attr]
 
             if not any(len_mismatch):
                 raise Exception(f"Embedding size mismatch for file '{filename}': vectors length should be {embedder_size}")
 
             # Upsert memories in batch mode
-            await cat.vector_memory_handler.add_points_to_tenant(
+            vmh = await cat.vector_memory_handler()
+            await vmh.add_points_to_tenant(
                 collection_name=str(VectorMemoryType.DECLARATIVE), points=points,
             )
         except Exception as e:
@@ -232,11 +235,12 @@ class RabbitHole:
         if not file_bytes:
             raise ValueError(f"Something went wrong with the source '{source}'")
 
-        log.debug(f"Attempting to parse source: {source}. Detected MIME type: {content_type}. Available handlers: {list(self.cat.file_handlers.keys())}")
+        fh = await self.cat.file_handlers()
+        log.debug(f"Attempting to parse source: {source}. Detected MIME type: {content_type}. Available handlers: {list(fh.keys())}")
 
         # Load the bytes in the Blob schema and parse the content. Parser based on the mime type
         await self._send_notification_message("I'm parsing the content. Big content could require some minutes...")
-        super_docs = MimeTypeBasedParser(handlers=self.cat.file_handlers).parse(
+        super_docs = MimeTypeBasedParser(handlers=fh).parse(
             Blob(data=file_bytes, mimetype=content_type).from_data(data=file_bytes, mime_type=content_type, path=source)
         )
 
@@ -278,7 +282,7 @@ class RabbitHole:
         """
         log.info(f"Agent id: {self.cat.agent_key}. Preparing to memorize {len(docs)} vectors for {source}.")
 
-        embedder = self.cat.lizard.embedder
+        embedder = await self.cat.lizard.embedder()
         plugin_manager = self.cat.plugin_manager
 
         # add custom metadata (sent via endpoint) and default metadata (source and when and eventual chat_id)
@@ -305,7 +309,8 @@ class RabbitHole:
         ) for doc, vector in zip(valid_documents, storing_vectors)]
 
         collection_name = str(VectorMemoryType.DECLARATIVE if not self.stray else VectorMemoryType.EPISODIC)
-        await self.cat.vector_memory_handler.add_points_to_tenant(collection_name=collection_name, points=points)
+        vmh = await self.cat.vector_memory_handler()
+        await vmh.add_points_to_tenant(collection_name=collection_name, points=points)
 
         return points
 
@@ -335,7 +340,7 @@ class RabbitHole:
         docs = await plugin_manager.execute_hook_async("before_rabbithole_splits_documents", docs, caller=self.stray or self.cat)
 
         # split docs
-        chunker = self.cat.chunker
+        chunker = await self.cat.chunker()
         docs = chunker.split_documents(docs)
 
         # join each short chunk with previous one, instead of deleting them

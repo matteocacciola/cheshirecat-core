@@ -23,7 +23,7 @@ def format_key(key_id: str) -> str:
     )
 
 
-def get_settings(key_id: str, search: str = "") -> List[Dict]:
+async def get_settings(key_id: str, search: str = "") -> List[Dict]:
     """
     Retrieve settings from Redis, optionally filtered by name.
 
@@ -40,7 +40,7 @@ def get_settings(key_id: str, search: str = "") -> List[Dict]:
     try:
         path = f'$[?(@.name =~ ".*{search}.*")]' if search else "$"
 
-        settings: List[Dict] = crud.read(format_key(key_id), path)
+        settings: List[Dict] = await crud.read(format_key(key_id), path)  # type: ignore[assignment]
         if not settings:
             log.debug(f"No settings found for {key_id}, search: {search}")
             return []
@@ -54,7 +54,7 @@ def get_settings(key_id: str, search: str = "") -> List[Dict]:
         raise
 
 
-def get_settings_by_category(key_id: str, category: str) -> Dict | None:
+async def get_settings_by_category(key_id: str, category: str) -> Dict | None:
     """
     Retrieve settings from Redis filtered by category.
 
@@ -73,7 +73,7 @@ def get_settings_by_category(key_id: str, category: str) -> Dict | None:
         return None
 
     try:
-        settings: List[Dict] = crud.read(format_key(key_id), path=f'$[?(@.category=="{category}")]')
+        settings: List[Dict] = await crud.read(format_key(key_id), path=f'$[?(@.category=="{category}")]')  # type: ignore[assignment]
         if not settings:
             log.debug(f"No settings found for {key_id}, category: {category}")
             return None
@@ -85,7 +85,7 @@ def get_settings_by_category(key_id: str, category: str) -> Dict | None:
         raise
 
 
-def create_setting(key_id: str, payload: models.Setting) -> Dict:
+async def create_setting(key_id: str, payload: models.Setting) -> Dict:
     """
     Append a new setting to the settings list in Redis atomically.
 
@@ -104,10 +104,10 @@ def create_setting(key_id: str, payload: models.Setting) -> Dict:
         fkey_id = format_key(key_id)
         value = payload.model_dump()
 
-        existing_settings = crud.read(fkey_id) or []
+        existing_settings = await crud.read(fkey_id) or []
         existing_settings.append(value)
 
-        crud.store(fkey_id, existing_settings)
+        await crud.store(fkey_id, existing_settings)
         log.debug(f"Created setting for {key_id}: {value.get('name')}")
 
         return value
@@ -116,9 +116,9 @@ def create_setting(key_id: str, payload: models.Setting) -> Dict:
         raise
 
 
-def _get_setting_by(key_id: str, what: str, value: str):
+async def _get_setting_by(key_id: str, what: str, value: str):
     try:
-        settings: List[Dict] = crud.read(format_key(key_id), path=f'$[?(@.{what}=="{value}")]')
+        settings: List[Dict] = await crud.read(format_key(key_id), path=f'$[?(@.{what}=="{value}")]')  # type: ignore[assignment]
         if not settings:
             log.debug(f"No setting found for {key_id}, {what}: {value}")
             return None
@@ -130,7 +130,7 @@ def _get_setting_by(key_id: str, what: str, value: str):
         raise
 
 
-def get_setting_by_name(key_id: str, name: str) -> Dict | None:
+async def get_setting_by_name(key_id: str, name: str) -> Dict | None:
     """
     Retrieve a single setting by name from Redis.
 
@@ -144,10 +144,10 @@ def get_setting_by_name(key_id: str, name: str) -> Dict | None:
     Raises:
         RedisError: If Redis connection fails.
     """
-    return _get_setting_by(key_id, "name", name)
+    return await _get_setting_by(key_id, "name", name)
 
 
-def get_setting_by_id(key_id: str, setting_id: str) -> Dict | None:
+async def get_setting_by_id(key_id: str, setting_id: str) -> Dict | None:
     """
     Retrieve a single setting by ID from Redis.
 
@@ -161,10 +161,10 @@ def get_setting_by_id(key_id: str, setting_id: str) -> Dict | None:
     Raises:
         RedisError: If Redis connection fails.
     """
-    return _get_setting_by(key_id, "setting_id", setting_id)
+    return await _get_setting_by(key_id, "setting_id", setting_id)
 
 
-def delete_setting_by_id(key_id: str, setting_id: str):
+async def delete_setting_by_id(key_id: str, setting_id: str):
     """
     Delete a setting by ID from Redis.
 
@@ -176,14 +176,14 @@ def delete_setting_by_id(key_id: str, setting_id: str):
         RedisError: If Redis connection fails.
     """
     try:
-        crud.delete(format_key(key_id), path=f'$[?(@.setting_id=="{setting_id}")]')
+        await crud.delete(format_key(key_id), path=f'$[?(@.setting_id=="{setting_id}")]')
         log.debug(f"Deleted setting for {key_id}, setting_id: {setting_id}")
     except RedisError as e:
         log.error(f"Redis error deleting setting for {key_id}, setting_id: {setting_id}: {e}")
         raise
 
 
-def delete_settings_by_category(key_id: str, category: str):
+async def delete_settings_by_category(key_id: str, category: str):
     """
     Delete all settings in a category from Redis.
 
@@ -195,14 +195,14 @@ def delete_settings_by_category(key_id: str, category: str):
         RedisError: If Redis connection fails.
     """
     try:
-        crud.delete(format_key(key_id), path=f'$[?(@.category=="{category}")]')
+        await crud.delete(format_key(key_id), path=f'$[?(@.category=="{category}")]')
         log.debug(f"Deleted settings for {key_id}, category: {category}")
     except RedisError as e:
         log.error(f"Redis error deleting settings by category for {key_id}: {e}")
         raise
 
 
-def upsert_setting_by_id(key_id: str, payload: models.Setting) -> Dict | None:
+async def upsert_setting_by_id(key_id: str, payload: models.Setting) -> Dict | None:
     """
     Upsert a setting by ID in Redis atomically, or create it if not exists.
 
@@ -218,13 +218,13 @@ def upsert_setting_by_id(key_id: str, payload: models.Setting) -> Dict | None:
         ValueError: If serialization fails.
     """
     try:
-        setting = get_setting_by_id(key_id, payload.setting_id)
+        setting = await get_setting_by_id(key_id, payload.setting_id)
         if not setting:
             log.debug(f"Setting {payload.setting_id} not found for {key_id}, creating")
-            return create_setting(key_id, payload)
+            return await create_setting(key_id, payload)
 
         value = payload.model_dump()
-        crud.store(format_key(key_id), value, path=f'$[?(@.setting_id=="{payload.setting_id}")]')
+        await crud.store(format_key(key_id), value, path=f'$[?(@.setting_id=="{payload.setting_id}")]')
         log.debug(f"Updated setting {payload.setting_id} for {key_id}")
 
         return value
@@ -233,7 +233,7 @@ def upsert_setting_by_id(key_id: str, payload: models.Setting) -> Dict | None:
         raise
 
 
-def upsert_setting_by_name(key_id: str, payload: models.Setting) -> Dict:
+async def upsert_setting_by_name(key_id: str, payload: models.Setting) -> Dict:
     """
     Upsert a setting by name in Redis atomically.
 
@@ -249,12 +249,12 @@ def upsert_setting_by_name(key_id: str, payload: models.Setting) -> Dict:
         ValueError: If serialization fails.
     """
     try:
-        if not get_setting_by_name(key_id, payload.name):
+        if not await get_setting_by_name(key_id, payload.name):
             log.debug(f"Setting not found by name '{payload.name}' for {key_id}, creating")
-            return create_setting(key_id, payload)
+            return await create_setting(key_id, payload)
 
         value = payload.model_dump()
-        crud.store(format_key(key_id), value, path=f'$[?(@.name=="{payload.name}")]')
+        await crud.store(format_key(key_id), value, path=f'$[?(@.name=="{payload.name}")]')
         log.debug(f"Upserted setting by name '{payload.name}' for {key_id}")
 
         return value
@@ -263,7 +263,7 @@ def upsert_setting_by_name(key_id: str, payload: models.Setting) -> Dict:
         raise
 
 
-def upsert_setting_by_category(key_id: str, payload: models.Setting) -> Dict:
+async def upsert_setting_by_category(key_id: str, payload: models.Setting) -> Dict:
     """
     Upsert a setting by category in Redis atomically.
 
@@ -279,12 +279,12 @@ def upsert_setting_by_category(key_id: str, payload: models.Setting) -> Dict:
         ValueError: If serialization fails.
     """
     try:
-        if not get_settings_by_category(key_id, payload.category):
+        if not await get_settings_by_category(key_id, payload.category):
             log.debug(f"Setting not found by category '{payload.category}' for {key_id}, creating")
-            return create_setting(key_id, payload)
+            return await create_setting(key_id, payload)
 
         value = payload.model_dump()
-        crud.store(format_key(key_id), value, path=f'$[?(@.category=="{payload.category}")]')
+        await crud.store(format_key(key_id), value, path=f'$[?(@.category=="{payload.category}")]')
         log.debug(f"Upserted setting by category '{payload.category}' for {key_id}")
 
         return value
@@ -293,7 +293,7 @@ def upsert_setting_by_category(key_id: str, payload: models.Setting) -> Dict:
         raise
 
 
-def destroy_all(key_id: str):
+async def destroy_all(key_id: str):
     """
     Delete all settings for a specific key from Redis.
 
@@ -304,14 +304,14 @@ def destroy_all(key_id: str):
         RedisError: If Redis connection fails.
     """
     try:
-        crud.destroy(format_key(key_id))
+        await crud.destroy(format_key(key_id))
         log.debug(f"Destroyed settings for {key_id}")
     except RedisError as e:
         log.error(f"Redis error destroying settings for {key_id}: {e}")
         raise
 
 
-def get_agents_main_keys(pattern: str | None = None) -> List[str]:
+async def get_agents_main_keys(pattern: str | None = None) -> List[str]:
     """
     Get all unique agent IDs from Redis keys.
 
@@ -328,14 +328,14 @@ def get_agents_main_keys(pattern: str | None = None) -> List[str]:
 
     try:
         return sorted(
-            list({k.split(":")[1] for k in crud.get_db().scan_iter(pattern)})
+            list({k.split(":")[1] async for k in crud.get_db().scan_iter(pattern)})
         )
     except RedisError as e:
         log.error(f"Redis error in get_agents_main_keys: {e}")
         raise
 
 
-def get_agents() -> List[Dict[str, Any]]:
+async def get_agents() -> List[Dict[str, Any]]:
     """
     Get all agents with their metadata.
 
@@ -347,8 +347,8 @@ def get_agents() -> List[Dict[str, Any]]:
     """
     try:
         agents = []
-        for agent_id in get_agents_main_keys():
-            metadata = get_setting_by_name(agent_id, "metadata")
+        for agent_id in await get_agents_main_keys():
+            metadata = await get_setting_by_name(agent_id, "metadata")
             agents.append({"agent_id": agent_id, "metadata": metadata["value"] if metadata else {}})
         return agents
     except RedisError as e:
@@ -356,7 +356,7 @@ def get_agents() -> List[Dict[str, Any]]:
         raise
 
 
-def clone_agent(source_prefix: str, target_prefix: str, skip_keys: List[str] | None = None) -> int:
+async def clone_agent(source_prefix: str, target_prefix: str, skip_keys: List[str] | None = None) -> int:
     """
     Clone all keys with source_prefix to target_prefix.
 
@@ -374,7 +374,7 @@ def clone_agent(source_prefix: str, target_prefix: str, skip_keys: List[str] | N
 
         # Find all keys with the source prefix
         pattern = f"{DEFAULT_AGENTS_KEY}:{source_prefix}:*"
-        keys = list(db.scan_iter(match=pattern))
+        keys = [k async for k in db.scan_iter(pattern)]
         # Filter out keys to skip
         keys = [
             kd
@@ -393,7 +393,7 @@ def clone_agent(source_prefix: str, target_prefix: str, skip_keys: List[str] | N
             target_key = source_key.replace(source_prefix, target_prefix, 1)
 
             # Read the source data
-            source_data = db.json().get(source_key, "$")
+            source_data = await db.json().get(source_key, "$")
 
             if source_data:
                 # Handle JSONPath list wrapper
@@ -401,7 +401,7 @@ def clone_agent(source_prefix: str, target_prefix: str, skip_keys: List[str] | N
                     source_data = source_data[0]
 
                 # Write to target
-                db.json().set(target_key, "$", source_data)
+                await db.json().set(target_key, "$", source_data)
                 cloned_count += 1
                 log.info(f"Cloned '{source_key}' to '{target_key}'")
 

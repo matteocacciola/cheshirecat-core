@@ -27,7 +27,7 @@ def _check_analytics(analytics, file_name, num_files = 1):
     assert analytics_["total_embeddings"] > 0
 
 
-def _check_on_file_upload(response, file_name, content_type, secure_client, secure_client_headers) -> dict:
+async def _check_on_file_upload(response, file_name, content_type, secure_client, secure_client_headers) -> dict:
     # check response
     assert response.status_code == 200
     json_res = response.json()
@@ -40,7 +40,7 @@ def _check_on_file_upload(response, file_name, content_type, secure_client, secu
     declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
 
-    _check_analytics(crud_embeddings.get_analytics(agent_id), file_name)
+    _check_analytics(await crud_embeddings.get_analytics(agent_id), file_name)
     return json_res
 
 
@@ -50,12 +50,13 @@ def _check_upon_request(secure_client, secure_client_headers, file_name):
     _check_analytics(analytics, file_name)
 
 
-def test_rabbithole_upload_txt(secure_client, secure_client_headers):
+@pytest.mark.asyncio
+async def test_rabbithole_upload_txt(secure_client, secure_client_headers):
     content_type = "text/plain"
     file_name = "sample.txt"
     response, _ = send_file(file_name, content_type, secure_client, secure_client_headers)
 
-    _check_on_file_upload(response, file_name, content_type, secure_client, secure_client_headers)
+    await _check_on_file_upload(response, file_name, content_type, secure_client, secure_client_headers)
     _check_upon_request(secure_client, secure_client_headers, file_name)
 
 
@@ -78,15 +79,16 @@ async def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_heade
     assert json_res["content_type"] == content_type
     assert "File is being ingested" in json_res["info"]
 
-    _check_analytics(crud_embeddings.get_analytics(agent_id), file_name)
+    _check_analytics(await crud_embeddings.get_analytics(agent_id), file_name)
     _check_upon_request(secure_client, secure_client_headers, file_name)
 
     # check that the file has been stored in the proper folder
-    file_exists = cheshire_cat.file_manager.file_exists(file_name, os.path.join(agent_id, chat_id))
+    file_exists = (await cheshire_cat.file_manager()).file_exists(file_name, os.path.join(agent_id, chat_id))
     assert file_exists
 
     # check that the file has generated no entry in the declarative vector memory
-    points, _ = await cheshire_cat.vector_memory_handler.get_all_tenant_points(
+    vmh = await cheshire_cat.vector_memory_handler()
+    points, _ = await vmh.get_all_tenant_points(
         str(VectorMemoryType.DECLARATIVE),
         metadata={"source": file_name, "chat_id": chat_id},
         with_vectors=False,
@@ -94,7 +96,7 @@ async def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_heade
     assert len(points) == 0
 
     # check that the file has generated entries in the episodic vector memory
-    points, _ = await cheshire_cat.vector_memory_handler.get_all_tenant_points(
+    points, _ = await vmh.get_all_tenant_points(
         str(VectorMemoryType.EPISODIC),
         metadata={"source": file_name, "chat_id": chat_id},
         with_vectors=False,
@@ -110,7 +112,7 @@ async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_header
     file_name = "sample.pdf"
     response, _ = send_file(file_name, content_type, secure_client, secure_client_headers)
 
-    _check_on_file_upload(response, file_name, content_type, secure_client, secure_client_headers)
+    await _check_on_file_upload(response, file_name, content_type, secure_client, secure_client_headers)
     _check_upon_request(secure_client, secure_client_headers, file_name)
 
     # declarative memory should be empty for another agent
@@ -122,7 +124,8 @@ async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_header
     await cat.destroy_memory()
 
 
-def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers):
+@pytest.mark.asyncio
+async def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers):
     content_type = "application/pdf"
     file_name = "sample.pdf"
     file_path = f"tests/mocks/{file_name}"
@@ -142,10 +145,11 @@ def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers):
     declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
 
-    _check_analytics(crud_embeddings.get_analytics(agent_id), file_name)
+    _check_analytics(await crud_embeddings.get_analytics(agent_id), file_name)
 
 
-def test_rabbithole_upload_batch_one_file_to_chat(secure_client, secure_client_headers):
+@pytest.mark.asyncio
+async def test_rabbithole_upload_batch_one_file_to_chat(secure_client, secure_client_headers):
     content_type = "application/pdf"
     file_name = "sample.pdf"
     file_path = f"tests/mocks/{file_name}"
@@ -167,10 +171,11 @@ def test_rabbithole_upload_batch_one_file_to_chat(secure_client, secure_client_h
     )
     assert len(memories) > 0
 
-    _check_analytics(crud_embeddings.get_analytics(agent_id), file_name)
+    _check_analytics(await crud_embeddings.get_analytics(agent_id), file_name)
 
 
-def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_headers):
+@pytest.mark.asyncio
+async def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_headers):
     files = []
     files_to_upload = {"sample.pdf": "application/pdf", "sample.txt": "text/plain"}
     for file_name in files_to_upload:
@@ -193,7 +198,7 @@ def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_hea
     declarative_memories = get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
 
-    analytics = crud_embeddings.get_analytics(agent_id)
+    analytics = await crud_embeddings.get_analytics(agent_id)
     _check_analytics_not_empty(analytics)
     for file_name in files_to_upload:
         _check_analytics(analytics, file_name, num_files=len(files_to_upload))

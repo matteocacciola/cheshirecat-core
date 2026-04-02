@@ -6,7 +6,7 @@ from cat.db import crud
 from cat.log import log
 
 
-def get_analytics(key: str) -> Dict[str, Any] | None:
+async def get_analytics(key: str) -> Dict[str, Any] | None:
     """
     Retrieve analytics from Redis.
 
@@ -20,7 +20,7 @@ def get_analytics(key: str) -> Dict[str, Any] | None:
         RedisError: If Redis connection fails.
     """
     try:
-        analytics = crud.read(key)
+        analytics = await crud.read(key)
         if analytics is None:
             log.debug(f"No analytics found for {key.replace(KEY_PREFIX + ':', '')}")
             return None
@@ -34,7 +34,7 @@ def get_analytics(key: str) -> Dict[str, Any] | None:
         raise
 
 
-def set_analytics(key: str, analytics: Dict[str, Any]) -> Dict[str, Any]:
+async def set_analytics(key: str, analytics: Dict[str, Any]) -> Dict[str, Any]:
     """
     Store analytics in Redis.
 
@@ -50,7 +50,7 @@ def set_analytics(key: str, analytics: Dict[str, Any]) -> Dict[str, Any]:
         ValueError: If settings serialization fails.
     """
     try:
-        crud.store(key, analytics)
+        await crud.store(key, analytics)
 
         log.debug(f"Stored analytics for {key.replace(KEY_PREFIX + ':', '')}")
         return analytics
@@ -59,7 +59,7 @@ def set_analytics(key: str, analytics: Dict[str, Any]) -> Dict[str, Any]:
         raise
 
 
-def _scan_keys_with_pattern(db, pattern: str, batch_size: int = 100) -> List[bytes]:
+async def _scan_keys_with_pattern(db, pattern: str, batch_size: int = 100) -> List[bytes]:
     """
     Scan Redis for all keys matching a pattern.
 
@@ -75,7 +75,7 @@ def _scan_keys_with_pattern(db, pattern: str, batch_size: int = 100) -> List[byt
     cursor = 0
 
     while True:
-        cursor, keys = db.scan(cursor, match=pattern, count=batch_size)
+        cursor, keys = await db.scan(cursor, match=pattern, count=batch_size)
         all_keys.extend(keys)
 
         if cursor == 0:
@@ -105,7 +105,7 @@ def _parse_key_parts(key: bytes | str, expected_parts: int) -> Tuple[str, ...] |
     return None
 
 
-def _batch_read_json(db, keys: List[bytes | str]) -> List[Any]:
+async def _batch_read_json(db, keys: List[bytes | str]) -> List[Any]:
     """
     Read multiple JSON values from Redis using pipelining.
 
@@ -122,9 +122,9 @@ def _batch_read_json(db, keys: List[bytes | str]) -> List[Any]:
     pipe = db.pipeline()
     for key in keys:
         key_str = key.decode() if isinstance(key, bytes) else key
-        pipe.json().get(key_str)
+        await pipe.json().get(key_str)
 
-    return pipe.execute()
+    return await pipe.execute()
 
 
 def _build_nested_result(
@@ -158,11 +158,11 @@ def _build_nested_result(
     return result
 
 
-def get_nested_analytics(pattern: str, expected_parts: int) -> Dict:
+async def get_nested_analytics(pattern: str, expected_parts: int) -> Dict:
     db = crud.get_db()
 
     # Scan for all matching keys
-    keys = _scan_keys_with_pattern(db, pattern)
+    keys = await _scan_keys_with_pattern(db, pattern)
 
     if not keys:
         return {}
@@ -178,7 +178,7 @@ def get_nested_analytics(pattern: str, expected_parts: int) -> Dict:
             valid_keys.append(key)
 
     # Batch read all JSON contents
-    contents = _batch_read_json(db, valid_keys)
+    contents = await _batch_read_json(db, valid_keys)
 
     # Build nested result
     return _build_nested_result(key_parts_list, contents)

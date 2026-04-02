@@ -64,7 +64,7 @@ class ServiceFactory:
 
         return schemas
 
-    def get_from_config_name(self, config_name: str) -> Any:
+    async def get_from_config_name(self, config_name: str) -> Any:
         # get plugin file manager factory class
         factory_class = next((cls for cls in self._get_allowed_classes() if cls.__name__ == config_name), None)
         if not factory_class:
@@ -74,7 +74,7 @@ class ServiceFactory:
             return self.default_config_class.get_from_config(self.default_config)
 
         # get configuration and instantiate the finalized object by the factory
-        selected_config = crud_settings.get_setting_by_name(self._agent_key, config_name)
+        selected_config = await crud_settings.get_setting_by_name(self._agent_key, config_name)
         try:
             obj = factory_class.get_from_config(selected_config["value"])
             if hasattr(obj, "agent_id"):
@@ -103,8 +103,8 @@ class ServiceFactory:
 
         return result
 
-    def get_factory_settings(self) -> GetSettingsResponse:
-        saved_settings = crud_settings.get_settings_by_category(self._agent_key, self.setting_category)
+    async def get_factory_settings(self) -> GetSettingsResponse:
+        saved_settings = await crud_settings.get_settings_by_category(self._agent_key, self.setting_category)
 
         settings = [GetSettingResponse(
             name=class_name,
@@ -114,7 +114,7 @@ class ServiceFactory:
 
         return GetSettingsResponse(settings=settings, selected_configuration=saved_settings["name"])
 
-    def get_factory_setting(self, configuration_name: str) -> GetSettingResponse:
+    async def get_factory_setting(self, configuration_name: str) -> GetSettingResponse:
         schemas = self.get_schemas()
 
         allowed_configurations = list(schemas.keys())
@@ -122,7 +122,7 @@ class ServiceFactory:
             raise CustomValidationException(
                 f"{configuration_name} not supported. Must be one of {allowed_configurations}")
 
-        setting = crud_settings.get_setting_by_name(self._agent_key, configuration_name)
+        setting = await crud_settings.get_setting_by_name(self._agent_key, configuration_name)
         setting = {} if setting is None else setting["value"]
 
         scheme = schemas[configuration_name]

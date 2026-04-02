@@ -17,11 +17,11 @@ import cat.core_plugins.analytics.cruds.llm as crud_llm
 
 
 @hook(priority=1)
-def before_cat_sends_message(message, agent_output, cat) -> Dict:
+async def before_cat_sends_message(message, agent_output, cat) -> Dict:
     agent_id = cat.agent_key
     user_id = cat.user.id
     chat_id = cat.id
-    llm_id = cat.large_language_model.name
+    llm_id = (await cat.large_language_model()).name
 
     input_tokens = 0
     output_tokens = 0
@@ -31,13 +31,13 @@ def before_cat_sends_message(message, agent_output, cat) -> Dict:
             output_tokens += getattr(interaction, "output_tokens", 0)
 
     tokens = crud_llm.LLMUsedTokens(input=input_tokens, output=output_tokens)
-    crud_llm.update_analytics(agent_id, user_id, chat_id, llm_id, tokens)
+    await crud_llm.update_analytics(agent_id, user_id, chat_id, llm_id, tokens)
 
     return message
 
 
 @hook(priority=1)
-def after_rabbithole_stored_documents(source: str, stored_points: List[PointStruct], cat) -> None:
+async def after_rabbithole_stored_documents(source: str, stored_points: List[PointStruct], cat) -> None:
     if not stored_points:
         return
 
@@ -58,10 +58,8 @@ def after_rabbithole_stored_documents(source: str, stored_points: List[PointStru
     if total_tokens == 0:
         return
 
-    agent_id = cat.agent_key
-    embedder_id = cat.lizard.embedder.name
-
-    crud_embeddings.update_analytics(agent_id, embedder_id, source, total_tokens)
+    embedder = await cat.lizard.embedder()
+    await crud_embeddings.update_analytics(cat.agent_key, embedder.name, source, total_tokens)
 
 
 @endpoint.get("/embedder", tags=["Analytics - Embeddings"], prefix="/analytics")
@@ -82,7 +80,7 @@ async def get_analytics_embedder(
     Returns:
         Nested dictionary: {agent_id: {embedder_id: {source1: count, source2: count, ...}, total_embeddings: count}}
     """
-    return crud_embeddings.get_analytics(agent_id, embedder_id)
+    return await crud_embeddings.get_analytics(agent_id, embedder_id)
 
 
 @endpoint.get("/llm", tags=["Analytics - LLM"], prefix="/analytics")
@@ -107,4 +105,4 @@ async def get_analytics_llm(
     """
     agent_id = info.cheshire_cat.agent_key
 
-    return crud_llm.get_analytics(agent_id, user_id, chat_id, llm_id)
+    return await crud_llm.get_analytics(agent_id, user_id, chat_id, llm_id)

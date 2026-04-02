@@ -98,7 +98,7 @@ async def register_webhook(
     agent_id = parse_agent_key(info, webhook)
 
     settings = webhook.model_dump(exclude={"event"}) | {"secret": crypto.encrypt(webhook.secret)}
-    stored_webhook = crud_webhook.set_webhook(agent_id, webhook.event, settings)
+    stored_webhook = await crud_webhook.set_webhook(agent_id, webhook.event, settings)
     return WebhookResponse(
         url=stored_webhook["url"],
         event=webhook.event,
@@ -116,7 +116,7 @@ async def delete_webhook(
     agent_id = parse_agent_key(info, webhook)
 
     secret = crypto.encrypt(webhook.secret)
-    crud_webhook.delete_webhook(agent_id, webhook.event, webhook.url, secret)
+    await crud_webhook.delete_webhook(agent_id, webhook.event, webhook.url, secret)
 
 
 @hook(priority=0)

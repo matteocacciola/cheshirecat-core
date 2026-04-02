@@ -16,7 +16,7 @@ from tests.utils import create_new_user, get_client_admin_headers, new_user_pass
 
 
 async def checks_on_agent_create(lizard, new_agent_id):
-    settings = crud_settings.get_settings(new_agent_id)
+    settings = await crud_settings.get_settings(new_agent_id)
     assert len(settings) > 0
 
     histories = get_db().get(crud_conversations.format_key(new_agent_id, "*", "*"))
@@ -25,12 +25,13 @@ async def checks_on_agent_create(lizard, new_agent_id):
     plugins = crud_plugins.get_settings(new_agent_id)
     assert plugins == {}
 
-    users = crud_users.get_users(new_agent_id)
+    users = await crud_users.get_users(new_agent_id)
     assert len(users) == 0
 
     ccat = lizard.get_cheshire_cat(new_agent_id)
-    num_vectors = await ccat.vector_memory_handler.get_tenant_vectors_count(str(VectorMemoryType.DECLARATIVE))
-    points, _ = await ccat.vector_memory_handler.get_all_tenant_points(str(VectorMemoryType.DECLARATIVE))
+    vmh = await ccat.vector_memory_handler()
+    num_vectors = await vmh.get_tenant_vectors_count(str(VectorMemoryType.DECLARATIVE))
+    points, _ = await vmh.get_all_tenant_points(str(VectorMemoryType.DECLARATIVE))
     assert num_vectors == 0
     assert len(points) == 0
 
@@ -50,14 +51,16 @@ async def checks_on_agent_reset(res, client, ccat_id, lizard):
 
 
 async def checks_on_agent_destroy(cheshire_cat):
-    settings = crud_settings.get_settings(cheshire_cat.agent_key)
+    settings = await crud_settings.get_settings(cheshire_cat.agent_key)
     assert len(settings) > 0
 
-    collections = await cheshire_cat.vector_memory_handler._client.get_collections()
+    vmh = await cheshire_cat.vector_memory_handler()
+    collections = await vmh._client.get_collections()
     assert len(collections.collections) > 0
 
-    num_vectors = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(str(VectorMemoryType.DECLARATIVE))
-    points, _ = await cheshire_cat.vector_memory_handler.get_all_tenant_points(str(VectorMemoryType.DECLARATIVE))
+    vmh = await cheshire_cat.vector_memory_handler()
+    num_vectors = await vmh.get_tenant_vectors_count(str(VectorMemoryType.DECLARATIVE))
+    points, _ = await vmh.get_all_tenant_points(str(VectorMemoryType.DECLARATIVE))
     assert num_vectors == 0
     assert len(points) == 0
 
@@ -65,7 +68,8 @@ async def checks_on_agent_destroy(cheshire_cat):
 @pytest.mark.asyncio
 async def test_factory_reset_success(client, lizard, cheshire_cat):
     # check that the vector database is not empty
-    c = await cheshire_cat.vector_memory_handler._client.get_collections()
+    vmh = await cheshire_cat.vector_memory_handler()
+    c = await vmh._client.get_collections()
     assert len(c.collections) > 0
 
     creds = {
@@ -84,15 +88,15 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
     assert response.status_code == 200
     assert response.json() == {"deleted_settings": True, "deleted_memories": True, "deleted_plugin_folders": True}
 
-    settings = crud_settings.get_settings(cheshire_cat.agent_key)
+    settings = await crud_settings.get_settings(cheshire_cat.agent_key)
     assert len(settings) == 0
 
     # check that the Lizard has been correctly recreated from scratch
-    settings = crud_settings.get_settings(lizard.agent_key)
+    settings = await crud_settings.get_settings(lizard.agent_key)
     assert len(settings) > 0
 
     # check that the vector database is not empty
-    c = await cheshire_cat.vector_memory_handler._client.get_collections()
+    c = await vmh._client.get_collections()
     assert len(c.collections) == 3
 
 
@@ -115,7 +119,7 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
     assert response.status_code == 200
     assert response.json() == {"deleted_settings": True, "deleted_memories": True, "deleted_plugin_folders": False}
 
-    settings = crud_settings.get_settings(cheshire_cat.agent_key)
+    settings = await crud_settings.get_settings(cheshire_cat.agent_key)
     assert len(settings) == 0
 
     conversations = get_db().get(crud_conversations.format_key(cheshire_cat.agent_key, "*", "*"))
@@ -128,7 +132,8 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
     assert users == {}
 
     qdrant_filter = Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=cheshire_cat.agent_key))])
-    count_response = await cheshire_cat.vector_memory_handler._client.count(
+    vmh = await cheshire_cat.vector_memory_handler._client()
+    count_response = await vmh._client.count(
         collection_name=str(VectorMemoryType.DECLARATIVE), count_filter=qdrant_filter
     )
     assert count_response.count == 0
@@ -249,8 +254,8 @@ async def test_clone_agent(secure_client, secure_client_headers, lizard, cheshir
     assert response_data["cloned"] is True
 
     # check that settings were cloned (settings_id excluded)
-    settings = crud_settings.get_settings(cheshire_cat.agent_key)
-    cloned_settings = crud_settings.get_settings(new_agent_id)
+    settings = await crud_settings.get_settings(cheshire_cat.agent_key)
+    cloned_settings = await crud_settings.get_settings(new_agent_id)
     assert len(cloned_settings) == len(settings)
     for s, cs in zip(settings, cloned_settings):
         s.pop("setting_id", None)
@@ -262,22 +267,24 @@ async def test_clone_agent(secure_client, secure_client_headers, lizard, cheshir
             assert s["active_plugins"].sorted() == cs["active_plugins"].sorted()
 
     # check that the users were cloned
-    users = crud_users.get_users(cheshire_cat.agent_key)
-    cloned_users = crud_users.get_users(new_agent_id)
+    users = await crud_users.get_users(cheshire_cat.agent_key)
+    cloned_users = await crud_users.get_users(new_agent_id)
     assert len(cloned_users) == len(users)
     assert users == cloned_users
     # check that the plugins were cloned
-    plugins = crud_plugins.get_settings(cheshire_cat.agent_key)
-    cloned_plugins = crud_plugins.get_settings(new_agent_id)
+    plugins = await crud_plugins.get_settings(cheshire_cat.agent_key)
+    cloned_plugins = await crud_plugins.get_settings(new_agent_id)
     assert len(cloned_plugins) == len(plugins)
     assert set(plugins) == set(cloned_plugins)
 
     # check that the vector memory points were cloned
     cloned_ccat = lizard.get_cheshire_cat(new_agent_id)
-    original_points, _ = await cheshire_cat.vector_memory_handler.get_all_tenant_points(
+    vmh = await cheshire_cat.vector_memory_handler._client()
+    original_points, _ = await vmh.get_all_tenant_points(
         str(VectorMemoryType.DECLARATIVE), with_vectors=True
     )
-    cloned_points, _ = await cloned_ccat.vector_memory_handler.get_all_tenant_points(
+    vmho = await cloned_ccat.vector_memory_handler()
+    cloned_points, _ = await vmho.get_all_tenant_points(
         str(VectorMemoryType.DECLARATIVE), with_vectors=True
     )
     assert len(original_points) == len(cloned_points)

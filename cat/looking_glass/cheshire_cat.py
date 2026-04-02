@@ -6,6 +6,7 @@ import uuid
 from io import BytesIO
 from typing import Dict, List, Callable
 
+from cat import run_sync_or_async
 from cat.auth.permissions import AuthUserInfo
 from cat.db.cruds import (
     settings as crud_settings,
@@ -51,7 +52,7 @@ class CheshireCat(BotMixin):
 
         # instantiate plugin manager (loads all plugins' hooks and tools)
         self.plugin_manager = MadHatter(self.agent_key)
-        self.plugin_manager.discover_plugins()
+        run_sync_or_async(self.plugin_manager.discover_plugins)
 
         # allows plugins to do something before cat components are loaded
         self.plugin_manager.execute_hook("before_cat_bootstrap", caller=self)
@@ -88,9 +89,11 @@ class CheshireCat(BotMixin):
         """Destroy all data from the cat's memory."""
         log.info(f"Agent id: {self._id}. Destroying all data from the cat's memory")
 
+        vmh = await self.vector_memory_handler()
+
         # destroy all memories
-        for collection_name in await self.vector_memory_handler.get_collection_names():
-            await self.vector_memory_handler.delete_tenant_points(collection_name)
+        for collection_name in await vmh.get_collection_names():
+            await vmh.delete_tenant_points(collection_name)
 
     async def destroy(self):
         """Destroy all data from the cat."""
@@ -100,14 +103,14 @@ class CheshireCat(BotMixin):
         await self.destroy_memory()
 
         # remove the folder from storage
-        self.file_manager.remove_folder(self._id)
+        (await self.file_manager()).remove_folder(self._id)
 
         self.shutdown()
 
-        crud_settings.destroy_all(self._id)
-        crud_conversations.destroy_all(self._id)
-        crud_plugins.destroy_all(self._id)
-        crud_users.destroy_all(self._id)
+        await crud_settings.destroy_all(self._id)
+        await crud_conversations.destroy_all(self._id)
+        await crud_plugins.destroy_all(self._id)
+        await crud_users.destroy_all(self._id)
 
     async def get_stored_sources_with_metadata(self) -> Dict[VectorMemoryType, List[StoredSourceWithMetadata]]:
         """Get all stored files with their metadata."""
@@ -115,10 +118,12 @@ class CheshireCat(BotMixin):
             VectorMemoryType.DECLARATIVE: set(),
             VectorMemoryType.EPISODIC: set(),
         }
+        vmh = await self.vector_memory_handler()
+        fm = await self.file_manager()
         for collection_name in results.keys():
-            points, _ = await self.vector_memory_handler.get_all_tenant_points(str(collection_name), with_vectors=False)
+            points, _ = await vmh.get_all_tenant_points(str(collection_name), with_vectors=False)
             for point in points:
-                metadata = point.payload.get("metadata", {})
+                metadata = point.payload.get("metadata", {})  # type: ignore[union-attr]
                 filename = metadata.get("source")
                 if not filename:
                     continue
@@ -133,7 +138,7 @@ class CheshireCat(BotMixin):
                 if chat_id := metadata.get("chat_id"):
                     file_path = os.path.join(file_path, chat_id)
 
-                file_content = self.file_manager.read_file(filename, file_path)
+                file_content = fm.read_file(filename, file_path)
                 if not file_content:
                     continue
 
@@ -159,8 +164,9 @@ class CheshireCat(BotMixin):
 
         # Single batched embed call — much cheaper than N × embed_query, and offloaded
         # to a thread so the event loop is not blocked by the (synchronous) embedder.
+        embedder = await self.embedder()
         vectors = await asyncio.to_thread(
-            self.lizard.embedder.embed_documents, [document.page_content for document in documents]
+            embedder.embed_documents, [document.page_content for document in documents]
         )
 
         points = [
@@ -176,9 +182,10 @@ class CheshireCat(BotMixin):
         collection_name = str(VectorMemoryType.PROCEDURAL)
 
         # first, clear all existing procedural embeddings
-        await self.vector_memory_handler.delete_tenant_points(collection_name)
+        vmh = await self.vector_memory_handler()
+        await vmh.delete_tenant_points(collection_name)
 
-        await self.vector_memory_handler.add_points_to_tenant(collection_name=collection_name, points=points)
+        await vmh.add_points_to_tenant(collection_name=collection_name, points=points)
         log.info(f"Agent id: {self._id}. Embedded {len(points)} triggers in {collection_name} vector memory")
 
     async def embed_stored_sources(
@@ -205,7 +212,8 @@ class CheshireCat(BotMixin):
         log.info(f"Agent id: {self._id}. Embedding stored files to the vector memory")
 
         # first, clear all existing declarative and episodic embeddings
-        await self.vector_memory_handler.delete_tenant_points(str(collection_name))
+        vmh = await self.vector_memory_handler()
+        await vmh.delete_tenant_points(str(collection_name))
 
         rabbit_hole = self.rabbit_hole
         counter = 0
@@ -216,7 +224,7 @@ class CheshireCat(BotMixin):
 
             cat = self
             if chat_id := source.metadata.get("chat_id"):
-                if not (stray_cat := self._find_stray_cat(chat_id)):
+                if not (stray_cat := await self._find_stray_cat(chat_id)):
                     log.warning(f"Stray cat with id {chat_id} not found. Skipping file {source.path}/{source.name}")
                     continue
 
@@ -256,7 +264,8 @@ class CheshireCat(BotMixin):
             if chat_id:
                 remote_root_dir = os.path.join(remote_root_dir, chat_id)
 
-            self.file_manager.upload_file(file_path, remote_root_dir, source)
+            fh = await self.file_manager()
+            fh.upload_file(file_path, remote_root_dir, source)
         except Exception as e:
             log.error(f"Error while uploading file {file_path}: {e}")
         finally:
@@ -267,12 +276,13 @@ class CheshireCat(BotMixin):
         self.plugin_manager.toggle_plugin(plugin_id)
 
         # destroy all procedural embeddings and re-embed them
-        await self.vector_memory_handler.delete_tenant_points(str(VectorMemoryType.PROCEDURAL))
+        vmh = await self.vector_memory_handler()
+        await vmh.delete_tenant_points(str(VectorMemoryType.PROCEDURAL))
         await self.embed_procedures()
 
         await self.plugin_manager.execute_hook_async("after_plugin_toggling_on_agent", plugin_id, caller=self)
 
-    def _find_stray_cat(self, chat_id: str) -> StrayCat | None:
+    async def _find_stray_cat(self, chat_id: str) -> StrayCat | None:
         """Finds a stray cat by chat id.
 
         Args:
@@ -282,7 +292,7 @@ class CheshireCat(BotMixin):
             StrayCat | None: The stray cat if found, None otherwise.
         """
         # look for an existing conversation with the id = chat_id
-        user_id = crud_conversations.get_user_id_from_conversation_keys(self.agent_key, chat_id)
+        user_id = await crud_conversations.get_user_id_from_conversation_keys(self.agent_key, chat_id)
         if not user_id:
             return None
 
@@ -290,7 +300,7 @@ class CheshireCat(BotMixin):
         if not user:
             return None
 
-        return StrayCat(
+        return await StrayCat.create(
             agent_id=self.agent_key,
             user_data=AuthUserInfo(**user),
             plugin_manager_generator=self.plugin_manager_generator,
@@ -320,13 +330,16 @@ class CheshireCat(BotMixin):
         return plugin_id in self.plugin_manager.plugins.keys()
 
     async def clone_from(self, ccat: "CheshireCat"):
-        await self.vector_memory_handler.initialize(self.embedder.name, self.embedder.size)
+        vmh = await self.vector_memory_handler()
+        embedder = await self.embedder()
+        await vmh.initialize(embedder.name, embedder.size)
 
         log.info(f"Cloning vector memory from agent {ccat.agent_key} to agent {self.agent_key}")
         collection_name = str(VectorMemoryType.DECLARATIVE)
-        points, _ = await ccat.vector_memory_handler.get_all_tenant_points(collection_name, with_vectors=True)
+        vmho = await ccat.vector_memory_handler()
+        points, _ = await vmho.get_all_tenant_points(collection_name, with_vectors=True)
         if points:
-            await self.vector_memory_handler.add_points_to_tenant(
+            await vmh.add_points_to_tenant(
                 collection_name=collection_name,
                 points=[PointStruct(**p.model_dump()) for p in points],
             )
@@ -334,11 +347,11 @@ class CheshireCat(BotMixin):
 
         # clone the files from the ccat to the provided agent
         log.info(f"Cloning files from agent {ccat.agent_key} to agent {self.agent_key}")
-        ccat.file_manager.clone_folder(ccat.agent_key, self.agent_key)
+        (await ccat.file_manager()).clone_folder(ccat.agent_key, self.agent_key)
 
     async def transfer_files_from(self, previous_file_manager: BaseFileManager):
         try:
-            self.file_manager.transfer(previous_file_manager, self.agent_key)
+            (await self.file_manager()).transfer(previous_file_manager, self.agent_key)
             success = True
         except Exception as e:
             log.error(f"Error while transferring files from previous file manager: {e}")
@@ -347,12 +360,14 @@ class CheshireCat(BotMixin):
         await self.plugin_manager.execute_hook_async("after_file_manager_transfer_on_agent", success, caller=self)
 
     async def transfer_vector_points_from(self, previous_vector_memory_handler: BaseVectorDatabaseHandler):
+        vmh = await self.vector_memory_handler()
+        embedder = await self.embedder()
         try:
-            await self.vector_memory_handler.initialize(self.embedder.name, self.embedder.size)
+            await vmh.initialize(embedder.name, embedder.size)
             for collection_name in await previous_vector_memory_handler.get_collection_names():
                 points, _ = await previous_vector_memory_handler.get_all_tenant_points(collection_name, with_vectors=True)
                 if points:
-                    await self.vector_memory_handler.add_points_to_tenant(
+                    await vmh.add_points_to_tenant(
                         collection_name=collection_name,
                         points=[PointStruct(**p.model_dump()) for p in points],
                     )

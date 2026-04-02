@@ -11,15 +11,18 @@ from langchain_core.globals import set_llm_cache
 from pydantic import BaseModel, model_serializer
 
 from cat import utils
-from cat.auth.permissions import AuthPermission
-from cat.env import get_env_float
+from cat.auth.auth_utils import DEFAULT_ADMIN_USERNAME, hash_password
+from cat.auth.permissions import AuthPermission, get_full_permissions
+from cat.db.cruds import users as crud_users
+from cat.db.database import DEFAULT_SYSTEM_KEY
+from cat.env import get_env_float, get_env
 from cat.exceptions import CustomValidationException, CustomUnauthorizedException
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.plugin import Plugin
 from cat.looking_glass.mad_hatter.registry import PluginRegistry
 from cat.looking_glass.models import PluginManifest
 from cat.services.redis_search import RedisSearchService
-from cat.utils import safe_deepcopy
+from cat.utils import safe_deepcopy, sanitize_permissions
 
 
 class Plugins(BaseModel):
@@ -164,7 +167,7 @@ async def get_available_plugins(
     registry_plugins_index = {p.plugin_url: p for p in registry_plugins if p.plugin_url is not None}
 
     # get active plugins
-    active_plugins_ids = plugin_manager.load_active_plugins_ids_from_db()
+    active_plugins_ids = await plugin_manager.load_active_plugins_ids_from_db()
 
     # list installed plugins' manifest
     installed_plugins = [
@@ -183,13 +186,13 @@ async def get_available_plugins(
     )
 
 
-def get_plugins_settings(plugin_manager: MadHatter, agent_id: str) -> PluginsSettingsResponse:
+async def get_plugins_settings(plugin_manager: MadHatter, agent_id: str) -> PluginsSettingsResponse:
     settings = []
 
     # plugins are managed by the MadHatter class (and its inherits)
     for plugin in plugin_manager.plugins.values():
         try:
-            plugin_settings = plugin.load_settings(agent_id)
+            plugin_settings = await plugin.load_settings(agent_id)
             plugin_schema = plugin.settings_schema()
             if plugin_schema["properties"] == {}:
                 plugin_schema = {}
@@ -205,9 +208,9 @@ def get_plugins_settings(plugin_manager: MadHatter, agent_id: str) -> PluginsSet
     return PluginsSettingsResponse(settings=settings)
 
 
-def get_plugin_settings(plugin_manager: MadHatter, plugin_id: str, agent_id: str) -> GetSettingResponse:
+async def get_plugin_settings(plugin_manager: MadHatter, plugin_id: str, agent_id: str) -> GetSettingResponse:
     """Returns the settings of a specific plugin"""
-    settings = plugin_manager.plugins[plugin_id].load_settings(agent_id)
+    settings = await plugin_manager.plugins[plugin_id].load_settings(agent_id)
     scheme = plugin_manager.plugins[plugin_id].settings_schema()
 
     if scheme["properties"] == {}:
@@ -236,10 +239,23 @@ def create_dict_parser(param_name: str, description: str | None = None):
 async def startup_app(app):
     from cat.looking_glass import BillTheLizard
 
+    async def initialize_lizard_users():
+        permissions = sanitize_permissions(get_full_permissions(), DEFAULT_SYSTEM_KEY)
+
+        await crud_users.create_user(DEFAULT_SYSTEM_KEY, {
+            "username": DEFAULT_ADMIN_USERNAME,
+            "password": hash_password(get_env("CAT_ADMIN_DEFAULT_PASSWORD")),
+            "permissions": permissions,  # base admin has all permissions, but CHAT
+        })
+
     set_llm_cache(InMemoryCache())
     utils.pod_id()
 
     bill_the_lizard = BillTheLizard()
+    # Initialize the default admin if not present
+    if not await crud_users.get_users(DEFAULT_SYSTEM_KEY, limit=1):
+        await initialize_lizard_users()
+
     bill_the_lizard.bootstrap_services()
     bill_the_lizard.fastapi_app = app
 

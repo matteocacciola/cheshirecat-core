@@ -196,7 +196,7 @@ async def plugin_manager(lizard):
 
     yield plugin_manager
 
-    plugin_manager.uninstall_plugin("mock_plugin")
+    await plugin_manager.uninstall_plugin("mock_plugin")
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -215,7 +215,7 @@ async def agent_plugin_manager(cheshire_cat):
 
 @pytest_asyncio.fixture(scope="function")
 async def stray_no_memory(cheshire_cat, agent_plugin_manager):
-    stray_cat = StrayCat(
+    stray_cat = await StrayCat.create(
         user_data=AuthUserInfo(id=str(uuid4()), name="Alice", permissions=get_base_permissions()),
         agent_id=cheshire_cat.agent_key,
         plugin_manager_generator=lambda: agent_plugin_manager,

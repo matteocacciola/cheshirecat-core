@@ -20,7 +20,7 @@ class BaseAuthHandler(ABC):
     """
     # when there is no JWT, user id is passed via `user_id: xxx` header or via websocket path
     # with JWT, the user id is in the token ad has priority
-    def authorize(
+    async def authorize(
         self,
         request: HTTPConnection,
         auth_resource: AuthResource,
@@ -55,13 +55,13 @@ class BaseAuthHandler(ABC):
 
         if is_jwt(token):
             # JSON Web Token auth
-            return self.authorize_user_from_jwt(token, auth_resource, auth_permission, key_id)
+            return await self.authorize_user_from_jwt(token, auth_resource, auth_permission, key_id)
 
         # API_KEY auth
-        return self.authorize_user_from_key(request, protocol, token, auth_resource, auth_permission, key_id)
+        return await self.authorize_user_from_key(request, protocol, token, auth_resource, auth_permission, key_id)
 
     @abstractmethod
-    def authorize_user_from_jwt(
+    async def authorize_user_from_jwt(
         self,
         token: str,
         auth_resource: AuthResource,
@@ -84,7 +84,7 @@ class BaseAuthHandler(ABC):
         pass
 
     @abstractmethod
-    def authorize_user_from_key(
+    async def authorize_user_from_key(
         self,
         request: HTTPConnection,
         protocol: Literal["http", "websocket"],
@@ -112,7 +112,7 @@ class BaseAuthHandler(ABC):
 
 # Core auth handler, verify token on local idp
 class CoreAuthHandler(BaseAuthHandler):
-    def authorize_user_from_jwt(
+    async def authorize_user_from_jwt(
         self,
         token: str,
         auth_resource: AuthResource,
@@ -133,7 +133,7 @@ class CoreAuthHandler(BaseAuthHandler):
             return None
 
         # get user from DB
-        user = crud_users.get_user_by_username(key_id, payload["sub"])
+        user = await crud_users.get_user_by_username(key_id, payload["sub"])
         if not user:
             # do not pass
             return None
@@ -156,7 +156,7 @@ class CoreAuthHandler(BaseAuthHandler):
             extra=user,
         )
 
-    def authorize_user_from_key(
+    async def authorize_user_from_key(
         self,
         request: HTTPConnection,
         protocol: Literal["http", "websocket"],
@@ -171,7 +171,7 @@ class CoreAuthHandler(BaseAuthHandler):
             return None
 
         request_user_id = request.headers.get("X-User-ID") if protocol == "http" else request.query_params.get("user_id")
-        if not (user_info := extract_user_info_on_api_key(agent_key, request_user_id)):
+        if not (user_info := await extract_user_info_on_api_key(agent_key, request_user_id)):
             return None
 
         # No match -> deny access

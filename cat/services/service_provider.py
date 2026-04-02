@@ -25,10 +25,10 @@ class ServiceProvider:
         self._agent_key = agent_key
         self._plugin_manager = plugin_manager
 
-    def _create_service_object(self, factory: ServiceFactory):
+    async def _create_service_object(self, factory: ServiceFactory):
         # if no config is saved, use default one and save to db
         # create the settings for the factory
-        crud_settings.upsert_setting_by_name(
+        await crud_settings.upsert_setting_by_name(
             self._agent_key,
             models.Setting(
                 name=factory.default_config_class.__name__,
@@ -40,58 +40,58 @@ class ServiceProvider:
     def _get_factory_object(self, factory_params: FactoryParams) -> ServiceFactory:
         return ServiceFactory(self._agent_key, self._plugin_manager, **factory_params.model_dump())
 
-    def _get_service_object(self, factory_params: FactoryParams) -> Any:
+    async def _get_service_object(self, factory_params: FactoryParams) -> Any:
         factory = self._get_factory_object(factory_params)
 
-        if not (selected_config := crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)):
+        if not (selected_config := await crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)):
             # if no config is saved, use the default one and save to db
             # create the settings for the factory
-            self._create_service_object(factory)
+            await self._create_service_object(factory)
 
             # reload from db and return
             selected_config = crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)
 
-        return factory.get_from_config_name(selected_config["name"])
+        return await factory.get_from_config_name(selected_config["name"])
 
-    def get_embedder(self) -> Embeddings:
-        return self._get_service_object(self._list_factory_params["embedder"])
+    async def get_embedder(self) -> Embeddings:
+        return await self._get_service_object(self._list_factory_params["embedder"])
 
-    def get_large_language_model(self) -> LargeLanguageModel:
-        return self._get_service_object(self._list_factory_params["large_language_model"])
+    async def get_large_language_model(self) -> LargeLanguageModel:
+        return await self._get_service_object(self._list_factory_params["large_language_model"])
 
-    def get_custom_auth_handler(self) -> BaseAuthHandler:
-        return self._get_service_object(self._list_factory_params["auth_handler"])
+    async def get_custom_auth_handler(self) -> BaseAuthHandler:
+        return await self._get_service_object(self._list_factory_params["auth_handler"])
 
-    def get_file_manager(self) -> BaseFileManager:
-        return self._get_service_object(self._list_factory_params["file_manager"])
+    async def get_file_manager(self) -> BaseFileManager:
+        return await self._get_service_object(self._list_factory_params["file_manager"])
 
-    def get_chunker(self) -> BaseChunker:
-        return self._get_service_object(self._list_factory_params["chunker"])
+    async def get_chunker(self) -> BaseChunker:
+        return await self._get_service_object(self._list_factory_params["chunker"])
 
-    def get_vector_memory_handler(self) -> BaseVectorDatabaseHandler:
-        return self._get_service_object(self._list_factory_params["vector_memory_handler"])
+    async def get_vector_memory_handler(self) -> BaseVectorDatabaseHandler:
+        return await self._get_service_object(self._list_factory_params["vector_memory_handler"])
 
-    def get_agentic_workflow(self) -> BaseAgenticWorkflowHandler:
-        agentic_workflow = self._get_service_object(self._list_factory_params["agentic_workflow"])
-        agentic_workflow.vector_memory_handler = self.get_vector_memory_handler()
+    async def get_agentic_workflow(self) -> BaseAgenticWorkflowHandler:
+        agentic_workflow = await self._get_service_object(self._list_factory_params["agentic_workflow"])
+        agentic_workflow.vector_memory_handler = await self.get_vector_memory_handler()
         return agentic_workflow
 
-    def _bootstrap_services(self, list_factory_params: Dict[str, FactoryParams]):
+    async def _bootstrap_services(self, list_factory_params: Dict[str, FactoryParams]):
         for _, factory_params in list_factory_params.items():
             factory = self._get_factory_object(factory_params)
-            selected_config = crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)
+            selected_config = await crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)
             if selected_config:
                 continue
 
             # if no config is saved, use default one and save to db
             # create the settings for the factory
-            self._create_service_object(factory)
+            await self._create_service_object(factory)
 
-    def bootstrap_services_orchestrator(self):
-        self._bootstrap_services(self._list_factory_params_orchestrator)
+    async def bootstrap_services_orchestrator(self):
+        await self._bootstrap_services(self._list_factory_params_orchestrator)
 
-    def bootstrap_services_bot(self):
-        self._bootstrap_services(self._list_factory_params_bot)
+    async def bootstrap_services_bot(self):
+        await self._bootstrap_services(self._list_factory_params_bot)
 
     @property
     def _list_factory_params_orchestrator(self) -> Dict[str, FactoryParams]:

@@ -58,7 +58,7 @@ async def _on_upload_single_file(
             content_type, _ = guess_file_type(file_bytes)
 
             # check if MIME type of uploaded file is supported
-            admitted_types = cat.file_handlers.keys()
+            admitted_types = (await cat.file_handlers()).keys()  # type: ignore[assignment]
             if content_type not in admitted_types:
                 raise CustomValidationException(
                     f"MIME type {content_type} not supported. Admitted types: {' - '.join(admitted_types)}"
@@ -151,9 +151,9 @@ async def upload_files(
 
     for file in files:
         filename = file.filename
-        background_tasks.add_task(task, file_name=filename, content=await file.read())
+        background_tasks.add_task(task, file_name=filename, content=await file.read())  # type: ignore[arg-type]
         response[filename] = UploadSingleFileResponse(
-            filename=filename, content_type=file.content_type, info="File is being ingested asynchronously"
+            filename=filename, content_type=file.content_type, info="File is being ingested asynchronously"  # type: ignore[arg-type]
         )
 
     return response
@@ -197,7 +197,7 @@ async def upload_memory(
 ) -> UploadSingleFileResponse:
     """Upload a memory json file to the cat memory"""
     # Get file mime type
-    content_type, _ = mimetypes.guess_type(file.filename)
+    content_type, _ = mimetypes.guess_type(file.filename)  # type: ignore[assignment]
     log.info(f"Uploading {content_type} down the rabbit hole")
     if content_type != "application/json":
         raise CustomValidationException(
@@ -214,7 +214,7 @@ async def upload_memory(
 
     # reply to client
     return UploadSingleFileResponse(
-        filename=file.filename, content_type=file.content_type, info="Memory is being ingested asynchronously",
+        filename=file.filename, content_type=file.content_type, info="Memory is being ingested asynchronously",  # type: ignore[arg-type]
     )
 
 
@@ -223,7 +223,8 @@ async def get_allowed_mimetypes(
     info: AuthorizedInfo = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
 ) -> AllowedMimeTypesResponse:
     """Retrieve the allowed mimetypes that can be ingested by the Rabbit Hole"""
-    return AllowedMimeTypesResponse(allowed=list(info.cheshire_cat.file_handlers.keys()))
+    file_handlers = await info.cheshire_cat.file_handlers()  # type: ignore[assignment]
+    return AllowedMimeTypesResponse(allowed=list(file_handlers.keys()))
 
 
 @router.get("/web", response_model=List[str])
@@ -234,12 +235,13 @@ async def get_source_urls(
     collection = str(VectorMemoryType.DECLARATIVE if not info.stray_cat else VectorMemoryType.EPISODIC)
 
     # Get all points
-    memory_points, _ = await info.cheshire_cat.vector_memory_handler.get_all_tenant_points_from_web(collection)
+    vmh = await info.cheshire_cat.vector_memory_handler()  # type: ignore[assignment]
+    memory_points, _ = await vmh.get_all_tenant_points_from_web(collection)
 
     # retrieve all the memory points where the metadata["source"] is a URL
     result = []
     for memory_point in memory_points:
-        metadata = memory_point.payload.get("metadata", {})
+        metadata = memory_point.payload.get("metadata", {})  # type: ignore[union-attr]
         if info.stray_cat and metadata.get("chat_id") != info.stray_cat.id:
             continue
 
@@ -299,14 +301,14 @@ async def upload_file(
     ```
     """
     async def task(content: bytes):
-        temp_path = await write_temp_file(filename, content)
+        temp_path = await write_temp_file(filename, content)  # type: ignore[arg-type]
         await _on_upload_single_file(
-            info=info, path=temp_path, filename=filename, metadata=json.loads(metadata) if metadata else {},
+            info=info, path=temp_path, filename=filename, metadata=json.loads(metadata) if metadata else {},  # type: ignore[arg-type]
         )
 
     filename = file.filename
     background_tasks.add_task(task, content=await file.read())
 
     return UploadSingleFileResponse(
-        filename=filename, content_type=file.content_type, info="File is being ingested asynchronously",
+        filename=filename, content_type=file.content_type, info="File is being ingested asynchronously",  # type: ignore[arg-type]
     )

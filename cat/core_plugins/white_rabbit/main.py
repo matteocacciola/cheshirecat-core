@@ -34,12 +34,12 @@ def re_embed_mcp_tools():
 
 
 @hook
-def after_lizard_bootstrap(lizard: BillTheLizard):
+async def after_lizard_bootstrap(lizard: BillTheLizard):
     # Start scheduling system and attach it to the BillTheLizard core class
     lizard.white_rabbit = WhiteRabbit()
 
     try:
-        settings = lizard.plugin_manager.get_plugin().load_settings()
+        settings = await lizard.plugin_manager.get_plugin().load_settings()
         interval_job_days = int(settings["embed_procedures_every_n_days"])
     except (ValueError, KeyError):
         interval_job_days = None

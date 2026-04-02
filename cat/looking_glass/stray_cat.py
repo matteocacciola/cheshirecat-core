@@ -74,10 +74,25 @@ class StrayCat(BotMixin):
         # bootstrap stray cat
         super().__init__()
 
-        self.working_memory = WorkingMemory(agent_id=self.agent_key, user_id=self.user.id, chat_id=self.id)
+        self.working_memory = None
+        self._agentic_workflow = None
         self.latest_n_history = 1
 
-        self._agentic_workflow = self.agentic_workflow
+
+    @classmethod
+    async def create(
+        cls,
+        agent_id: str,
+        user_data: AuthUserInfo,
+        plugin_manager_generator: Callable[[], MadHatter],
+        stray_id: str | None = None
+    ) -> "StrayCat":
+        """Factory method to create a StrayCat instance and its working memory."""
+        cat = cls(agent_id, user_data, plugin_manager_generator, stray_id)
+        cat.working_memory = await WorkingMemory.create(agent_id=agent_id, user_id=user_data.id, chat_id=cat.id)
+        cat._agentic_workflow = await cls.agentic_workflow()
+
+        return cat
 
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""
@@ -187,8 +202,9 @@ class StrayCat(BotMixin):
         )
 
         try:
+            embedder = await self.lizard.embedder()
             config = RecallSettings(
-                embedding=self.lizard.embedder.embed_query(self.working_memory.user_message.text),
+                embedding=embedder.embed_query(self.working_memory.user_message.text),  # type: ignore[arg-type]
                 metadata=self.working_memory.user_message.get("metadata", {})
             )
 
@@ -226,7 +242,7 @@ class StrayCat(BotMixin):
 
             agent_output = await self._agentic_workflow.run(
                 task=agent_input,
-                llm=self.large_language_model,
+                llm=await self.large_language_model(),
                 callbacks=await plugin_manager.execute_hook_async("llm_callbacks", [], caller=self),
             )
 
@@ -239,7 +255,7 @@ class StrayCat(BotMixin):
             )
 
         # prepare a final cat message
-        final_output = CatMessage(text=agent_output.output)
+        final_output = CatMessage(text=agent_output.output)  # type: ignore[arg-type]
 
         # run a message through plugins
         final_output = utils.restore_original_model(
@@ -249,7 +265,7 @@ class StrayCat(BotMixin):
             CatMessage,
         )
 
-        return final_output
+        return final_output  # type: ignore[return-value]
 
     async def run_http(self, user_message: UserMessage) -> ChatResponse:
         try:
@@ -260,7 +276,7 @@ class StrayCat(BotMixin):
             message = CatMessage(text="", error=str(e))
 
         return ChatResponse(
-            agent_id=self.agent_key,
+            agent_id=self.agent_key,  # type: ignore[arg-type]
             user_id=self.user.id,
             chat_id=self.id,
             message=message,
