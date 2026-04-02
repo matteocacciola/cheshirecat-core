@@ -63,7 +63,7 @@ class CheshireCat(BotMixin):
         await cat.plugin_manager.execute_hook("before_cat_bootstrap", caller=cat)
 
         # bootstrap cat — call the parent class __init__ explicitly
-        BotMixin.__init__()
+        BotMixin.__init__(cat)
 
         # allows plugins to do something after the cat bootstrap is complete
         await cat.plugin_manager.execute_hook("after_cat_bootstrap", caller=cat)
