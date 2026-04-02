@@ -1,6 +1,5 @@
 import json
 import os
-import pytest
 
 import cat.core_plugins.analytics.cruds.embeddings as crud_embeddings
 from cat.services.memory.models import VectorMemoryType
@@ -50,7 +49,6 @@ def _check_upon_request(secure_client, secure_client_headers, file_name):
     _check_analytics(analytics, file_name)
 
 
-@pytest.mark.asyncio
 async def test_rabbithole_upload_txt(secure_client, secure_client_headers):
     content_type = "text/plain"
     file_name = "sample.txt"
@@ -60,7 +58,6 @@ async def test_rabbithole_upload_txt(secure_client, secure_client_headers):
     _check_upon_request(secure_client, secure_client_headers, file_name)
 
 
-@pytest.mark.asyncio
 async def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_headers, cheshire_cat):
     # set a new file manager
     file_manager_name = "LocalFileManagerConfig"
@@ -104,7 +101,6 @@ async def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_heade
     assert len(points) > 0
 
 
-@pytest.mark.asyncio
 async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_headers):
     cat = await lizard.create_cheshire_cat("another_agent_test")
 
@@ -124,7 +120,6 @@ async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_header
     await cat.destroy_memory()
 
 
-@pytest.mark.asyncio
 async def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers):
     content_type = "application/pdf"
     file_name = "sample.pdf"
@@ -148,7 +143,6 @@ async def test_rabbithole_upload_batch_one_file(secure_client, secure_client_hea
     _check_analytics(await crud_embeddings.get_analytics(agent_id), file_name)
 
 
-@pytest.mark.asyncio
 async def test_rabbithole_upload_batch_one_file_to_chat(secure_client, secure_client_headers):
     content_type = "application/pdf"
     file_name = "sample.pdf"
@@ -174,7 +168,6 @@ async def test_rabbithole_upload_batch_one_file_to_chat(secure_client, secure_cl
     _check_analytics(await crud_embeddings.get_analytics(agent_id), file_name)
 
 
-@pytest.mark.asyncio
 async def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_headers):
     files = []
     files_to_upload = {"sample.pdf": "application/pdf", "sample.txt": "text/plain"}

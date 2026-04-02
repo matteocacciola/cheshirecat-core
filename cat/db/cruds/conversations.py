@@ -68,8 +68,9 @@ async def get_conversation(agent_id: str, user_id: str, chat_id: str) -> Dict[st
 
 async def get_conversations_attributes(agent_id: str, user_id: str) -> List[Dict[str, Any]]:
     """
-    Retrieve conversations parameters from Redis. It returns the list of the chat IDs, their names and the messages
-    count.
+    Retrieve conversations parameters from Redis.
+
+    Uses a single SCAN + one MGET pipeline instead of N+1 individual round-trips.
 
     Args:
         agent_id: ID of the chatbot.
@@ -90,25 +91,38 @@ async def get_conversations_attributes(agent_id: str, user_id: str) -> List[Dict
         RedisError: If Redis connection fails.
     """
     try:
-        results = []
-        # Construct the pattern to find all keys for the user
+        db = crud.get_db()
         pattern = format_key(agent_id, user_id, "*")
 
-        db = crud.get_db()
+        # One SCAN to collect all conversation keys
+        keys = [k async for k in db.scan_iter(match=pattern)]
+        if not keys:
+            return []
 
-        # Use scan_iter for efficient key discovery without blocking the server
-        async for key_str in db.scan_iter(match=pattern):
-            # Extract the chat_id from the key string
+        # One MGET to read every conversation in a single round-trip
+        raw_results = await db.json().mget(keys, "$")
+
+        results = []
+        for key_str, raw in zip(keys, raw_results):
+            if not raw:
+                continue
             parts = key_str.split(":")
             if len(parts) != 5:
                 continue
-            _, agent_id, _, user_id, chat_id = parts
+            _, _agent_id, _, _user_id, chat_id = parts
 
-            conversation = await get_conversation_attributes(agent_id, user_id, chat_id)
-            if not conversation:
-                continue
+            conversation = raw[0] if isinstance(raw, list) else raw
+            messages = conversation.get("messages", [])
+            num_messages = len(messages)
 
-            results.append(conversation)
+            results.append({
+                "chat_id": chat_id,
+                "name": conversation.get("name", chat_id),
+                "num_messages": num_messages,
+                "metadata": conversation.get("metadata", {}),
+                "created_at": messages[0]["when"] if num_messages > 0 else None,
+                "updated_at": messages[-1]["when"] if num_messages > 0 else None,
+            })
 
         return results
     except RedisError as e:
@@ -302,7 +316,7 @@ async def update_messages(
         await db.json().set(key, "$", {"name": chat_id, "messages": []}, nx=True)
 
         # ARRAPPEND is a single atomic Redis command: no read-modify-write, no lost updates.
-        await db.json().arrappend(key, "$.messages", serialized)
+        await db.json().arrappend(key, "$.messages", serialized)  # type: ignore[arg-type]
 
         if expiration:
             await db.expire(key, expiration)

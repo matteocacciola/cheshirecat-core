@@ -72,7 +72,6 @@ async def get_users(
 
         # Scan for user keys matching the pattern
         pattern = format_key(agent_id, "*")
-        cursor = 0
         all_keys = [k async for k in db.scan_iter(match=pattern, count=100)]
 
         if not all_keys:
@@ -169,7 +168,7 @@ async def get_users_stream(
 
         while True:
             # Scan for next batch of keys
-            cursor, keys = db.scan(cursor, match=pattern, count=batch_size)
+            cursor, keys = await db.scan(cursor, match=pattern, count=batch_size)
 
             if keys:
                 # Batch read this chunk of users

@@ -14,7 +14,6 @@ from cat.services.factory.llm import LLMDefault
 from tests.utils import create_mock_plugin_zip
 
 
-@pytest.mark.asyncio
 async def test_main_modules_loaded(cheshire_cat):
     assert isinstance(await cheshire_cat.plugin_manager(), MadHatter)
     assert isinstance(await cheshire_cat.large_language_model(), BaseLanguageModel)
@@ -24,12 +23,10 @@ async def test_main_modules_loaded(cheshire_cat):
     assert isinstance(await cheshire_cat.vector_memory_handler(), BaseVectorDatabaseHandler)
 
 
-@pytest.mark.asyncio
 async def test_default_llm_loaded(cheshire_cat):
     assert isinstance(await cheshire_cat.large_language_model(), LLMDefault)
 
 
-@pytest.mark.asyncio
 async def test_default_embedder_loaded(lizard):
     embedder = await lizard.embedder()
     assert isinstance(embedder, DumbEmbedder)
@@ -40,13 +37,11 @@ async def test_default_embedder_loaded(lizard):
     assert sample_embed == out
 
 
-@pytest.mark.asyncio
 async def test_cheshire_cat_created_with_system_key(lizard):
     with pytest.raises(ValueError):
         await lizard.create_cheshire_cat(DEFAULT_SYSTEM_KEY)
 
 
-@pytest.mark.asyncio
 async def test_file_handler_pdf(lizard, cheshire_cat, secure_client, secure_client_headers):
     file_handlers = await cheshire_cat.file_handlers()
     assert "application/pdf" in file_handlers

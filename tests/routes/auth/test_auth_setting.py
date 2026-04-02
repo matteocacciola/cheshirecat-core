@@ -7,7 +7,6 @@ from cat.services.service_factory import ServiceFactory
 from tests.utils import api_key
 
 
-@pytest.mark.asyncio
 async def test_get_all_auth_handler_settings(secure_client, secure_client_headers, cheshire_cat):
     sf = ServiceFactory(
         agent_key=cheshire_cat.agent_key,

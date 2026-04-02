@@ -42,14 +42,14 @@ def test_toggle_non_existent_plugin(secure_client, secure_client_headers):
     assert response_json["detail"] == "Plugin not found"
 
 
-def test_toggle_plugin(lizard, secure_client, secure_client_headers):
+async def test_toggle_plugin(lizard, secure_client, secure_client_headers):
     just_installed_plugin(secure_client, secure_client_headers)
 
-    assert "mock_plugin" in crud_settings.get_setting_by_name(DEFAULT_SYSTEM_KEY, "active_plugins")["value"]
+    assert "mock_plugin" in (await crud_settings.get_setting_by_name(DEFAULT_SYSTEM_KEY, "active_plugins"))["value"]
 
     # toggle plugin for a cheshirecat
     secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
-    assert "mock_plugin" in crud_settings.get_setting_by_name(agent_id, "active_plugins")["value"]
+    assert "mock_plugin" in (await crud_settings.get_setting_by_name(agent_id, "active_plugins"))["value"]
     _check_installed_in_cat(secure_client, secure_client_headers, True)
 
     # toggle plugin (deactivate) on a system level
@@ -60,8 +60,8 @@ def test_toggle_plugin(lizard, secure_client, secure_client_headers):
     assert "mock_plugin" in response_json["info"]
 
     # check directly the absence of the active plugin in the database
-    assert "mock_plugin" not in crud_settings.get_setting_by_name(DEFAULT_SYSTEM_KEY, "active_plugins")["value"]
-    assert "mock_plugin" not in crud_settings.get_setting_by_name(agent_id, "active_plugins")["value"]
+    assert "mock_plugin" not in (await crud_settings.get_setting_by_name(DEFAULT_SYSTEM_KEY, "active_plugins"))["value"]
+    assert "mock_plugin" not in (await crud_settings.get_setting_by_name(agent_id, "active_plugins"))["value"]
 
     # the mock_plugin is no longer available into the cheshire cat
     _check_not_installed_in_cat(lizard, secure_client, secure_client_headers)
@@ -75,8 +75,8 @@ def test_toggle_plugin(lizard, secure_client, secure_client_headers):
 
     # check directly the presence / absence of the active plugin in the database, for the system and the cheshirecat
     # respectively
-    assert "mock_plugin" in crud_settings.get_setting_by_name(DEFAULT_SYSTEM_KEY, "active_plugins")["value"]
-    assert "mock_plugin" not in crud_settings.get_setting_by_name(agent_id, "active_plugins")["value"]
+    assert "mock_plugin" in (await crud_settings.get_setting_by_name(DEFAULT_SYSTEM_KEY, "active_plugins"))["value"]
+    assert "mock_plugin" not in (await crud_settings.get_setting_by_name(agent_id, "active_plugins"))["value"]
 
     # the mock_plugin is available into the cheshire cat, but not active
     _check_installed_in_cat(secure_client, secure_client_headers, False)

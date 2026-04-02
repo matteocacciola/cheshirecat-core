@@ -1,5 +1,3 @@
-import pytest
-
 from cat.looking_glass import MadHatter
 from cat.rabbit_hole import RabbitHole
 from cat.services.factory.auth_handler import CoreAuthHandler
@@ -13,7 +11,6 @@ def test_main_modules_loaded(lizard):
     assert isinstance(lizard.websocket_manager, WebSocketManager)
 
 
-@pytest.mark.asyncio
 async def test_shutdown(lizard):
     await lizard.shutdown()
 

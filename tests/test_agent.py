@@ -1,5 +1,4 @@
 import json
-import pytest
 
 from cat import AgenticWorkflowTask, AgenticWorkflowOutput, RecallSettings
 from cat.looking_glass.mad_hatter.decorators.experimental.form import CatFormState
@@ -8,7 +7,6 @@ from cat.utils import default_llm_answer_prompt
 from tests.utils import just_installed_plugin
 
 
-@pytest.mark.asyncio
 async def test_execute_agent(stray):
     agent_input = AgenticWorkflowTask(
         user_prompt="hey",
@@ -25,7 +23,6 @@ async def test_execute_agent(stray):
     assert out.output == default_llm_answer_prompt()
 
 
-@pytest.mark.asyncio
 async def test_execute_agent_with_form_submit(secure_client, secure_client_headers, stray, monkeypatch):
     just_installed_plugin(secure_client, secure_client_headers)
 
@@ -71,7 +68,6 @@ async def test_execute_agent_with_form_submit(secure_client, secure_client_heade
     assert out.output == mocked_output
 
 
-@pytest.mark.asyncio
 async def test_execute_main_agent_with_tool(stray, monkeypatch):
     mocked_output = "The current time is 12:00 PM."
     intermediate_steps = [(("get_the_time", {}, {}), mocked_output)]
@@ -104,7 +100,6 @@ async def test_execute_main_agent_with_tool(stray, monkeypatch):
     assert out.intermediate_steps == intermediate_steps
 
 
-@pytest.mark.asyncio
 async def test_execute_main_agent_with_mcp_client_tool(stray, secure_client, secure_client_headers, monkeypatch):
     just_installed_plugin(secure_client, secure_client_headers)
 

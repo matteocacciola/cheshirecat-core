@@ -140,7 +140,7 @@ def check_user_fields(u):
         assert False, "Not a UUID"
 
 
-def get_fake_memory_export(client, embedder_name = "DumbEmbedder", dim = 2367):
+async def get_fake_memory_export(client, embedder_name = "DumbEmbedder", dim = 2367):
     user = create_new_user(
         client,
         "/users",
@@ -149,7 +149,7 @@ def get_fake_memory_export(client, embedder_name = "DumbEmbedder", dim = 2367):
         permissions=get_base_permissions(),
     )
 
-    user = crud_users.get_user_by_username(agent_id, user["username"])
+    user = await crud_users.get_user_by_username(agent_id, user["username"])
     return {
         "embedder": embedder_name,
         "collections": {

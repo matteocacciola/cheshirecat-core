@@ -3,7 +3,7 @@ import pytest
 import pytest_asyncio
 import os
 import shutil
-import redis
+import redis.asyncio as aioredis
 import warnings
 from pydantic import PydanticDeprecatedSince20
 from qdrant_client import AsyncQdrantClient
@@ -33,7 +33,7 @@ from tests.utils import (
 
 pytest_plugins = ["pytest_asyncio"]
 
-redis_client = redis.Redis(host=get_env("CAT_REDIS_HOST"), db=1, encoding="utf-8", decode_responses=True)
+redis_client = aioredis.Redis(host=get_env("CAT_REDIS_HOST"), db=1, encoding="utf-8", decode_responses=True)
 memory_client = AsyncQdrantClient(":memory:")
 
 
@@ -88,7 +88,7 @@ async def clean_up():
                 os.remove(tbr)
 
     # flush redis database
-    redis_client.flushdb()
+    await  redis_client.flushdb()
 
     # delete all the collections in Qdrant
     collections = await memory_client.get_collections()

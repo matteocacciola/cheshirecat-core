@@ -57,7 +57,6 @@ def test_plugin_install_from_zip(lizard, secure_client, secure_client_headers, c
     assert response.json()["data"]["local_info"]["active"]
 
 
-@pytest.mark.asyncio
 async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client, secure_client_headers):
     # create a new agent
     ccat = await lizard.create_cheshire_cat("agent_test_test")
@@ -101,7 +100,6 @@ async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client,
         assert p["local_info"]["active"] == (p["id"] in core_plugins)
 
 
-@pytest.mark.asyncio
 async def test_create_cheshire_cat_after_plugin_install(lizard, secure_client, secure_client_headers):
     # now, manually install the plugin
     zip_path = create_mock_plugin_zip(flat=True)
@@ -172,7 +170,6 @@ def test_plugin_uninstall(secure_client, secure_client_headers):
     assert system_settings is None
 
 
-@pytest.mark.asyncio
 async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_headers):
     # create a new agent
     ccat = await lizard.create_cheshire_cat("agent_test_test")
@@ -218,7 +215,6 @@ async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_he
         assert p["local_info"]["active"]
 
 
-@pytest.mark.asyncio
 async def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_client, secure_client_headers):
     # create a new agent
     ccat = await lizard.create_cheshire_cat("agent_test_test")
@@ -233,12 +229,12 @@ async def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_
             files={"file": (zip_file_name, f, "application/zip")},
             headers=secure_client_headers
         )
-    agent_settings = crud_plugins.get_setting(ccat.agent_key, "mock_plugin")
+    agent_settings = await crud_plugins.get_setting(ccat.agent_key, "mock_plugin")
     assert not agent_settings
 
     # activate for the new agent
     secure_client.put("/plugins/toggle/mock_plugin", headers=ccat_headers)
-    agent_settings = crud_plugins.get_setting(ccat.agent_key, "mock_plugin")
+    agent_settings = await crud_plugins.get_setting(ccat.agent_key, "mock_plugin")
     assert agent_settings["a"] == "a"
     assert agent_settings["b"] == 0
 
@@ -246,7 +242,7 @@ async def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_
     # update)
     agent_settings["a"] = "value_a"
     agent_settings["b"] = 10
-    crud_plugins.update_setting(ccat.agent_key, "mock_plugin", agent_settings)
+    await crud_plugins.update_setting(ccat.agent_key, "mock_plugin", agent_settings)
 
     # now, use a `mock_plugin_overrides.py.new` into the plugin folder to emulate a second update, with a new value in
     # the `a` and the removal of `b` in the settings
@@ -266,7 +262,7 @@ async def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_
         )
 
     # check that the configuration of `mock_plugin` for the agent has changed according to the new mock_plugin_overrides.py
-    agent_settings = crud_plugins.get_setting(ccat.agent_key, "mock_plugin")
+    agent_settings = await crud_plugins.get_setting(ccat.agent_key, "mock_plugin")
 
     try:
         assert "b" not in agent_settings

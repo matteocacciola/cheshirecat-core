@@ -1,5 +1,4 @@
 import time
-import pytest
 
 from cat import AuthResource, AuthPermission
 from cat.auth.permissions import get_base_permissions
@@ -47,7 +46,7 @@ def test_convo_history_no_update_invalid_llm(secure_client, secure_client_header
     assert len(json["history"]) == 0
 
 
-def test_convo_history_update(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+async def test_convo_history_update(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     user = create_new_user(
         secure_client,
         "/users",
@@ -61,7 +60,7 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
     send_websocket_message(
         {"text": message}, secure_client, api_key, ch_id=chat_id, query_params={"user_id": user["id"]}
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
 
     # check conversation history update
     response = secure_client.get(
@@ -90,7 +89,6 @@ def test_convo_history_update(secure_client, secure_client_headers, mocked_defau
         assert isinstance(item["when"], float)  # timestamp
 
 
-@pytest.mark.asyncio
 async def test_convo_delete(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     user = create_new_user(
         secure_client,
@@ -108,7 +106,7 @@ async def test_convo_delete(secure_client, secure_client_headers, mocked_default
         ch_id=chat_id,
         query_params={"user_id": user["id"]},
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
 
     # delete convo history
     response = secure_client.delete(
@@ -219,7 +217,6 @@ def test_convo_history_by_user(secure_client, secure_client_headers, client, moc
     assert len(json["history"]) == convos["Alice"] * 2
 
 
-@pytest.mark.asyncio
 async def test_change_attributes_to_conversation(secure_client, secure_client_headers, client, cheshire_cat):
     user = create_new_user(
         secure_client,
@@ -280,7 +277,7 @@ async def test_change_attributes_to_conversation(secure_client, secure_client_he
     assert response.status_code == 400
 
 
-def test_get_empty_conversations(secure_client, secure_client_headers):
+async def test_get_empty_conversations(secure_client, secure_client_headers):
     create_new_user(
         secure_client,
         "/users",
@@ -289,7 +286,7 @@ def test_get_empty_conversations(secure_client, secure_client_headers):
         permissions=get_base_permissions(),
     )
 
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
 
     # check conversation history update
     response = secure_client.get(
@@ -302,7 +299,7 @@ def test_get_empty_conversations(secure_client, secure_client_headers):
     assert len(json_response) == 0  # no chats for this user
 
 
-def test_get_conversations(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+async def test_get_conversations(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     create_new_user(
         secure_client,
         "/users",
@@ -310,7 +307,7 @@ def test_get_conversations(secure_client, secure_client_headers, mocked_default_
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
 
     message = "It's late! It's late!"
     # send 3 messages to 3 different chats for the same user
@@ -357,7 +354,7 @@ def test_get_conversations(secure_client, secure_client_headers, mocked_default_
             assert item["num_messages"] == 4  # 2 mex + 2 replies
 
 
-def test_get_conversation(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+async def test_get_conversation(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     create_new_user(
         secure_client,
         "/users",
@@ -365,7 +362,7 @@ def test_get_conversation(secure_client, secure_client_headers, mocked_default_l
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
 
     message = "It's late! It's late!"
     # sending two messages to the `chat_id` chat

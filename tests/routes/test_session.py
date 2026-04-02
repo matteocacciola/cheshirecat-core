@@ -1,5 +1,4 @@
 import json
-import pytest
 
 from cat.auth.permissions import AuthUserInfo
 from cat import StrayCat
@@ -7,7 +6,6 @@ from cat import StrayCat
 from tests.utils import send_websocket_message, api_key, agent_id, create_new_user, new_user_password, chat_id
 
 
-@pytest.mark.asyncio
 async def test_session_creation_from_websocket(
     secure_client, secure_client_headers, client, cheshire_cat, mocked_default_llm_answer_prompt
 ):
@@ -53,7 +51,6 @@ async def test_session_creation_from_websocket(
     assert convo[0].content.text == mex["text"]
 
 
-@pytest.mark.asyncio
 async def test_session_creation_from_http(secure_client, secure_client_headers, cheshire_cat):
     # create a new user with username CCC
     username = "Alice"

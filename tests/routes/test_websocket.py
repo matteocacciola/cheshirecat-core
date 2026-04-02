@@ -1,7 +1,6 @@
 import json
 import time
 import uuid
-
 import pytest
 from starlette.websockets import WebSocketDisconnect
 
@@ -109,10 +108,10 @@ def test_websocket_with_additional_items_in_message(secure_client):
     check_correct_websocket_reply(content["message"])
 
 
-def test_websocket_with_non_saved_user(secure_client):
+async def test_websocket_with_non_saved_user(secure_client):
     with pytest.raises(WebSocketDisconnect):
         mocked_user_id = uuid.uuid4()
-        user = crud_users.get_user(agent_id, str(mocked_user_id))
+        user = await crud_users.get_user(agent_id, str(mocked_user_id))
         assert user is None
 
         msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}

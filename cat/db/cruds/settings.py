@@ -339,6 +339,8 @@ async def get_agents() -> List[Dict[str, Any]]:
     """
     Get all agents with their metadata.
 
+    Uses a single SCAN + one MGET pipeline instead of N+1 individual round-trips.
+
     Returns:
         List of agents with their metadata.
 
@@ -346,11 +348,23 @@ async def get_agents() -> List[Dict[str, Any]]:
         RedisError: If Redis connection fails.
     """
     try:
+        db = crud.get_db()
+
+        # One SCAN to collect all agent-settings keys
+        keys = [k async for k in db.scan_iter(f"{DEFAULT_AGENTS_KEY}:*:{DEFAULT_AGENT_KEY}")]
+        if not keys:
+            return []
+
+        # One MGET to read the metadata entry from every key — 1 RTT regardless of agent count
+        results = await db.json().mget(keys, '$[?(@.name=="metadata")]')
+
         agents = []
-        for agent_id in await get_agents_main_keys():
-            metadata = await get_setting_by_name(agent_id, "metadata")
-            agents.append({"agent_id": agent_id, "metadata": metadata["value"] if metadata else {}})
-        return agents
+        for key, result in zip(keys, results):
+            agent_id = key.split(":")[1]
+            metadata = result[0]["value"] if result and result[0] else {}
+            agents.append({"agent_id": agent_id, "metadata": metadata})
+
+        return sorted(agents, key=lambda a: a["agent_id"])
     except RedisError as e:
         log.error(f"Redis error in get_agents: {e}")
         raise
@@ -379,7 +393,7 @@ async def clone_agent(source_prefix: str, target_prefix: str, skip_keys: List[st
         keys = [
             kd
             for k in keys
-            for skip_key in skip_keys
+            for skip_key in skip_keys  # type: ignore[assignment]
             if skip_key not in (kd := (k.decode() if isinstance(k, bytes) else k))
         ]
 

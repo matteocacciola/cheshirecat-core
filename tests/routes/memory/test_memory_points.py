@@ -12,7 +12,7 @@ from tests.utils import (
 )
 
 
-def test_create_point_wrong_collection(secure_client, secure_client_headers, cheshire_cat):
+async def test_create_point_wrong_collection(secure_client, secure_client_headers, cheshire_cat):
     create_new_user(
         secure_client,
         "/users",
@@ -20,7 +20,7 @@ def test_create_point_wrong_collection(secure_client, secure_client_headers, che
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     req_json = {"content": "Hello dear"}
@@ -30,7 +30,7 @@ def test_create_point_wrong_collection(secure_client, secure_client_headers, che
     assert res.status_code == 400
 
 
-def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
+async def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
     create_new_user(
         secure_client,
         "/users",
@@ -38,7 +38,7 @@ def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat,
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     # create a point
@@ -67,7 +67,7 @@ def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat,
     assert memory["metadata"] == expected_metadata
 
 
-def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+async def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     create_new_user(
         secure_client,
         "/users",
@@ -77,7 +77,7 @@ def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_
     )
     send_file("sample.pdf", "application/pdf", secure_client, secure_client_headers)
 
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
 
     # get point back
     params = {"text": "Mad Hatter"}
@@ -180,7 +180,7 @@ def test_get_collection_points_wrong_collection(secure_client, secure_client_hea
     assert res.status_code == 400
 
 
-def test_get_collection_points(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
+async def test_get_collection_points(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
     create_new_user(
         secure_client,
         "/users",
@@ -188,7 +188,7 @@ def test_get_collection_points(secure_client, secure_client_headers, cheshire_ca
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     # create 100 points
@@ -236,7 +236,7 @@ def test_get_collection_points(secure_client, secure_client_headers, cheshire_ca
     assert points_payloads == expected_payloads
 
 
-def test_get_collection_points_offset(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
+async def test_get_collection_points_offset(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
     create_new_user(
         secure_client,
         "/users",
@@ -244,7 +244,7 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, ches
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     # create 200 points
@@ -305,7 +305,7 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, ches
     assert points_payloads == expected_payloads
 
 
-def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_client_headers, cheshire_cat):
+async def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_client_headers, cheshire_cat):
     create_new_user(
         secure_client,
         "/users",
@@ -313,7 +313,7 @@ def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_client_
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     req_json = {"content": "Hello dear"}
@@ -329,7 +329,7 @@ def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_client_
     assert res.status_code == 400
 
 
-def test_edit_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
+async def test_edit_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
     create_new_user(
         secure_client,
         "/users",
@@ -337,7 +337,7 @@ def test_edit_memory_point(secure_client, secure_client_headers, cheshire_cat, p
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     # create a point

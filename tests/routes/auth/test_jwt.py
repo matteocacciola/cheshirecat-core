@@ -1,7 +1,6 @@
 import os
 import time
 import jwt
-import pytest
 
 from cat.env import get_env
 from cat.auth.permissions import AuthPermission, AuthResource, get_base_permissions
@@ -40,7 +39,6 @@ def test_refuse_issue_jwt(secure_client, client):
     assert json["detail"] == "Invalid Credentials"
 
 
-@pytest.mark.asyncio
 async def test_issue_jwt(secure_client, client, cheshire_cat):
     creds = {"username": "user", "password": new_user_password}
     create_new_user(

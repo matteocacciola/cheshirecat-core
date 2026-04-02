@@ -6,8 +6,6 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, List, Any, Type
 from fastapi import Query
-from langchain_core.caches import InMemoryCache
-from langchain_core.globals import set_llm_cache
 from pydantic import BaseModel, model_serializer
 
 from cat import utils
@@ -22,7 +20,7 @@ from cat.looking_glass.mad_hatter.plugin import Plugin
 from cat.looking_glass.mad_hatter.registry import PluginRegistry
 from cat.looking_glass.models import PluginManifest
 from cat.services.redis_search import RedisSearchService
-from cat.utils import safe_deepcopy, sanitize_permissions
+from cat.utils import safe_deepcopy, sanitize_permissions, set_llm_cache
 
 
 class Plugins(BaseModel):
@@ -248,7 +246,6 @@ async def startup_app(app):
             "permissions": permissions,  # base admin has all permissions, but CHAT
         })
 
-    set_llm_cache(InMemoryCache())
     utils.pod_id()
 
     bill_the_lizard = BillTheLizard()
@@ -258,6 +255,13 @@ async def startup_app(app):
 
     bill_the_lizard.bootstrap_services()
     bill_the_lizard.fastapi_app = app
+
+    # RedisSemanticCache: shared across all Swarm replicas — a near-identical prompt
+    # answered on replica A gets a cache hit on replica B.  score_threshold=0.95 avoids
+    # returning stale answers for semantically similar but meaningfully different prompts.
+    # Placed after bootstrap_services() so the embedder is fully initialised.
+    await set_llm_cache(await bill_the_lizard.embedder())
+
 
     # Start Redis Pub/Sub listener so WebSocket messages are delivered
     # cross-replica in Docker Swarm deployments.  Degrades gracefully to
@@ -299,8 +303,8 @@ async def create_jwt_content(credentials: UserCredentials, redis_search_service:
     username = credentials.username
     password = credentials.password
 
-    # search for user across all agents
-    valid_matches = redis_search_service.search_user_by_credentials(username, password)
+    # search for user across all agents — async so the Lua script doesn't block the event loop
+    valid_matches = await redis_search_service.search_user_by_credentials(username, password)
     if not valid_matches:
         # Invalid username or password
         # wait a little to avoid brute force attacks

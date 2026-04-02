@@ -184,7 +184,7 @@ def test_update_user(secure_client, secure_client_headers):
         assert d["permissions"] == {"UPLOAD": ["WRITE"]}
 
 
-def test_delete_user(secure_client, secure_client_headers):
+async def test_delete_user(secure_client, secure_client_headers):
     # delete unexisting user
     response = secure_client.delete("/users/non_existent_id", headers=secure_client_headers)
     assert response.status_code == 404
@@ -212,7 +212,7 @@ def test_delete_user(secure_client, secure_client_headers):
     assert len(data) == 0
 
     # check there is no conversation related to the user
-    conversations = crud_conversations.get_conversations_attributes(agent_id=agent_id, user_id=user_id)
+    conversations = await crud_conversations.get_conversations_attributes(agent_id=agent_id, user_id=user_id)
     assert conversations == []
 
 

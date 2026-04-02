@@ -87,3 +87,6 @@ extend-ignore = ["E722", "F821", "E741"]
 
 [tool.uv]
 package = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

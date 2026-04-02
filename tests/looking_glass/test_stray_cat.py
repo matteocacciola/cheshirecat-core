@@ -17,7 +17,6 @@ def test_stray_initialization(stray_no_memory):
     assert isinstance(stray_no_memory.working_memory, WorkingMemory)
 
 
-@pytest.mark.asyncio
 async def test_stray_nlp(lizard, stray_no_memory):
     agent_input = AgenticWorkflowTask(
         user_prompt="hey",
@@ -34,7 +33,6 @@ async def test_stray_nlp(lizard, stray_no_memory):
     assert isinstance(embedding[0][0], float)
 
 
-@pytest.mark.asyncio
 async def test_stray_call(secure_client, stray_no_memory):
     await crud_users.create_user(
         stray_no_memory.agent_key,
@@ -72,7 +70,6 @@ async def test_stray_call(secure_client, stray_no_memory):
     assert isinstance(why, MessageWhy)
 
 
-@pytest.mark.asyncio
 async def test_stray_recall_all_memories(secure_client, secure_client_headers, stray, lizard):
     send_file("sample.pdf", "application/pdf", secure_client, secure_client_headers)
 
@@ -87,7 +84,6 @@ async def test_stray_recall_all_memories(secure_client, secure_client_headers, s
         assert isinstance(mem.vector, list)
 
 
-@pytest.mark.asyncio
 async def test_stray_recall_by_metadata(secure_client, secure_client_headers, stray, lizard):
     content_type = "application/pdf"
     query = (await lizard.embedder()).embed_query("late")
@@ -117,7 +113,6 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
         assert mem.document.metadata["source"] == file_name
 
 
-@pytest.mark.asyncio
 async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray):
     await crud_users.create_user(
         stray.agent_key,

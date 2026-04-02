@@ -41,10 +41,10 @@ def test_upload_memory_check_mimetype(secure_client, secure_client_headers):
 
 
 # upload memory with a different embedder
-def test_upload_memory_check_embedder(secure_client, secure_client_headers, cheshire_cat):
+async def test_upload_memory_check_embedder(secure_client, secure_client_headers, cheshire_cat):
     # Create fake memory
     another_embedder = "AnotherEmbedder"
-    fake_memory = get_fake_memory_export(secure_client, embedder_name=another_embedder)
+    fake_memory = await get_fake_memory_export(secure_client, embedder_name=another_embedder)
 
     response = secure_client.post(
         "/rabbithole/memory/",
@@ -60,10 +60,10 @@ def test_upload_memory_check_embedder(secure_client, secure_client_headers, ches
     assert collections_n_points[str(VectorMemoryType.DECLARATIVE)] == 0
 
 
-def test_upload_memory_check_dimensionality(secure_client, secure_client_headers, cheshire_cat):
+async def test_upload_memory_check_dimensionality(secure_client, secure_client_headers, cheshire_cat):
     # Create fake memory
     wrong_dim = 9
-    fake_memory = get_fake_memory_export(secure_client, dim=wrong_dim)
+    fake_memory = await get_fake_memory_export(secure_client, dim=wrong_dim)
 
     response = secure_client.post(
         "/rabbithole/memory/",

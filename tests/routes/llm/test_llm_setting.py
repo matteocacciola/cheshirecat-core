@@ -1,6 +1,4 @@
 from json import dumps
-
-import pytest
 from fastapi.encoders import jsonable_encoder
 
 from cat.services.service_factory import ServiceFactory
@@ -8,7 +6,6 @@ from cat.services.service_factory import ServiceFactory
 from tests.utils import create_new_user, new_user_password, agent_id
 
 
-@pytest.mark.asyncio
 async def test_get_all_llm_settings(secure_client, secure_client_headers, cheshire_cat):
     sf = ServiceFactory(
         agent_key=cheshire_cat.agent_key,

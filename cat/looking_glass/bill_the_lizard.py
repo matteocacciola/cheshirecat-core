@@ -14,7 +14,7 @@ from cat.rabbit_hole import RabbitHole
 from cat.services.factory.auth_handler import CoreAuthHandler
 from cat.services.mixin import OrchestratorMixin
 from cat.services.websocket_manager import WebSocketManager
-from cat.utils import singleton, safe_deepcopy, run_sync_or_async
+from cat.utils import singleton, safe_deepcopy, run_sync_or_async, set_llm_cache
 
 
 @singleton
@@ -234,7 +234,10 @@ class BillTheLizard(OrchestratorMixin):
                 # limit concurrent embeddings to avoid overwhelming resources
                 semaphore = asyncio.Semaphore(5)  # Max 5 concurrent
                 await asyncio.gather(*[embed_with_limit(entry) for entry in stored_files_by_ccat])
-                success = True
+
+            await set_llm_cache(embedder)
+
+            success = True
         except Exception as e:
             log.error(f"Error embedding all stored files: {e}")
 

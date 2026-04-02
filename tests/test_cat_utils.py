@@ -50,7 +50,6 @@ def test_load_settings_raise_exception(stray_no_memory):
         assert e == "get_plugin() can only be called from within a plugin"
 
 
-@pytest.mark.asyncio
 async def test_load_settings_no_agent_key_from_stray_cat(stray_no_memory):
     original_fnc = utils.inspect_calling_folder
     utils.inspect_calling_folder = lambda: "base_plugin"
@@ -61,7 +60,6 @@ async def test_load_settings_no_agent_key_from_stray_cat(stray_no_memory):
     utils.inspect_calling_folder = original_fnc
 
 
-@pytest.mark.asyncio
 async def test_load_settings_no_agent_key_from_cheshire_cat(cheshire_cat):
     original_fnc = utils.inspect_calling_folder
     utils.inspect_calling_folder = lambda: "base_plugin"

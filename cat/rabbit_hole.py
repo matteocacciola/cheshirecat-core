@@ -154,7 +154,7 @@ class RabbitHole:
             # store in file storage
             if store_file and not is_url:
                 chat_id = self.stray.id if self.stray else None
-                self.cat.save_file(file_bytes, content_type, source, chat_id)
+                await self.cat.save_file(file_bytes, content_type, source, chat_id)
 
             # notify client
             await self._send_notification_message(f"Finished reading {source}, I made {len(docs)} thoughts on it.")

@@ -33,7 +33,7 @@ def test_memory_recall_without_query_error(secure_client, secure_client_headers)
 
 
 # search with query
-def test_memory_recall_success(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+async def test_memory_recall_success(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     user = create_new_user(
         secure_client,
         "/users",
@@ -45,7 +45,7 @@ def test_memory_recall_success(secure_client, secure_client_headers, mocked_defa
     num_messages = 3
     send_n_websocket_messages(num_messages, secure_client, query_params={"user_id": user["id"]})
 
-    user_db = crud_users.get_user_by_username(agent_id, "user")
+    user_db = await crud_users.get_user_by_username(agent_id, "user")
     assert user_db["username"] == user["username"]
 
     # recall
@@ -57,7 +57,7 @@ def test_memory_recall_success(secure_client, secure_client_headers, mocked_defa
 
 
 # search with query and k
-def test_memory_recall_with_k_success(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+async def test_memory_recall_with_k_success(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
     user = create_new_user(
         secure_client,
         "/users",
@@ -69,7 +69,7 @@ def test_memory_recall_with_k_success(secure_client, secure_client_headers, mock
     num_messages = 6
     send_n_websocket_messages(num_messages, secure_client, query_params={"user_id": user["id"]})
 
-    user_db = crud_users.get_user_by_username(agent_id, "user")
+    user_db = await crud_users.get_user_by_username(agent_id, "user")
     assert user_db["username"] == user["username"]
 
     # recall at max k memories

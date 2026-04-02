@@ -1,4 +1,3 @@
-import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
 from cat.db.models import generate_uuid
@@ -18,7 +17,6 @@ async def create_working_memory_with_convo_history():
     return working_memory
 
 
-@pytest.mark.asyncio
 async def test_create_working_memory():
     wm = await WorkingMemory.create(agent_id=agent_id, user_id=generate_uuid(), chat_id=chat_id)
     assert wm.history == []
@@ -27,7 +25,6 @@ async def test_create_working_memory():
     assert len(wm.model_interactions) == 0
 
 
-@pytest.mark.asyncio
 async def test_update_history():
     wm = await create_working_memory_with_convo_history()
 
@@ -43,7 +40,6 @@ async def test_update_history():
     assert wm.history[1].content.text == "Meow"
 
 
-@pytest.mark.asyncio
 async def test_langchainfy_chat_history():
     wm = await create_working_memory_with_convo_history()
     langchain_convo = [h.langchainfy() for h in wm.history[-5:]]
@@ -60,7 +56,6 @@ async def test_langchainfy_chat_history():
     assert langchain_convo[1].content == "Meow"
 
 
-@pytest.mark.asyncio
 async def test_working_memory_as_dictionary_object():
     wm = await WorkingMemory.create(agent_id=agent_id, user_id=generate_uuid(), chat_id=chat_id)
     wm.a = "a"

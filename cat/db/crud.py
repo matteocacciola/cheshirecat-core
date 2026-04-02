@@ -127,11 +127,11 @@ async def store(
     try:
         formatted = serialize_to_redis_json(value) if isinstance(value, (dict, list)) else value
         pipeline = get_db().pipeline()
-        pipeline.json().set(key, path, formatted, nx=nx, xx=xx)
+        pipeline.json().set(key, path, formatted, nx=nx, xx=xx)  # type: ignore[arg-type]
         if expire:
-            pipeline.expire(key, expire)
+            await pipeline.expire(key, expire)
 
-        if not await pipe.execute():
+        if not await pipeline.execute():
             return None
 
         log.debug(f"Stored key {key}, value {value}, TTL: {expire}")
@@ -197,10 +197,10 @@ async def destroy(key_pattern: str) -> int:
 
 def get_db() -> aioredis.Redis:
     """
-    Get the Redis database connection.
+    Return the shared async Redis client (redis.asyncio).
 
     Returns:
-        Redis database connection.
+        async Redis database connection.
     """
     return get_db_base()
 

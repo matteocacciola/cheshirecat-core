@@ -1,10 +1,7 @@
-import pytest
-
 from cat import EmbedderSettings
 from cat.services.service_factory import ServiceFactory
 
 
-@pytest.mark.asyncio
 async def test_get_config_class_from_adapter(lizard):
     embedder = await lizard.embedder()
     sf = ServiceFactory(

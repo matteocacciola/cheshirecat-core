@@ -14,12 +14,15 @@ from typing import Dict, List, Type, TypeVar, Any, Callable, Union, Generic, Tup
 from urllib.parse import urlparse
 import aiofiles
 import filetype
+from langchain_community.cache import RedisSemanticCache
 from typing_extensions import deprecated
 import requests
 from PIL import Image
 from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.globals import set_llm_cache as set_llm_cache_langchain
 from pydantic import BaseModel, ConfigDict
 
+from cat.db.database import get_db_connection_string
 from cat.log import log
 
 _T = TypeVar("_T")
@@ -297,7 +300,7 @@ def inspect_calling_folder() -> str:
     return plugin_suffix.split("/")[0]
 
 
-def inspect_calling_agent() -> Union["CheshireCat", "BillTheLizard"]:
+def inspect_calling_agent() -> Any:
     instance = None
 
     # get the stack of calls
@@ -605,3 +608,13 @@ def get_nlp_object_name(nlp_object: Any, default: str) -> str:
         name = name.replace(v, "_")
 
     return name.lower()
+
+
+async def set_llm_cache(embedder):
+    set_llm_cache_langchain(
+        RedisSemanticCache(
+            redis_url=get_db_connection_string(),
+            embedding=embedder,
+            score_threshold=0.95,
+        )
+    )

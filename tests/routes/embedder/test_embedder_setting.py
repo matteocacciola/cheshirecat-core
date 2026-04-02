@@ -1,7 +1,6 @@
 import asyncio
 from json import dumps
 from unittest.mock import patch
-import pytest
 from fastapi.encoders import jsonable_encoder
 
 from cat.services.memory.models import VectorMemoryType
@@ -10,7 +9,6 @@ from cat.services.service_factory import ServiceFactory
 from tests.utils import send_file, api_key, chat_id
 
 
-@pytest.mark.asyncio
 async def test_get_all_embedder_settings(secure_client, secure_client_headers, lizard):
     sf = ServiceFactory(
         agent_key=lizard.agent_key,
@@ -89,7 +87,6 @@ def test_upsert_embedder_settings(secure_client, secure_client_headers):
     assert json["scheme"]["languageEmbedderName"] == new_embedder
 
 
-@pytest.mark.asyncio
 async def test_upsert_embedder_settings_updates_collections(secure_client, lizard):
     agent_id = "test_embedder_settings_updates_collections"
     cheshire_cat = await lizard.create_cheshire_cat(agent_id)
@@ -173,7 +170,6 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
     assert len(files) == 0
 
 
-@pytest.mark.asyncio
 async def test_upsert_embedder_settings_with_episodic_memory_without_conversation(secure_client, lizard):
     agent_id = "test_embedder_settings_updates_collections"
     cheshire_cat = await lizard.create_cheshire_cat(agent_id)

@@ -47,7 +47,6 @@ def test_instantiation_discovery_for_cheshirecat(cheshire_cat):
 
 
 # installation tests will be run for both flat and nested plugin
-@pytest.mark.asyncio
 @pytest.mark.parametrize("plugin_is_flat", [True, False])
 async def test_plugin_install(lizard, plugin_is_flat):
     plugin_manager = lizard.plugin_manager
@@ -109,7 +108,6 @@ async def test_plugin_install(lizard, plugin_is_flat):
     assert "mock_plugin" in active_plugins
 
 
-@pytest.mark.asyncio
 async def test_plugin_uninstall_non_existent(lizard):
     plugin_manager = lizard.plugin_manager
     core_plugins = plugin_manager.get_core_plugins_ids
@@ -126,7 +124,6 @@ async def test_plugin_uninstall_non_existent(lizard):
         assert p in core_plugins
 
 
-@pytest.mark.asyncio
 @pytest.mark.parametrize("plugin_is_flat", [True, False])
 async def test_plugin_uninstall(lizard, plugin_is_flat):
     plugin_manager = lizard.plugin_manager

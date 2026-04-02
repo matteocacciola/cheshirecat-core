@@ -1,6 +1,5 @@
 import uuid
 from qdrant_client.http.models import Filter, FieldCondition, MatchValue
-import pytest
 
 from cat.db.cruds import (
     settings as crud_settings,
@@ -19,10 +18,10 @@ async def checks_on_agent_create(lizard, new_agent_id):
     settings = await crud_settings.get_settings(new_agent_id)
     assert len(settings) > 0
 
-    histories = get_db().get(crud_conversations.format_key(new_agent_id, "*", "*"))
+    histories = await get_db().get(crud_conversations.format_key(new_agent_id, "*", "*"))
     assert histories is None
 
-    plugins = crud_plugins.get_settings(new_agent_id)
+    plugins = await crud_plugins.get_settings(new_agent_id)
     assert plugins == {}
 
     users = await crud_users.get_users(new_agent_id)
@@ -65,7 +64,6 @@ async def checks_on_agent_destroy(cheshire_cat):
     assert len(points) == 0
 
 
-@pytest.mark.asyncio
 async def test_factory_reset_success(client, lizard, cheshire_cat):
     # check that the vector database is not empty
     vmh = await cheshire_cat.vector_memory_handler()
@@ -100,7 +98,6 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
     assert len(c.collections) == 3
 
 
-@pytest.mark.asyncio
 async def test_agent_destroy_success(client, lizard, cheshire_cat):
     creds = {
         "username": "admin",
@@ -122,13 +119,13 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
     settings = await crud_settings.get_settings(cheshire_cat.agent_key)
     assert len(settings) == 0
 
-    conversations = get_db().get(crud_conversations.format_key(cheshire_cat.agent_key, "*", "*"))
+    conversations = await get_db().get(crud_conversations.format_key(cheshire_cat.agent_key, "*", "*"))
     assert conversations is None
 
-    plugins = crud_plugins.get_settings(cheshire_cat.agent_key)
+    plugins = await crud_plugins.get_settings(cheshire_cat.agent_key)
     assert plugins == {}
 
-    users = crud_users.get_users(cheshire_cat.agent_key)
+    users = await crud_users.get_users(cheshire_cat.agent_key)
     assert users == {}
 
     qdrant_filter = Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=cheshire_cat.agent_key))])
@@ -139,7 +136,6 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
     assert count_response.count == 0
 
 
-@pytest.mark.asyncio
 async def test_agent_reset_success(client, lizard, cheshire_cat):
     creds = {
         "username": "admin",
@@ -152,7 +148,6 @@ async def test_agent_reset_success(client, lizard, cheshire_cat):
     await checks_on_agent_reset(res, client, cheshire_cat.agent_key, lizard)
 
 
-@pytest.mark.asyncio
 async def test_agent_reset_by_new_admin_success(secure_client, client, lizard, cheshire_cat):
     data = create_new_user(
         secure_client,
@@ -165,7 +160,6 @@ async def test_agent_reset_by_new_admin_success(secure_client, client, lizard, c
     await checks_on_agent_reset(res, client, cheshire_cat.agent_key, lizard)
 
 
-@pytest.mark.asyncio
 async def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard, cheshire_cat):
     # create new admin with wrong permissions
     data = create_new_user(
@@ -186,7 +180,6 @@ async def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard
     await checks_on_agent_destroy(cheshire_cat)
 
 
-@pytest.mark.asyncio
 async def test_agent_destroy_error_because_of_not_existing_agent(client, lizard, cheshire_cat):
     creds = {
         "username": "admin",
@@ -206,7 +199,6 @@ async def test_agent_destroy_error_because_of_not_existing_agent(client, lizard,
     await checks_on_agent_destroy(cheshire_cat)
 
 
-@pytest.mark.asyncio
 async def test_agent_create_success(client, lizard):
     creds = {
         "username": "admin",
@@ -231,7 +223,6 @@ async def test_agent_create_success(client, lizard):
     await checks_on_agent_create(lizard, new_agent_id)
 
 
-@pytest.mark.asyncio
 async def test_clone_agent(secure_client, secure_client_headers, lizard, cheshire_cat):
     # First, create a new agent to clone into
     new_agent_id = "test_clone_agent_2"
@@ -297,7 +288,6 @@ async def test_clone_agent(secure_client, secure_client_headers, lizard, cheshir
     assert original_vectors == cloned_vectors
 
 
-@pytest.mark.asyncio
 async def test_reclone_agent(secure_client, secure_client_headers, lizard, cheshire_cat):
     await test_clone_agent(secure_client, secure_client_headers, lizard, cheshire_cat)
 

@@ -249,7 +249,7 @@ class CheshireCat(BotMixin):
 
         log.info(f"Agent id: {self._id}. Embedded {counter} files to the vector memory")
 
-    def save_file(self, file_bytes: bytes, content_type: str, source: str, chat_id: str | None = None):
+    async def save_file(self, file_bytes: bytes, content_type: str, source: str, chat_id: str | None = None):
         """
         Save file to the remote storage handled by the CheshireCat's file manager.
 

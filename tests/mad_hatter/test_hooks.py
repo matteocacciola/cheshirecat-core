@@ -1,5 +1,3 @@
-import pytest
-
 from cat import AgenticWorkflowOutput, CatMessage
 from cat.looking_glass.mad_hatter.decorators.hook import CatHook
 
@@ -13,7 +11,6 @@ def test_hook_discovery(plugin_manager):
         assert h.plugin_id == "mock_plugin"
 
 
-@pytest.mark.asyncio
 async def test_hook_async_priority_execution(stray):
     fake_message = CatMessage(text="Priorities:")
     agent_output = AgenticWorkflowOutput()

@@ -3,7 +3,7 @@ from inspect import iscoroutinefunction
 import os
 import shutil
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
 
 from cat import utils

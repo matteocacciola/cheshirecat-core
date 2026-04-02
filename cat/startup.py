@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from scalar_fastapi import get_scalar_api_reference
 
-from cat.db.database import get_db, get_db
+from cat.db.database import get_db
 from cat.env import get_env
 from cat.exceptions import (
     LoadMemoryException,
@@ -55,7 +55,6 @@ async def lifespan(app: FastAPI):
 
     await shutdown_app(app)
 
-    get_db().close()
     await get_db().aclose()
 
 

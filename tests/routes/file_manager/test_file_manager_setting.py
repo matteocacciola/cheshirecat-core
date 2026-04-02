@@ -1,11 +1,9 @@
 from json import dumps
-import pytest
 from fastapi.encoders import jsonable_encoder
 
 from cat.services.service_factory import ServiceFactory
 
 
-@pytest.mark.asyncio
 async def test_get_all_file_manager_settings(secure_client, secure_client_headers, cheshire_cat):
     sf = ServiceFactory(
         agent_key=cheshire_cat.agent_key,
