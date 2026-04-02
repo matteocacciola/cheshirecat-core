@@ -90,7 +90,7 @@ class StrayCat(BotMixin):
         """Factory method to create a StrayCat instance and its working memory."""
         cat = cls(agent_id, user_data, plugin_manager_generator, stray_id)
         cat.working_memory = await WorkingMemory.create(agent_id=agent_id, user_id=user_data.id, chat_id=cat.id)
-        cat._agentic_workflow = await cls.agentic_workflow()
+        cat._agentic_workflow = await cat.agentic_workflow()
 
         return cat
 
