@@ -170,7 +170,7 @@ class RabbitHole:
                     log.error(f"Failed to send error notification: {notify_error}")
         finally:
             # hook the points after they are stored in the vector memory
-            await self.cat.plugin_manager.execute_hook_async(
+            await self.cat.plugin_manager.execute_hook(
                 "after_rabbithole_stored_documents", source, points, caller=self.stray or self.cat,
             )
 
@@ -295,7 +295,7 @@ class RabbitHole:
             )
 
         # hook the docs before they are stored in the vector memory
-        docs = await plugin_manager.execute_hook_async("before_rabbithole_stores_documents", docs, caller=self.stray or self.cat)
+        docs = await plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, caller=self.stray or self.cat)
 
         # hook the points before they are stored in the vector memory
         valid_documents = list(filter(lambda doc_: doc_.page_content.strip(), docs))
@@ -337,7 +337,7 @@ class RabbitHole:
         plugin_manager = self.cat.plugin_manager
 
         # do something on the docs before they are split
-        docs = await plugin_manager.execute_hook_async("before_rabbithole_splits_documents", docs, caller=self.stray or self.cat)
+        docs = await plugin_manager.execute_hook("before_rabbithole_splits_documents", docs, caller=self.stray or self.cat)
 
         # split docs
         chunker = await self.cat.chunker()

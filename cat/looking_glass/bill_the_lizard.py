@@ -2,7 +2,6 @@ import asyncio
 from typing import List, Dict
 from fastapi import FastAPI
 
-from cat import run_sync_or_async
 from cat.db import crud
 from cat.db.cruds import settings as crud_settings, plugins as crud_plugins
 from cat.db.database import DEFAULT_SYSTEM_KEY, DEFAULT_CONVERSATIONS_KEY
@@ -15,7 +14,7 @@ from cat.rabbit_hole import RabbitHole
 from cat.services.factory.auth_handler import CoreAuthHandler
 from cat.services.mixin import OrchestratorMixin
 from cat.services.websocket_manager import WebSocketManager
-from cat.utils import singleton, safe_deepcopy
+from cat.utils import singleton, safe_deepcopy, run_sync_or_async
 
 
 @singleton
@@ -54,7 +53,7 @@ class BillTheLizard(OrchestratorMixin):
         self._pending_endpoints = safe_deepcopy(self.plugin_manager.endpoints)
 
         # allows plugins to do something before cat components are loaded
-        self.plugin_manager.execute_hook("before_lizard_bootstrap", caller=self)
+        run_sync_or_async(self.plugin_manager.execute_hook, "before_lizard_bootstrap", caller=self)
 
         # bootstrap bill the lizard
         super().__init__()
@@ -66,7 +65,7 @@ class BillTheLizard(OrchestratorMixin):
 
         self.core_auth_handler = CoreAuthHandler()
 
-        self.plugin_manager.execute_hook("after_lizard_bootstrap", caller=self)
+        run_sync_or_async(self.plugin_manager.execute_hook, "after_lizard_bootstrap", caller=self)
 
     def bootstrap_services(self):
         self.service_provider.bootstrap_services_orchestrator()
@@ -90,7 +89,7 @@ class BillTheLizard(OrchestratorMixin):
 
         ccat = None
         try:
-            ccat = CheshireCat(agent_id)
+            ccat = await CheshireCat.create(agent_id)
             ccat.bootstrap_services()
             if metadata is not None:
                 await crud_settings.upsert_setting_by_name(
@@ -103,7 +102,7 @@ class BillTheLizard(OrchestratorMixin):
             await vmh.initialize(embedder.name, embedder.size)
             await ccat.embed_procedures()
 
-            await self.plugin_manager.execute_hook_async("after_cheshire_cat_creation", ccat, caller=self)
+            await self.plugin_manager.execute_hook("after_cheshire_cat_creation", ccat, caller=self)
 
             return ccat
         except Exception as e:
@@ -171,7 +170,7 @@ class BillTheLizard(OrchestratorMixin):
             log.debug(f"Agent `{agent_id}` has no settings")
             return None
 
-        return CheshireCat(agent_id)
+        return await CheshireCat.create(agent_id)
 
     async def clone_cheshire_cat(self, ccat: CheshireCat, new_agent_id: str) -> CheshireCat:
         """
@@ -239,7 +238,7 @@ class BillTheLizard(OrchestratorMixin):
         except Exception as e:
             log.error(f"Error embedding all stored files: {e}")
 
-        await self.plugin_manager.execute_hook_async(
+        await self.plugin_manager.execute_hook(
             "after_all_cheshire_cats_embedded", success, caller=self,
         )
 
@@ -263,8 +262,8 @@ class BillTheLizard(OrchestratorMixin):
         try:
             plugin_id = self.plugin_manager.install_plugin(plugin_path)
 
-            self.on_plugin_activate(plugin_id)
-            await self.plugin_manager.execute_hook_async(
+            await self.on_plugin_activate(plugin_id)
+            await self.plugin_manager.execute_hook(
                 "lizard_notify_plugin_installation", plugin_id, plugin_path, caller=self,
             )
 
@@ -277,7 +276,7 @@ class BillTheLizard(OrchestratorMixin):
         try:
             # deactivate plugins in the Cheshire Cats
             if plugin_id in self.plugin_manager.active_plugins:
-                self.on_plugin_deactivate(plugin_id)
+                await self.on_plugin_deactivate(plugin_id)
 
             await self.plugin_manager.uninstall_plugin(plugin_id)
         except Exception as e:
@@ -285,7 +284,7 @@ class BillTheLizard(OrchestratorMixin):
             raise e
         finally:
             if dispatch_event:
-                await self.plugin_manager.execute_hook_async(
+                await self.plugin_manager.execute_hook(
                     "lizard_notify_plugin_uninstallation", plugin_id, caller=self,
                 )
 
@@ -293,16 +292,16 @@ class BillTheLizard(OrchestratorMixin):
         # the plugin is active, and evidently I am deactivating it: deactivate it in the Cheshire Cats before
         # deactivating it on a system level
         if plugin_id in self.plugin_manager.active_plugins:
-            self.on_plugin_deactivate(plugin_id)
+            await self.on_plugin_deactivate(plugin_id)
 
         # toggle (activate or deactivate) the plugin
         self.plugin_manager.toggle_plugin(plugin_id)
 
         # if the plugin is now active, activate it in the Cheshire Cats
         if plugin_id in self.plugin_manager.active_plugins:
-            self.on_plugin_activate(plugin_id)
+            await self.on_plugin_activate(plugin_id)
 
-        await self.plugin_manager.execute_hook_async("after_plugin_toggling_on_system", plugin_id, caller=self)
+        await self.plugin_manager.execute_hook("after_plugin_toggling_on_system", plugin_id, caller=self)
 
     def activate_plugin_endpoints(self, plugin_id: str):
         # Store endpoints for later activation
@@ -316,19 +315,19 @@ class BillTheLizard(OrchestratorMixin):
         # the Cheshire Cats to incrementally apply the new settings
         for ccat_id in await crud_plugins.get_agents_plugin_keys(plugin_id):
             # if the plugin is not active for the Cheshire Cat, then skip it
-            if (ccat := self._get_cheshire_cat_on_plugin_event(ccat_id, plugin_id)) is None:
+            if (ccat := await self._get_cheshire_cat_on_plugin_event(ccat_id, plugin_id)) is None:
                 continue
             ccat.plugin_manager.activate_plugin(plugin_id)
 
-    def on_plugin_deactivate(self, plugin_id: str):
+    async def on_plugin_deactivate(self, plugin_id: str):
         # deactivate the endpoints from the plugin
         if endpoints := self.plugin_manager.plugins[plugin_id].endpoints:
             for endpoint in endpoints:
                 endpoint.deactivate(self.fastapi_app)
 
-        for ccat_id in crud_plugins.get_agents_plugin_keys(plugin_id):
+        for ccat_id in await crud_plugins.get_agents_plugin_keys(plugin_id):
             # if the plugin is not active for the Cheshire Cat, then skip it
-            if (ccat := self._get_cheshire_cat_on_plugin_event(ccat_id, plugin_id)) is None:
+            if (ccat := await self._get_cheshire_cat_on_plugin_event(ccat_id, plugin_id)) is None:
                 continue
             ccat.plugin_manager.deactivate_plugin(plugin_id)
 
@@ -344,7 +343,7 @@ class BillTheLizard(OrchestratorMixin):
         Returns:
             None
         """
-        await self.plugin_manager.execute_hook_async("before_lizard_shutdown", caller=self)
+        await self.plugin_manager.execute_hook("before_lizard_shutdown", caller=self)
         if self.websocket_manager:
             await self.websocket_manager.close_connections()
 

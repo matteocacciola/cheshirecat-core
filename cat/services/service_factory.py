@@ -47,16 +47,16 @@ class ServiceFactory:
         }
 
     async def get_config_class_from_adapter(self, obj: Any) -> Type[BaseModel] | None:
-        allowed_classes = self._get_allowed_classes()
+        allowed_classes = await self._get_allowed_classes()
         return next(
             (config_class for config_class in allowed_classes if config_class.pyclass() is type(obj)),
             None
         )
 
-    def get_schemas(self) -> Dict:
+    async def get_schemas(self) -> Dict:
         # schemas contain metadata to let any client know which fields are required to create the class.
         schemas = {}
-        for config_class in self._get_allowed_classes():
+        for config_class in await self._get_allowed_classes():
             schema = config_class.model_json_schema()
             # useful for clients in order to call the correct config endpoints
             schema[self.schema_name] = schema["title"]
@@ -66,7 +66,8 @@ class ServiceFactory:
 
     async def get_from_config_name(self, config_name: str) -> Any:
         # get plugin file manager factory class
-        factory_class = next((cls for cls in self._get_allowed_classes() if cls.__name__ == config_name), None)
+        classes = await self._get_allowed_classes()
+        factory_class = next((cls for cls in classes if cls.__name__ == config_name), None)
         if not factory_class:
             log.warning(
                 f"Class {config_name} not found in the list of allowed classes for setting '{self.setting_category}'"
@@ -83,15 +84,15 @@ class ServiceFactory:
         except:
             return self.default_config_class.get_from_config(self.default_config)
 
-    def _get_allowed_classes(self) -> List[Type[BaseFactoryConfigModel]]:
-        return self._hook_manager.execute_hook(
+    async def _get_allowed_classes(self) -> List[Type[BaseFactoryConfigModel]]:
+        return await self._hook_manager.execute_hook(
             self.factory_allowed_handler_name, [self.default_config_class], caller=None
         )
 
-    def upsert_service(self, service_name: str, payload: Dict) -> Dict:
+    async def upsert_service(self, service_name: str, payload: Dict) -> Dict:
         from cat.services.service_updater import ServiceUpdater
 
-        schemas = self.get_schemas()
+        schemas = await self.get_schemas()
 
         allowed_configurations = list(schemas.keys())
         if service_name not in allowed_configurations:
@@ -105,17 +106,18 @@ class ServiceFactory:
 
     async def get_factory_settings(self) -> GetSettingsResponse:
         saved_settings = await crud_settings.get_settings_by_category(self._agent_key, self.setting_category)
+        schemas = await self.get_schemas()
 
         settings = [GetSettingResponse(
             name=class_name,
             value=saved_settings["value"] if class_name == saved_settings["name"] else {},
             scheme=scheme
-        ) for class_name, scheme in self.get_schemas().items()]
+        ) for class_name, scheme in schemas.items()]
 
         return GetSettingsResponse(settings=settings, selected_configuration=saved_settings["name"])
 
     async def get_factory_setting(self, configuration_name: str) -> GetSettingResponse:
-        schemas = self.get_schemas()
+        schemas = await self.get_schemas()
 
         allowed_configurations = list(schemas.keys())
         if configuration_name not in allowed_configurations:

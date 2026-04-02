@@ -147,4 +147,4 @@ class BotMixin(ContextMixin, ABC):
 
     # each time we access the file handlers, plugins can intervene
     async def file_handlers(self) -> Dict:
-        return await self.mad_hatter.execute_hook_async("rabbithole_instantiates_parsers", {}, caller=self)
+        return await self.mad_hatter.execute_hook("rabbithole_instantiates_parsers", {}, caller=self)

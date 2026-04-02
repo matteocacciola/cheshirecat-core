@@ -7,14 +7,16 @@ from cat.services.service_factory import ServiceFactory
 from tests.utils import api_key
 
 
-def test_get_all_agentic_workflow_settings(secure_client, secure_client_headers, cheshire_cat):
-    agentic_workflow_schemas = ServiceFactory(
+@pytest.mark.asyncio
+async def test_get_all_agentic_workflow_settings(secure_client, secure_client_headers, cheshire_cat):
+    sf = ServiceFactory(
         agent_key=cheshire_cat.agent_key,
         hook_manager=cheshire_cat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_agentic_workflows",
         setting_category="agentic_workflow",
         schema_name="agenticWorkflowName",
-    ).get_schemas()
+    )
+    agentic_workflow_schemas = await sf.get_schemas()
     response = secure_client.get("/agentic_workflow/settings", headers=secure_client_headers)
     json = response.json()
 

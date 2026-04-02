@@ -15,13 +15,14 @@ async def get_chunker_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Chunkers"""
     ccat = info.cheshire_cat
-    return ServiceFactory(
+    sf = ServiceFactory(
         agent_key=ccat.agent_key,
         hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_chunkers",
         setting_category="chunker",
         schema_name="chunkerName",
-    ).get_factory_settings()
+    )
+    return await sf.get_factory_settings()
 
 
 @router.get("/settings/{chunker_name}", response_model=GetSettingResponse)
@@ -31,13 +32,14 @@ async def get_chunker_setting(
 ) -> GetSettingResponse:
     """Get the settings of a specific Chunker"""
     ccat = info.cheshire_cat
-    return ServiceFactory(
+    sf = ServiceFactory(
         agent_key=ccat.agent_key,
         hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_chunkers",
         setting_category="chunker",
         schema_name="chunkerName",
-    ).get_factory_setting(chunker_name)
+    )
+    return await sf.get_factory_setting(chunker_name)
 
 
 @router.put("/settings/{chunker_name}", response_model=UpsertSettingResponse)
@@ -48,12 +50,13 @@ async def upsert_chunker_setting(
 ) -> UpsertSettingResponse:
     """Upsert the settings of a specific Chunker"""
     ccat = info.cheshire_cat
-
-    result = ServiceFactory(
+    sf = ServiceFactory(
         agent_key=ccat.agent_key,
         hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_chunkers",
         setting_category="chunker",
         schema_name="chunkerName",
-    ).upsert_service(chunker_name, payload)
+    )
+
+    result = await sf.upsert_service(chunker_name, payload)
     return UpsertSettingResponse(**result)

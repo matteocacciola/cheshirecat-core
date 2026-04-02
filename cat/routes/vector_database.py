@@ -17,8 +17,8 @@ async def get_vector_databases_settings(
     """Get the list of the Vector Databases settings and their configuration schemas"""
     ccat = info.cheshire_cat
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[arg-type]
+        hook_manager=ccat.plugin_manager,  # type: ignore[arg-type]
         factory_allowed_handler_name="factory_allowed_vector_databases",
         setting_category="vector_database",
         schema_name="vectorDatabaseName",
@@ -36,8 +36,8 @@ async def get_vector_database_settings(
     """Get settings and scheme of the specified Vector Database"""
     ccat = info.cheshire_cat
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[arg-type]
+        hook_manager=ccat.plugin_manager,  # type: ignore[arg-type]
         factory_allowed_handler_name="factory_allowed_vector_databases",
         setting_category="vector_database",
         schema_name="vectorDatabaseName",
@@ -59,15 +59,16 @@ async def upsert_vector_database_setting(
 
     previous_vector_db = await ccat.vector_memory_handler()
 
-    result = ServiceFactory(
+    sf = ServiceFactory(
         agent_key=ccat.agent_key,
         hook_manager=ccat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_vector_databases",
         setting_category="vector_database",
         schema_name="vectorDatabaseName",
-    ).upsert_service(vector_database_name, payload)
+    )
+    result = await sf.upsert_service(vector_database_name, payload)
 
-    current_vector_db = await ccat.vector_memory_handler()
+    current_vector_db = await ccat.vector_memory_handler()  # type: ignore[assignment]
     if previous_vector_db != current_vector_db:
         background_tasks.add_task(ccat.transfer_vector_points_from, previous_vector_db)  # type: ignore[arg-type]
 

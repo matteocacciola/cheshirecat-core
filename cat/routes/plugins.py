@@ -110,7 +110,7 @@ async def upsert_cheshirecat_plugin_settings(
         raise CustomValidationException("\n".join(list(map(lambda x: x["msg"], e.errors()))))
 
     final_settings = await plugin.save_settings(payload, ccat.agent_key)
-    await ccat.plugin_manager.execute_hook_async("after_plugin_settings_update", plugin_id, final_settings, caller=ccat)
+    await ccat.plugin_manager.execute_hook("after_plugin_settings_update", plugin_id, final_settings, caller=ccat)
 
     return GetSettingResponse(name=plugin_id, value=final_settings)
 
@@ -134,7 +134,7 @@ async def reset_cheshirecat_plugin_settings(
         raise CustomNotFoundException("Plugin not found")
 
     await crud_plugins.set_setting(ccat.agent_key, plugin_id, factory_settings)
-    await ccat.plugin_manager.execute_hook_async("after_plugin_settings_update", plugin_id, factory_settings, caller=ccat)
+    await ccat.plugin_manager.execute_hook("after_plugin_settings_update", plugin_id, factory_settings, caller=ccat)
 
     return GetSettingResponse(name=plugin_id, value=factory_settings)
 

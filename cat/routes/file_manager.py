@@ -44,13 +44,14 @@ async def get_file_managers_settings(
 ) -> GetSettingsResponse:
     """Get the list of the File Managers and their settings"""
     ccat = info.cheshire_cat
-    return ServiceFactory(
+    sf = ServiceFactory(
         agent_key=ccat.agent_key,  # type: ignore[arg-type]
         hook_manager=ccat.plugin_manager,  # type: ignore[arg-type]
         factory_allowed_handler_name="factory_allowed_file_managers",
         setting_category="file_manager",
         schema_name="fileManagerName",
-    ).get_factory_settings()
+    )
+    return await sf.get_factory_settings()
 
 
 @router.get("/settings/{file_manager_name}", response_model=GetSettingResponse)
@@ -60,13 +61,14 @@ async def get_file_manager_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified File Manager"""
     ccat = info.cheshire_cat
-    return ServiceFactory(
+    sf = ServiceFactory(
         agent_key=ccat.agent_key,  # type: ignore[arg-type]
         hook_manager=ccat.plugin_manager,  # type: ignore[arg-type]
         factory_allowed_handler_name="factory_allowed_file_managers",
         setting_category="file_manager",
         schema_name="fileManagerName",
-    ).get_factory_setting(file_manager_name)
+    )
+    return await sf.get_factory_setting(file_manager_name)
 
 
 @router.put("/settings/{file_manager_name}", response_model=UpsertSettingResponse)
@@ -81,13 +83,15 @@ async def upsert_file_manager_setting(
 
     previous_file_manager = await ccat.file_manager()  # type: ignore[arg-type]
 
-    result = ServiceFactory(
+    sf = ServiceFactory(
         agent_key=ccat.agent_key,  # type: ignore[arg-type]
         hook_manager=ccat.plugin_manager,  # type: ignore[arg-type]
         factory_allowed_handler_name="factory_allowed_file_managers",
         setting_category="file_manager",
         schema_name="fileManagerName",
-    ).upsert_service(file_manager_name, payload)
+    )
+
+    result = await sf.upsert_service(file_manager_name, payload)
 
     current_file_manager = await ccat.file_manager()  # type: ignore[assignment]
     if previous_file_manager != current_file_manager:

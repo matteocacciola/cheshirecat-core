@@ -7,14 +7,16 @@ from cat.services.service_factory import ServiceFactory
 from tests.utils import api_key
 
 
-def test_get_all_auth_handler_settings(secure_client, secure_client_headers, cheshire_cat):
-    auth_handler_schemas = ServiceFactory(
+@pytest.mark.asyncio
+async def test_get_all_auth_handler_settings(secure_client, secure_client_headers, cheshire_cat):
+    sf = ServiceFactory(
         agent_key=cheshire_cat.agent_key,
         hook_manager=cheshire_cat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_auth_handlers",
         setting_category="auth_handler",
         schema_name="authorizatorName",
-    ).get_schemas()
+    )
+    auth_handler_schemas = await sf.get_schemas()
     response = secure_client.get("/auth_handler/settings", headers=secure_client_headers)
     json = response.json()
 

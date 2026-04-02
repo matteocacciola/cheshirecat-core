@@ -6,7 +6,6 @@ import uuid
 from io import BytesIO
 from typing import Dict, List, Callable
 
-from cat import run_sync_or_async
 from cat.auth.permissions import AuthUserInfo
 from cat.db.cruds import (
     settings as crud_settings,
@@ -52,16 +51,24 @@ class CheshireCat(BotMixin):
 
         # instantiate plugin manager (loads all plugins' hooks and tools)
         self.plugin_manager = MadHatter(self.agent_key)
-        run_sync_or_async(self.plugin_manager.discover_plugins)
+
+    @classmethod
+    async def create(cls, agent_id: str) -> "CheshireCat":
+        """Factory method to create a CheshireCat instance."""
+        cat = cls(agent_id)
+
+        await cat.plugin_manager.discover_plugins()
 
         # allows plugins to do something before cat components are loaded
-        self.plugin_manager.execute_hook("before_cat_bootstrap", caller=self)
+        await cat.plugin_manager.execute_hook("before_cat_bootstrap", caller=cat)
 
-        # bootstrap cat
-        super().__init__()
+        # bootstrap cat — call the parent class __init__ explicitly
+        BotMixin.__init__()
 
         # allows plugins to do something after the cat bootstrap is complete
-        self.plugin_manager.execute_hook("after_cat_bootstrap", caller=self)
+        await cat.plugin_manager.execute_hook("after_cat_bootstrap", caller=cat)
+
+        return cat
 
     def __eq__(self, other: "CheshireCat") -> bool:
         """Check if two cats are equal."""
@@ -280,7 +287,7 @@ class CheshireCat(BotMixin):
         await vmh.delete_tenant_points(str(VectorMemoryType.PROCEDURAL))
         await self.embed_procedures()
 
-        await self.plugin_manager.execute_hook_async("after_plugin_toggling_on_agent", plugin_id, caller=self)
+        await self.plugin_manager.execute_hook("after_plugin_toggling_on_agent", plugin_id, caller=self)
 
     async def _find_stray_cat(self, chat_id: str) -> StrayCat | None:
         """Finds a stray cat by chat id.
@@ -357,7 +364,7 @@ class CheshireCat(BotMixin):
             log.error(f"Error while transferring files from previous file manager: {e}")
             success = False
 
-        await self.plugin_manager.execute_hook_async("after_file_manager_transfer_on_agent", success, caller=self)
+        await self.plugin_manager.execute_hook("after_file_manager_transfer_on_agent", success, caller=self)
 
     async def transfer_vector_points_from(self, previous_vector_memory_handler: BaseVectorDatabaseHandler):
         vmh = await self.vector_memory_handler()
@@ -376,7 +383,7 @@ class CheshireCat(BotMixin):
             log.error(f"Error while transferring vector points from previous vector memory handler: {e}")
             success = False
 
-        await self.plugin_manager.execute_hook_async("after_vector_memory_transfer_on_agent", success, caller=self)
+        await self.plugin_manager.execute_hook("after_vector_memory_transfer_on_agent", success, caller=self)
 
     @property
     def agent_key(self) -> str:
