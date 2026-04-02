@@ -135,7 +135,7 @@ async def encapsulate_each_test(request, monkeypatch):
 @pytest_asyncio.fixture(scope="function")
 async def lizard(encapsulate_each_test):
     l = BillTheLizard()
-    l.bootstrap_services()
+    await l.bootstrap()
     l.fastapi_app = grinning_cat_api
     yield l
 

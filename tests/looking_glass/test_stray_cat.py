@@ -1,5 +1,3 @@
-import pytest
-
 from cat import AgenticWorkflowTask
 from cat.db.cruds import users as crud_users
 from cat.looking_glass import StrayCat

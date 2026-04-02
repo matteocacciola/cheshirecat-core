@@ -51,7 +51,7 @@ class BaseVectorDatabaseHandler(ABC):
     """
     Base class for vector database handlers.
     """
-    _agent_id: str = None
+    _agent_id: str = None  # type: ignore[assignment]
 
     def __init__(self, save_memory_snapshots: bool = False):
         self.save_memory_snapshots = save_memory_snapshots
@@ -169,7 +169,7 @@ class BaseVectorDatabaseHandler(ABC):
         collection_name: str,
         content: str,
         vector: Iterable,
-        metadata: Dict = None,
+        metadata: Dict = None,  # type: ignore[assignment]
         id_point: str | None = None,
         **kwargs,
     ) -> PointStruct | None:
@@ -551,7 +551,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             log.error(f"Qdrant does not respond to {self.qdrant_host}:{port}")
             raise e
 
-    def _eq(self, other: "QdrantHandler") -> bool:
+    def _eq(self, other: "QdrantHandler") -> bool:  # type: ignore[override]
         return (
                 self.client.__class__.__name__ == other.__class__.__name__
                 and self.qdrant_https == other.qdrant_https
@@ -632,11 +632,11 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     async def _check_embedding_size(self, embedder_name: str, embedder_size: int, collection_name: str) -> bool:
         # having the same size does not necessarily imply being the same embedder
         # having vectors with the same size but from different embedder in the same vector space is wrong
-        collection_vector_size = (await self._client.get_collection(collection_name=collection_name)).config.params.vectors.size
+        collection_vector_size = (await self._client.get_collection(collection_name=collection_name)).config.params.vectors.size  # type: ignore[attr-defined]
         same_size = collection_vector_size == embedder_size
         local_alias = self._get_local_alias(embedder_name, collection_name)
 
-        existing_aliases = (await self._client.get_collection_aliases(collection_name=collection_name)).aliases
+        existing_aliases = (await self._client.get_collection_aliases(collection_name=collection_name)).aliases  # type: ignore[attr-defined]
 
         if same_size and existing_aliases and local_alias == existing_aliases[0].alias_name:
             log.debug(f"Collection `{collection_name}` for the agent `{self.agent_id}` has the same embedder")
@@ -649,7 +649,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         log.warning(f"Creating collection `{collection_name}` for the agent `{self.agent_id}`...")
 
         try:
-            await self._client.create_collection(
+            await self._client.create_collection(  # type: ignore[attr-defined]
                 collection_name=collection_name,
                 vectors_config=VectorParams(size=embedder_size, distance=Distance.COSINE),
                 # hybrid mode: original vector on Disk, quantized vector in RAM
@@ -670,7 +670,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         alias_name = self._get_local_alias(embedder_name, collection_name)
         log.warning(f"Creating alias `{alias_name}` for collection `{collection_name}` and the agent `{self.agent_id}`...")
         try:
-            await self._client.update_collection_aliases(
+            await self._client.update_collection_aliases(  # type: ignore[attr-defined]
                 change_aliases_operations=[
                     CreateAliasOperation(
                         create_alias=CreateAlias(
@@ -682,7 +682,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             )
         except Exception as e:
             log.error(f"Error creating collection alias `{alias_name}` for collection `{collection_name}` and the agent `{self.agent_id}`: {e}")
-            await self._client.delete_collection(collection_name)
+            await self._client.delete_collection(collection_name)  # type: ignore[attr-defined]
             log.error(f"Collection `{collection_name}` for the agent `{self.agent_id}` deleted")
             raise e
 
@@ -690,7 +690,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         if self.is_db_remote():
             log.warning(f"Creating payload index for collection `{collection_name}` and the agent `{self.agent_id}`...")
             try:
-                await self._client.create_payload_index(
+                await self._client.create_payload_index(  # type: ignore[attr-defined]
                     collection_name=collection_name,
                     field_name="tenant_id",
                     field_schema=PayloadSchemaType.KEYWORD
@@ -701,15 +701,15 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     async def create_hybrid_collection(
         self, collection_name: str, dense_vector_config_name: str, sparse_vector_config_name: str
     ):
-        if await self._client.collection_exists(collection_name):
+        if await self._client.collection_exists(collection_name):  # type: ignore[attr-defined]
             return
 
         embedding_size = (
-            await self._client.get_collection(collection_name=str(VectorMemoryType.DECLARATIVE))
+            await self._client.get_collection(collection_name=str(VectorMemoryType.DECLARATIVE))  # type: ignore[attr-defined]
         ).config.params.vectors.size
 
         try:
-            await self._client.create_collection(
+            await self._client.create_collection(  # type: ignore[attr-defined]
                 collection_name=collection_name,
                 vectors_config={
                     dense_vector_config_name: VectorParams(
@@ -729,7 +729,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         if self.is_db_remote():
             log.warning(f"Creating payload index for collection `{collection_name}` and the agent `{self.agent_id}`...")
             try:
-                await self._client.create_payload_index(
+                await self._client.create_payload_index(  # type: ignore[attr-defined]
                     collection_name=collection_name,
                     field_name="tenant_id",
                     field_schema=PayloadSchemaType.KEYWORD
@@ -737,8 +737,9 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             except Exception as e:
                 log.error(f"Error when creating a schema index: {e}")
 
+
     async def close(self):
-        if self._client and not self._client._client.closed:
+        if self._client and not self._client._client.closed:  # type: ignore[attr-defined]
             await self._client.close()
 
     async def delete_collection(self, collection_name: str, timeout: int | None = None):
@@ -749,7 +750,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             collection_name: Name of the collection to delete
             timeout: Optional timeout for the operation
         """
-        await self._client.delete_collection(collection_name=collection_name, timeout=timeout)
+        await self._client.delete_collection(collection_name=collection_name, timeout=timeout)  # type: ignore[attr-defined]
         log.warning(f"Collection `{collection_name}` for the agent `{self.agent_id}` deleted")
 
     # dump collection on disk before deleting
@@ -758,12 +759,12 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         if not self.is_db_remote():
             return
 
-        host = self._client._client._host
-        port = self._client._client._port
+        host = self._client._client._host  # type: ignore[attr-defined]
+        port = self._client._client._port  # type: ignore[attr-defined]
 
         os.makedirs(folder, exist_ok=True)
 
-        snapshot_info = await self._client.create_snapshot(collection_name=collection_name)
+        snapshot_info = await self._client.create_snapshot(collection_name=collection_name)  # type: ignore[attr-defined]
         snapshot_url_in = (
             "http://"
             + str(host)
@@ -776,7 +777,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         )
         snapshot_url_out = os.path.join(folder, snapshot_info.name)
         # rename snapshots for an easier restore in the future
-        alias = (await self._client.get_collection_aliases(collection_name=collection_name)).aliases[0].alias_name
+        alias = (await self._client.get_collection_aliases(collection_name=collection_name)).aliases[0].alias_name  # type: ignore[attr-defined]
 
         async with httpx.AsyncClient() as client:
             response = await client.get(snapshot_url_in)
@@ -786,8 +787,8 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         new_name = os.path.join(folder, alias.replace("/", "-") + ".snapshot")
         os.rename(snapshot_url_out, new_name)
 
-        for s in (await self._client.list_snapshots(collection_name=collection_name)):
-            await self._client.delete_snapshot(collection_name=collection_name, snapshot_name=s.name)
+        for s in (await self._client.list_snapshots(collection_name=collection_name)):  # type: ignore[attr-defined]
+            await self._client.delete_snapshot(collection_name=collection_name, snapshot_name=s.name)  # type: ignore[attr-defined]
         log.warning(f"Dump `{new_name}` for the agent `{self.agent_id}` completed")
 
     async def retrieve_tenant_points(self, collection_name:str, points: List) -> List[Record]:
@@ -801,7 +802,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         Returns:
             the list of points
         """
-        points_found, _ = await self._client.scroll(
+        points_found, _ = await self._client.scroll(  # type: ignore[attr-defined]
             collection_name=collection_name,
             scroll_filter=Filter(
                 must=[FieldCondition(key="tenant_id", match=MatchValue(value=self.agent_id)), HasIdCondition(has_id=points)]
@@ -818,7 +819,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         collection_name: str,
         content: str,
         vector: Iterable,
-        metadata: Dict = None,
+        metadata: Dict = None,  # type: ignore[assignment]
         id_point: str | None = None,
         **kwargs,
     ) -> PointStruct | None:
@@ -847,7 +848,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             vector=vector,  # type: ignore
         )
 
-        update_status = await self._client.upsert(collection_name=collection_name, points=[point], **kwargs)
+        update_status = await self._client.upsert(collection_name=collection_name, points=[point], **kwargs)  # type: ignore[attr-defined]
 
         if update_status.status == "completed":
             # returning stored point
@@ -860,9 +861,9 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         self, collection_name: str, points: List[PointStruct]
     ) -> UpdateResult:
         for point in points:
-            point.payload["tenant_id"] = self.agent_id
+            point.payload["tenant_id"] = self.agent_id  # type: ignore[index]
 
-        res = await self._client.upsert(
+        res = await self._client.upsert(  # type: ignore[attr-defined]
             collection_name=collection_name, points=[QdrantPointStruct(**p.model_dump()) for p in points],
         )
 
@@ -871,7 +872,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     async def delete_tenant_points(self, collection_name: str, metadata: Dict | None = None) -> UpdateResult:
         conditions = self._build_metadata_conditions(metadata=metadata)
 
-        res = await self._client.delete(collection_name=collection_name, points_selector=Filter(must=conditions))
+        res = await self._client.delete(collection_name=collection_name, points_selector=Filter(must=conditions))  # type: ignore[attr-defined]
         return UpdateResult(
             status=res.status,
             operation_id=res.operation_id,
@@ -879,7 +880,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
 
     # delete point in collection
     async def delete_tenant_points_by_ids(self, collection_name: str, points_ids: List) -> UpdateResult:
-        res = await self._client.delete(collection_name=collection_name, points_selector=points_ids)
+        res = await self._client.delete(collection_name=collection_name, points_selector=points_ids)  # type: ignore[attr-defined]
         return UpdateResult(
             status=res.status,
             operation_id=res.operation_id,
@@ -933,7 +934,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         conditions = self._build_metadata_conditions(metadata=metadata)
 
         # retrieve memories
-        query_response = await self._client.query_points(
+        query_response = await self._client.query_points(  # type: ignore[attr-defined]
             collection_name=collection_name,
             query=embedding,  # type: ignore
             query_filter=Filter(must=conditions),
@@ -970,7 +971,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
     ) -> Tuple[List[Record], int | str | None]:
         if limit is not None:
             # retrieving the points
-            points_batch, next_offset = await self._client.scroll(
+            points_batch, next_offset = await self._client.scroll(  # type: ignore[attr-defined]
                 collection_name=collection_name,
                 scroll_filter=scroll_filter,
                 with_vectors=with_vectors,
@@ -1001,7 +1002,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
                 break
 
             # Set offset for the next iteration
-            offset = next_offset
+            offset = next_offset  # type: ignore[assignment]
 
         return memory_points, None
 
@@ -1070,7 +1071,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         )
 
     async def get_tenant_vectors_count(self, collection_name: str) -> int:
-        return (await self._client.count(
+        return (await self._client.count(  # type: ignore[attr-defined]
             collection_name=collection_name,
             count_filter=Filter(must=[self.tenant_field_condition()]),
         )).count
@@ -1079,7 +1080,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
         return True
 
     async def get_collection_names(self) -> List[str]:
-        collections_response = await self._client.get_collections()
+        collections_response = await self._client.get_collections()  # type: ignore[attr-defined]
         return [c.name for c in collections_response.collections]
 
     async def search_in_tenant(

@@ -115,8 +115,8 @@ async def http_chat(
     """Get a response from the Cat"""
     stray_cat = info.stray_cat or await StrayCat.create(
         user_data=info.user,
-        agent_id=info.cheshire_cat.agent_key,
-        plugin_manager_generator=info.cheshire_cat.plugin_manager_generator,
+        agent_id=info.cheshire_cat.agent_key,  # type: ignore[union-attr]
+        plugin_manager_generator=info.cheshire_cat.plugin_manager_generator,  # type: ignore[union-attr]
     )
 
     user_message = UserMessage(**payload)
@@ -158,7 +158,7 @@ async def me(request: Request) -> MeResponse:
         system_agent = [agent for agent in valid_agents if agent.agent_name == DEFAULT_SYSTEM_KEY][0]
         missing_agents = [
             AgentMatch(agent_name=agent_name, user=system_agent.user)
-            for agent_name in crud_settings.get_agents_main_keys()
+            for agent_name in crud_settings.get_agents_main_keys()  # type: ignore[attr-defined]
             if agent_name not in valid_agents_names
         ]
         valid_agents.extend(missing_agents)

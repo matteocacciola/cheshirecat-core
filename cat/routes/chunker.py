@@ -16,8 +16,8 @@ async def get_chunker_settings(
     """Get the list of the Chunkers"""
     ccat = info.cheshire_cat
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_chunkers",
         setting_category="chunker",
         schema_name="chunkerName",
@@ -33,8 +33,8 @@ async def get_chunker_setting(
     """Get the settings of a specific Chunker"""
     ccat = info.cheshire_cat
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_chunkers",
         setting_category="chunker",
         schema_name="chunkerName",
@@ -51,8 +51,8 @@ async def upsert_chunker_setting(
     """Upsert the settings of a specific Chunker"""
     ccat = info.cheshire_cat
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_chunkers",
         setting_category="chunker",
         schema_name="chunkerName",

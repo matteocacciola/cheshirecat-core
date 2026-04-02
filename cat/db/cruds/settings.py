@@ -105,7 +105,7 @@ async def create_setting(key_id: str, payload: models.Setting) -> Dict:
         value = payload.model_dump()
 
         existing_settings = await crud.read(fkey_id) or []
-        existing_settings.append(value)
+        existing_settings.append(value)  # type: ignore[union-attr]
 
         await crud.store(fkey_id, existing_settings)
         log.debug(f"Created setting for {key_id}: {value.get('name')}")
@@ -279,7 +279,7 @@ async def upsert_setting_by_category(key_id: str, payload: models.Setting) -> Di
         ValueError: If serialization fails.
     """
     try:
-        if not await get_settings_by_category(key_id, payload.category):
+        if not await get_settings_by_category(key_id, payload.category):  # type: ignore[arg-type]
             log.debug(f"Setting not found by category '{payload.category}' for {key_id}, creating")
             return await create_setting(key_id, payload)
 

@@ -31,7 +31,7 @@ router = APIRouter(tags=["Plugins"], prefix="/plugins")
 # GET plugins
 @router.get("/", response_model=GetAvailablePluginsResponse)
 async def get_cheshirecat_available_plugins(
-    query: str = None,
+    query: str = None,  # type: ignore[assignment]
     info: AuthorizedInfo = check_permissions(AuthResource.PLUGIN, AuthPermission.READ),
     # author: str = None, to be activated in case of more granular search
     # tag: str = None, to be activated in case of more granular search
@@ -40,7 +40,7 @@ async def get_cheshirecat_available_plugins(
     if query is not None:
         query = slugify(query, separator="_")
 
-    return await get_available_plugins(info.lizard.plugin_registry, info.cheshire_cat.plugin_manager, query)
+    return await get_available_plugins(info.lizard.plugin_registry, info.cheshire_cat.plugin_manager, query)  # type: ignore[union-attr]
 
 
 @router.put("/toggle/{plugin_id}", response_model=TogglePluginResponse)
@@ -55,11 +55,11 @@ async def toggle_plugin_cheshirecat(
     ccat = info.cheshire_cat
 
     # check if plugin exists
-    if not ccat.plugin_manager.plugin_exists(plugin_id):
+    if not ccat.plugin_manager.plugin_exists(plugin_id):  # type: ignore[union-attr]
         raise CustomNotFoundException("Plugin not found")
 
     # toggle plugin
-    await ccat.toggle_plugin(plugin_id)
+    await ccat.toggle_plugin(plugin_id)  # type: ignore[union-attr]
     return TogglePluginResponse(info=f"Plugin {plugin_id} toggled")
 
 
@@ -69,7 +69,7 @@ async def get_cheshirecat_plugins_settings(
 ) -> PluginsSettingsResponse:
     """Returns the settings of all the plugins"""
     ccat = info.cheshire_cat
-    return await get_plugins_settings(ccat.plugin_manager, ccat.agent_key)
+    return await get_plugins_settings(ccat.plugin_manager, ccat.agent_key)  # type: ignore[union-attr]
 
 
 @router.get("/settings/{plugin_id}", response_model=GetSettingResponse)
@@ -81,10 +81,10 @@ async def get_cheshirecat_plugin_settings(
     plugin_id = slugify(plugin_id, separator="_")
 
     ccat = info.cheshire_cat
-    if not ccat.plugin_exists(plugin_id):
+    if not ccat.plugin_exists(plugin_id):  # type: ignore[union-attr]
         raise CustomNotFoundException("Plugin not found")
 
-    return await get_plugin_settings(ccat.plugin_manager, plugin_id, ccat.agent_key)
+    return await get_plugin_settings(ccat.plugin_manager, plugin_id, ccat.agent_key)  # type: ignore[union-attr]
 
 
 @router.put("/settings/{plugin_id}", response_model=GetSettingResponse)
@@ -98,19 +98,19 @@ async def upsert_cheshirecat_plugin_settings(
 
     # access cat instance
     ccat = info.cheshire_cat
-    if not ccat.plugin_exists(plugin_id):
+    if not ccat.plugin_exists(plugin_id):  # type: ignore[union-attr]
         raise CustomNotFoundException("Plugin not found")
 
     # Get the plugin object
-    plugin = ccat.plugin_manager.plugins[plugin_id]
+    plugin = ccat.plugin_manager.plugins[plugin_id]  # type: ignore[union-attr]
     try:
         # Load the plugin settings Pydantic model, and validate the settings
         plugin.settings_model().model_validate(payload)
     except ValidationError as e:
         raise CustomValidationException("\n".join(list(map(lambda x: x["msg"], e.errors()))))
 
-    final_settings = await plugin.save_settings(payload, ccat.agent_key)
-    await ccat.plugin_manager.execute_hook("after_plugin_settings_update", plugin_id, final_settings, caller=ccat)
+    final_settings = await plugin.save_settings(payload, ccat.agent_key)  # type: ignore[union-attr]
+    await ccat.plugin_manager.execute_hook("after_plugin_settings_update", plugin_id, final_settings, caller=ccat)  # type: ignore[union-attr]
 
     return GetSettingResponse(name=plugin_id, value=final_settings)
 
@@ -130,18 +130,18 @@ async def reset_cheshirecat_plugin_settings(
 
     # access cat instance
     ccat = info.cheshire_cat
-    if not ccat.plugin_exists(plugin_id):
+    if not ccat.plugin_exists(plugin_id):  # type: ignore[union-attr]
         raise CustomNotFoundException("Plugin not found")
 
-    await crud_plugins.set_setting(ccat.agent_key, plugin_id, factory_settings)
-    await ccat.plugin_manager.execute_hook("after_plugin_settings_update", plugin_id, factory_settings, caller=ccat)
+    await crud_plugins.set_setting(ccat.agent_key, plugin_id, factory_settings)  # type: ignore[union-attr]
+    await ccat.plugin_manager.execute_hook("after_plugin_settings_update", plugin_id, factory_settings, caller=ccat)  # type: ignore[union-attr]
 
     return GetSettingResponse(name=plugin_id, value=factory_settings)
 
 
 @router.get("/installed", response_model=GetAvailablePluginsResponse)
 async def get_lizard_available_plugins(
-    query: str = None,
+    query: str = None,  # type: ignore[assignment]
     info: AuthorizedInfo = check_permissions(AuthResource.SYSTEM, AuthPermission.READ),
     # author: str = None, to be activated in case of more granular search
     # tag: str = None, to be activated in case of more granular search

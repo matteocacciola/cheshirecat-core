@@ -33,6 +33,10 @@ async def re_embed_mcp_tools():
         lizard.white_rabbit.release_lock(scheduled_job_id)
 
 
+def re_embed_mcp_tools_async():
+    run_sync_or_async(re_embed_mcp_tools)
+
+
 @hook
 async def after_lizard_bootstrap(lizard: BillTheLizard):
     # Start scheduling system and attach it to the BillTheLizard core class
@@ -51,7 +55,7 @@ async def after_lizard_bootstrap(lizard: BillTheLizard):
         lizard.white_rabbit.remove_job(scheduled_job_id)
 
     lizard.white_rabbit.schedule_interval_job(
-        job=lambda: run_sync_or_async(re_embed_mcp_tools),
+        job=re_embed_mcp_tools_async,
         job_id=scheduled_job_id,
         days=interval_job_days,
     )

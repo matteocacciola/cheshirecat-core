@@ -1,3 +1,5 @@
+from typing import Dict
+
 import redis.asyncio as aioredis
 
 from cat.env import get_env, get_env_int, get_env_bool
@@ -17,25 +19,7 @@ class Database:
         self.db = self.get_redis_client()
 
     def get_redis_client(self) -> aioredis.Redis:
-        host = get_env("CAT_REDIS_HOST")
-        if host is None:
-            raise ValueError("CAT_REDIS_HOST environment variable is not set.")
-
-        password = get_env("CAT_REDIS_PASSWORD")
-        tls = get_env_bool("CAT_REDIS_TLS")
-
-        kwargs = dict(
-            host=host,
-            port=get_env_int("CAT_REDIS_PORT"),
-            db=get_env_int("CAT_REDIS_DB"),
-            encoding="utf-8",
-            decode_responses=True,
-            ssl=tls,
-        )
-        if password:
-            kwargs["password"] = password
-
-        return aioredis.Redis(**kwargs)
+        return aioredis.Redis(**get_redis_kwargs())
 
     @property
     def connection_string(self):
@@ -59,3 +43,25 @@ def get_db() -> aioredis.Redis:
 
 def get_db_connection_string() -> str:
     return Database().connection_string
+
+
+def get_redis_kwargs() -> Dict:
+    host = get_env("CAT_REDIS_HOST")
+    if host is None:
+        raise ValueError("CAT_REDIS_HOST environment variable is not set.")
+
+    password = get_env("CAT_REDIS_PASSWORD")
+    tls = get_env_bool("CAT_REDIS_TLS")
+
+    kwargs = dict(
+        host=host,
+        port=get_env_int("CAT_REDIS_PORT"),
+        db=get_env_int("CAT_REDIS_DB"),
+        encoding="utf-8",
+        decode_responses=True,
+        ssl=tls,
+    )
+    if password:
+        kwargs["password"] = password
+
+    return kwargs

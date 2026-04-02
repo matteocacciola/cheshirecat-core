@@ -127,13 +127,13 @@ class WebSocketManager:
         the replica that holds that connection will receive the pub/sub event
         and deliver it locally.
         """
-        await self._redis.publish(
+        await self._redis.publish(  # type: ignore[union-attr]
             f"{_TARGETED_PREFIX}:{chat_id}", json.dumps(message)
         )
 
     async def broadcast(self, message: dict):
         """Broadcast *message* to every connected WebSocket across all replicas."""
-        await self._redis.publish(_BROADCAST_CHANNEL, json.dumps(message))
+        await self._redis.publish(_BROADCAST_CHANNEL, json.dumps(message))  # type: ignore[union-attr]
 
     # ── Introspection ──────────────────────────────────────────────────────────
 

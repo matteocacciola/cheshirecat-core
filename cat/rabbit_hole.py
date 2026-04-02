@@ -24,7 +24,7 @@ class RabbitHole:
         self.stray = None
         self.embedder = None
 
-    def setup(self, _cat: "BotMixin"):
+    def setup(self, _cat: "BotMixin"):  # type: ignore[name-defined]
         from cat.looking_glass import CheshireCat, StrayCat
 
         if isinstance(_cat, CheshireCat):
@@ -41,7 +41,7 @@ class RabbitHole:
 
     """Manages content ingestion. I'm late... I'm late!"""
 
-    async def ingest_memory(self, cat: "CheshireCat", file: BytesIO, filename: str):
+    async def ingest_memory(self, cat: "CheshireCat", file: BytesIO, filename: str):  # type: ignore[name-defined]
         """Upload memories to the declarative memory from a JSON file.
 
         Args:
@@ -103,7 +103,7 @@ class RabbitHole:
 
     async def ingest_file(
         self,
-        cat: "BotMixin",
+        cat: "BotMixin",  # type: ignore[name-defined]
         file: str | BytesIO,
         metadata: Dict,
         filename: str | None = None,
@@ -384,7 +384,7 @@ class RabbitHole:
         min_chunk_size = max(50, chunk_size // 20)  # At least 50 chars
         max_merge_size = chunk_size + chunk_overlap  # Respect splitter's intended size
 
-        merged_docs = []
+        merged_docs: list = []  # type: ignore[var-annotated]
         i = 0
 
         while i < len(docs):

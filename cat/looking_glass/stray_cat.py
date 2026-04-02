@@ -10,10 +10,10 @@ from cat.log import log
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.procedures import CatProcedure
 from cat.looking_glass.models import AgenticWorkflowTask, AgenticWorkflowOutput, ChatResponse
+from cat.mixins import BotMixin
 from cat.services.memory.messages import CatMessage, UserMessage
 from cat.services.memory.models import VectorMemoryType, RecallSettings
 from cat.services.memory.working_memory import WorkingMemory
-from cat.services.mixin import BotMixin
 from cat.services.notifier import NotifierService
 from cat.templates import prompts
 
@@ -71,13 +71,9 @@ class StrayCat(BotMixin):
         self.plugin_manager_generator: Final[Callable[[], MadHatter]] = plugin_manager_generator
         self.notifier: Final[NotifierService] = NotifierService(self.user, self.agent_key, self.id)  # type: ignore[call-arg]
 
-        # bootstrap stray cat
-        super().__init__()
-
         self.working_memory = None
         self._agentic_workflow = None
         self.latest_n_history = 1
-
 
     @classmethod
     async def create(
@@ -93,6 +89,9 @@ class StrayCat(BotMixin):
         cat._agentic_workflow = await cat.agentic_workflow()
 
         return cat
+
+    async def bootstrap(self):
+        pass
 
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""

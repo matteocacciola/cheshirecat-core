@@ -17,8 +17,8 @@ async def get_auth_handler_settings(
     """Get the list of the AuthHandlers"""
     ccat = info.cheshire_cat
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_auth_handlers",
         setting_category="auth_handler",
         schema_name="authorizatorName",
@@ -34,8 +34,8 @@ async def get_auth_handler_setting(
     """Get the settings of a specific AuthHandler"""
     ccat = info.cheshire_cat
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_auth_handlers",
         setting_category="auth_handler",
         schema_name="authorizatorName",
@@ -52,8 +52,8 @@ async def upsert_authenticator_setting(
     """Upsert the settings of a specific AuthHandler"""
     ccat = info.cheshire_cat
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_auth_handlers",
         setting_category="auth_handler",
         schema_name="authorizatorName",

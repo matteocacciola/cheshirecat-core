@@ -10,7 +10,7 @@ import tempfile
 import threading
 from enum import Enum as BaseEnum, EnumMeta
 from io import BytesIO
-from typing import Dict, List, Type, TypeVar, Any, Callable, Union, Generic, Tuple
+from typing import Dict, List, Type, TypeVar, Any, Callable, Generic, Tuple
 from urllib.parse import urlparse
 import aiofiles
 import filetype
@@ -22,14 +22,13 @@ from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.globals import set_llm_cache as set_llm_cache_langchain
 from pydantic import BaseModel, ConfigDict
 
-from cat.db.database import get_db_connection_string
 from cat.log import log
 
 _T = TypeVar("_T")
 
 
 class singleton(Generic[_T]):
-    instances = {}
+    instances: dict = {}  # type: ignore[var-annotated]
 
     def __init__(self, class_: type[_T]):
         self._class = class_
@@ -121,7 +120,7 @@ def to_camel_case(text: str) -> str:
         Camel case formatted string.
     """
     s = text.replace("-", " ").replace("_", " ").capitalize()
-    s = s.split()
+    s = s.split()  # type: ignore[assignment]
     if len(text) == 0:
         return text
     return s[0] + "".join(i.capitalize() for i in s[1:])
@@ -184,7 +183,7 @@ HOW TO FIX: go to your OpenAI account and add a credit card"""
 
 def parse_json(json_string: str, pydantic_model: BaseModel = None) -> Dict:
     # instantiate parser
-    parser = JsonOutputParser(pydantic_object=pydantic_model)
+    parser = JsonOutputParser(pydantic_object=pydantic_model)  # type: ignore[arg]
 
     # clean to help small LLMs
     replaces = {
@@ -233,7 +232,7 @@ def get_caller_info(skip: int | None = 2, return_short: bool = True, return_stri
     None is returned if skipped levels exceed stack height.
     """
     stack = inspect.stack()
-    start = 0 + skip
+    start = 0 + skip  # type: ignore[operator]
     if len(stack) < start + 1:
         return None
 
@@ -276,11 +275,11 @@ def get_allowed_plugins_mime_types() -> List:
 
 def inspect_calling_folder() -> str:
     # who's calling?
-    calling_frame = inspect.currentframe().f_back.f_back
+    calling_frame = inspect.currentframe().f_back.f_back  # type: ignore[union-attr]
     # Get the module associated with the frame
     # Get the absolute and then relative path of the calling module's file
     abs_path = os.path.abspath(
-        inspect.getabsfile(inspect.getmodule(calling_frame))
+        inspect.getabsfile(inspect.getmodule(calling_frame))  # type: ignore[arg-type]
     )
 
     # throw exception if this method is called from outside the plugins folder
@@ -333,7 +332,7 @@ def inspect_calling_agent() -> Any:
 def restore_original_model(d: _T | Dict | None, model: Type[_T]) -> _T | None:
     # if _T is not a BaseModeDict, return the original object
     if not issubclass(model, BaseModel):
-        return d
+        return d  # type: ignore[return-value]
 
     # restore the original model
     if isinstance(d, Dict):
@@ -361,12 +360,12 @@ def pod_id() -> str:
 def retrieve_image(content_image: str | None) -> str | None:
     def get_image_data() -> bytes:
         # If the image is a file, read it and encode it as a data URI
-        if content_image.startswith("file://"):
-            with open(content_image[7:], "rb") as f:
+        if content_image.startswith("file://"):  # type: ignore[union-attr]
+            with open(content_image[7:], "rb") as f:  # type: ignore[index]
                 image_data = f.read()
             return image_data
         # If the image is a URL, download it and encode it as a data URI.
-        response = requests.get(content_image)
+        response = requests.get(content_image)  # type: ignore[union-attr]
         response.raise_for_status()
         return response.content
 
@@ -379,7 +378,7 @@ def retrieve_image(content_image: str | None) -> str | None:
         content = get_image_data()
         # Open the image using Pillow to determine its MIME type
         img = Image.open(BytesIO(content))
-        mime_type = Image.MIME[img.format]  # e.g., "image/png"
+        mime_type = Image.MIME[img.format]   # type: ignore[union-attr] # e.g., "image/png"
         # Encode the image to base64
         encoded_image = base64.b64encode(content).decode("utf-8")
         # Add the image as a data URI with the correct MIME type
@@ -611,6 +610,8 @@ def get_nlp_object_name(nlp_object: Any, default: str) -> str:
 
 
 async def set_llm_cache(embedder):
+    from cat.db.database import get_db_connection_string
+
     set_llm_cache_langchain(
         RedisSemanticCache(
             redis_url=get_db_connection_string(),

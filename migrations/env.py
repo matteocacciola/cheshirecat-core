@@ -3,32 +3,32 @@ import importlib.util
 from typing import Any, Dict, List, Callable
 from datetime import datetime, timezone
 from pathlib import Path
-import redis
+import redis.asyncio as aioredis
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 class MigrationContext:
     """Context passed to migration functions"""
-    def __init__(self, redis_client: redis.Redis):
+    def __init__(self, redis_client: aioredis.Redis):
         self.redis = redis_client
 
-    def get_json(self, key: str) -> Any | None:
+    async def get_json(self, key: str) -> Any | None:
         """Get and parse JSON from Redis"""
-        data = self.redis.json().get(key)
+        data = await self.redis.json().get(key)
         return data if data else None
 
-    def set_json(self, key: str, value: Any, path: str | None = "$") -> None:
+    async def set_json(self, key: str, value: Any, path: str | None = "$") -> None:
         """Set JSON value in Redis"""
-        self.redis.json().set(key, path, value)
+        await self.redis.json().set(key, path, value)  # type: ignore[arg-type]
 
-    def delete(self, key: str, path: str | None = "$") -> None:
+    async def delete(self, key: str, path: str | None = "$") -> None:
         """Delete a key from Redis"""
-        self.redis.json().delete(key, path)
+        await self.redis.json().delete(key, path)  # type: ignore[arg-type]
 
-    def exists(self, key: str) -> bool:
+    async def exists(self, key: str) -> bool:
         """Check if key exists"""
-        return self.redis.exists(key) > 0
+        return await self.redis.exists(key) > 0
 
 
 class MigrationRevision:
@@ -49,15 +49,15 @@ class MigrationRevision:
         self.downgrade_func = downgrade_func
         self.created_at = datetime.now()
 
-    def upgrade(self, context: MigrationContext) -> None:
+    async def upgrade(self, context: MigrationContext) -> None:
         """Execute upgrade"""
         if self.upgrade_func:
-            self.upgrade_func(context)
+            await self.upgrade_func(context)
 
-    def downgrade(self, context: MigrationContext) -> None:
+    async def downgrade(self, context: MigrationContext) -> None:
         """Execute downgrade"""
         if self.downgrade_func:
-            self.downgrade_func(context)
+            await self.downgrade_func(context)
 
 
 class MigrationEnvironment:
@@ -67,7 +67,7 @@ class MigrationEnvironment:
 
     def __init__(
         self,
-        redis_client: redis.Redis,
+        redis_client: aioredis.Redis,
         migrations_dir: str = "migrations/versions"
     ):
         self.redis = redis_client
@@ -100,29 +100,29 @@ class MigrationEnvironment:
                     )
                     self.revisions[revision.revision] = revision
 
-    def get_current_head(self) -> str | None:
+    async def get_current_head(self) -> str | None:
         """Get current head revision"""
-        head = self.redis.get(self.CURRENT_HEAD_KEY)
+        head = await self.redis.get(self.CURRENT_HEAD_KEY)
         return head.decode() if isinstance(head, bytes) else head
 
-    def set_current_head(self, revision: str | None) -> None:
+    async def set_current_head(self, revision: str | None) -> None:
         """Set current head revision"""
         if revision:
-            self.redis.set(self.CURRENT_HEAD_KEY, revision)
+            await self.redis.set(self.CURRENT_HEAD_KEY, revision)
             return
 
-        self.redis.delete(self.CURRENT_HEAD_KEY)
+        await self.redis.delete(self.CURRENT_HEAD_KEY)
 
-    def get_migration_history(self) -> List[Dict[str, Any]]:
+    async def get_migration_history(self) -> List[Dict[str, Any]]:
         """Get migration history"""
-        data = self.redis.json().get(self.MIGRATIONS_KEY)
+        data = await self.redis.json().get(self.MIGRATIONS_KEY)  # type: ignore[arg-type]
         return data if data else []
 
-    def add_to_history(self, revision: str, action: str) -> None:
+    async def add_to_history(self, revision: str, action: str) -> None:
         """Add migration to history"""
         now = datetime.now(timezone.utc)
 
-        history = self.get_migration_history()
+        history = await self.get_migration_history()
         history.append({
             "revision": revision,
             "action": action,
@@ -147,9 +147,9 @@ class MigrationEnvironment:
             current = end
             while current:
                 if current in self.revisions:
-                    rev = self.revisions[current]
+                    rev = self.revisions[current]  # type: ignore[union-attr]
                     chain.insert(0, rev)
-                    current = rev.down_revision
+                    current = rev.down_revision  # type: ignore[assignment]
                 else:
                     break
             return chain
@@ -159,7 +159,7 @@ class MigrationEnvironment:
         current = end
         while current and current != start:
             if current in self.revisions:
-                rev = self.revisions[current]
+                rev = self.revisions[current]  # type: ignore[union-attr]
                 chain.insert(0, rev)
                 current = rev.down_revision
             else:
@@ -174,12 +174,12 @@ class MigrationEnvironment:
                 return revision_id
         return None
 
-    def upgrade(self, target: str = "head") -> None:
+    async def upgrade(self, target: str = "head") -> None:
         """Upgrade to target revision"""
-        current = self.get_current_head()
+        current = await self.get_current_head()
 
         if target == "head":
-            target = self._get_head_revision()
+            target = self._get_head_revision()  # type: ignore[assignment]
 
         if not target:
             print("No migrations to apply")
@@ -202,9 +202,9 @@ class MigrationEnvironment:
         for revision in chain:
             print(f"→ Applying {revision.revision}: {revision.description}")
             try:
-                revision.upgrade(self.context)
-                self.set_current_head(revision.revision)
-                self.add_to_history(revision.revision, "upgrade")
+                await revision.upgrade(self.context)
+                await self.set_current_head(revision.revision)
+                await self.add_to_history(revision.revision, "upgrade")
                 print("  ✓ Success\n")
             except Exception as e:
                 print(f"  ✗ Failed: {e}\n")
@@ -212,9 +212,9 @@ class MigrationEnvironment:
 
         print(f"Upgrade complete. Current head: {target}")
 
-    def downgrade(self, target: str = "-1") -> None:
+    async def downgrade(self, target: str = "-1") -> None:
         """Downgrade to target revision"""
-        current = self.get_current_head()
+        current = await self.get_current_head()
 
         if not current:
             print("Already at base")
@@ -232,7 +232,7 @@ class MigrationEnvironment:
                     temp_current = rev.down_revision
                 else:
                     break
-            target = temp_current
+            target = temp_current  # type: ignore[assignment]
         else:
             # Get all revisions from target to current
             chain = []
@@ -241,7 +241,7 @@ class MigrationEnvironment:
                 if temp in self.revisions:
                     rev = self.revisions[temp]
                     chain.append(rev)
-                    temp = rev.down_revision
+                    temp = rev.down_revision  # type: ignore[assignment]
                 else:
                     break
 
@@ -256,8 +256,8 @@ class MigrationEnvironment:
             print(f"← Reverting {revision.revision}: {revision.description}")
             try:
                 revision.downgrade(self.context)
-                self.set_current_head(revision.down_revision)
-                self.add_to_history(revision.revision, "downgrade")
+                await self.set_current_head(revision.down_revision)
+                await self.add_to_history(revision.revision, "downgrade")
                 print("  ✓ Success\n")
             except Exception as e:
                 print(f"  ✗ Failed: {e}\n")
@@ -265,9 +265,9 @@ class MigrationEnvironment:
 
         print(f"Downgrade complete. Current head: {target or 'base'}")
 
-    def current(self) -> None:
+    async def current(self) -> None:
         """Show current revision"""
-        head = self.get_current_head()
+        head = await self.get_current_head()
         if head and head in self.revisions:
             rev = self.revisions[head]
             print(f"Current revision: {head}")
@@ -277,9 +277,9 @@ class MigrationEnvironment:
 
         print("Current revision: base (no migrations applied)")
 
-    def history(self, verbose: bool = False) -> None:
+    async def history(self, verbose: bool = False) -> None:
         """Show migration history"""
-        history = self.get_migration_history()
+        history = await self.get_migration_history()
 
         if not history:
             print("No migration history")
@@ -326,24 +326,24 @@ class MigrationEnvironment:
 class MigrationCommands:
     """Command-line style interface for migrations"""
 
-    def __init__(self, redis_client: redis.Redis, migrations_dir: str = "migrations/versions"):
+    def __init__(self, redis_client: aioredis.Redis, migrations_dir: str = "migrations/versions"):
         self.env = MigrationEnvironment(redis_client, migrations_dir)
 
-    def upgrade(self, revision: str = "head") -> None:
+    async def upgrade(self, revision: str = "head") -> None:
         """Upgrade to a later version"""
-        self.env.upgrade(revision)
+        await self.env.upgrade(revision)
 
-    def downgrade(self, revision: str = "-1") -> None:
+    async def downgrade(self, revision: str = "-1") -> None:
         """Revert to a previous version"""
-        self.env.downgrade(revision)
+        await self.env.downgrade(revision)
 
-    def current(self) -> None:
+    async def current(self) -> None:
         """Display the current revision"""
-        self.env.current()
+        await self.env.current()
 
-    def history(self, verbose: bool = False) -> None:
+    async def history(self, verbose: bool = False) -> None:
         """List changeset scripts in chronological order"""
-        self.env.history(verbose)
+        await self.env.history(verbose)
 
     def heads(self) -> None:
         """Show current available heads"""

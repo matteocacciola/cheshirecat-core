@@ -36,7 +36,7 @@ class AgenticWorkflowTask(BaseModel):
 
     def __init__(self, **data: Any):
         super().__init__(**data)
-        self.prompt_variables.update({"context": self.context})
+        self.prompt_variables.update({"context": self.context})  # type: ignore[union-attr]
 
 
 class AgenticWorkflowOutput(BaseModel):
@@ -79,7 +79,7 @@ class StoredSourceWithMetadata(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def __eq__(self, other: "StoredSourceWithMetadata") -> bool:
+    def __eq__(self, other: "StoredSourceWithMetadata") -> bool:  # type: ignore[override]
         return self.name == other.name and self.path == other.path
 
     def __hash__(self) -> int:
@@ -102,7 +102,7 @@ class PluginManifest(BaseModel):
     id: str
     name: str = "Unknown"
     version: str = "0.0.0"
-    thumb: str = None
+    thumb: str = None  # type: ignore[assignment]
     tags: str = "Unknown"
     description: str = (
         "Description not found for this plugin. Please create a plugin.json manifest in the plugin folder."
@@ -110,7 +110,7 @@ class PluginManifest(BaseModel):
     author_name: str = "Unknown"
     author_url: str = "Unknown"
     plugin_url: str = "Unknown"
-    min_cat_version: str = None
+    min_cat_version: str = None  # type: ignore[assignment]
     max_cat_version: str = "Unknown"
     local_info: Dict = Field(default_factory=dict)
     dependencies: List[str] = Field(default_factory=list)

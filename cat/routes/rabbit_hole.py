@@ -17,7 +17,7 @@ from cat.utils import guess_file_type, write_temp_file
 router = APIRouter(tags=["Rabbit Hole"], prefix="/rabbithole")
 
 
-class UploadURLConfig(BaseModel, extra="forbid"):
+class UploadURLConfig(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     url: str = Field(
         description="URL of the website to which you want to save the content"
     )
@@ -58,7 +58,7 @@ async def _on_upload_single_file(
             content_type, _ = guess_file_type(file_bytes)
 
             # check if MIME type of uploaded file is supported
-            admitted_types = (await cat.file_handlers()).keys()  # type: ignore[assignment]
+            admitted_types = (await cat.file_handlers()).keys()  # type: ignore[union-attr]
             if content_type not in admitted_types:
                 raise CustomValidationException(
                     f"MIME type {content_type} not supported. Admitted types: {' - '.join(admitted_types)}"
@@ -223,7 +223,7 @@ async def get_allowed_mimetypes(
     info: AuthorizedInfo = check_permissions(AuthResource.UPLOAD, AuthPermission.WRITE),
 ) -> AllowedMimeTypesResponse:
     """Retrieve the allowed mimetypes that can be ingested by the Rabbit Hole"""
-    file_handlers = await info.cheshire_cat.file_handlers()  # type: ignore[assignment]
+    file_handlers = await info.cheshire_cat.file_handlers()  # type: ignore[union-attr]
     return AllowedMimeTypesResponse(allowed=list(file_handlers.keys()))
 
 
@@ -235,7 +235,7 @@ async def get_source_urls(
     collection = str(VectorMemoryType.DECLARATIVE if not info.stray_cat else VectorMemoryType.EPISODIC)
 
     # Get all points
-    vmh = await info.cheshire_cat.vector_memory_handler()  # type: ignore[assignment]
+    vmh = await info.cheshire_cat.vector_memory_handler()  # type: ignore[union-attr]
     memory_points, _ = await vmh.get_all_tenant_points_from_web(collection)
 
     # retrieve all the memory points where the metadata["source"] is a URL

@@ -6,9 +6,10 @@ from apscheduler.jobstores.redis import RedisJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
 from pydantic import BaseModel, Field
 from pytz import utc
+import redis
 
 from cat import log, utils
-from cat.db.database import get_db
+from cat.db.database import get_redis_kwargs
 from cat.utils import singleton
 
 
@@ -38,18 +39,24 @@ class WhiteRabbit:
     def __init__(self):
         log.debug("Initializing WhiteRabbit...")
 
-        self._client_db = get_db()
         self._prefix_lock_key = "white_rabbit:lock"
         self._prefix_status_key = "white_rabbit:status"
 
-        # Get connection kwargs from the existing client, but create a SEPARATE raw (decode_responses=False) connection
-        # exclusively for APScheduler's RedisJobStore, which stores pickled binary data and cannot use a UTF-8 decoding
-        # client. This avoids any interference with the main client connection used by the rest of the system.
+        # Sync client: used by APScheduler listener callbacks (they run in threads,
+        # not in the async event loop) and for simple get/set status tracking.
+        sync_kwargs = get_redis_kwargs()
+        self._client_db = redis.Redis(**sync_kwargs)
+
+        # APScheduler's RedisJobStore uses binary data (pickled jobs) so it needs
+        # its own sync connection with decode_responses=False.
+        # We build the kwargs directly from env vars — NOT from the async client's
+        # get_connection_kwargs(), which would inject an async ConnectionClass and
+        # cause "coroutine has no attribute 'shutdown'" errors inside APScheduler.
         jobstores = {
             "default": RedisJobStore(
                 jobs_key="white_rabbit:jobs",
                 run_times_key="white_rabbit:run_times",
-                **(self._client_db.get_connection_kwargs() | {"decode_responses": False}),
+                **(sync_kwargs | {"decode_responses": False}),
             )
         }
 
@@ -90,6 +97,7 @@ class WhiteRabbit:
         return f"{self._prefix_status_key}:{job_id}"
 
     def _set_job_status(self, job_id: str, status: JobStatus):
+        # Called from APScheduler listener threads — must use the sync client.
         if status in [JobStatus.COMPLETED, JobStatus.REMOVED]:
             # No need to retain completed or removed status; clean up
             self._client_db.delete(self._status_key(job_id))
@@ -97,6 +105,7 @@ class WhiteRabbit:
             self._client_db.set(self._status_key(job_id), str(status))
 
     def _get_job_status(self, job_id: str) -> JobStatus:
+        # Called from APScheduler listener threads — must use the sync client.
         raw = self._client_db.get(self._status_key(job_id))
         if raw is None:
             return JobStatus.SCHEDULED  # Default for jobs with no explicit status set yet
@@ -137,14 +146,14 @@ class WhiteRabbit:
             if lock_acquired
             else f"WhiteRabbit: Job '{event}' already in execution or handled by another node."
         )
-        log.debug(debug_message)
+        log.debug(debug_message)  # type: ignore[attr-defined]
 
-        return lock_acquired
+        return lock_acquired  # type: ignore[no-any-return]
 
     def release_lock(self, event: str):
         lock_key = f"{self._prefix_lock_key}:{event}"
         self._client_db.delete(lock_key)
-        log.debug(f"WhiteRabbit: Lock released for '{event}' event.")
+        log.debug(f"WhiteRabbit: Lock released for '{event}' event.")  # type: ignore[attr-defined]
 
     def shutdown(self):
         for job_id in self.jobs.copy():
@@ -154,6 +163,11 @@ class WhiteRabbit:
             log.info("WhiteRabbit: Scheduler stopped")
             self.scheduler.shutdown(wait=True)
             self._is_running = False
+
+        try:
+            self._client_db.close()
+        except Exception:
+            pass
 
     def get_job(self, job_id: str) -> Job | None:
         """
@@ -205,10 +219,10 @@ class WhiteRabbit:
         """
         try:
             self.scheduler.pause_job(job_id)
-            log.info(f"WhiteRabbit: paused job {job_id}")
+            log.info(f"WhiteRabbit: paused job {job_id}")  # type: ignore[attr-defined]
             return True
         except Exception as e:
-            log.error(f"WhiteRabbit: error during job pause. {e}")
+            log.error(f"WhiteRabbit: error during job pause. {e}")  # type: ignore[attr-defined]
             return False
 
     def resume_job(self, job_id: str) -> bool:
@@ -223,10 +237,10 @@ class WhiteRabbit:
         """
         try:
             self.scheduler.resume_job(job_id)
-            log.info(f"WhiteRabbit: resumed job {job_id}")
+            log.info(f"WhiteRabbit: resumed job {job_id}")  # type: ignore[attr-defined]
             return True
         except Exception as e:
-            log.error(f"WhiteRabbit: error during job resume. {e}")
+            log.error(f"WhiteRabbit: error during job resume. {e}")  # type: ignore[attr-defined]
             return False
 
     def remove_job(self, job_id: str) -> bool:
@@ -244,16 +258,16 @@ class WhiteRabbit:
             if job_id in self.jobs:
                 self.jobs.remove(job_id)
             self._set_job_status(job_id, JobStatus.REMOVED)
-            log.info(f"WhiteRabbit: Removed job {job_id}")
+            log.info(f"WhiteRabbit: Removed job {job_id}")  # type: ignore[attr-defined]
             return True
         except Exception as e:
-            log.error(f"WhiteRabbit: error during job removal. {e}")
+            log.error(f"WhiteRabbit: error during job removal. {e}")  # type: ignore[attr-defined]
             return False
 
     def schedule_job(
         self,
         job,
-        job_id: str = None,
+        job_id: str = None,  # type: ignore[assignment]
         days=0,
         hours=0,
         minutes=0,
@@ -290,7 +304,7 @@ class WhiteRabbit:
 
         # Check that the function is callable
         if not callable(job):
-            log.error("WhiteRabbit: The job should be callable!")
+            log.error("WhiteRabbit: The job should be callable!")  # type: ignore[attr-defined]
             raise TypeError(f"TypeError: '{type(job)}' object is not callable")
 
         # Generate id if none
@@ -306,9 +320,9 @@ class WhiteRabbit:
     def schedule_interval_job(
         self,
         job,
-        job_id: str = None,
-        start_date: datetime = None,
-        end_date: datetime = None,
+        job_id: str = None,  # type: ignore[assignment]
+        start_date: datetime = None,  # type: ignore[assignment]
+        end_date: datetime = None,  # type: ignore[assignment]
         days=0,
         hours=0,
         minutes=0,
@@ -334,7 +348,7 @@ class WhiteRabbit:
         """
         # Check that the function is callable
         if not callable(job):
-            log.error("WhiteRabbit: The job should be callable!")
+            log.error("WhiteRabbit: The job should be callable!")  # type: ignore[attr-defined]
             raise TypeError(f"TypeError: '{type(job)}' object is not callable")
 
         # Generate id if none
@@ -361,9 +375,9 @@ class WhiteRabbit:
     def schedule_cron_job(
         self,
         job,
-        job_id: str = None,
-        start_date: datetime = None,
-        end_date: datetime = None,
+        job_id: str = None,  # type: ignore[assignment]
+        start_date: datetime = None,  # type: ignore[assignment]
+        end_date: datetime = None,  # type: ignore[assignment]
         year=None,
         month=None,
         day=None,
@@ -397,7 +411,7 @@ class WhiteRabbit:
         """
         # Check that the function is callable
         if not callable(job):
-            log.error("WhiteRabbit: The job should be callable!")
+            log.error("WhiteRabbit: The job should be callable!")  # type: ignore[attr-defined]
             raise TypeError(f"TypeError: '{type(job)}' object is not callable")
 
         # Generate id if none

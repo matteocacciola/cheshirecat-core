@@ -1,5 +1,4 @@
 import os
-import pytest
 
 from cat.db import crud
 from cat.db.cruds import plugins as crud_plugins

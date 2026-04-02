@@ -78,7 +78,7 @@ class MadHatter:
 
         return active_plugins
 
-    def install_plugin(self, package_plugin: str) -> str:
+    async def install_plugin(self, package_plugin: str) -> str:
         """
         Install a plugin from a package file (zip/tar).
 
@@ -93,7 +93,7 @@ class MadHatter:
         plugin_path = extractor.extract(utils.get_plugins_path())
         plugin_id = extractor.id
 
-        if missing_deps := self.load_plugin(plugin_id, with_deactivation=False).missing_dependencies:
+        if missing_deps := (await self.load_plugin(plugin_id, with_deactivation=False)).missing_dependencies:
             # remove plugin folder
             shutil.rmtree(plugin_path)
             raise Exception(f"Cannot install plugin {plugin_id} because of missing dependencies: {missing_deps}")
@@ -116,7 +116,7 @@ class MadHatter:
         if plugin_id in self.get_core_plugins_ids:
             return plugin_id
 
-        self.activate_plugin(plugin_id)
+        self.activate_plugin(plugin_id)  # type: ignore[unused-coroutine]
 
         return plugin_id
 
@@ -205,10 +205,10 @@ class MadHatter:
             raise Exception(f"Plugin {plugin_id} not active in the system")
 
         if plugin_id in self.active_plugins:
-            self.deactivate_plugin(plugin_id)
+            self.deactivate_plugin(plugin_id)  # type: ignore[unused-coroutine]
             return
 
-        self.activate_plugin(plugin_id)
+        self.activate_plugin(plugin_id)  # type: ignore[unused-coroutine]
 
     async def _on_finish_discovering_plugins(self):
         # store active plugins in db
@@ -237,7 +237,7 @@ class MadHatter:
         for hook_name in self.hooks.keys():
             self.hooks[hook_name].sort(key=lambda x: x.priority, reverse=True)
 
-    async def execute_hook(self, hook_name: str, *args, caller: "ContextMixin") -> Any:
+    async def execute_hook(self, hook_name: str, *args, caller: "ContextMixin") -> Any:  # type: ignore[override, name-defined]
         """
         Execute a hook from an **async** call site.
 
@@ -267,7 +267,7 @@ class MadHatter:
                     tea_cup = tea_spoon
             except Exception as e:
                 log.error(f"Error in plugin {hook.plugin_id}::{hook.name}: {e}")
-                log.warning(self.plugins[hook.plugin_id].plugin_specific_error_message())  # type: ignore[union-attr]
+                log.warning(self.plugins[hook.plugin_id].plugin_specific_error_message())  # type: ignore[union-attr, index]
 
         return tea_cup
 
@@ -281,14 +281,14 @@ class MadHatter:
             plugin_id
         )
 
-    def load_plugin(self, plugin_id: str, with_deactivation: bool = True) -> LoadedPlugin:
+    async def load_plugin(self, plugin_id: str, with_deactivation: bool = True) -> LoadedPlugin:
         try:
             folder = self._get_plugin_folder_path(plugin_id)
             plugin = Plugin(folder)
 
             if deps := plugin.missing_dependencies(self.load_active_plugins_ids_from_folders()):
                 if with_deactivation:
-                    self.deactivate_plugin(plugin_id)
+                    await self.deactivate_plugin(plugin_id)
                 return LoadedPlugin(plugin=None, missing_dependencies=deps)
 
             return LoadedPlugin(plugin=plugin)
@@ -331,7 +331,7 @@ class MadHatter:
                 self.active_plugins = self.load_active_plugins_ids_from_folders()
 
             for plugin_id in self.active_plugins:
-                plugin = self.load_plugin(plugin_id).plugin
+                plugin = (await self.load_plugin(plugin_id)).plugin
                 if not plugin:
                     log.error(f"Plugin {plugin_id} could not be loaded")
                     continue
@@ -347,7 +347,7 @@ class MadHatter:
 
         # plugins are already loaded when BillTheLizard is created; since its plugin manager scans the plugins folder
         # then, we just need to grab the plugins from there
-        for plugin_id, plugin in self.available_plugins.items():
+        for plugin_id, plugin in (await self.available_plugins()).items():
             if plugin_id not in self.active_plugins:
                 continue
 
@@ -362,9 +362,9 @@ class MadHatter:
 
     async def _on_plugin_activation(self, plugin_id: str) -> bool:
         plugin = (
-            self.load_plugin(plugin_id).plugin
+            (await self.load_plugin(plugin_id)).plugin
             if self.agent_key == DEFAULT_SYSTEM_KEY
-            else self.available_plugins.get(plugin_id)
+            else (await self.available_plugins()).get(plugin_id)
         )
         if not plugin:
             return False
@@ -403,15 +403,14 @@ class MadHatter:
     def agent_key(self) -> str:
         return self._agent_key
 
-    @property
-    def available_plugins(self) -> Dict[str, Plugin]:
+    async def available_plugins(self) -> Dict[str, Plugin]:
         from cat.looking_glass.bill_the_lizard import BillTheLizard
         if self.agent_key == DEFAULT_SYSTEM_KEY:
             plugins_ids = self.load_active_plugins_ids_from_folders()
 
             result = {}
             for plugin_id in plugins_ids:
-                plugin = self.load_plugin(plugin_id).plugin
+                plugin = (await self.load_plugin(plugin_id)).plugin
                 if plugin:
                     result[plugin.id] = plugin
 

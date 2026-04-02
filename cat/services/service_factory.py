@@ -77,7 +77,7 @@ class ServiceFactory:
         # get configuration and instantiate the finalized object by the factory
         selected_config = await crud_settings.get_setting_by_name(self._agent_key, config_name)
         try:
-            obj = factory_class.get_from_config(selected_config["value"])
+            obj = factory_class.get_from_config(selected_config["value"])  # type: ignore[index]
             if hasattr(obj, "agent_id"):
                 obj.agent_id = self._agent_key
             return obj
@@ -110,11 +110,11 @@ class ServiceFactory:
 
         settings = [GetSettingResponse(
             name=class_name,
-            value=saved_settings["value"] if class_name == saved_settings["name"] else {},
+            value=saved_settings["value"] if class_name == saved_settings["name"] else {},  # type: ignore[index]
             scheme=scheme
         ) for class_name, scheme in schemas.items()]
 
-        return GetSettingsResponse(settings=settings, selected_configuration=saved_settings["name"])
+        return GetSettingsResponse(settings=settings, selected_configuration=saved_settings["name"])  # type: ignore[index]
 
     async def get_factory_setting(self, configuration_name: str) -> GetSettingResponse:
         schemas = await self.get_schemas()

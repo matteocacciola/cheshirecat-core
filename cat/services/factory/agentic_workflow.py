@@ -42,11 +42,11 @@ class BaseAgenticWorkflowHandler(ABC):
 
     @property
     def vector_memory_handler(self) -> BaseVectorDatabaseHandler:
-        return self._vector_memory_handler
+        return self._vector_memory_handler  # type: ignore[return-value]
 
     @vector_memory_handler.setter
     def vector_memory_handler(self, vmh: BaseVectorDatabaseHandler):
-        self._vector_memory_handler = vmh
+        self._vector_memory_handler = vmh  # type: ignore[assignment]
 
     @property
     def metadata(self) -> Dict:
@@ -79,7 +79,7 @@ class BaseAgenticWorkflowHandler(ABC):
         return (tool, tool_input, usage_metadata), action[1]
 
     async def run(
-        self, task: AgenticWorkflowTask, llm: BaseLanguageModel, callbacks: List[BaseCallbackHandler] = None
+        self, task: AgenticWorkflowTask, llm: BaseLanguageModel, callbacks: List[BaseCallbackHandler] = None  # type: ignore[assignment]
     ) -> AgenticWorkflowOutput:
         """
         Executes the agent with the given prompt and procedures. It processes the LLM output, handles tool
@@ -101,11 +101,11 @@ class BaseAgenticWorkflowHandler(ABC):
         prompt = ChatPromptTemplate.from_messages([
             *([SystemMessagePromptTemplate.from_template(template=task.system_prompt)] if task.system_prompt else []),
             HumanMessagePromptTemplate.from_template(template=task.user_prompt),
-            *self._task.history,
+            *self._task.history,  # type: ignore[misc, union-attr]
         ])
 
         # Intrinsic detection of tool binding support
-        self._can_bind_tools = task.tools and hasattr(llm, "bind_tools")
+        self._can_bind_tools = task.tools and hasattr(llm, "bind_tools")  # type: ignore[assignment]
         if not self._can_bind_tools:
             res = await self._run_no_tool_binding(prompt)
             return res
@@ -183,7 +183,7 @@ class CoreAgenticWorkflow(BaseAgenticWorkflowHandler):
         return memories
 
     async def _run_no_tool_binding(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
-        prompt_variables = self._task.prompt_variables or {}
+        prompt_variables = self._task.prompt_variables or {}  # type: ignore[union-attr]
 
         chain = prompt | self._llm
         langchain_msg = await chain.ainvoke(prompt_variables, config=RunnableConfig(callbacks=self._callbacks))
@@ -198,11 +198,11 @@ class CoreAgenticWorkflow(BaseAgenticWorkflowHandler):
         )
 
         # Create the agent with the proper prompt structure
-        agent = create_tool_calling_agent(llm=self._llm, tools=self._task.tools, prompt=prompt)
+        agent = create_tool_calling_agent(llm=self._llm, tools=self._task.tools, prompt=prompt)  # type: ignore[union-attr]
         # Create the agent executor
         agent_executor = AgentExecutor.from_agent_and_tools(
             agent=agent,
-            tools=self._task.tools,
+            tools=self._task.tools,  # type: ignore[union-attr]
             callbacks=self._callbacks,
             return_intermediate_steps=True,
             verbose=True,
@@ -210,7 +210,7 @@ class CoreAgenticWorkflow(BaseAgenticWorkflowHandler):
         )
         # Run the agent
         langchain_msg = await agent_executor.ainvoke(
-            self._task.prompt_variables or {}, config=RunnableConfig(callbacks=self._callbacks)
+            self._task.prompt_variables or {}, config=RunnableConfig(callbacks=self._callbacks)  # type: ignore[union-attr]
         )
 
         cleaned_output = self._clean_response(langchain_msg.get("output", "")).strip()

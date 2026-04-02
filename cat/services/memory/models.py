@@ -21,14 +21,14 @@ class DocumentRecall(BaseModel):
     vector: List[float] = Field(default_factory=list)
     id: str | None = None
 
-    def __eq__(self, other: "DocumentRecall") -> bool:
+    def __eq__(self, other: "DocumentRecall") -> bool:  # type: ignore[override]
         return self.id == other.id
 
     def __hash__(self) -> int:
         return hash(self.id)
 
 
-class SparseVector(BaseModel, extra="forbid"):
+class SparseVector(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     """
     Sparse vector structure
     """
@@ -36,7 +36,7 @@ class SparseVector(BaseModel, extra="forbid"):
     values: List[float] = Field(..., description="Values and indices must be the same length")
 
 
-class Document(BaseModel, extra="forbid"):
+class Document(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     """
     Text document for embedding.
     """
@@ -49,7 +49,7 @@ class Document(BaseModel, extra="forbid"):
     )
 
 
-class Image(BaseModel, extra="forbid"):
+class Image(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     """
     WARN: Work-in-progress, unimplemented  Image object for embedding. Requires inference infrastructure, unimplemented.
     """
@@ -62,7 +62,7 @@ class Image(BaseModel, extra="forbid"):
     )
 
 
-class InferenceObject(BaseModel, extra="forbid"):
+class InferenceObject(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     """
     WARN: Work-in-progress, unimplemented  Custom object for embedding. Requires inference infrastructure, unimplemented.
     """
@@ -109,7 +109,7 @@ class ScoredPoint(BaseModel):
     order_value: int | float | None = Field(default=None, description="Order-by value")
 
 
-class PointStruct(BaseModel, extra="forbid"):
+class PointStruct(BaseModel, extra="forbid"):  # type: ignore[call-arg]
     id: int | str | None = Field(..., description="")
     vector: VectorStruct = Field(..., description="")
     payload: Payload | None = Field(default=None, description="Payload values (optional)")

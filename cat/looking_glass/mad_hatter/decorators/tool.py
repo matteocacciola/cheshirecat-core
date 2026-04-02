@@ -26,8 +26,8 @@ class CatTool(CatProcedure):
         self.name = slugify(name.strip(), separator="_")
         self.func = func
         self.description = description if description else (func.__doc__.strip() if func.__doc__ else "")
-        self.input_schema = input_schema
-        self.output_schema = output_schema
+        self.input_schema = input_schema  # type: ignore[assignment]
+        self.output_schema = output_schema  # type: ignore[assignment]
         self.examples = examples or []
 
     def __repr__(self) -> str:
@@ -73,7 +73,7 @@ class CatTool(CatProcedure):
                                 "name": self.name,
                                 "func": {
                                     "module": self.func.__module__,
-                                    "name": self.func.__name__,
+                                    "name": self.func.__name__,  # type: ignore[union-attr]
                                 },
                                 "description": self.description,
                                 "input_schema": self.input_schema,
@@ -88,7 +88,7 @@ class CatTool(CatProcedure):
                 ),
             )
             for trigger_type, trigger_list in triggers_map.items()
-            for trigger_content in trigger_list
+            for trigger_content in trigger_list  # type: ignore[union-attr]
         ]
 
     @classmethod
@@ -99,7 +99,7 @@ class CatTool(CatProcedure):
         obj_module = importlib.import_module(obj_module_path)
         func = getattr(obj_module, obj_name, None)
         if not callable(func) and hasattr(func, "func"):
-            func = func.func  # unwrap if it's a tool object
+            func = func.func  # type: ignore[union-attr]  # unwrap if it's a tool object
 
         # if func is still None, raise an error
         if func is None:
@@ -126,8 +126,8 @@ class CatTool(CatProcedure):
 
         # wrap func to inject the cat instance if func has the cat argument
         original_func = self.func
-        if "cat" not in original_func.__code__.co_varnames or self.stray is None:
-            return self.func
+        if "cat" not in original_func.__code__.co_varnames or self.stray is None:  # type: ignore[union-attr]
+            return self.func  # type: ignore[return-value]
 
         stray = self.stray
         return func_with_cat
@@ -139,8 +139,8 @@ class CatTool(CatProcedure):
         Returns:
             The langchain compatible StructuredTool objects.
         """
-        description = self.description + ("\n\nE.g.:\n" if self.examples else "")
-        for example in self.examples:
+        description = self.description + ("\n\nE.g.:\n" if self.examples else "")  # type: ignore[operator]
+        for example in self.examples:  # type: ignore[union-attr]
             description += f"- {example}\n"
 
         return StructuredTool.from_function(
@@ -158,7 +158,7 @@ class CatTool(CatProcedure):
     def triggers_map(self) -> Dict[str, List[str]]:
         return {
             "description": [f"{self.name}: {self.description}"],
-            "examples": self.examples,
+            "examples": self.examples,  # type: ignore[dict-item]
         }
 
 def tool(

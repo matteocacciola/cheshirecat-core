@@ -17,8 +17,8 @@ async def get_agentic_workflow_settings(
     """Get the list of the Agentic Workflow settings"""
     ccat = info.cheshire_cat
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_agentic_workflows",
         setting_category="agentic_workflow",
         schema_name="agenticWorkflowName",
@@ -34,8 +34,8 @@ async def get_agentic_workflow_setting(
     """Get the settings of a specific Agentic Workflow"""
     ccat = info.cheshire_cat
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_agentic_workflows",
         setting_category="agentic_workflow",
         schema_name="agenticWorkflowName",
@@ -53,8 +53,8 @@ async def upsert_agentic_workflow_setting(
     ccat = info.cheshire_cat
 
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_agentic_workflows",
         setting_category="agentic_workflow",
         schema_name="agenticWorkflowName",

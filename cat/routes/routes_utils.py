@@ -170,7 +170,7 @@ async def get_available_plugins(
     # list installed plugins' manifest
     installed_plugins = [
         create_plugin_manifest(p, active_plugins_ids, registry_plugins_index, query)
-        for p in plugin_manager.available_plugins.values()
+        for p in (await plugin_manager.available_plugins()).values()
     ]
 
     return GetAvailablePluginsResponse(
@@ -249,11 +249,12 @@ async def startup_app(app):
     utils.pod_id()
 
     bill_the_lizard = BillTheLizard()
+    await bill_the_lizard.bootstrap()
     # Initialize the default admin if not present
     if not await crud_users.get_users(DEFAULT_SYSTEM_KEY, limit=1):
         await initialize_lizard_users()
 
-    bill_the_lizard.bootstrap_services()
+    await bill_the_lizard.bootstrap()
     bill_the_lizard.fastapi_app = app
 
     # RedisSemanticCache: shared across all Swarm replicas — a near-identical prompt
@@ -320,7 +321,7 @@ async def create_jwt_content(credentials: UserCredentials, redis_search_service:
         final_valid_matches.append(json.dumps(valid_match_json))
 
     # using seconds for easier testing
-    expire_delta_in_seconds = get_env_float("CAT_JWT_EXPIRE_MINUTES") * 60
+    expire_delta_in_seconds = get_env_float("CAT_JWT_EXPIRE_MINUTES") * 60  # type: ignore[operator]
     now = datetime.now(timezone.utc)
 
     expires = now + timedelta(seconds=expire_delta_in_seconds)

@@ -19,9 +19,14 @@ class ContextMixin(ABC):
     Mixin for shared methods between all the classes managing settings of the agents.
     Provides access to chat request/response, user info, and core subsystems.
     """
-    def __init__(self):
-        self.service_provider = ServiceProvider(self.agent_key, self.mad_hatter)  # type: ignore[arg-type]
-        self._white_rabbit = None
+    _white_rabbit: WhiteRabbit = None
+    _service_provider: ServiceProvider = None
+
+    @property
+    def service_provider(self):
+        if not self._service_provider:
+            self._service_provider = ServiceProvider(self.agent_key, self.mad_hatter)  # type: ignore[arg-type]
+        return self._service_provider
 
     @property
     def mad_hatter(self) -> MadHatter:
@@ -82,6 +87,19 @@ class ContextMixin(ABC):
         """
         pass
 
+    @abstractmethod
+    async def bootstrap(self):
+        """
+        Abstract method to initialize and set up necessary configurations or resources.
+
+        This method is intended to be overridden by subclasses to implement the specific
+        bootstrap logic essential for their functionality.
+
+        Raises:
+            NotImplementedError: If the subclass does not implement the bootstrap logic.
+        """
+        pass
+
 
 class OrchestratorMixin(ContextMixin, ABC):
     """
@@ -98,7 +116,7 @@ class BotMixin(ContextMixin, ABC):
     Provides access to chat request/response, user info, and core subsystems.
     """
     @property
-    def lizard(self) -> "BillTheLizard":
+    def lizard(self) -> "BillTheLizard":  # type: ignore[name-defined]
         """
         Instance of `BillTheLizard`. Use it to access the main components of the Cat.
 

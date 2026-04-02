@@ -50,7 +50,7 @@ class CatMcpClient(Client, CatProcedure, ABC):
         Returns:
             Tool: The currently expected tool name.
         """
-        return self._expected_tool_name
+        return self._expected_tool_name  # type: ignore[return-value]
 
     @expected_tool_name.setter
     def expected_tool_name(self, expected_tool_name: str):

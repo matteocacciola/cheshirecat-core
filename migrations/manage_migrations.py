@@ -12,14 +12,16 @@ Usage:
     python manage_migrations.py revision -m "message"
 """
 import argparse
+import asyncio
 import sys
 from datetime import datetime
 from pathlib import Path
+import redis.asyncio as aioredis
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-def get_redis_client():
+def get_redis_client() -> aioredis.Redis:
     """Get Redis client from environment or defaults"""
     from cat.db.database import get_db
 
@@ -114,7 +116,7 @@ def create_revision(message: str, migrations_dir: Path) -> None:
     print("\nPlease edit the file to implement upgrade() and downgrade() functions")
 
 
-def main():
+async def main():
     parser = argparse.ArgumentParser(description="Redis Migration Management")
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
@@ -162,7 +164,7 @@ def main():
     # For other commands, need Redis connection
     try:
         r = get_redis_client()
-        r.ping()
+        await r.ping()
     except Exception as e:
         print(f"Failed to connect to Redis: {e}")
         sys.exit(1)
@@ -173,13 +175,13 @@ def main():
 
     # Execute command
     if args.command == "upgrade":
-        commands.upgrade(args.revision)
+        await commands.upgrade(args.revision)
     elif args.command == "downgrade":
-        commands.downgrade(args.revision)
+        await commands.downgrade(args.revision)
     elif args.command == "current":
-        commands.current()
+        await commands.current()
     elif args.command == "history":
-        commands.history(verbose=args.verbose)
+        await commands.history(verbose=args.verbose)
     elif args.command == "heads":
         commands.heads()
     elif args.command == "show":
@@ -187,4 +189,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

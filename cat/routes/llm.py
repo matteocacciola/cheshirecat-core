@@ -17,8 +17,8 @@ async def get_llms_settings(
     """Get the list of the Large Language Models"""
     ccat = info.cheshire_cat
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_llms",
         setting_category="llm",
         schema_name="languageModelName",
@@ -34,8 +34,8 @@ async def get_llm_settings(
     """Get settings and scheme of the specified Large Language Model"""
     ccat = info.cheshire_cat
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_llms",
         setting_category="llm",
         schema_name="languageModelName",
@@ -52,8 +52,8 @@ async def upsert_llm_setting(
     """Upsert the Large Language Model setting"""
     ccat = info.cheshire_cat
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_llms",
         setting_category="llm",
         schema_name="languageModelName",

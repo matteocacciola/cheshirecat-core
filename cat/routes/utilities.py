@@ -62,8 +62,8 @@ async def factory_reset(
     # remove memories
     cheshire_cats_ids = crud_settings.get_agents_main_keys()
     deleted_memories = False
-    for agent_id in cheshire_cats_ids:
-        ccat = info.lizard.get_cheshire_cat(agent_id)
+    for agent_id in cheshire_cats_ids:  # type: ignore[attr-defined]
+        ccat = await info.lizard.get_cheshire_cat(agent_id)
         if not ccat:
             continue
         try:
@@ -76,7 +76,7 @@ async def factory_reset(
     await shutdown_app(request.app)
 
     try:
-        get_db().flushdb()
+        await get_db().flushdb()
         deleted_settings = True
     except Exception as e:
         log.error(f"Error deleting settings: {e}")
@@ -87,7 +87,7 @@ async def factory_reset(
         plugin_folder = utils.get_plugins_path()
         for _, folders, _ in os.walk(plugin_folder):
             for folder in folders:
-                item = os.path.join(plugin_folder, folder)
+                item = os.path.join(plugin_folder, folder)  # type: ignore[union-attr]
                 if os.path.isfile(item) or not os.path.exists(item):
                     continue
                 shutil.rmtree(item)
@@ -112,7 +112,7 @@ async def get_agents() -> List[AgentResponse]:
     Get all agents.
     """
     try:
-        return [AgentResponse(**agent) for agent in crud_settings.get_agents()]
+        return [AgentResponse(**agent) for agent in crud_settings.get_agents()]  # type: ignore[attr-defined]
     except Exception as e:
         log.error(f"Error creating agent: {e}")
         return []
@@ -143,8 +143,8 @@ async def agent_update(
     Update the metadata of a specific agent.
     """
     try:
-        crud_settings.upsert_setting_by_name(
-            info.cheshire_cat.agent_key, Setting(name="metadata", value=request.metadata)
+        await crud_settings.upsert_setting_by_name(  # type: ignore[unused-coroutine]
+            info.cheshire_cat.agent_key, Setting(name="metadata", value=request.metadata)  # type: ignore[union-attr]
         )
         return AgentUpdatedResponse(updated=True)
     except Exception as e:
@@ -164,7 +164,7 @@ async def agent_destroy(
     deleted_memories = False
 
     try:
-        await info.cheshire_cat.destroy()
+        await info.cheshire_cat.destroy()  # type: ignore[union-attr]
         deleted_settings = True
         deleted_memories = True
     except Exception as e:
@@ -185,9 +185,9 @@ async def agent_reset(
     Reset a single agent. This will delete all settings, memories, and metadata, for the agent.
     """
     ccat = info.cheshire_cat
-    agent_id = ccat.agent_key
+    agent_id = ccat.agent_key  # type: ignore[union-attr]
     try:
-        await ccat.destroy()
+        await ccat.destroy()  # type: ignore[union-attr]
         await info.lizard.create_cheshire_cat(agent_id)
 
         deleted_settings = True
@@ -213,7 +213,7 @@ async def agent_clone(
     Clone a single agent. This will clone all settings, memories, and metadata, for the agent.
     """
     agent_id = request.agent_id
-    if agent_id in crud_settings.get_agents_main_keys():
+    if agent_id in crud_settings.get_agents_main_keys():  # type: ignore[operator]
         log.warning(f"Agent {agent_id} already exists. Cannot clone.")
         return AgentClonedResponse(cloned=False)
 
@@ -221,10 +221,10 @@ async def agent_clone(
 
     cloned_ccat = None
     try:
-        cloned_ccat = await info.lizard.clone_cheshire_cat(ccat, agent_id)
+        cloned_ccat = await info.lizard.clone_cheshire_cat(ccat, agent_id)  # type: ignore[union-attr]
         return AgentClonedResponse(cloned=True)
     except Exception as e:
-        log.error(f"Error cloning agent {ccat.agent_key}: {e}")
+        log.error(f"Error cloning agent {ccat.agent_key}: {e}")  # type: ignore[union-attr]
 
         await info.lizard.rollback_cheshire_cat_creation(agent_id, cloned_ccat)
         return AgentClonedResponse(cloned=False)

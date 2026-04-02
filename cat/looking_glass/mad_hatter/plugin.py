@@ -92,7 +92,7 @@ class Plugin:
 
         try:
             # store the new settings incrementally, without losing the values of the configurations still supported
-            finalized_setting = {k: setting.get(k, v) for k, v in new_setting.items()} if setting else new_setting
+            finalized_setting = {k: setting.get(k, v) for k, v in new_setting.items()} if setting else new_setting  # type: ignore[union-attr]
 
             # Validate the settings
             self.settings_model().model_validate(finalized_setting)
@@ -104,7 +104,7 @@ class Plugin:
             return True
 
         # try to create the new incremental settings into the Redis database
-        await crud_plugins.set_setting(agent_id, self._id, finalized_setting)  # type: ignore[arg]
+        await crud_plugins.set_setting(agent_id, self._id, finalized_setting)  # type: ignore[arg-type]
         log.info(f"Plugin {self._id} for agent '{agent_id}', settings migrated from {setting} to {finalized_setting}")
 
         return True

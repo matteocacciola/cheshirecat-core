@@ -111,12 +111,12 @@ class BaseFileManager(ABC):
             bytes: The binary content of the specified file, or None if the file does not exist.
         """
         remote_root_dir = os.path.join(self._root_dir, remote_root_dir) if remote_root_dir else self._root_dir
-        destination_path = os.path.join(remote_root_dir, remote_filename)
+        destination_path = os.path.join(remote_root_dir, remote_filename)  # type: ignore[assignment]
 
         if not self.file_exists(remote_filename, remote_root_dir):
             return None
 
-        return self._read_file(destination_path)
+        return self._read_file(destination_path)  # type: ignore[return-value]
 
     @abstractmethod
     def _read_file(self, file_path: str) -> bytes:
@@ -139,10 +139,10 @@ class BaseFileManager(ABC):
              bool: True if the file was written successfully, False otherwise.
         """
         remote_root_dir = os.path.join(self._root_dir, remote_root_dir) if remote_root_dir else self._root_dir
-        destination_path = os.path.join(remote_root_dir, remote_filename)
+        destination_path = os.path.join(remote_root_dir, remote_filename)  # type: ignore[assignment]
 
         try:
-            self._write_file(file_content, destination_path)
+            self._write_file(file_content, destination_path)  # type: ignore[call-arg]
             return True
         except Exception as e:
             log.error(f"Error while writing file {destination_path}: {e}")
@@ -238,7 +238,7 @@ class BaseFileManager(ABC):
         """
         local_dir = os.path.join(self._root_dir, local_dir)
 
-        return [
+        return [  # type: ignore[return-value]
             self.upload_file(os.path.join(root, file), remote_root_dir)
             for root, _, files in os.walk(local_dir)
             for file in files
@@ -312,9 +312,9 @@ class BaseFileManager(ABC):
             filename = os.path.basename(filename)
 
         if self._root_dir not in remote_root_dir:
-            remote_root_dir = os.path.join(self._root_dir, remote_root_dir)
+            remote_root_dir = os.path.join(self._root_dir, remote_root_dir)  # type: ignore[assignment]
 
-        return filename in [file.name for file in self._list_files(remote_root_dir)]
+        return filename in [file.name for file in self._list_files(remote_root_dir)]  # type: ignore[return-value]
 
 
 class DummyFileManager(BaseFileManager):
@@ -340,12 +340,12 @@ class DummyFileManager(BaseFileManager):
         return []
 
     def _read_file(self, destination_path: str) -> bytes:
-        pass
+        pass  # type: ignore[empty-body]
     
     def _write_file(self, file_content: str | bytes, file_path: str) -> None:
         pass
 
-    def _eq(self, other: "DummyFileManager") -> bool:
+    def _eq(self, other: "DummyFileManager") -> bool:  # type: ignore[override]
         return self.__class__.__name__ == other.__class__.__name__
 
 

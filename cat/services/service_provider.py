@@ -49,34 +49,34 @@ class ServiceProvider:
             await self._create_service_object(factory)
 
             # reload from db and return
-            selected_config = crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)
+            selected_config = crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)  # type: ignore[assignment]
 
-        return await factory.get_from_config_name(selected_config["name"])
+        return await factory.get_from_config_name(selected_config["name"])  # type: ignore[index]
 
     async def get_embedder(self) -> Embeddings:
-        return await self._get_service_object(self._list_factory_params["embedder"])
+        return await self._get_service_object(self._factory_services_params["embedder"])
 
     async def get_large_language_model(self) -> LargeLanguageModel:
-        return await self._get_service_object(self._list_factory_params["large_language_model"])
+        return await self._get_service_object(self._factory_services_params["large_language_model"])
 
     async def get_custom_auth_handler(self) -> BaseAuthHandler:
-        return await self._get_service_object(self._list_factory_params["auth_handler"])
+        return await self._get_service_object(self._factory_services_params["auth_handler"])
 
     async def get_file_manager(self) -> BaseFileManager:
-        return await self._get_service_object(self._list_factory_params["file_manager"])
+        return await self._get_service_object(self._factory_services_params["file_manager"])
 
     async def get_chunker(self) -> BaseChunker:
-        return await self._get_service_object(self._list_factory_params["chunker"])
+        return await self._get_service_object(self._factory_services_params["chunker"])
 
     async def get_vector_memory_handler(self) -> BaseVectorDatabaseHandler:
-        return await self._get_service_object(self._list_factory_params["vector_memory_handler"])
+        return await self._get_service_object(self._factory_services_params["vector_memory_handler"])
 
     async def get_agentic_workflow(self) -> BaseAgenticWorkflowHandler:
-        agentic_workflow = await self._get_service_object(self._list_factory_params["agentic_workflow"])
+        agentic_workflow = await self._get_service_object(self._factory_services_params["agentic_workflow"])
         agentic_workflow.vector_memory_handler = await self.get_vector_memory_handler()
         return agentic_workflow
 
-    async def _bootstrap_services(self, list_factory_params: Dict[str, FactoryParams]):
+    async def bootstrap_services(self, list_factory_params: Dict[str, FactoryParams]):
         for _, factory_params in list_factory_params.items():
             factory = self._get_factory_object(factory_params)
             selected_config = await crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)
@@ -88,13 +88,13 @@ class ServiceProvider:
             await self._create_service_object(factory)
 
     async def bootstrap_services_orchestrator(self):
-        await self._bootstrap_services(self._list_factory_params_orchestrator)
+        await self.bootstrap_services(self._orchestrator_factory_services_params)
 
     async def bootstrap_services_bot(self):
-        await self._bootstrap_services(self._list_factory_params_bot)
+        await self.bootstrap_services(self._bot_factory_services_params)
 
     @property
-    def _list_factory_params_orchestrator(self) -> Dict[str, FactoryParams]:
+    def _orchestrator_factory_services_params(self) -> Dict[str, FactoryParams]:
         return {
             "embedder": FactoryParams(
                 factory_allowed_handler_name="factory_allowed_embedders",
@@ -104,7 +104,7 @@ class ServiceProvider:
         }
 
     @property
-    def _list_factory_params_bot(self) -> Dict[str, FactoryParams]:
+    def _bot_factory_services_params(self) -> Dict[str, FactoryParams]:
         return {
             "agentic_workflow": FactoryParams(
                 factory_allowed_handler_name="factory_allowed_agentic_workflows",
@@ -139,5 +139,5 @@ class ServiceProvider:
         }
 
     @property
-    def _list_factory_params(self) -> Dict[str, FactoryParams]:
-        return self._list_factory_params_orchestrator | self._list_factory_params_bot
+    def _factory_services_params(self) -> Dict[str, FactoryParams]:
+        return self._orchestrator_factory_services_params | self._bot_factory_services_params

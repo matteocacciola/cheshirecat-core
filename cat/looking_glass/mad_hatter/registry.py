@@ -14,7 +14,7 @@ class PluginRegistry(ABC):
         pass
 
     @abstractmethod
-    async def search_plugins(self, query: str = None) -> List[PluginManifest]:
+    async def search_plugins(self, query: str = None) -> List[PluginManifest]:  # type: ignore[assignment]
         """
         Search for plugins in the registry.
         Args:

@@ -25,7 +25,7 @@ class CatProcedure(ABC):
 
     stray = None
 
-    def inject_stray_cat(self, stray: "StrayCat") -> "CatProcedure":
+    def inject_stray_cat(self, stray: "StrayCat") -> "CatProcedure":  # type: ignore[name-defined]
         self.stray = stray
         return self
 
@@ -40,7 +40,7 @@ class CatProcedure(ABC):
         pass
 
     @classmethod
-    def from_document_recall(cls, document: DocumentRecall, stray: "StrayCat") -> "CatProcedure":
+    def from_document_recall(cls, document: DocumentRecall, stray: "StrayCat") -> "CatProcedure":  # type: ignore[name-defined]
         """
         Factory method to reconstruct a CatProcedure from stored metadata.
         Delegates to each subclass's own reconstruction logic.

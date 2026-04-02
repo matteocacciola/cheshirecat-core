@@ -27,7 +27,7 @@ class FileManagerAttributes(BaseModel):
 
 def get_from_info(info: AuthorizedInfo) -> Tuple[str, VectorMemoryType, Dict]:
     ccat = info.cheshire_cat
-    path = ccat.agent_key  # type: ignore[arg-type]
+    path = ccat.agent_key  # type: ignore[union-attr]
     if info.stray_cat:
         path = os.path.join(path, info.stray_cat.id)
 
@@ -45,8 +45,8 @@ async def get_file_managers_settings(
     """Get the list of the File Managers and their settings"""
     ccat = info.cheshire_cat
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,  # type: ignore[arg-type]
-        hook_manager=ccat.plugin_manager,  # type: ignore[arg-type]
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_file_managers",
         setting_category="file_manager",
         schema_name="fileManagerName",
@@ -62,8 +62,8 @@ async def get_file_manager_settings(
     """Get settings and scheme of the specified File Manager"""
     ccat = info.cheshire_cat
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,  # type: ignore[arg-type]
-        hook_manager=ccat.plugin_manager,  # type: ignore[arg-type]
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_file_managers",
         setting_category="file_manager",
         schema_name="fileManagerName",
@@ -81,11 +81,11 @@ async def upsert_file_manager_setting(
     """Upsert the File Manager setting"""
     ccat = info.cheshire_cat
 
-    previous_file_manager = await ccat.file_manager()  # type: ignore[arg-type]
+    previous_file_manager = await ccat.file_manager()  # type: ignore[union-attr]
 
     sf = ServiceFactory(
-        agent_key=ccat.agent_key,  # type: ignore[arg-type]
-        hook_manager=ccat.plugin_manager,  # type: ignore[arg-type]
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_file_managers",
         setting_category="file_manager",
         schema_name="fileManagerName",
@@ -93,9 +93,9 @@ async def upsert_file_manager_setting(
 
     result = await sf.upsert_service(file_manager_name, payload)
 
-    current_file_manager = await ccat.file_manager()  # type: ignore[assignment]
+    current_file_manager = await ccat.file_manager()  # type: ignore[union-attr]
     if previous_file_manager != current_file_manager:
-        background_tasks.add_task(ccat.transfer_files_from, previous_file_manager)  # type: ignore[arg-type]
+        background_tasks.add_task(ccat.transfer_files_from, previous_file_manager)  # type: ignore[union-attr]
 
     return UpsertSettingResponse(**result)
 
@@ -106,7 +106,7 @@ async def get_attributes(
 ) -> FileManagerAttributes:
     path, _, _ = get_from_info(info)
 
-    fh = await info.cheshire_cat.file_manager()  # type: ignore[arg-type]
+    fh = await info.cheshire_cat.file_manager()  # type: ignore[union-attr]
     list_files = fh.list_files(path)
     return FileManagerAttributes(files=list_files, size=sum(file.size for file in list_files))
 
@@ -121,7 +121,7 @@ async def download_file(
     sanitized_source = sanitize_source_name(source_name, path=path)
 
     # Download the file
-    fh = await info.cheshire_cat.file_manager()  # type: ignore[arg-type]
+    fh = await info.cheshire_cat.file_manager()  # type: ignore[union-attr]
     file_content = fh.download_file(os.path.join(path, sanitized_source))
     if file_content is None:
         raise CustomNotFoundException("File not found")
@@ -149,12 +149,12 @@ async def delete_file(
     sanitized_source = sanitize_source_name(source_name, path=path)
 
     try:
-        fh = await info.cheshire_cat.file_manager()  # type: ignore[arg-type]
+        fh = await info.cheshire_cat.file_manager()  # type: ignore[union-attr]
         # delete the file from the file storage
-        res = fh.remove_file(os.path.join(path, sanitized_source))  # type: ignore[arg-type]
+        res = fh.remove_file(os.path.join(path, sanitized_source))
 
         # delete points
-        vmh = await info.cheshire_cat.vector_memory_handler()  # type: ignore[arg-type]
+        vmh = await info.cheshire_cat.vector_memory_handler()  # type: ignore[union-attr]
         await vmh.delete_tenant_points(str(collection_id), metadata)  # type: ignore[arg-type]
 
         return FileManagerDeletedFiles(deleted=res)
@@ -170,17 +170,17 @@ async def delete_files(
     path, collection_id, metadata = get_from_info(info)
 
     try:
-        file_manager = await info.cheshire_cat.file_manager()  # type: ignore[arg-type]
+        file_manager = await info.cheshire_cat.file_manager()  # type: ignore[union-attr]
         # get the list of files
-        files = file_manager.list_files(path)  # type: ignore[arg-type]
+        files = file_manager.list_files(path)
 
         # delete all the files from the file storage
-        res = file_manager.remove_folder(path)  # type: ignore[arg-type]
+        res = file_manager.remove_folder(path)
 
         # delete points
         for file in files:
             metadata |= {"source": file.name}
-            vmh = await info.cheshire_cat.vector_memory_handler()  # type: ignore[arg-type]
+            vmh = await info.cheshire_cat.vector_memory_handler()  # type: ignore[union-attr]
             await vmh.delete_tenant_points(str(collection_id), metadata)  # type: ignore[arg-type]
 
         return FileManagerDeletedFiles(deleted=res)

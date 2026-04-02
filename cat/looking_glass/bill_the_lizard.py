@@ -10,11 +10,11 @@ from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.registry import PluginRegistry
+from cat.mixins import OrchestratorMixin
 from cat.rabbit_hole import RabbitHole
 from cat.services.factory.auth_handler import CoreAuthHandler
-from cat.services.mixin import OrchestratorMixin
 from cat.services.websocket_manager import WebSocketManager
-from cat.utils import singleton, safe_deepcopy, run_sync_or_async, set_llm_cache
+from cat.utils import singleton, safe_deepcopy, set_llm_cache
 
 
 @singleton
@@ -34,41 +34,50 @@ class BillTheLizard(OrchestratorMixin):
     def __init__(self):
         """
         Bill the Lizard initialization.
-        At init time the Lizard executes the bootstrap.
 
-        Notes
-        -----
-        Bootstrapping is the process of loading the plugins, the Embedder, the *Main Agent*, the *Rabbit Hole* and
-        the *White Rabbit*.
+        The constructor is intentionally kept **synchronous and side-effect-free**: it only initialises the plugin manager
+        so that the singleton exists immediately.
+        All async bootstrap work (plugin discovery, hook execution, service setup) is deferred to :meth:`bootstrap`,
+        which is called by `startup_app` inside uvicorn's event loop.
         """
         self._plugin_registry = None
-
         self._fastapi_app = None
+        self._pending_endpoints = []
 
-        # load active plugins
+        # Minimal sync setup — plugin manager is created but NOT yet discovered.
         self.plugin_manager = MadHatter(self.agent_key)  # type: ignore[arg-type]
-        run_sync_or_async(self.plugin_manager.discover_plugins)
 
-        # Store endpoints for later activation
+        # These are populated in bootstrap(); set to None so callers can detect
+        # that bootstrap hasn't run yet.
+        self.websocket_manager = None
+        self.rabbit_hole = None
+        self.core_auth_handler = None
+
+    async def bootstrap(self):
+        """
+        Fully initialise the lizard inside uvicorn's running event loop.
+
+        Must be awaited from an async context (e.g. the lifespan coroutine) so that:
+        - `discover_plugins` can await Redis calls.
+        - Hook functions that call `asyncio.ensure_future` schedule tasks on the
+          **correct** (uvicorn) event loop instead of a transient side-thread loop.
+        """
+        # Discover and load all plugins (async: reads active_plugins from Redis)
+        await self.plugin_manager.discover_plugins()
+
+        # Store endpoints for later activation (after fastapi_app is set)
         self._pending_endpoints = safe_deepcopy(self.plugin_manager.endpoints)
 
-        # allows plugins to do something before cat components are loaded
-        run_sync_or_async(self.plugin_manager.execute_hook, "before_lizard_bootstrap", caller=self)
-
-        # bootstrap bill the lizard
-        super().__init__()
+        # Allow plugins to act before the remaining cat components are created
+        await self.plugin_manager.execute_hook("before_lizard_bootstrap", caller=self)
 
         self.websocket_manager = WebSocketManager()
-
-        # Rabbit Hole Instance
         self.rabbit_hole = RabbitHole()
-
         self.core_auth_handler = CoreAuthHandler()
 
-        run_sync_or_async(self.plugin_manager.execute_hook, "after_lizard_bootstrap", caller=self)
+        await self.service_provider.bootstrap_services_orchestrator()
 
-    def bootstrap_services(self):
-        self.service_provider.bootstrap_services_orchestrator()
+        await self.plugin_manager.execute_hook("after_lizard_bootstrap", caller=self)
 
     async def create_cheshire_cat(self, agent_id: str, metadata: Dict | None = None) -> CheshireCat:
         """
@@ -90,7 +99,7 @@ class BillTheLizard(OrchestratorMixin):
         ccat = None
         try:
             ccat = await CheshireCat.create(agent_id)
-            ccat.bootstrap_services()
+            await ccat.bootstrap()
             if metadata is not None:
                 await crud_settings.upsert_setting_by_name(
                     ccat.agent_key,
@@ -263,7 +272,7 @@ class BillTheLizard(OrchestratorMixin):
 
     async def install_plugin(self, plugin_path: str) -> str:
         try:
-            plugin_id = self.plugin_manager.install_plugin(plugin_path)
+            plugin_id = await self.plugin_manager.install_plugin(plugin_path)
 
             await self.on_plugin_activate(plugin_id)
             await self.plugin_manager.execute_hook(

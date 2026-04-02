@@ -18,10 +18,10 @@ from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.procedures import CatProcedureType
 from cat.looking_glass.models import StoredSourceWithMetadata
 from cat.looking_glass.stray_cat import StrayCat
+from cat.mixins import BotMixin
 from cat.services.factory.file_manager import BaseFileManager
 from cat.services.factory.vector_db import BaseVectorDatabaseHandler
 from cat.services.memory.models import VectorMemoryType, PointStruct
-from cat.services.mixin import BotMixin
 from cat.utils import guess_file_type, is_url
 
 
@@ -62,9 +62,6 @@ class CheshireCat(BotMixin):
         # allows plugins to do something before cat components are loaded
         await cat.plugin_manager.execute_hook("before_cat_bootstrap", caller=cat)
 
-        # bootstrap cat — call the parent class __init__ explicitly
-        BotMixin.__init__(cat)
-
         # allows plugins to do something after the cat bootstrap is complete
         await cat.plugin_manager.execute_hook("after_cat_bootstrap", caller=cat)
 
@@ -86,8 +83,8 @@ class CheshireCat(BotMixin):
         """Cat destructor."""
         self.shutdown()
 
-    def bootstrap_services(self):
-        self.service_provider.bootstrap_services_bot()
+    async def bootstrap(self):
+        await self.service_provider.bootstrap_services_bot()
 
     def shutdown(self) -> None:
         self.plugin_manager = None
@@ -231,7 +228,7 @@ class CheshireCat(BotMixin):
 
             cat = self
             if chat_id := source.metadata.get("chat_id"):
-                if not (stray_cat := await self._find_stray_cat(chat_id)):
+                if not (stray_cat := await self._find_stray_cat(str(chat_id))):
                     log.warning(f"Stray cat with id {chat_id} not found. Skipping file {source.path}/{source.name}")
                     continue
 
@@ -303,7 +300,7 @@ class CheshireCat(BotMixin):
         if not user_id:
             return None
 
-        user = crud_users.get_user(self.agent_key, user_id)
+        user = await crud_users.get_user(self.agent_key, user_id)
         if not user:
             return None
 
