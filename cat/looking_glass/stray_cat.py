@@ -90,9 +90,6 @@ class StrayCat(BotMixin):
 
         return cat
 
-    async def bootstrap(self):
-        pass
-
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""
         return self.user.id == other.user.id and self.agent_key == other.agent_key and self.id == other.id

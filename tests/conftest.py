@@ -3,8 +3,6 @@ import pytest
 import pytest_asyncio
 import os
 import shutil
-import redis
-import redis.asyncio as aioredis
 import warnings
 from pydantic import PydanticDeprecatedSince20
 from qdrant_client import AsyncQdrantClient
@@ -13,6 +11,7 @@ import time
 
 from cat.auth import auth_utils
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
+from cat.db.database import get_sync_db
 from cat.env import get_env
 from cat.looking_glass import BillTheLizard, StrayCat
 from cat.looking_glass.mad_hatter.plugin import Plugin
@@ -33,9 +32,8 @@ from tests.utils import (
 
 pytest_plugins = ["pytest_asyncio"]
 
-async_redis_client = aioredis.Redis(host=get_env("CAT_REDIS_HOST"), db=1, encoding="utf-8", decode_responses=True)
-sync_redis_client = redis.Redis(host=get_env("CAT_REDIS_HOST"), db=1, encoding="utf-8", decode_responses=True)
 memory_client = AsyncQdrantClient(":memory:")
+redis_params = {"host": get_env("CAT_REDIS_HOST"), "db": 1, "encoding": "utf-8", "decode_responses": True}
 
 # substitute classes' methods where necessary for testing purposes
 def mock_classes(monkeypatch):
@@ -48,13 +46,9 @@ def mock_classes(monkeypatch):
         self.save_memory_snapshots = kwargs.get("save_memory_snapshots", False)
     monkeypatch.setattr(QdrantHandler, "__init__", mock_init_vector_database)
 
-    # Use a different async and sync redis clients
-    def mock_get_redis_async_client():
-        return async_redis_client
-    monkeypatch.setattr("cat.db.database.get_async_db", mock_get_redis_async_client)
-    def mock_get_redis_sync_client():
-        return sync_redis_client
-    monkeypatch.setattr("cat.db.database.get_sync_db", mock_get_redis_sync_client)
+    def mock_get_redis_kwargs():
+        return redis_params
+    monkeypatch.setattr("cat.db.database.get_redis_kwargs", mock_get_redis_kwargs)
 
     utils.get_plugins_path = lambda: "tests/mocks/mock_plugin_folder/"
     utils.get_file_manager_root_storage_path = lambda: "tests/data/storage"
@@ -91,7 +85,7 @@ async def clean_up():
                 os.remove(tbr)
 
     # flush redis database
-    await async_redis_client.flushdb()
+    get_sync_db().flushdb()
 
     # delete all the collections in Qdrant
     collections = await memory_client.get_collections()

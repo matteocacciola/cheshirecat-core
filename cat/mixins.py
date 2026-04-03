@@ -87,19 +87,6 @@ class ContextMixin(ABC):
         """
         pass
 
-    @abstractmethod
-    async def bootstrap(self):
-        """
-        Abstract method to initialize and set up necessary configurations or resources.
-
-        This method is intended to be overridden by subclasses to implement the specific
-        bootstrap logic essential for their functionality.
-
-        Raises:
-            NotImplementedError: If the subclass does not implement the bootstrap logic.
-        """
-        pass
-
 
 class OrchestratorMixin(ContextMixin, ABC):
     """

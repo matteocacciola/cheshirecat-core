@@ -61,6 +61,8 @@ class CheshireCat(BotMixin):
         # allows plugins to do something before cat components are loaded
         await cat.plugin_manager.execute_hook("before_cat_bootstrap", caller=cat)
 
+        await cat.service_provider.bootstrap_services_bot()
+
         # allows plugins to do something after the cat bootstrap is complete
         await cat.plugin_manager.execute_hook("after_cat_bootstrap", caller=cat)
 
@@ -89,9 +91,6 @@ class CheshireCat(BotMixin):
         except Exception:
             log.warning(f"Error while shutting down CheshireCat '{self.agent_key}'")
             pass
-
-    async def bootstrap(self):
-        await self.service_provider.bootstrap_services_bot()
 
     async def shutdown(self) -> None:
         self.plugin_manager = None

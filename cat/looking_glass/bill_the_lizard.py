@@ -138,7 +138,6 @@ class BillTheLizard(OrchestratorMixin):
         ccat = None
         try:
             ccat = await CheshireCat.create(agent_id)
-            await ccat.bootstrap()
             if metadata is not None:
                 await crud_settings.upsert_setting_by_name(
                     ccat.agent_key,
@@ -369,7 +368,7 @@ class BillTheLizard(OrchestratorMixin):
             # if the plugin is not active for the Cheshire Cat, then skip it
             if (ccat := await self._get_cheshire_cat_on_plugin_event(ccat_id, plugin_id)) is None:
                 continue
-            ccat.plugin_manager.activate_plugin(plugin_id)
+            await ccat.plugin_manager.activate_plugin(plugin_id)
 
     async def on_plugin_deactivate(self, plugin_id: str):
         # deactivate the endpoints from the plugin
@@ -381,7 +380,7 @@ class BillTheLizard(OrchestratorMixin):
             # if the plugin is not active for the Cheshire Cat, then skip it
             if (ccat := await self._get_cheshire_cat_on_plugin_event(ccat_id, plugin_id)) is None:
                 continue
-            ccat.plugin_manager.deactivate_plugin(plugin_id)
+            await ccat.plugin_manager.deactivate_plugin(plugin_id)
 
     def _activate_pending_endpoints(self) -> None:
         for endpoint in self._pending_endpoints:
