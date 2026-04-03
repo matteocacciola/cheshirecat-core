@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 from scalar_fastapi import get_scalar_api_reference
 
-from cat.db.database import get_db
+from cat.db.database import get_async_db
 from cat.env import get_env
 from cat.exceptions import (
     LoadMemoryException,
@@ -55,7 +55,7 @@ async def lifespan(app: FastAPI):
 
     await shutdown_app(app)
 
-    await get_db().aclose()
+    await get_async_db().aclose()
 
 
 def custom_generate_unique_id(route: APIRoute):

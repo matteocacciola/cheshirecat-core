@@ -144,7 +144,7 @@ async def test_install_plugin_dependencies():
     p = Plugin(mock_plugin_path)
 
     # Dependencies are installed on plugin activation
-    p.activate(DEFAULT_SYSTEM_KEY)
+    await p.activate(DEFAULT_SYSTEM_KEY)
 
     # pip-install-test should have been installed
     result = subprocess.run(["uv", "pip", "list"], stdout=subprocess.PIPE)

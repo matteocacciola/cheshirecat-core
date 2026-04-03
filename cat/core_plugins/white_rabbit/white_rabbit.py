@@ -1,15 +1,13 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, EVENT_JOB_SUBMITTED
 from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
 from apscheduler.jobstores.redis import RedisJobStore
 from apscheduler.schedulers.background import BackgroundScheduler
 from pydantic import BaseModel, Field
-from pytz import utc
-import redis
 
 from cat import log, utils
-from cat.db.database import get_redis_kwargs
+from cat.db.database import get_sync_db
 from cat.utils import singleton
 
 
@@ -39,24 +37,18 @@ class WhiteRabbit:
     def __init__(self):
         log.debug("Initializing WhiteRabbit...")
 
+        self._client_db = get_sync_db()
         self._prefix_lock_key = "white_rabbit:lock"
         self._prefix_status_key = "white_rabbit:status"
 
-        # Sync client: used by APScheduler listener callbacks (they run in threads,
-        # not in the async event loop) and for simple get/set status tracking.
-        sync_kwargs = get_redis_kwargs()
-        self._client_db = redis.Redis(**sync_kwargs)
-
-        # APScheduler's RedisJobStore uses binary data (pickled jobs) so it needs
-        # its own sync connection with decode_responses=False.
-        # We build the kwargs directly from env vars — NOT from the async client's
-        # get_connection_kwargs(), which would inject an async ConnectionClass and
-        # cause "coroutine has no attribute 'shutdown'" errors inside APScheduler.
+        # Get connection kwargs from the existing client, but create a SEPARATE raw (decode_responses=False) connection
+        # exclusively for APScheduler's RedisJobStore, which stores pickled binary data and cannot use a UTF-8 decoding
+        # client. This avoids any interference with the main client connection used by the rest of the system.
         jobstores = {
             "default": RedisJobStore(
                 jobs_key="white_rabbit:jobs",
                 run_times_key="white_rabbit:run_times",
-                **(sync_kwargs | {"decode_responses": False}),
+                **(self._client_db.get_connection_kwargs() | {"decode_responses": False}),
             )
         }
 
@@ -71,7 +63,7 @@ class WhiteRabbit:
             jobstores=jobstores,
             executors=executors,
             job_defaults=job_defaults,
-            timezone=utc,
+            timezone=timezone.utc,
         )
 
         # Listen to submission, execution and error events to track status accurately
@@ -97,7 +89,6 @@ class WhiteRabbit:
         return f"{self._prefix_status_key}:{job_id}"
 
     def _set_job_status(self, job_id: str, status: JobStatus):
-        # Called from APScheduler listener threads — must use the sync client.
         if status in [JobStatus.COMPLETED, JobStatus.REMOVED]:
             # No need to retain completed or removed status; clean up
             self._client_db.delete(self._status_key(job_id))
@@ -105,7 +96,6 @@ class WhiteRabbit:
             self._client_db.set(self._status_key(job_id), str(status))
 
     def _get_job_status(self, job_id: str) -> JobStatus:
-        # Called from APScheduler listener threads — must use the sync client.
         raw = self._client_db.get(self._status_key(job_id))
         if raw is None:
             return JobStatus.SCHEDULED  # Default for jobs with no explicit status set yet
@@ -146,7 +136,7 @@ class WhiteRabbit:
             if lock_acquired
             else f"WhiteRabbit: Job '{event}' already in execution or handled by another node."
         )
-        log.debug(debug_message)  # type: ignore[attr-defined]
+        log.debug(debug_message)
 
         return lock_acquired  # type: ignore[no-any-return]
 
@@ -267,13 +257,13 @@ class WhiteRabbit:
     def schedule_job(
         self,
         job,
-        job_id: str = None,  # type: ignore[assignment]
-        days=0,
-        hours=0,
-        minutes=0,
-        seconds=0,
-        milliseconds=0,
-        microseconds=0,
+        job_id: str = None,
+        days: int = 0,
+        hours: int = 0,
+        minutes: int = 0,
+        seconds: int = 0,
+        milliseconds: int = 0,
+        microseconds: int = 0,
         **kwargs,
     ) -> str:
         """
@@ -282,12 +272,12 @@ class WhiteRabbit:
         Args:
             job (function): The function to be called.
             job_id (str): The id assigned to the job.
-            days (int): Days to wait.
-            hours (int): Hours to wait.
-            minutes (int): Minutes to wait.
-            seconds (int): Seconds to wait.
-            milliseconds (int): Milliseconds to wait.
-            microseconds (int): Microseconds to wait.
+            days (int | str): Days to wait.
+            hours (int | str): Hours to wait.
+            minutes (int | str): Minutes to wait.
+            seconds (int | str): Seconds to wait.
+            milliseconds (int | str): Milliseconds to wait.
+            microseconds (int | str): Microseconds to wait.
             **kwargs: The arguments to pass to the function.
 
         Returns:
@@ -304,7 +294,7 @@ class WhiteRabbit:
 
         # Check that the function is callable
         if not callable(job):
-            log.error("WhiteRabbit: The job should be callable!")  # type: ignore[attr-defined]
+            log.error("WhiteRabbit: The job should be callable!")
             raise TypeError(f"TypeError: '{type(job)}' object is not callable")
 
         # Generate id if none
@@ -315,6 +305,7 @@ class WhiteRabbit:
         self.scheduler.add_job(job, "date", id=job_id, run_date=schedule, kwargs=kwargs)
         self.jobs.append(job_id)
 
+        log.info(f"WhiteRabbit: Scheduled job '{job_id}' to run at {schedule}")
         return job_id
 
     def schedule_interval_job(
@@ -323,10 +314,10 @@ class WhiteRabbit:
         job_id: str = None,  # type: ignore[assignment]
         start_date: datetime = None,  # type: ignore[assignment]
         end_date: datetime = None,  # type: ignore[assignment]
-        days=0,
-        hours=0,
-        minutes=0,
-        seconds=0,
+        days: int | str = 0,
+        hours: int | str = 0,
+        minutes: int | str = 0,
+        seconds: int | str = 0,
         **kwargs,
     ) -> str:
         """
@@ -337,10 +328,10 @@ class WhiteRabbit:
             job_id (str): The id assigned to the job.
             start_date (datetime): Start date. If None the job starts instantaneously.
             end_date (datetime): End date. If None the job never ends.
-            days (int): Days interval.
-            hours (int): Hours interval.
-            minutes (int): Minutes interval.
-            seconds (int): Seconds interval.
+            days (int | str): Days interval.
+            hours (int | str): Hours interval.
+            minutes (int | str): Minutes interval.
+            seconds (int | str): Seconds interval.
             **kwargs: The arguments to pass to the function.
 
         Returns:
@@ -370,6 +361,7 @@ class WhiteRabbit:
         )
         self.jobs.append(job_id)
 
+        log.info(f"WhiteRabbit: Scheduled interval job '{job_id}' with interval {days}d {hours}h {minutes}m {seconds}s")
         return job_id
 
     def schedule_cron_job(
@@ -378,14 +370,14 @@ class WhiteRabbit:
         job_id: str = None,  # type: ignore[assignment]
         start_date: datetime = None,  # type: ignore[assignment]
         end_date: datetime = None,  # type: ignore[assignment]
-        year=None,
-        month=None,
-        day=None,
-        week=None,
-        day_of_week=None,
-        hour=None,
-        minute=None,
-        second=None,
+        year: int | str = None,
+        month: int | str = None,
+        day: int | str = None,
+        week: int | str =None,
+        day_of_week: int | str = None,
+        hour: int | str = None,
+        minute: int | str = None,
+        second: int | str = None,
         **kwargs,
     ) -> str:
         """
@@ -437,18 +429,19 @@ class WhiteRabbit:
         )
         self.jobs.append(job_id)
 
+        log.info(f"WhiteRabbit: Scheduled cron job '{job_id}' with cron params year={year} month={month} day={day} week={week} day_of_week={day_of_week} hour={hour} minute={minute} second={second}")
         return job_id
 
     def schedule_chat_message(
         self,
         content: str,
         cat,
-        days=0,
-        hours=0,
-        minutes=0,
-        seconds=0,
-        milliseconds=0,
-        microseconds=0,
+        days: float = 0,
+        hours: float = 0,
+        minutes: float = 0,
+        seconds: float = 0,
+        milliseconds: float = 0,
+        microseconds: float = 0,
     ) -> str:
         """
         Schedule a chat message.
@@ -456,12 +449,12 @@ class WhiteRabbit:
         Args:
             content (str): The message to be sent.
             cat (StrayCat): Stray Cat instance.
-            days (int): Days to wait.
-            hours (int): Hours to wait.
-            minutes (int): Minutes to wait.
-            seconds (int): Seconds to wait.
-            milliseconds (int): Milliseconds to wait.
-            microseconds (int): Microseconds to wait.
+            days (int | str): Days to wait.
+            hours (int | str): Hours to wait.
+            minutes (int | str): Minutes to wait.
+            seconds (int | str): Seconds to wait.
+            milliseconds (int | str): Milliseconds to wait.
+            microseconds (int | str): Microseconds to wait.
 
         Returns:
             The job id.
@@ -489,4 +482,5 @@ class WhiteRabbit:
         )
         self.jobs.append(job_id)
 
+        log.info(f"WhiteRabbit: Scheduled chat message '{job_id}' to be sent at {schedule}")
         return job_id

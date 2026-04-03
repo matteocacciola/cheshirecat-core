@@ -15,7 +15,7 @@ class CheshireCatPluginRegistry(PluginRegistry):
 
     async def search_plugins(self, query: str = None) -> List[PluginManifest]:
         try:
-            async with httpx.AsyncClient(timeout=60) as client:
+            async with httpx.AsyncClient(timeout=10) as client:
                 # search plugins if a query is provided, list plugins (no search) otherwise
                 response = await (
                     client.post(f"{self.registry_url}/search", json={"query": query})

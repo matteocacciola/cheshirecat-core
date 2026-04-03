@@ -4,7 +4,7 @@ from typing import List, Dict, Any
 from redis.exceptions import LockError, RedisError
 from redis.lock import Lock
 
-from cat.db.database import get_db
+from cat.db.database import get_async_db
 from cat.log import log
 
 
@@ -25,7 +25,7 @@ async def distributed_lock(key_pattern: str, timeout: float = 10.0, blocking_tim
     """
     # Derive a stable lock key from the pattern, avoiding wildcard chars
     lock_key = "lock:" + key_pattern.replace("*", "_").replace(":", "_")
-    lock: Lock = get_db().lock(
+    lock: Lock = get_async_db().lock(
         lock_key,
         timeout=timeout,
         blocking_timeout=blocking_timeout,
@@ -85,7 +85,7 @@ async def read(key: str, path: str | None = "$") -> List | Dict | None:
         RedisError: If Redis connection fails.
     """
     try:
-        value = await get_db().json().get(key, path)
+        value = await get_async_db().json().get(key, path)
         if not value:
             return None
 
@@ -125,7 +125,7 @@ async def store(
 
     try:
         formatted = serialize_to_redis_json(value) if isinstance(value, (dict, list)) else value
-        pipeline = get_db().pipeline()
+        pipeline = get_async_db().pipeline()
         pipeline.json().set(key, path, formatted, nx=nx, xx=xx)  # type: ignore[arg-type]
         if expire:
             await pipeline.expire(key, expire)
@@ -155,7 +155,7 @@ async def delete(key: str, path: str | None = "$"):
         RedisError: If Redis connection fails.
     """
     try:
-        await get_db().json().delete(key, path)
+        await get_async_db().json().delete(key, path)
         log.debug(f"Deleted path {path} for key {key}")
     except RedisError as e:
         log.error(f"Redis delete error for key {key}: {e}")
@@ -183,7 +183,7 @@ async def destroy(key_pattern: str) -> int:
     """
     try:
         async with distributed_lock(key_pattern):
-            db = get_db()
+            db = get_async_db()
             keys = [k async for k in db.scan_iter(key_pattern)]
             if keys:
                 await db.delete(*keys)

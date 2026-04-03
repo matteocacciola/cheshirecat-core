@@ -12,16 +12,16 @@ def format_key(agent_id: str, event_id: str) -> str:
     return f"{KEY_PREFIX}:{agent_id}:{event_id}"
 
 
-def get_webhooks(agent_id: str, event: str) -> List[Dict[str, Any]] | None:
+async def get_webhooks(agent_id: str, event: str) -> List[Dict[str, Any]] | None:
     key = format_key(agent_id, event)
 
     try:
-        webhook = crud.read(key)
+        webhook = await crud.read(key)
         if webhook is None:
             log.debug(f"No webhook found for {key.replace(KEY_PREFIX + ':', '')}")
             return None
 
-        return webhook
+        return webhook  # type: ignore
     except RedisError as e:
         log.error(f"Redis error getting webhooks for {key.replace(KEY_PREFIX + ':', '')}: {e}")
         raise
@@ -40,13 +40,13 @@ async def set_webhook(agent_id: str, event: str, settings: Dict[str, Any]) -> Di
                     log.debug(f"The URL '{settings['url']}' is already registered as a webhook for {key.replace(KEY_PREFIX + ':', '')}")
                     return existing_setting
 
-            existing_data.append(settings)
+            existing_data.append(settings)  # type: ignore[union-attr]
 
         if existing_data is None:
             existing_data = [settings]
 
         # Key exists - update only the messages path
-        crud.store(key, existing_data)
+        await crud.store(key, existing_data)
 
         log.debug(f"Stored the URL '{settings['url']}' as a webhook for {key.replace(KEY_PREFIX + ':', '')}")
         return settings
@@ -59,7 +59,7 @@ async def delete_webhook(agent_id: str, event: str, url: str, secret: str) -> No
     key = format_key(agent_id, event)
 
     try:
-        settings = await crud.read(key) or []
+        settings = (await crud.read(key)) or []
         settings = [
             setting
             for setting in settings

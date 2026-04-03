@@ -7,7 +7,7 @@ from cat.db.cruds import (
     plugins as crud_plugins,
     users as crud_users,
 )
-from cat.db.database import get_db
+from cat.db.database import get_async_db
 from cat.env import get_env
 from cat.services.memory.models import VectorMemoryType
 
@@ -18,7 +18,7 @@ async def checks_on_agent_create(lizard, new_agent_id):
     settings = await crud_settings.get_settings(new_agent_id)
     assert len(settings) > 0
 
-    histories = await get_db().get(crud_conversations.format_key(new_agent_id, "*", "*"))
+    histories = await get_async_db().get(crud_conversations.format_key(new_agent_id, "*", "*"))
     assert histories is None
 
     plugins = await crud_plugins.get_settings(new_agent_id)
@@ -119,7 +119,7 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
     settings = await crud_settings.get_settings(cheshire_cat.agent_key)
     assert len(settings) == 0
 
-    conversations = await get_db().get(crud_conversations.format_key(cheshire_cat.agent_key, "*", "*"))
+    conversations = await get_async_db().get(crud_conversations.format_key(cheshire_cat.agent_key, "*", "*"))
     assert conversations is None
 
     plugins = await crud_plugins.get_settings(cheshire_cat.agent_key)

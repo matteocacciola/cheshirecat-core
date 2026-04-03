@@ -116,7 +116,7 @@ class MadHatter:
         if plugin_id in self.get_core_plugins_ids:
             return plugin_id
 
-        await self.activate_plugin(plugin_id)  # type: ignore[unused-coroutine]
+        await self.activate_plugin(plugin_id)
 
         return plugin_id
 
@@ -197,7 +197,7 @@ class MadHatter:
             log.error(f"Could not deactivate plugin {plugin_id}: {e}")
 
     # activate / deactivate plugin
-    def toggle_plugin(self, plugin_id: str):
+    async def toggle_plugin(self, plugin_id: str):
         if plugin_id in self.get_untoggling_plugin_ids:
             raise Exception(f"{', '.join(self.get_untoggling_plugin_ids)} cannot be deactivated")
 
@@ -205,10 +205,10 @@ class MadHatter:
             raise Exception(f"Plugin {plugin_id} not active in the system")
 
         if plugin_id in self.active_plugins:
-            self.deactivate_plugin(plugin_id)  # type: ignore[unused-coroutine]
+            await self.deactivate_plugin(plugin_id)
             return
 
-        self.activate_plugin(plugin_id)  # type: ignore[unused-coroutine]
+        await self.activate_plugin(plugin_id)
 
     async def _on_finish_discovering_plugins(self):
         # store active plugins in db
@@ -357,7 +357,7 @@ class MadHatter:
                 await self.plugins[plugin_id].activate_settings(self.agent_key)
             except Exception as e:
                 # Couldn't activate the plugin -> Deactivate it
-                self.toggle_plugin(plugin_id)
+                await self.toggle_plugin(plugin_id)
                 raise e
 
     async def _on_plugin_activation(self, plugin_id: str) -> bool:

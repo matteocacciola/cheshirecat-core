@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 import cat.db.cruds.settings as crud_settings
-from cat.db.database import get_db
+from cat.db.database import get_async_db
 from cat.db.models import Setting
 from cat.log import log
 from cat.routes.routes_utils import startup_app, shutdown_app
@@ -60,9 +60,9 @@ async def factory_reset(
     Factory reset the entire application. This will delete all settings, memories, and metadata.
     """
     # remove memories
-    cheshire_cats_ids = crud_settings.get_agents_main_keys()
+    cheshire_cats_ids = await crud_settings.get_agents_main_keys()
     deleted_memories = False
-    for agent_id in cheshire_cats_ids:  # type: ignore[attr-defined]
+    for agent_id in cheshire_cats_ids:
         ccat = await info.lizard.get_cheshire_cat(agent_id)
         if not ccat:
             continue
@@ -76,7 +76,7 @@ async def factory_reset(
     await shutdown_app(request.app)
 
     try:
-        await get_db().flushdb()
+        await get_async_db().flushdb()
         deleted_settings = True
     except Exception as e:
         log.error(f"Error deleting settings: {e}")
@@ -112,7 +112,7 @@ async def get_agents() -> List[AgentResponse]:
     Get all agents.
     """
     try:
-        return [AgentResponse(**agent) for agent in crud_settings.get_agents()]  # type: ignore[attr-defined]
+        return [AgentResponse(**agent) for agent in await crud_settings.get_agents()]
     except Exception as e:
         log.error(f"Error creating agent: {e}")
         return []
@@ -143,7 +143,7 @@ async def agent_update(
     Update the metadata of a specific agent.
     """
     try:
-        await crud_settings.upsert_setting_by_name(  # type: ignore[unused-coroutine]
+        await crud_settings.upsert_setting_by_name(
             info.cheshire_cat.agent_key, Setting(name="metadata", value=request.metadata)  # type: ignore[union-attr]
         )
         return AgentUpdatedResponse(updated=True)
@@ -213,7 +213,7 @@ async def agent_clone(
     Clone a single agent. This will clone all settings, memories, and metadata, for the agent.
     """
     agent_id = request.agent_id
-    if agent_id in crud_settings.get_agents_main_keys():  # type: ignore[operator]
+    if agent_id in await crud_settings.get_agents_main_keys():
         log.warning(f"Agent {agent_id} already exists. Cannot clone.")
         return AgentClonedResponse(cloned=False)
 

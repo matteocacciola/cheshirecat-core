@@ -9,18 +9,16 @@ from fastapi import Query
 from pydantic import BaseModel, model_serializer
 
 from cat import utils
-from cat.auth.auth_utils import DEFAULT_ADMIN_USERNAME, hash_password
-from cat.auth.permissions import AuthPermission, get_full_permissions
-from cat.db.cruds import users as crud_users
-from cat.db.database import DEFAULT_SYSTEM_KEY
-from cat.env import get_env_float, get_env
+from cat.auth.permissions import AuthPermission
+from cat.db.database import get_async_db
+from cat.env import get_env_float
 from cat.exceptions import CustomValidationException, CustomUnauthorizedException
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.plugin import Plugin
 from cat.looking_glass.mad_hatter.registry import PluginRegistry
 from cat.looking_glass.models import PluginManifest
 from cat.services.redis_search import RedisSearchService
-from cat.utils import safe_deepcopy, sanitize_permissions, set_llm_cache
+from cat.utils import safe_deepcopy
 
 
 class Plugins(BaseModel):
@@ -237,39 +235,11 @@ def create_dict_parser(param_name: str, description: str | None = None):
 async def startup_app(app):
     from cat.looking_glass import BillTheLizard
 
-    async def initialize_lizard_users():
-        permissions = sanitize_permissions(get_full_permissions(), DEFAULT_SYSTEM_KEY)
-
-        await crud_users.create_user(DEFAULT_SYSTEM_KEY, {
-            "username": DEFAULT_ADMIN_USERNAME,
-            "password": hash_password(get_env("CAT_ADMIN_DEFAULT_PASSWORD")),
-            "permissions": permissions,  # base admin has all permissions, but CHAT
-        })
-
     utils.pod_id()
 
     bill_the_lizard = BillTheLizard()
-    await bill_the_lizard.bootstrap()
-    # Initialize the default admin if not present
-    if not await crud_users.get_users(DEFAULT_SYSTEM_KEY, limit=1):
-        await initialize_lizard_users()
-
-    await bill_the_lizard.bootstrap()
     bill_the_lizard.fastapi_app = app
-
-    # RedisSemanticCache: shared across all Swarm replicas — a near-identical prompt
-    # answered on replica A gets a cache hit on replica B.  score_threshold=0.95 avoids
-    # returning stale answers for semantically similar but meaningfully different prompts.
-    # Placed after bootstrap_services() so the embedder is fully initialised.
-    await set_llm_cache(await bill_the_lizard.embedder())
-
-
-    # Start Redis Pub/Sub listener so WebSocket messages are delivered
-    # cross-replica in Docker Swarm deployments.  Degrades gracefully to
-    # local-only mode if Redis pub/sub is unavailable.
-    await bill_the_lizard.websocket_manager.start()
-
-    # load the Manager and the Job Handler
+    await bill_the_lizard.bootstrap()
     app.state.lizard = bill_the_lizard
 
 
@@ -279,6 +249,8 @@ async def shutdown_app(app):
     # shutdown Manager
     await app.state.lizard.shutdown()
     del app.state.lizard
+
+    await get_async_db().aclose()
 
 
 def validate_permissions(permissions: Dict[str, List[str]], resources: Type[utils.Enum]):

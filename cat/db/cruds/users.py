@@ -5,7 +5,7 @@ from redis.exceptions import LockError, RedisError
 
 from cat.auth.auth_utils import check_password
 from cat.db import crud
-from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY, DEFAULT_USERS_KEY, get_db
+from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY, DEFAULT_USERS_KEY, get_async_db
 from cat.log import log
 
 
@@ -68,7 +68,7 @@ async def get_users(
     """
     try:
         # Get database connection
-        db = get_db()
+        db = get_async_db()
 
         # Scan for user keys matching the pattern
         pattern = format_key(agent_id, "*")
@@ -155,7 +155,7 @@ async def get_users_stream(
             process_user(user_id, user_data)
     """
     try:
-        db = get_db()
+        db = get_async_db()
         pattern = format_key(agent_id, "*")
         cursor = 0
 
@@ -280,7 +280,7 @@ async def _get_user_by(agent_id: str, key: str, value: str, full: bool = False) 
 
         # For other lookups (e.g., username), scan and process in batches with early exit
         # This avoids loading all users into memory at once
-        db = get_db()
+        db = get_async_db()
         pattern = format_key(agent_id, "*")
         cursor = 0
         batch_size = 100  # Process in batches to avoid memory issues with large datasets
@@ -388,7 +388,7 @@ async def delete_user(agent_id: str, user_id: str) -> Dict | None:
             return None
 
         # Delete the entire user key
-        await get_db().delete(format_key(agent_id, user_id))
+        await get_async_db().delete(format_key(agent_id, user_id))
 
         log.debug(f"Deleted user {user_id} for {agent_id}")
         return user

@@ -49,7 +49,7 @@ class ServiceProvider:
             await self._create_service_object(factory)
 
             # reload from db and return
-            selected_config = crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)  # type: ignore[assignment]
+            selected_config = await crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)
 
         return await factory.get_from_config_name(selected_config["name"])  # type: ignore[index]
 

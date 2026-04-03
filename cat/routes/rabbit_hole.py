@@ -58,7 +58,8 @@ async def _on_upload_single_file(
             content_type, _ = guess_file_type(file_bytes)
 
             # check if MIME type of uploaded file is supported
-            admitted_types = (await cat.file_handlers()).keys()  # type: ignore[union-attr]
+            fh = await cat.file_handlers()  # type: ignore[union-attr]
+            admitted_types = fh.keys()
             if content_type not in admitted_types:
                 raise CustomValidationException(
                     f"MIME type {content_type} not supported. Admitted types: {' - '.join(admitted_types)}"

@@ -30,7 +30,7 @@ class CatProcedure(ABC):
         return self
 
     @abstractmethod
-    def to_document_recall(self) -> List[DocumentRecall]:
+    async def to_document_recall(self) -> List[DocumentRecall]:
         """
         Convert CatProcedure into a list of DocumentRecall objects for memory storage.
 
@@ -83,7 +83,7 @@ class CatProcedure(ABC):
         pass
 
     @abstractmethod
-    def langchainfy(self) -> StructuredTool | None:
+    async def langchainfy(self) -> StructuredTool | None:
         """
         Provides an abstract method interface to define the `langchainfy` method for generating a `StructuredTool`
         instance.

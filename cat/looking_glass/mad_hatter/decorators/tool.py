@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import inspect
 from typing import Callable, List, Dict
@@ -55,7 +56,7 @@ class CatTool(CatProcedure):
             examples=examples,
         )
 
-    def to_document_recall(self) -> List[DocumentRecall]:
+    async def to_document_recall(self) -> List[DocumentRecall]:
         triggers_map = {
             "description": [f"{self.name}: {self.description}"],
             "examples": self.examples,
@@ -132,7 +133,7 @@ class CatTool(CatProcedure):
         stray = self.stray
         return func_with_cat
 
-    def langchainfy(self) -> StructuredTool:
+    async def langchainfy(self) -> StructuredTool:
         """
         Convert CatProcedure to a langchain compatible StructuredTool object.
 
@@ -143,12 +144,15 @@ class CatTool(CatProcedure):
         for example in self.examples:  # type: ignore[union-attr]
             description += f"- {example}\n"
 
-        return StructuredTool.from_function(
-            name=self.name,
-            description=description,
-            func=self._get_function(),
-            args_schema=self.input_schema,
-        )
+        kwargs = {
+            "name": self.name,
+            "description": description,
+            "args_schema": self.input_schema,
+        }
+        fnc = self._get_function()
+        kwargs["coroutine" if asyncio.iscoroutine(fnc) else "func"] = fnc  # type: ignore[assignment]
+
+        return StructuredTool.from_function(**kwargs)
 
     @property
     def type(self) -> CatProcedureType:
@@ -156,10 +160,7 @@ class CatTool(CatProcedure):
 
     @property
     def triggers_map(self) -> Dict[str, List[str]]:
-        return {
-            "description": [f"{self.name}: {self.description}"],
-            "examples": self.examples,  # type: ignore[dict-item]
-        }
+        return {"description": [f"{self.name}: {self.description}"], "examples": self.examples} # type: ignore[union-attr]
 
 def tool(
     *args: str | Callable, examples: List[str] | None = None

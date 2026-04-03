@@ -3,6 +3,7 @@ import pytest
 import pytest_asyncio
 import os
 import shutil
+import redis
 import redis.asyncio as aioredis
 import warnings
 from pydantic import PydanticDeprecatedSince20
@@ -12,10 +13,10 @@ import time
 
 from cat.auth import auth_utils
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
-from cat.db.database import Database
 from cat.env import get_env
 from cat.looking_glass import BillTheLizard, StrayCat
 from cat.looking_glass.mad_hatter.plugin import Plugin
+from cat.routes.routes_utils import startup_app, shutdown_app
 from cat.startup import grinning_cat_api
 from cat.services.memory.messages import UserMessage
 from cat.services.factory.vector_db import QdrantHandler
@@ -26,15 +27,18 @@ from tests.utils import (
     api_key,
     jwt_secret,
     create_mock_plugin_zip,
-    get_class_from_decorated_singleton,
     mock_plugin_path,
     fake_timestamp,
 )
 
 pytest_plugins = ["pytest_asyncio"]
 
+async_redis_client = aioredis.Redis(host=get_env("CAT_REDIS_HOST"), db=1, encoding="utf-8", decode_responses=True)
+sync_redis_client = redis.Redis(host=get_env("CAT_REDIS_HOST"), db=1, encoding="utf-8", decode_responses=True)
+memory_client = AsyncQdrantClient(":memory:")
+
 # substitute classes' methods where necessary for testing purposes
-def mock_classes(monkeypatch, redis_client, memory_client):
+def mock_classes(monkeypatch):
     # Mock the entire __init__ method to set _client to memory client
     def mock_init_vector_database(self, *args, **kwargs):
         # Call the parent __init__
@@ -44,10 +48,13 @@ def mock_classes(monkeypatch, redis_client, memory_client):
         self.save_memory_snapshots = kwargs.get("save_memory_snapshots", False)
     monkeypatch.setattr(QdrantHandler, "__init__", mock_init_vector_database)
 
-    # Use a different redis client
-    def mock_get_redis_client(self):
-        return redis_client
-    monkeypatch.setattr(get_class_from_decorated_singleton(Database), "get_redis_client", mock_get_redis_client)
+    # Use a different async and sync redis clients
+    def mock_get_redis_async_client():
+        return async_redis_client
+    monkeypatch.setattr("cat.db.database.get_async_db", mock_get_redis_async_client)
+    def mock_get_redis_sync_client():
+        return sync_redis_client
+    monkeypatch.setattr("cat.db.database.get_sync_db", mock_get_redis_sync_client)
 
     utils.get_plugins_path = lambda: "tests/mocks/mock_plugin_folder/"
     utils.get_file_manager_root_storage_path = lambda: "tests/data/storage"
@@ -61,7 +68,7 @@ def mock_classes(monkeypatch, redis_client, memory_client):
     auth_utils.extract_agent_id_from_request = lambda: agent_id
 
 
-async def clean_up(redis_client, memory_client):
+async def clean_up():
     # clean up service files and mocks
     to_be_removed = [
         "tests/mocks/mock_plugin.zip",
@@ -84,7 +91,7 @@ async def clean_up(redis_client, memory_client):
                 os.remove(tbr)
 
     # flush redis database
-    await redis_client.flushdb()
+    await async_redis_client.flushdb()
 
     # delete all the collections in Qdrant
     collections = await memory_client.get_collections()
@@ -104,19 +111,15 @@ async def encapsulate_each_test(request, monkeypatch):
 
         return
 
-    # Create fresh async clients bound to the current event loop
-    redis_client = aioredis.Redis(host=get_env("CAT_REDIS_HOST"), db=1, encoding="utf-8", decode_responses=True)
-    memory_client = AsyncQdrantClient(":memory:")
-
     # monkeypatch classes
-    mock_classes(monkeypatch, redis_client, memory_client)
+    mock_classes(monkeypatch)
 
     # env variables
     current_debug = get_env("CAT_DEBUG")
     os.environ["CAT_DEBUG"] = "false"  # do not autoreload
 
     # clean up tmp files, folders and redis database
-    await clean_up(redis_client, memory_client)
+    await clean_up()
 
     # delete all singletons!!!
     utils.singleton.instances.clear()
@@ -124,11 +127,7 @@ async def encapsulate_each_test(request, monkeypatch):
     yield
 
     # clean up tmp files, folders and redis database
-    await clean_up(redis_client, memory_client)
-
-    # Close clients to free resources
-    await redis_client.aclose()
-    await memory_client.close()
+    await clean_up()
 
     if current_debug:
         os.environ["CAT_DEBUG"] = current_debug
@@ -136,62 +135,18 @@ async def encapsulate_each_test(request, monkeypatch):
         del os.environ["CAT_DEBUG"]
 
 
-@pytest_asyncio.fixture(scope="function")
-async def lizard(encapsulate_each_test):
-    l = BillTheLizard()
-    await l.bootstrap()
-    l.fastapi_app = grinning_cat_api
-    yield l
-
-
-@pytest_asyncio.fixture(scope="function")
-async def cheshire_cat(lizard):
-    cheshire_cat = await lizard.create_cheshire_cat(agent_id)
-    yield cheshire_cat
-    await cheshire_cat.destroy_memory()
-
-
 # Main fixture for the FastAPI app
 @pytest_asyncio.fixture(scope="function")
-async def client(cheshire_cat, monkeypatch):
+async def client(encapsulate_each_test):
     """
     Create a new FastAPI TestClient.
-
-    TestClient (backed by anyio) runs the ASGI lifespan in a *separate* event
-    loop.  The Redis client created by `encapsulate_each_test` is bound to the
-    *test* event loop, so any Redis I/O attempted in the TestClient's loop
-    raises "Future attached to a different loop".
-
-    The system is already fully bootstrapped by the `lizard` / `cheshire_cat`
-    fixtures, so we replace the three lifespan callables that touch Redis
-    (`startup_app`, `shutdown_app`, `get_db`) with lightweight stubs that only
-    wire up the FastAPI app-state.
     """
-    import cat.startup as _startup_module
-    from cat.looking_glass import BillTheLizard
-
-    async def _mock_startup(app):
-        bill = BillTheLizard()  # returns the already-bootstrapped singleton
-        bill.fastapi_app = app
-        app.state.lizard = bill
-
-    async def _mock_shutdown(app):
-        # Singleton lifecycle is managed by encapsulate_each_test; do not
-        # clear instances or close the Redis client here.
-        if hasattr(app.state, "lizard"):
-            del app.state.lizard
-
-    class _NoopRedis:
-        """Dummy Redis client so that `await get_db().aclose()` is a no-op."""
-        async def aclose(self):
-            pass
-
-    monkeypatch.setattr(_startup_module, "startup_app", _mock_startup)
-    monkeypatch.setattr(_startup_module, "shutdown_app", _mock_shutdown)
-    monkeypatch.setattr(_startup_module, "get_db", lambda: _NoopRedis())
-
     with TestClient(grinning_cat_api) as client:
+        await startup_app(grinning_cat_api)
+
         yield client
+
+        await shutdown_app(grinning_cat_api)
 
 
 # This fixture sets the CAT_API_KEY environment variable,
@@ -221,6 +176,18 @@ async def secure_client(client):
 @pytest.fixture(scope="function")
 def secure_client_headers():
     yield {"X-Agent-ID": agent_id, "Authorization": f"Bearer {api_key}"}
+
+
+@pytest_asyncio.fixture(scope="function")
+async def lizard(client):
+    l = BillTheLizard()
+    yield l
+
+
+@pytest_asyncio.fixture(scope="function")
+async def cheshire_cat(lizard):
+    cheshire_cat = await lizard.create_cheshire_cat(agent_id)
+    yield cheshire_cat
 
 
 @pytest_asyncio.fixture(scope="function")

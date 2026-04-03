@@ -25,7 +25,6 @@ from cat.services.memory.models import VectorMemoryType, PointStruct
 from cat.utils import guess_file_type, is_url
 
 
-# main class
 class CheshireCat(BotMixin):
     """
     The Cheshire Cat.
@@ -81,13 +80,23 @@ class CheshireCat(BotMixin):
 
     def __del__(self):
         """Cat destructor."""
-        self.shutdown()
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self.shutdown())
+            else:
+                loop.run_until_complete(self.shutdown())
+        except Exception:
+            log.warning(f"Error while shutting down CheshireCat '{self.agent_key}'")
+            pass
 
     async def bootstrap(self):
         await self.service_provider.bootstrap_services_bot()
 
-    def shutdown(self) -> None:
+    async def shutdown(self) -> None:
         self.plugin_manager = None
+        vmh = await self.vector_memory_handler()
+        await vmh.close()
 
     async def destroy_memory(self):
         """Destroy all data from the cat's memory."""
@@ -109,7 +118,7 @@ class CheshireCat(BotMixin):
         # remove the folder from storage
         (await self.file_manager()).remove_folder(self._id)
 
-        self.shutdown()
+        await self.shutdown()
 
         await crud_settings.destroy_all(self._id)
         await crud_conversations.destroy_all(self._id)
@@ -160,7 +169,7 @@ class CheshireCat(BotMixin):
         documents = [
             t.document
             for p in self.plugin_manager.procedures
-            for t in p.to_document_recall()
+            for t in await p.to_document_recall()
             if pt is None or p.type == pt
         ]
         if not documents:
@@ -277,7 +286,7 @@ class CheshireCat(BotMixin):
                 os.remove(file_path)
 
     async def toggle_plugin(self, plugin_id: str):
-        self.plugin_manager.toggle_plugin(plugin_id)
+        await self.plugin_manager.toggle_plugin(plugin_id)
 
         # destroy all procedural embeddings and re-embed them
         vmh = await self.vector_memory_handler()

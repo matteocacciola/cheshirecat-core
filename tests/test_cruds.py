@@ -213,7 +213,7 @@ async def test_upsert_setting_by_name(cheshire_cat):
 
 async def test_get_users(lizard):
     users = await crud_users.get_users(lizard.agent_key)
-    assert users != {}
+    assert len(users) > 0
 
     ids = list(users.keys())
     assert len(ids) == 1

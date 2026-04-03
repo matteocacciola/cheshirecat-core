@@ -59,7 +59,7 @@ class CatForm(CatProcedure, ABC):  # base model of forms
     def autopilot(self) -> bool:
         return self._autopilot
 
-    def to_document_recall(self) -> List[DocumentRecall]:
+    async def to_document_recall(self) -> List[DocumentRecall]:
         triggers_map = {
             "description": [f"{self.name}: {self.description}"],
             "examples": self.examples,
@@ -90,7 +90,7 @@ class CatForm(CatProcedure, ABC):  # base model of forms
         # CatForm has no constructor params
         return cls()
 
-    def langchainfy(self) -> StructuredTool:
+    async def langchainfy(self) -> StructuredTool:
         """
         Convert CatProcedure to a langchain compatible StructuredTool object.
 

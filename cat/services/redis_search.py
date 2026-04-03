@@ -4,7 +4,7 @@ from redis import RedisError
 
 from cat.auth.auth_utils import check_password
 import cat.db.cruds.users as crud_users
-from cat.db.database import get_db, DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY
+from cat.db.database import get_async_db, DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY
 from cat.log import log
 from cat.utils import singleton
 
@@ -49,7 +49,7 @@ return nil
 @singleton
 class RedisSearchService:
     def __init__(self):
-        self.redis_client = get_db()
+        self.redis_client = get_async_db()
 
     async def search_user_by_credentials(self, username: str, password: str) -> List[str] | None:
         """

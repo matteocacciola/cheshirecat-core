@@ -100,7 +100,7 @@ class ServiceFactory:
                 f"{service_name} not supported. Must be one of {allowed_configurations}")
 
         updater_service = ServiceUpdater(self)
-        result = updater_service.replace_service(service_name, payload)
+        result = await updater_service.replace_service(service_name, payload)
 
         return result
 

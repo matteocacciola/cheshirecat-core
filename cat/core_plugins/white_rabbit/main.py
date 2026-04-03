@@ -1,4 +1,5 @@
-from cat import hook, log, run_sync_or_async, BillTheLizard, CatProcedureType
+import asyncio
+from cat import hook, log, BillTheLizard, CatProcedureType
 from cat.core_plugins.white_rabbit.white_rabbit import WhiteRabbit
 import cat.db.cruds.settings as crud_settings
 
@@ -34,7 +35,7 @@ async def re_embed_mcp_tools():
 
 
 def re_embed_mcp_tools_async():
-    run_sync_or_async(re_embed_mcp_tools)
+    asyncio.run(re_embed_mcp_tools)
 
 
 @hook

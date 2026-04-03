@@ -1,5 +1,5 @@
 from typing import Dict
-
+import redis
 import redis.asyncio as aioredis
 
 from cat.env import get_env, get_env_int, get_env_bool
@@ -16,14 +16,16 @@ DEFAULT_SYSTEM_KEY = "system"
 @singleton
 class Database:
     def __init__(self):
-        self.db = self.get_redis_client()
-
-    def get_redis_client(self) -> aioredis.Redis:
-        return aioredis.Redis(**get_redis_kwargs())
+        self.async_db = aioredis.Redis(**get_redis_kwargs())
+        self.sync_db = redis.Redis(**get_redis_kwargs())
 
 
-def get_db() -> aioredis.Redis:
-    return Database().db
+def get_async_db() -> aioredis.Redis:
+    return Database().async_db
+
+
+def get_sync_db() -> aioredis.Redis:
+    return Database().sync_db
 
 
 def get_db_connection_string() -> str:

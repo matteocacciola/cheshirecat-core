@@ -9,7 +9,7 @@ from cat.looking_glass.mad_hatter.plugin import Plugin
 from tests.utils import create_mock_plugin_zip
 
 
-def _test_on_plugin_manager(plugin_manager):
+async def _test_on_plugin_manager(plugin_manager):
     all_plugins = plugin_manager.get_core_plugins_ids
 
     assert len(plugin_manager.plugins.keys()) == len(all_plugins)
@@ -18,7 +18,7 @@ def _test_on_plugin_manager(plugin_manager):
         assert k in all_plugins
         assert isinstance(plugin_manager.plugins[k], Plugin)
 
-    loaded_plugins = plugin_manager.load_active_plugins_ids_from_db()
+    loaded_plugins = await plugin_manager.load_active_plugins_ids_from_db()
     for p in loaded_plugins:
         assert p in all_plugins
         assert plugin_manager.plugins[p].active
@@ -38,12 +38,12 @@ def _test_on_plugin_manager(plugin_manager):
     assert len(plugin_manager.procedures_registry) == 0  # no procedure in core plugins, i.e., no tools or forms
 
 
-def test_instantiation_discovery_for_lizard(lizard):
-    _test_on_plugin_manager(lizard.plugin_manager)
+async def test_instantiation_discovery_for_lizard(lizard):
+    await _test_on_plugin_manager(lizard.plugin_manager)
 
 
-def test_instantiation_discovery_for_cheshirecat(cheshire_cat):
-    _test_on_plugin_manager(cheshire_cat.plugin_manager)
+async def test_instantiation_discovery_for_cheshirecat(cheshire_cat):
+    await _test_on_plugin_manager(cheshire_cat.plugin_manager)
 
 
 # installation tests will be run for both flat and nested plugin
@@ -63,7 +63,7 @@ async def test_plugin_install(lizard, plugin_is_flat):
     assert "mock_plugin" in list(plugin_manager.plugins.keys())
     assert isinstance(plugin_manager.plugins["mock_plugin"], Plugin)
     assert (
-        "mock_plugin" in plugin_manager.load_active_plugins_ids_from_db()
+        "mock_plugin" in await plugin_manager.load_active_plugins_ids_from_db()
     )  # plugin starts active
 
     # plugin is activated by default
@@ -103,7 +103,7 @@ async def test_plugin_install(lizard, plugin_is_flat):
             assert id(cached_hook) in hooks_ram_addresses  # same object in memory!
 
     # list of active plugins in DB is correct
-    active_plugins = plugin_manager.load_active_plugins_ids_from_db()
+    active_plugins = await plugin_manager.load_active_plugins_ids_from_db()
     assert len(active_plugins) == len(core_plugins) + 1
     assert "mock_plugin" in active_plugins
 
@@ -118,7 +118,7 @@ async def test_plugin_uninstall_non_existent(lizard):
     assert len(plugin_manager.plugins) == len(core_plugins)
 
     # list of active plugins in DB is correct
-    active_plugins = plugin_manager.load_active_plugins_ids_from_db()
+    active_plugins = await plugin_manager.load_active_plugins_ids_from_db()
     assert len(active_plugins) == len(core_plugins)
     for p in active_plugins:
         assert p in core_plugins
@@ -149,7 +149,7 @@ async def test_plugin_uninstall(lizard, plugin_is_flat):
     assert len(plugin_manager.procedures_registry) == 0  # no procedure in core plugins, i.e., no tools or forms
 
     # list of active plugins in DB is correct
-    active_plugins = plugin_manager.load_active_plugins_ids_from_db()
+    active_plugins = await plugin_manager.load_active_plugins_ids_from_db()
     assert len(active_plugins) == len(core_plugins)
     for p in active_plugins:
         assert p in core_plugins

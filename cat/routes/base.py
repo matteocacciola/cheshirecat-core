@@ -157,7 +157,7 @@ async def me(request: Request) -> MeResponse:
         system_agent = [agent for agent in valid_agents if agent.agent_name == DEFAULT_SYSTEM_KEY][0]
         missing_agents = [
             AgentMatch(agent_name=agent_name, user=system_agent.user)
-            for agent_name in crud_settings.get_agents_main_keys()  # type: ignore[attr-defined]
+            for agent_name in await crud_settings.get_agents_main_keys()
             if agent_name not in valid_agents_names
         ]
         valid_agents.extend(missing_agents)

@@ -150,7 +150,8 @@ class StrayCat(BotMixin):
         tools = []
         for m in memories:
             try:
-                if lp := CatProcedure.from_document_recall(document=m, stray=self).langchainfy():
+                cp = CatProcedure.from_document_recall(document=m, stray=self)
+                if lp := await cp.langchainfy():
                     tools.append(lp)
             except Exception as e:
                 log.warning(f"Agent id: {self.agent_key}. Could not reconstruct procedure from memory. Error: {e}")
@@ -233,9 +234,9 @@ class StrayCat(BotMixin):
             # prepare agent input
             agent_input = AgenticWorkflowTask(
                 system_prompt=system_prompt,
-                user_prompt=self.working_memory.user_message.text,
+                user_prompt=self.working_memory.user_message.text,  # type: ignore[arg-type]
                 context=[m.document for m in self.working_memory.context_memories],
-                history=[h.langchainfy() for h in self.working_memory.history[-config.latest_n_history:]],
+                history=[(await h.langchainfy()) for h in self.working_memory.history[-config.latest_n_history:]],
                 tools=tools,
             )
 

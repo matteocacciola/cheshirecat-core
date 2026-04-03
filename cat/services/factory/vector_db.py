@@ -739,7 +739,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
 
 
     async def close(self):
-        if self._client and not self._client._client.closed:  # type: ignore[attr-defined]
+        if self._client and not self._client._client.closed:
             await self._client.close()
 
     async def delete_collection(self, collection_name: str, timeout: int | None = None):

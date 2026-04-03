@@ -1,11 +1,16 @@
 import asyncio
 from typing import List, Dict
 from fastapi import FastAPI
+from langchain_community.cache import RedisSemanticCache
+from langchain_core.globals import set_llm_cache as set_llm_cache_langchain
 
+from cat.auth.auth_utils import DEFAULT_ADMIN_USERNAME, hash_password
+from cat.auth.permissions import get_full_permissions
 from cat.db import crud
-from cat.db.cruds import settings as crud_settings, plugins as crud_plugins
-from cat.db.database import DEFAULT_SYSTEM_KEY, DEFAULT_CONVERSATIONS_KEY
+from cat.db.cruds import settings as crud_settings, plugins as crud_plugins, users as crud_users
+from cat.db.database import DEFAULT_SYSTEM_KEY, DEFAULT_CONVERSATIONS_KEY, get_db_connection_string
 from cat.db.models import Setting
+from cat.env import get_env
 from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
@@ -14,7 +19,7 @@ from cat.mixins import OrchestratorMixin
 from cat.rabbit_hole import RabbitHole
 from cat.services.factory.auth_handler import CoreAuthHandler
 from cat.services.websocket_manager import WebSocketManager
-from cat.utils import singleton, safe_deepcopy, set_llm_cache
+from cat.utils import singleton, safe_deepcopy, sanitize_permissions
 
 
 @singleton
@@ -53,6 +58,17 @@ class BillTheLizard(OrchestratorMixin):
         self.rabbit_hole = None
         self.core_auth_handler = None
 
+    async def _set_llm_cache(self):
+        embedder = await self.embedder()
+
+        set_llm_cache_langchain(
+            RedisSemanticCache(
+                redis_url=get_db_connection_string(),
+                embedding=embedder,
+                score_threshold=0.95,
+            )
+        )
+
     async def bootstrap(self):
         """
         Fully initialise the lizard inside uvicorn's running event loop.
@@ -67,6 +83,8 @@ class BillTheLizard(OrchestratorMixin):
 
         # Store endpoints for later activation (after fastapi_app is set)
         self._pending_endpoints = safe_deepcopy(self.plugin_manager.endpoints)
+        if self._fastapi_app is not None:
+            self._activate_pending_endpoints()
 
         # Allow plugins to act before the remaining cat components are created
         await self.plugin_manager.execute_hook("before_lizard_bootstrap", caller=self)
@@ -76,6 +94,27 @@ class BillTheLizard(OrchestratorMixin):
         self.core_auth_handler = CoreAuthHandler()
 
         await self.service_provider.bootstrap_services_orchestrator()
+
+        # Initialize the default admin if not present
+        if not await crud_users.get_users(DEFAULT_SYSTEM_KEY, limit=1):
+            permissions = sanitize_permissions(get_full_permissions(), DEFAULT_SYSTEM_KEY)
+
+            await crud_users.create_user(DEFAULT_SYSTEM_KEY, {
+                "username": DEFAULT_ADMIN_USERNAME,
+                "password": hash_password(get_env("CAT_ADMIN_DEFAULT_PASSWORD")),
+                "permissions": permissions,  # base admin has all permissions, but CHAT
+            })
+
+        # RedisSemanticCache: shared across all Swarm replicas — a near-identical prompt
+        # answered on replica A gets a cache hit on replica B.  score_threshold=0.95 avoids
+        # returning stale answers for semantically similar but meaningfully different prompts.
+        # Placed after bootstrap_services() so the embedder is fully initialised.
+        await self._set_llm_cache()
+
+        # Start Redis Pub/Sub listener so WebSocket messages are delivered
+        # cross-replica in Docker Swarm deployments.  Degrades gracefully to
+        # local-only mode if Redis pub/sub is unavailable.
+        await self.websocket_manager.start()
 
         await self.plugin_manager.execute_hook("after_lizard_bootstrap", caller=self)
 
@@ -156,7 +195,8 @@ class BillTheLizard(OrchestratorMixin):
 
         return await self.get_cheshire_cat(agent_id)
 
-    async def get_cheshire_cat(self, agent_id: str) -> CheshireCat | None:
+    @staticmethod
+    async def get_cheshire_cat(agent_id: str) -> CheshireCat | None:
         """
         Gets the Cheshire Cat with the given id, directly from db.
 
@@ -244,7 +284,7 @@ class BillTheLizard(OrchestratorMixin):
                 semaphore = asyncio.Semaphore(5)  # Max 5 concurrent
                 await asyncio.gather(*[embed_with_limit(entry) for entry in stored_files_by_ccat])
 
-            await set_llm_cache(embedder)
+            await self._set_llm_cache() # reset LLM cache after re-embedding to avoid stale cached results
 
             success = True
         except Exception as e:
@@ -307,7 +347,7 @@ class BillTheLizard(OrchestratorMixin):
             await self.on_plugin_deactivate(plugin_id)
 
         # toggle (activate or deactivate) the plugin
-        self.plugin_manager.toggle_plugin(plugin_id)
+        await self.plugin_manager.toggle_plugin(plugin_id)
 
         # if the plugin is now active, activate it in the Cheshire Cats
         if plugin_id in self.plugin_manager.active_plugins:
@@ -372,9 +412,6 @@ class BillTheLizard(OrchestratorMixin):
     @fastapi_app.setter
     def fastapi_app(self, app: FastAPI | None = None):
         self._fastapi_app = app
-        # Activate any pending endpoints
-        if app is not None:
-            self._activate_pending_endpoints()
 
     @property
     def plugin_registry(self) -> PluginRegistry:

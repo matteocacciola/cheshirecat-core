@@ -1,4 +1,3 @@
-import asyncio
 import copy
 import socket
 import base64
@@ -7,19 +6,16 @@ import inspect
 import os
 import subprocess
 import tempfile
-import threading
 from enum import Enum as BaseEnum, EnumMeta
 from io import BytesIO
-from typing import Dict, List, Type, TypeVar, Any, Callable, Generic, Tuple
+from typing import Dict, List, Type, TypeVar, Any, Generic, Tuple
 from urllib.parse import urlparse
 import aiofiles
 import filetype
-from langchain_community.cache import RedisSemanticCache
 from typing_extensions import deprecated
 import requests
 from PIL import Image
 from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.globals import set_llm_cache as set_llm_cache_langchain
 from pydantic import BaseModel, ConfigDict
 
 from cat.log import log
@@ -388,93 +384,6 @@ def retrieve_image(content_image: str | None) -> str | None:
         return None
 
 
-def run_sync_or_async(callback: Callable[..., Any], *args, **kwargs) -> Any:
-    """
-    Execute a callback function whether it's synchronous or asynchronous.
-
-    If the callback is async and there's already a running event loop,
-    it will be executed in a new event loop in a separate thread to avoid
-    blocking the main event loop.
-
-    Args:
-        callback: The function to execute (sync or async)
-        *args: Positional arguments to pass to the callback
-        **kwargs: Keyword arguments to pass to the callback
-
-    Returns:
-        The result of the callback execution
-
-    Raises:
-        Any exception raised by the callback
-    """
-    # Handle async functions
-    if inspect.iscoroutinefunction(callback):
-        try:
-            # Check if there's already a running event loop
-            asyncio.get_running_loop()
-
-            # If we're here, there's a running loop, so we need to run
-            # the async function in a separate thread with its own event loop
-            return _run_async_in_thread(callback(*args, **kwargs))
-        except RuntimeError:
-            # No running event loop, safe to use asyncio.run
-            return asyncio.run(callback(*args, **kwargs))
-
-    # Handle coroutine objects (already created coroutines)
-    if inspect.iscoroutine(callback):
-        try:
-            asyncio.get_running_loop()
-            return _run_async_in_thread(callback)
-        except RuntimeError:
-            return asyncio.run(callback)
-
-    # Handle synchronous functions
-    return callback(*args, **kwargs)
-
-
-def _run_async_in_thread(coro) -> Any:
-    """
-    Run a coroutine in a new event loop in a separate thread.
-
-    Args:
-        coro: The coroutine to execute
-
-    Returns:
-        The result of the coroutine execution
-
-    Raises:
-        Any exception raised by the coroutine
-    """
-    result = None
-    exception = None
-
-    def thread_target():
-        nonlocal result, exception
-        try:
-            # Create a new event loop for this thread
-            new_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(new_loop)
-
-            # Run the coroutine to completion
-            result = new_loop.run_until_complete(coro)
-
-            # Clean up
-            new_loop.close()
-        except Exception as e:
-            exception = e
-
-    # Start the thread and wait for it to complete
-    thread = threading.Thread(target=thread_target)
-    thread.start()
-    thread.join()
-
-    # Re-raise any exception that occurred in the thread
-    if exception is not None:
-        raise exception
-
-    return result
-
-
 def colored_text(text: str, color: str):
     """Get colored text.
 
@@ -607,15 +516,3 @@ def get_nlp_object_name(nlp_object: Any, default: str) -> str:
         name = name.replace(v, "_")
 
     return name.lower()
-
-
-async def set_llm_cache(embedder):
-    from cat.db.database import get_db_connection_string
-
-    set_llm_cache_langchain(
-        RedisSemanticCache(
-            redis_url=get_db_connection_string(),
-            embedding=embedder,
-            score_threshold=0.95,
-        )
-    )

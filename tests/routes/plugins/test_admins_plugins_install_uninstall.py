@@ -134,13 +134,13 @@ async def test_create_cheshire_cat_after_plugin_install(lizard, secure_client, s
         assert p["local_info"]["active"] == (p["id"] in core_plugins)
 
 
-def test_plugin_uninstall(secure_client, secure_client_headers):
+async def test_plugin_uninstall(secure_client, secure_client_headers):
     just_installed_plugin(secure_client, secure_client_headers)
 
     # The plugin is active, now let's activate for the agent too
     secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
-    agent_settings = crud.read(crud_plugins.format_key(agent_id, "mock_plugin"))
-    system_settings = crud.read(crud_plugins.format_key(DEFAULT_SYSTEM_KEY, "mock_plugin"))
+    agent_settings = await crud.read(crud_plugins.format_key(agent_id, "mock_plugin"))
+    system_settings = await crud.read(crud_plugins.format_key(DEFAULT_SYSTEM_KEY, "mock_plugin"))
 
     assert agent_settings is not None
     assert system_settings is not None
@@ -162,8 +162,8 @@ def test_plugin_uninstall(secure_client, secure_client_headers):
     response = secure_client.get("/plugins/system/details/mock_plugin", headers=secure_client_headers)
     assert response.json()["detail"] == "Plugin not found"
 
-    agent_settings = crud.read(crud_plugins.format_key(agent_id, "mock_plugin"))
-    system_settings = crud.read(crud_plugins.format_key(DEFAULT_SYSTEM_KEY, "mock_plugin"))
+    agent_settings = await crud.read(crud_plugins.format_key(agent_id, "mock_plugin"))
+    system_settings = await crud.read(crud_plugins.format_key(DEFAULT_SYSTEM_KEY, "mock_plugin"))
 
     assert agent_settings is None
     assert system_settings is None

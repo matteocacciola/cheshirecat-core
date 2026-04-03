@@ -2,10 +2,10 @@ import asyncio
 import json
 import random
 import redis.asyncio as aioredis
-from typing import Dict, Callable, Optional, List
+from typing import Dict, Callable, Optional
 
 from cat import log, hook
-from cat.db.database import get_db, get_redis_kwargs
+from cat.db.database import get_async_db
 from cat.utils import pod_id, singleton
 
 # Max messages to keep in the stream to prevent memory explosion
@@ -15,7 +15,7 @@ STREAM_MAX_LEN = 1000
 class MarchHareConfig:
     # List of streams for event management
     streams = {
-        "PLUGIN_EVENTS": "streams:plugin_events"
+        "PLUGIN_EVENTS": "march_hare:streams:plugin_events"
     }
 
     # list of event types for plugin management
@@ -29,31 +29,85 @@ class MarchHareConfig:
 class MarchHare:
     def __init__(self):
         self.pod_id = pod_id()
-        self._redis_client = get_db()
-        self._stop_event = asyncio.Event()  # asyncio-native, not threading.Event
+        self._async_redis_client = get_async_db()
+        self._stop_event = asyncio.Event()
 
-        # Backoff settings
-        self._base_delay = 1.0  # Start with 1 second
-        self._max_delay = 60.0  # Cap at 1 minute
-        self._factor = 2  # Double the wait each time
-        self._retries = 0
+        # Set once the lizard is fully bootstrapped; gates handler spawning so that
+        # listener tasks can be started early (before_lizard_bootstrap) without
+        # dispatching events to a not-yet-ready system.
+        self._ready_event = asyncio.Event()
 
-    def _new_redis_client(self) -> aioredis.Redis:
+        # One long-running listener Task per stream (stream_name → Task).
+        self._listeners: Dict[str, asyncio.Task] = {}
+
+        # One short-lived handler Task per message being processed
+        # (stream_name:message_id → Task).  Tasks are added when a message
+        # arrives and removed automatically when they complete.
+        self._handlers: Dict[str, asyncio.Task] = {}
+
+        # Backoff settings (used as defaults per listener loop)
+        self._base_delay = 1.0   # Start with 1 second
+        self._max_delay = 60.0   # Cap at 1 minute
+        self._factor = 2         # Double the wait each time
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    def start_consumer(self, stream_name: str, callback: Callable) -> None:
         """
-        Create a fresh Redis client bound to the currently-running event loop.
-        This avoids the "Future attached to a different loop" error that occurs
-        when a client/connection-pool created on a previous loop is reused.
-        """
-        return aioredis.Redis(**get_redis_kwargs())
+        Spawn a long-running listener Task for *stream_name*.
 
-    def stop(self):
-        """Signal the consumer loop to stop."""
+        For every message that arrives a dedicated handler Task is created
+        (see :meth:`_spawn_handler`).  A no-op if a live listener for that
+        stream already exists.
+        """
+        existing = self._listeners.get(stream_name)
+        if existing and not existing.done():
+            log.warning(f"[March Hare] Listener for '{stream_name}' is already running.")
+            return
+
+        # Allow restart after stop() was called
+        self._stop_event.clear()
+
+        task = asyncio.create_task(
+            self._listener_loop(callback, stream_name),
+            name=f"march_hare:listener:{stream_name}",
+        )
+        self._listeners[stream_name] = task
+        task.add_done_callback(lambda t: self._on_listener_done(stream_name, t))
+
+        log.debug(f"[March Hare] Listener task started for stream '{stream_name}'.")
+
+    def mark_ready(self) -> None:
+        """
+        Signal that the lizard is fully bootstrapped.
+
+        Until this is called, listener loops will read from the streams but
+        will not spawn handler tasks—messages received during startup are
+        silently skipped to avoid acting on events with a not-yet-ready system.
+        """
+        self._ready_event.set()
+        log.debug("[March Hare] System ready — handlers will be spawned for incoming events.")
+
+    async def stop(self) -> None:
+        """Signal all listeners and pending handlers to stop and await clean termination."""
         self._stop_event.set()
+        self._ready_event.clear()
 
-    async def notify_event(self, event_type: str, payload: Dict, stream_name: str):
-        """
-        Publish an event to Redis Stream.
-        """
+        all_tasks = list(self._listeners.values()) + list(self._handlers.values())
+        for task in all_tasks:
+            task.cancel()
+
+        if all_tasks:
+            await asyncio.gather(*all_tasks, return_exceptions=True)
+
+        self._listeners.clear()
+        self._handlers.clear()
+        log.debug("[March Hare] All tasks stopped.")
+
+    async def notify_event(self, event_type: str, payload: Dict, stream_name: str) -> None:
+        """Publish an event to a Redis Stream."""
         try:
             event = {
                 "event_type": event_type,
@@ -61,165 +115,216 @@ class MarchHare:
                 "source_pod": self.pod_id,
             }
 
-            # XADD with approximate trimming (~ operator) for performance
-            await self._redis_client.xadd(
+            await self._async_redis_client.xadd(
                 name=stream_name,
                 fields=event,
                 maxlen=STREAM_MAX_LEN,
-                approximate=True
+                approximate=True,
             )
 
-            log.debug(f"Event {event_type} sent to stream {stream_name}")
+            log.debug(f"[March Hare] Event '{event_type}' sent to stream '{stream_name}'.")
         except Exception as e:
-            log.error(f"Error publishing to Redis: {e}")
+            log.error(f"[March Hare] Error publishing to Redis: {e}")
 
-    async def consume_event(self, callback: Callable, stream_name: str):
-        """
-        Read new messages from the stream starting from "now".
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
 
-        A dedicated Redis client is created here so that its connection pool is
-        always bound to the event loop that is actually running this coroutine,
-        avoiding the "Future attached to a different loop" error.
+    def _spawn_handler(self, callback: Callable, stream_name: str, message_id: str, data: dict) -> None:
         """
-        # "$" tells Redis to only return messages that arrive after we start reading
+        Create a short-lived asyncio Task to process a single message.
+
+        The task is registered in :attr:`_handlers` on creation and removed
+        automatically via a done-callback once it completes (successfully,
+        with an error, or cancelled).
+        """
+        handler_id = f"{stream_name}:{message_id}"
+        task = asyncio.create_task(
+            callback(data),
+            name=f"march_hare:handler:{handler_id}",
+        )
+        self._handlers[handler_id] = task
+        task.add_done_callback(lambda t: self._on_handler_done(handler_id, t))
+
+        log.debug(f"[March Hare] Handler spawned for message '{message_id}' on '{stream_name}'.")
+
+    def _on_listener_done(self, stream_name: str, task: asyncio.Task) -> None:
+        """Remove a finished listener from the registry and log the outcome."""
+        self._listeners.pop(stream_name, None)
+
+        if task.cancelled():
+            log.debug(f"[March Hare] Listener for '{stream_name}' was cancelled.")
+        elif (exc := task.exception()) is not None:
+            log.error(f"[March Hare] Listener for '{stream_name}' raised an exception: {exc}")
+        else:
+            log.debug(f"[March Hare] Listener for '{stream_name}' completed.")
+
+    def _on_handler_done(self, handler_id: str, task: asyncio.Task) -> None:
+        """Remove a finished handler from the registry and log the outcome."""
+        self._handlers.pop(handler_id, None)
+
+        if task.cancelled():
+            log.debug(f"[March Hare] Handler '{handler_id}' was cancelled.")
+        elif (exc := task.exception()) is not None:
+            log.error(f"[March Hare] Handler '{handler_id}' raised an exception: {exc}")
+        else:
+            log.debug(f"[March Hare] Handler '{handler_id}' completed successfully.")
+
+    async def _listener_loop(self, callback: Callable, stream_name: str) -> None:
+        """
+        Continuously poll *stream_name* and spawn a handler Task per message.
+
+        The loop starts reading from the stream immediately (so no events are
+        missed due to startup timing) but defers handler spawning until the
+        system signals readiness via :meth:`mark_ready`.
+
+        Backoff state is local to each invocation so that concurrent listeners
+        for different streams never interfere with each other.
+        """
         last_id = "$"
+        retries = 0
 
-        # Create a fresh client on the current event loop (avoids loop-mismatch errors)
-        redis_client = self._new_redis_client()
+        log.debug(f"[March Hare] Listener loop started for stream '{stream_name}'.")
 
-        log.debug(f"[*] Started Redis Stream consumer on {stream_name}.")
+        while not self._stop_event.is_set():
+            try:
+                # block=100 ms so the stop flag is checked frequently
+                events = await self._async_redis_client.xread(
+                    {stream_name: last_id}, count=10, block=100
+                )
 
-        try:
-            while not self._stop_event.is_set():
-                try:
-                    # block=100ms so the stop flag is checked frequently
-                    events = await redis_client.xread({stream_name: last_id}, count=1, block=100)
+                if retries > 0:
+                    log.info(f"[March Hare] Redis reconnected for '{stream_name}'. Resetting backoff.")
+                    retries = 0
 
-                    # If we reached this point, the connection is active
-                    if self._retries > 0:
-                        log.info("Redis connection re-established. Resetting backoff.")
-                        self._retries = 0
+                if not events:
+                    continue
 
-                    for stream, messages in events:
-                        for message_id, data in messages:
-                            # Process message
-                            await callback(data)
-                            # Update last_id to the one we just processed to move the cursor forward
+                # Do not spawn handlers until the lizard is fully ready
+                if not self._ready_event.is_set():
+                    # Advance the cursor so we don't replay startup-era messages
+                    # once the system becomes ready
+                    for _stream, messages in events:
+                        for message_id, _data in messages:
                             last_id = message_id
-                except (aioredis.ConnectionError, aioredis.TimeoutError, ValueError) as e:
-                    if self._stop_event.is_set():
-                        break  # voluntary shutdown, exit silently
+                    continue
 
-                    # Calculate exponential delay: (base * factor^retries) + jitter
-                    # Jitter prevents all pods from reconnecting at the exact same millisecond
-                    jitter = random.uniform(0, 1)
-                    delay = min(self._max_delay, (self._base_delay * (self._factor ** self._retries)) + jitter)
+                for _stream, messages in events:
+                    for message_id, data in messages:
+                        self._spawn_handler(callback, stream_name, message_id, data)
+                        # Advance cursor immediately; each message is handled by
+                        # its own independent Task
+                        last_id = message_id
 
-                    log.warning(f"Redis unavailable: {e}. Retrying in {delay:.2f}s (Attempt {self._retries + 1})")
+            except asyncio.CancelledError:
+                log.debug(f"[March Hare] Listener loop for '{stream_name}' cancelled.")
+                raise  # let asyncio handle the cancellation cleanly
 
-                    await asyncio.sleep(delay)
-                    self._retries += 1
-                except Exception as e:
-                    if self._stop_event.is_set():
-                        break  # voluntary shutdown, exit silently
+            except (aioredis.ConnectionError, aioredis.TimeoutError, ValueError) as e:
+                if self._stop_event.is_set():
+                    break
 
-                    log.error(f"Unexpected error in consumer loop: {e}")
-                    await asyncio.sleep(2)  # Brief pause for non-connection logic errors
-        finally:
-            # Always release the connection back to the pool on exit
-            await redis_client.aclose()
+                jitter = random.uniform(0, 1)
+                delay = min(self._max_delay, (self._base_delay * (self._factor ** retries)) + jitter)
+
+                log.warning(
+                    f"[March Hare] Redis unavailable on '{stream_name}': {e}. "
+                    f"Retrying in {delay:.2f}s (attempt {retries + 1})."
+                )
+
+                await asyncio.sleep(delay)
+                retries += 1
+
+            except Exception as e:
+                if self._stop_event.is_set():
+                    break
+
+                log.error(f"[March Hare] Unexpected error in listener loop for '{stream_name}': {e}")
+                await asyncio.sleep(2)  # brief pause before retrying non-connection errors
 
 
 _march_hare: Optional[MarchHare] = None
-_consumer_tasks: List[asyncio.Task] = []
 
 
-async def _consume_plugin_events(lizard):
-    """
-    Consumer coroutine that listens for plugin events from Redis Streams.
-    """
-    global _march_hare
+async def _handle_plugin_event(lizard, data: dict) -> None:
+    """Dispatch a plugin event received from the Redis Stream."""
+    try:
+        event_type = data.get("event_type")
+        source_pod = data.get("source_pod")
+        payload = json.loads(data.get("payload", "{}"))
 
-    _pod_id = pod_id()
+        if source_pod == _march_hare.pod_id:
+            log.debug(f"[March Hare] Ignoring self-originated event: '{event_type}'.")
+            return
 
-    async def callback(data):
-        """Handle the received message."""
-        try:
-            # Redis Stream fields are key-value pairs
-            event_type = data.get("event_type")
-            source_pod = data.get("source_pod")
-            payload = json.loads(data.get("payload", "{}"))
+        if event_type == MarchHareConfig.events["PLUGIN_INSTALLATION"]:
+            await lizard.plugin_manager.install_extracted_plugin(payload["plugin_id"])
+            lizard.activate_plugin_endpoints(payload["plugin_id"])
+            return
 
-            if source_pod == _pod_id:
-                return
+        if event_type == MarchHareConfig.events["PLUGIN_UNINSTALLATION"]:
+            await lizard.uninstall_plugin(payload["plugin_id"], False)
+            return
 
-            if event_type == MarchHareConfig.events["PLUGIN_INSTALLATION"]:
-                await lizard.plugin_manager.install_extracted_plugin(payload["plugin_id"])
-                lizard.activate_plugin_endpoints(payload["plugin_id"])
-                return
-
-            if event_type == MarchHareConfig.events["PLUGIN_UNINSTALLATION"]:
-                await lizard.uninstall_plugin(payload["plugin_id"], False)
-                return
-
-            log.warning(f"Unknown event type: {event_type}")
-        except Exception as e:
-            log.error(f"Error processing Redis message: {e}")
-
-    await _march_hare.consume_event(callback, MarchHareConfig.streams["PLUGIN_EVENTS"])  # type: ignore[union-attr]
+        log.warning(f"[March Hare] Unknown event type: '{event_type}'.")
+    except Exception as e:
+        log.error(f"[March Hare] Error processing plugin event: {e}")
 
 
-def _start_consumer_tasks(lizard):
-    """Schedule the consumer coroutines as asyncio Tasks on the running event loop."""
-    global _consumer_tasks
-    # ensure_future schedules the coroutine on the running event loop (uvicorn's loop)
-    _consumer_tasks = [
-        asyncio.ensure_future(_consume_plugin_events(lizard))
-    ]
-
-
-async def _end_consumer_tasks():
-    """Cancel all running consumer tasks and wait for them to finish."""
-    global _consumer_tasks
-
-    for task in _consumer_tasks:
-        if not task.done():
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-    _consumer_tasks = []
-
+# ------------------------------------------------------------------
+# Lifecycle hooks
+# ------------------------------------------------------------------
 
 @hook(priority=0)
-def before_lizard_bootstrap(lizard) -> None:
-    global _march_hare
+async def before_lizard_bootstrap(lizard) -> None:
+    """
+    Create the MarchHare singleton and start stream listeners early.
 
+    Listeners begin reading from streams here so that no events published
+    during the bootstrap window are missed.  Handler dispatching is gated
+    by :meth:`MarchHare.mark_ready` and will only start once the lizard
+    is fully initialised (see :func:`after_lizard_bootstrap`).
+    """
+    global _march_hare
     _march_hare = MarchHare()
-    _start_consumer_tasks(lizard)
+
+    _march_hare.start_consumer(  # type: ignore[union-attr]
+        stream_name=MarchHareConfig.streams["PLUGIN_EVENTS"],
+        callback=lambda data: _handle_plugin_event(lizard, data),
+    )
 
 
 @hook(priority=0)
-def after_lizard_bootstrap(lizard) -> None:
+async def after_lizard_bootstrap(lizard) -> None:
+    """
+    Unlock handler dispatching now that the lizard is fully initialised.
+    """
     global _march_hare
 
     if _march_hare is None:
-        message = """For some reason, the March Hare plugin is inactive. This could be due to a Redis connection failure
-during initialization. Please check the logs for more details. The plugin is fundamental to manage the PODs. The system
-cannot be used without it."""
+        message = (
+            "For some reason, the March Hare plugin is inactive. This could be due to a Redis connection "
+            "failure during initialization. Please check the logs for more details. "
+            "The plugin is fundamental to manage the PODs. The system cannot be used without it."
+        )
         log.error(message)
         raise Exception(message)
+
+    _march_hare.mark_ready()
 
 
 @hook(priority=0)
 async def before_lizard_shutdown(lizard) -> None:
     global _march_hare
 
-    _march_hare.stop()
-    await _end_consumer_tasks()
-    _march_hare = None
+    if _march_hare is not None:
+        await _march_hare.stop()
+        _march_hare = None
 
+
+# ------------------------------------------------------------------
+# Notification hooks
+# ------------------------------------------------------------------
 
 @hook(priority=999)
 async def lizard_notify_plugin_installation(plugin_id: str, plugin_path: str, lizard) -> None:
@@ -230,7 +335,7 @@ async def lizard_notify_plugin_installation(plugin_id: str, plugin_path: str, li
             event_type=MarchHareConfig.events["PLUGIN_INSTALLATION"],
             payload={
                 "plugin_id": plugin_id,
-                "plugin_path": plugin_path
+                "plugin_path": plugin_path,
             },
             stream_name=MarchHareConfig.streams["PLUGIN_EVENTS"],
         )
