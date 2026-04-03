@@ -11,7 +11,7 @@ import time
 
 from cat.auth import auth_utils
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
-from cat.db.database import get_sync_db
+from cat.db.database import get_async_db
 from cat.env import get_env
 from cat.looking_glass import BillTheLizard, StrayCat
 from cat.looking_glass.mad_hatter.plugin import Plugin
@@ -85,7 +85,7 @@ async def clean_up():
                 os.remove(tbr)
 
     # flush redis database
-    get_sync_db().flushdb()
+    await get_async_db().flushdb()
 
     # delete all the collections in Qdrant
     collections = await memory_client.get_collections()
