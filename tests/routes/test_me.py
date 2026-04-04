@@ -3,10 +3,9 @@ from cat.auth.permissions import get_base_permissions
 from tests.utils import create_new_user, agent_id, new_user_password
 
 
-async def test_get_me_success(secure_client, secure_client_headers, client):
+async def test_get_me_success(secure_client, secure_client_headers, client, cheshire_cat):
     user = await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers=secure_client_headers,
         permissions=get_base_permissions(),

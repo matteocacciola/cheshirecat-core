@@ -33,7 +33,7 @@ async def test_get_all_auth_handler_settings(secure_client, secure_client_header
     assert json["selected_configuration"] == "CoreAuthConfig"
 
 
-async def test_get_auth_handler_settings_non_existent(secure_client, secure_client_headers):
+async def test_get_auth_handler_settings_non_existent(secure_client, secure_client_headers, cheshire_cat):
     non_existent_auth_handler_name = "AuthHandlerNonExistent"
     response = await secure_client.get(
         f"/auth_handler/settings/{non_existent_auth_handler_name}", headers=secure_client_headers

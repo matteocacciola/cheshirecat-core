@@ -14,7 +14,7 @@ from tests.utils import agent_id, create_new_user, new_user_password
 @pytest.mark.parametrize("endpoint", [
     {
         "method": "GET",
-        "path": "/users",
+        "path": "/users/",
         "payload": None
     },
     {
@@ -24,7 +24,7 @@ from tests.utils import agent_id, create_new_user, new_user_password
     },
     {
         "method": "POST",
-        "path": "/users",
+        "path": "/users/",
         "payload": {"username": "Alice", "password": "12345", "permissions": get_base_permissions()}
     },
     {
@@ -40,11 +40,11 @@ from tests.utils import agent_id, create_new_user, new_user_password
 ])
 
 
-async def test_users_permissions(secure_client, secure_client_headers, endpoint):
+async def test_users_permissions(secure_client, secure_client_headers, endpoint, cheshire_cat):
     # create new user that will be edited by calling the endpoints
     # we create it using directly CAT_API_KEY
     response = await secure_client.post(
-        "/users",
+        "/users/",
         json={"username": "Caterpillar", "password": "U R U", "permissions": get_base_permissions()},
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id}
     )
@@ -67,7 +67,6 @@ async def test_users_permissions(secure_client, secure_client_headers, endpoint)
     credentials = {"username": "user", "password": new_user_password}
     await create_new_user(
         secure_client,
-        "/users",
         credentials["username"],
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),

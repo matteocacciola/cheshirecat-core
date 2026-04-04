@@ -9,7 +9,7 @@ from cat.services.service_factory import ServiceFactory
 from tests.utils import send_file, api_key, chat_id
 
 
-async def test_get_all_embedder_settings(secure_client, secure_client_headers, lizard):
+async def test_get_all_embedder_settings(secure_client, secure_client_headers, lizard, cheshire_cat):
     sf = ServiceFactory(
         agent_key=lizard.agent_key,
         hook_manager=lizard.plugin_manager,
@@ -35,7 +35,7 @@ async def test_get_all_embedder_settings(secure_client, secure_client_headers, l
     assert json["selected_configuration"] == "EmbedderDumbConfig"
 
 
-async def test_get_embedder_settings_non_existent(secure_client, secure_client_headers):
+async def test_get_embedder_settings_non_existent(secure_client, secure_client_headers, cheshire_cat):
     non_existent_embedder_name = "EmbedderNonExistentConfig"
     response = await secure_client.get(f"/embedder/settings/{non_existent_embedder_name}", headers=secure_client_headers)
     json = response.json()
@@ -44,7 +44,7 @@ async def test_get_embedder_settings_non_existent(secure_client, secure_client_h
     assert f"{non_existent_embedder_name} not supported" in json["detail"]
 
 
-async def test_get_embedder_settings(secure_client, secure_client_headers):
+async def test_get_embedder_settings(secure_client, secure_client_headers, cheshire_cat):
     embedder_name = "EmbedderDumbConfig"
     response = await secure_client.get(f"/embedder/settings/{embedder_name}", headers=secure_client_headers)
     json = response.json()
@@ -56,7 +56,7 @@ async def test_get_embedder_settings(secure_client, secure_client_headers):
     assert json["scheme"]["type"] == "object"
 
 
-async def test_upsert_embedder_settings(secure_client, secure_client_headers):
+async def test_upsert_embedder_settings(secure_client, secure_client_headers, cheshire_cat):
     # set a different embedder from default one (same class different size)
     new_embedder = "EmbedderFakeConfig"
     embedder_config = {"size": 64}
@@ -87,7 +87,7 @@ async def test_upsert_embedder_settings(secure_client, secure_client_headers):
     assert json["scheme"]["languageEmbedderName"] == new_embedder
 
 
-async def test_upsert_embedder_settings_updates_collections(secure_client, lizard):
+async def test_upsert_embedder_settings_updates_collections(secure_client, lizard, cheshire_cat):
     agent_id = "test_embedder_settings_updates_collections"
     cheshire_cat = await lizard.create_cheshire_cat(agent_id)
 
@@ -124,7 +124,7 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
     assert episodic_memories > 0
 
     # check that only the file sent to the agent's RAG exists in the list of files
-    res = await secure_client.request("GET", "/file_manager", headers=headers)
+    res = await secure_client.request("GET", "/file_manager/", headers=headers)
     assert res.status_code == 200
     json = res.json()
     files = json["files"]
@@ -163,14 +163,14 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
     assert declarative_memories == 0
 
     # check that the file does not exist anymore in the list of files
-    res = await secure_client.request("GET", "/file_manager", headers=headers)
+    res = await secure_client.request("GET", "/file_manager/", headers=headers)
     assert res.status_code == 200
     json = res.json()
     files = json["files"]
     assert len(files) == 0
 
 
-async def test_upsert_embedder_settings_with_episodic_memory_without_conversation(secure_client, lizard):
+async def test_upsert_embedder_settings_with_episodic_memory_without_conversation(secure_client, lizard, cheshire_cat):
     agent_id = "test_embedder_settings_updates_collections"
     cheshire_cat = await lizard.create_cheshire_cat(agent_id)
 
@@ -196,7 +196,7 @@ async def test_upsert_embedder_settings_with_episodic_memory_without_conversatio
     assert episodic_memories_before > 0
 
     # check that the file does not appear in the list of files, because it is episodic
-    res = await secure_client.request("GET", "/file_manager", headers=headers)
+    res = await secure_client.request("GET", "/file_manager/", headers=headers)
     assert res.status_code == 200
     json = res.json()
     files = json["files"]

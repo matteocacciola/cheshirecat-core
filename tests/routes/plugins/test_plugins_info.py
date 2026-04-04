@@ -1,5 +1,5 @@
-async def test_list_plugins(lizard, secure_client, secure_client_headers):
-    response = await secure_client.get("/plugins", headers=secure_client_headers)
+async def test_list_plugins(lizard, secure_client, secure_client_headers, cheshire_cat):
+    response = await secure_client.get("/plugins/", headers=secure_client_headers)
     json = response.json()
 
     core_plugins = lizard.plugin_manager.get_core_plugins_ids

@@ -31,7 +31,7 @@ async def test_get_all_vector_databases_settings(secure_client, secure_client_he
     assert json["selected_configuration"] == "QdrantConfig"
 
 
-async def test_get_vector_database_settings_non_existent(secure_client, secure_client_headers):
+async def test_get_vector_database_settings_non_existent(secure_client, secure_client_headers, cheshire_cat):
     non_existent_vector_db_name = "VectorDBNonExistentConfig"
     response = await secure_client.get(
         f"/vector_database/settings/{non_existent_vector_db_name}", headers=secure_client_headers
@@ -42,7 +42,7 @@ async def test_get_vector_database_settings_non_existent(secure_client, secure_c
     assert f"{non_existent_vector_db_name} not supported" in json["detail"]
 
 
-async def test_get_vector_database_settings(secure_client, secure_client_headers):
+async def test_get_vector_database_settings(secure_client, secure_client_headers, cheshire_cat):
     vector_db_name = "QdrantConfig"
     response = await secure_client.get(f"/vector_database/settings/{vector_db_name}", headers=secure_client_headers)
     json = response.json()
@@ -53,7 +53,7 @@ async def test_get_vector_database_settings(secure_client, secure_client_headers
     assert json["scheme"]["type"] == "object"
 
 
-async def test_upsert_vector_database_settings_success(secure_client, secure_client_headers):
+async def test_upsert_vector_database_settings_success(secure_client, secure_client_headers, cheshire_cat):
     new_vector_db = "QdrantConfig"
     payload = {
         "host": "localhost",
@@ -102,10 +102,10 @@ async def test_forbidden_access_no_auth(client):
     assert response.status_code == 401
 
 
-async def test_granted_access_on_permissions(secure_client, secure_client_headers, client):
+async def test_granted_access_on_permissions(secure_client, secure_client_headers, client, cheshire_cat):
     # create user
     data = await create_new_user(
-        secure_client, "/users", headers=secure_client_headers, permissions={"VECTOR_DATABASE": ["READ"]}
+        secure_client, headers=secure_client_headers, permissions={"VECTOR_DATABASE": ["READ"]}
     )
     res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
@@ -116,9 +116,9 @@ async def test_granted_access_on_permissions(secure_client, secure_client_header
     assert response.status_code == 200
 
 
-async def test_forbidden_access_no_permission(secure_client, secure_client_headers, client):
+async def test_forbidden_access_no_permission(secure_client, secure_client_headers, client, cheshire_cat):
     # create user
-    data = await create_new_user(secure_client, "/users", headers=secure_client_headers)
+    data = await create_new_user(secure_client, headers=secure_client_headers)
     res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 
@@ -129,10 +129,10 @@ async def test_forbidden_access_no_permission(secure_client, secure_client_heade
     assert response.json()["detail"] == "Forbidden"
 
 
-async def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client):
+async def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client, cheshire_cat):
     # create user
     data = await create_new_user(
-        secure_client, "/users", headers=secure_client_headers, permissions={"VECTOR_DATABASE": ["DELETE"]}
+        secure_client, headers=secure_client_headers, permissions={"VECTOR_DATABASE": ["DELETE"]}
     )
     res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]

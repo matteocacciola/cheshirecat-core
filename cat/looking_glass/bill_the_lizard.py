@@ -256,7 +256,7 @@ class BillTheLizard(OrchestratorMixin):
             # now, I have to re-initialize all the vector databases in a serialized way, outside threads to avoid
             # race conditions
             for entry in stored_files_by_ccat:
-                vmh = await entry["ccat"].vector_memory_handler
+                vmh = await entry["ccat"].vector_memory_handler()
                 await vmh.initialize(embedder_name, embedder_size)
 
                 # finally, I can re-embed all the stored files in an asynchronous way

@@ -6,9 +6,9 @@ from tests.utils import send_n_websocket_messages, agent_id, create_new_user, ap
 
 
 # search on default startup memory
-async def test_memory_recall_default_success(secure_client, secure_client_headers):
+async def test_memory_recall_default_success(secure_client, secure_client_headers, cheshire_cat):
     params = {"text": "Red Queen"}
-    response = await secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
+    response = await secure_client.get("/memory/recall", params=params, headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
 
@@ -27,16 +27,15 @@ async def test_memory_recall_default_success(secure_client, secure_client_header
 
 
 # search without query should throw error
-async def test_memory_recall_without_query_error(secure_client, secure_client_headers):
+async def test_memory_recall_without_query_error(secure_client, secure_client_headers, cheshire_cat):
     response = await secure_client.get("/memory/recall", headers=secure_client_headers)
     assert response.status_code == 400
 
 
 # search with query
-async def test_memory_recall_success(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+async def test_memory_recall_success(secure_client, secure_client_headers, mocked_default_llm_answer_prompt, cheshire_cat):
     user = await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -51,16 +50,17 @@ async def test_memory_recall_success(secure_client, secure_client_headers, mocke
     # recall
     params = {"text": "Red Queen"}
     response = await secure_client.get(
-        "/memory/recall/", params=params, headers={**secure_client_headers, **{"X-User-ID": user_db["id"]}}
+        "/memory/recall", params=params, headers={**secure_client_headers, **{"X-User-ID": user_db["id"]}}
     )
     assert response.status_code == 200
 
 
 # search with query and k
-async def test_memory_recall_with_k_success(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+async def test_memory_recall_with_k_success(
+    secure_client, secure_client_headers, mocked_default_llm_answer_prompt, cheshire_cat,
+):
     user = await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -76,12 +76,14 @@ async def test_memory_recall_with_k_success(secure_client, secure_client_headers
     max_k = 2
     params = {"k": max_k, "text": "Red Queen"}
     response = await secure_client.get(
-        "/memory/recall/", params=params, headers={**secure_client_headers, **{"X-User-ID": user_db["id"]}}
+        "/memory/recall", params=params, headers={**secure_client_headers, **{"X-User-ID": user_db["id"]}}
     )
     assert response.status_code == 200
 
 
-async def test_memory_recall_with_metadata(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+async def test_memory_recall_with_metadata(
+    secure_client, secure_client_headers, mocked_default_llm_answer_prompt, cheshire_cat,
+):
     messages = [
         {
             "content": "MEOW_ONE",
@@ -99,11 +101,11 @@ async def test_memory_recall_with_metadata(secure_client, secure_client_headers,
 
     # insert a new points with metadata
     for req_json in messages:
-        secure_client.post("/memory/collections/declarative/points", json=req_json, headers=secure_client_headers)
+        await secure_client.post("/memory/collections/declarative/points", json=req_json, headers=secure_client_headers)
 
     # recall with metadata
     params = {"text": "MEOW", "metadata": {"key_first": "value_one"}}
-    response = await secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
+    response = await secure_client.get("/memory/recall", params=params, headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
     declarative_memories = json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)]
@@ -111,7 +113,7 @@ async def test_memory_recall_with_metadata(secure_client, secure_client_headers,
 
     # recall with metadata multiple keys in metadata
     params = {"text": "MEOW", "metadata": {"key_first": "value_one", "key_second": "value_two"}}
-    response = await secure_client.get("/memory/recall/", params=params, headers=secure_client_headers)
+    response = await secure_client.get("/memory/recall", params=params, headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
     declarative_memories = json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)]

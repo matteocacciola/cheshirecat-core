@@ -2,7 +2,7 @@ from tests.utils import just_installed_plugin
 from tests.mocks.mock_plugin.mock_plugin_overrides import MockPluginSettings
 
 
-async def test_get_all_plugin_settings(lizard, secure_client, secure_client_headers):
+async def test_get_all_plugin_settings(lizard, secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers, activate=True)
 
     response = await secure_client.get("/plugins/settings", headers=secure_client_headers)
@@ -32,7 +32,7 @@ async def test_get_all_plugin_settings(lizard, secure_client, secure_client_head
             assert setting["scheme"] == {}
 
 
-async def test_get_plugin_settings_non_existent(secure_client, secure_client_headers):
+async def test_get_plugin_settings_non_existent(secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers)
 
     non_existent_plugin = "ghost_plugin"
@@ -44,7 +44,7 @@ async def test_get_plugin_settings_non_existent(secure_client, secure_client_hea
 
 
 # endpoint to get settings and settings schema
-async def test_get_plugin_settings(secure_client, secure_client_headers):
+async def test_get_plugin_settings(secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers, activate=True)
 
     response = await secure_client.get("/plugins/settings/mock_plugin", headers=secure_client_headers)
@@ -56,7 +56,7 @@ async def test_get_plugin_settings(secure_client, secure_client_headers):
     assert response_json["scheme"] == MockPluginSettings.model_json_schema()
 
 
-async def test_save_wrong_plugin_settings(secure_client, secure_client_headers):
+async def test_save_wrong_plugin_settings(secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers, activate=True)
 
     # save settings (wrong schema)
@@ -72,7 +72,7 @@ async def test_save_wrong_plugin_settings(secure_client, secure_client_headers):
     assert json["value"] == {"a": "a", "b": 0}
 
 
-async def test_save_plugin_settings(secure_client, secure_client_headers):
+async def test_save_plugin_settings(secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers, activate=True)
 
     # save settings
@@ -101,7 +101,7 @@ async def test_save_plugin_settings(secure_client, secure_client_headers):
 
 
 # base_plugin has no settings and ignores them when saved (for the moment)
-async def test_base_plugin_settings(secure_client, secure_client_headers):
+async def test_base_plugin_settings(secure_client, secure_client_headers, cheshire_cat):
     # write a new setting, and then overwrite it (base_plugin should ignore this)
     fake_settings = {"a": "a", "b": 1}
 
@@ -123,7 +123,7 @@ async def test_base_plugin_settings(secure_client, secure_client_headers):
     assert json["scheme"] == {}
 
 
-async def test_reset_plugin_settings(secure_client, secure_client_headers):
+async def test_reset_plugin_settings(secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers, activate=True)
 
     # save settings

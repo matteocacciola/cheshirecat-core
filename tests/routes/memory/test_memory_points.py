@@ -15,7 +15,6 @@ from tests.utils import (
 async def test_create_point_wrong_collection(secure_client, secure_client_headers, cheshire_cat):
     await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -33,7 +32,6 @@ async def test_create_point_wrong_collection(secure_client, secure_client_header
 async def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
     await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -67,10 +65,9 @@ async def test_create_memory_point(secure_client, secure_client_headers, cheshir
     assert memory["metadata"] == expected_metadata
 
 
-async def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+async def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_answer_prompt, cheshire_cat):
     await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -118,7 +115,7 @@ async def test_point_deleted(secure_client, secure_client_headers, mocked_defaul
 
 
 # test delete points by filter
-async def test_points_deleted_by_metadata(secure_client, secure_client_headers):
+async def test_points_deleted_by_metadata(secure_client, secure_client_headers, cheshire_cat):
     content_type = "application/pdf"
     response, file_path = await send_file("sample.pdf", content_type, secure_client, secure_client_headers)
 
@@ -133,7 +130,7 @@ async def test_points_deleted_by_metadata(secure_client, secure_client_headers):
     # upload another document
     with open(file_path, "rb") as f:
         files = {"file": ("sample2.pdf", f, content_type)}
-        response = await secure_client.post("/rabbithole", files=files, headers=secure_client_headers)
+        response = await secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200
@@ -174,7 +171,7 @@ async def test_points_deleted_by_metadata(secure_client, secure_client_headers):
     assert len(declarative_memories) == 0
 
 
-async def test_get_collection_points_wrong_collection(secure_client, secure_client_headers):
+async def test_get_collection_points_wrong_collection(secure_client, secure_client_headers, cheshire_cat):
     # not existing collection
     res = await secure_client.get("/memory/collections/unexistent/points", headers=secure_client_headers)
     assert res.status_code == 400
@@ -183,7 +180,6 @@ async def test_get_collection_points_wrong_collection(secure_client, secure_clie
 async def test_get_collection_points(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
     await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -239,7 +235,6 @@ async def test_get_collection_points(secure_client, secure_client_headers, chesh
 async def test_get_collection_points_offset(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
     await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -308,7 +303,6 @@ async def test_get_collection_points_offset(secure_client, secure_client_headers
 async def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_client_headers, cheshire_cat):
     await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -332,7 +326,6 @@ async def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_c
 async def test_edit_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
     await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -370,7 +363,7 @@ async def test_edit_memory_point(secure_client, secure_client_headers, cheshire_
 
     # check memory contents
     params = {"text": "dear, hello"}
-    response = await secure_client.get("/memory/recall/", params=params, headers=headers)
+    response = await secure_client.get("/memory/recall", params=params, headers=headers)
     json = response.json()
     assert response.status_code == 200
     assert len(json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)]) == 1

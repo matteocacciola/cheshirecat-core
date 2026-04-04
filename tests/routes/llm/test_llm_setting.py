@@ -32,7 +32,7 @@ async def test_get_all_llm_settings(secure_client, secure_client_headers, cheshi
     assert json["selected_configuration"] == "LLMDefaultConfig"
 
 
-async def test_get_llm_settings_non_existent(secure_client, secure_client_headers):
+async def test_get_llm_settings_non_existent(secure_client, secure_client_headers, cheshire_cat):
     non_existent_llm_name = "LLMNonExistentConfig"
     response = await secure_client.get(f"/llm/settings/{non_existent_llm_name}", headers=secure_client_headers)
     json = response.json()
@@ -41,7 +41,7 @@ async def test_get_llm_settings_non_existent(secure_client, secure_client_header
     assert f"{non_existent_llm_name} not supported" in json["detail"]
 
 
-async def test_get_llm_settings(secure_client, secure_client_headers):
+async def test_get_llm_settings(secure_client, secure_client_headers, cheshire_cat):
     llm_name = "LLMDefaultConfig"
     response = await secure_client.get(f"/llm/settings/{llm_name}", headers=secure_client_headers)
     json = response.json()
@@ -53,7 +53,7 @@ async def test_get_llm_settings(secure_client, secure_client_headers):
     assert json["scheme"]["type"] == "object"
 
 
-async def test_upsert_llm_settings_success(secure_client, secure_client_headers):
+async def test_upsert_llm_settings_success(secure_client, secure_client_headers, cheshire_cat):
     # set a different LLM
     new_llm = "LLMDefaultConfig"
     response = await secure_client.put(f"/llm/settings/{new_llm}", headers=secure_client_headers)
@@ -77,14 +77,14 @@ async def test_upsert_llm_settings_success(secure_client, secure_client_headers)
     assert json["scheme"]["languageModelName"] == new_llm
 
 
-async def test_forbidden_access_no_auth(client):
+async def test_forbidden_access_no_auth(client, cheshire_cat):
     response = await client.get("/llm/settings")
     assert response.status_code == 401
 
 
-async def test_granted_access_on_permissions(secure_client, secure_client_headers, client):
+async def test_granted_access_on_permissions(secure_client, secure_client_headers, client, cheshire_cat):
     # create user
-    data = await create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"LLM": ["READ"]})
+    data = await create_new_user(secure_client, headers=secure_client_headers, permissions={"LLM": ["READ"]})
     res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 
@@ -92,9 +92,9 @@ async def test_granted_access_on_permissions(secure_client, secure_client_header
     assert response.status_code == 200
 
 
-async def test_forbidden_access_no_permission(secure_client, secure_client_headers, client):
+async def test_forbidden_access_no_permission(secure_client, secure_client_headers, client, cheshire_cat):
     # create user
-    data = await create_new_user(secure_client, "/users", headers=secure_client_headers)
+    data = await create_new_user(secure_client, headers=secure_client_headers)
     res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 
@@ -103,9 +103,9 @@ async def test_forbidden_access_no_permission(secure_client, secure_client_heade
     assert response.json()["detail"] == "Forbidden"
 
 
-async def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client):
+async def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client, cheshire_cat):
     # create user
-    data = await create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"LLM": ["DELETE"]})
+    data = await create_new_user(secure_client, headers=secure_client_headers, permissions={"LLM": ["DELETE"]})
     res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 

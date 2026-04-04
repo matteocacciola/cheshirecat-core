@@ -26,7 +26,7 @@ async def check_file_deleted(secure_client, secure_client_headers, collection: V
     assert len(memories) > 0
 
     # check that the file exists in the list of files
-    res = await secure_client.request("GET", "/file_manager", headers=headers)
+    res = await secure_client.request("GET", "/file_manager/", headers=headers)
     assert res.status_code == 200
     json = res.json()
     files = json["files"]
@@ -43,7 +43,7 @@ async def check_file_deleted(secure_client, secure_client_headers, collection: V
     assert len(memories) == 0
 
     # check that the file does not exist anymore in the list of files
-    res = await secure_client.request("GET", "/file_manager", headers=headers)
+    res = await secure_client.request("GET", "/file_manager/", headers=headers)
     assert res.status_code == 200
     json = res.json()
     files = json["files"]
@@ -68,7 +68,7 @@ async def check_files_deleted(secure_client, secure_client_headers, collection: 
     # upload another document
     with open(file_path, "rb") as f:
         files = {"file": ("sample2.pdf", f, content_type)}
-        response = await secure_client.post("/rabbithole", files=files, headers=headers)
+        response = await secure_client.post("/rabbithole/", files=files, headers=headers)
         assert response.status_code == 200
 
     # check memory contents
@@ -76,7 +76,7 @@ async def check_files_deleted(secure_client, secure_client_headers, collection: 
     assert len(memories) > 0
 
     # check that the files exist in the list of files
-    res = await secure_client.request("GET", "/file_manager", headers=headers)
+    res = await secure_client.request("GET", "/file_manager/", headers=headers)
     assert res.status_code == 200
     json = res.json()
     files = json["files"]
@@ -94,24 +94,24 @@ async def check_files_deleted(secure_client, secure_client_headers, collection: 
     assert len(memories) == 0
 
     # check that the files do not exist anymore in the list of files
-    res = await secure_client.request("GET", "/file_manager", headers=headers)
+    res = await secure_client.request("GET", "/file_manager/", headers=headers)
     assert res.status_code == 200
     json = res.json()
     files = json["files"]
     assert len(files) == 0
 
 
-async def test_file_deleted(secure_client, secure_client_headers):
+async def test_file_deleted(secure_client, secure_client_headers, cheshire_cat):
     await check_file_deleted(secure_client, secure_client_headers, VectorMemoryType.DECLARATIVE)
 
 
-async def test_file_chat_deleted(secure_client, secure_client_headers, stray_no_memory):
+async def test_file_chat_deleted(secure_client, secure_client_headers, stray_no_memory, cheshire_cat):
     await check_file_deleted(secure_client, secure_client_headers, VectorMemoryType.EPISODIC, ch_id=stray_no_memory.id)
 
 
-async def test_files_deleted(secure_client, secure_client_headers):
+async def test_files_deleted(secure_client, secure_client_headers, cheshire_cat):
     await check_files_deleted(secure_client, secure_client_headers, VectorMemoryType.DECLARATIVE)
 
 
-async def test_files_chat_deleted(secure_client, secure_client_headers, stray_no_memory):
+async def test_files_chat_deleted(secure_client, secure_client_headers, stray_no_memory, cheshire_cat):
     await check_files_deleted(secure_client, secure_client_headers, VectorMemoryType.EPISODIC, ch_id=stray_no_memory.id)

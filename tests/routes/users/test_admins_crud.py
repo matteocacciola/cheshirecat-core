@@ -33,7 +33,7 @@ async def test_create_admin(client):
     permissions = get_full_permissions()
 
     # create admin
-    data = await create_new_user(client, "/users", headers=(await get_client_admin_headers(client)), permissions=permissions)
+    data = await create_new_user(client, headers=(await get_client_admin_headers(client)), permissions=permissions)
 
     # assertions on admin structure
     check_user_fields(data)
@@ -46,11 +46,11 @@ async def test_cannot_create_duplicate_admin(client):
     permissions = get_full_permissions()
 
     # create admin
-    data = await create_new_user(client, "/users", headers=await get_client_admin_headers(client), permissions=permissions)
+    data = await create_new_user(client, headers=await get_client_admin_headers(client), permissions=permissions)
 
     # create admin with the same username
     response = await client.post(
-        "/users", json={"username": data["username"], "password": "ecilA"}, headers=await get_client_admin_headers(client)
+        "/users/", json={"username": data["username"], "password": "ecilA"}, headers=await get_client_admin_headers(client)
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Cannot duplicate user"
@@ -60,17 +60,17 @@ async def test_get_admins(client):
     permissions = get_full_permissions()
 
     # get list of admins
-    response = await client.get("/users", headers=await get_client_admin_headers(client))
+    response = await client.get("/users/", headers=await get_client_admin_headers(client))
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
     assert len(data) == 1
 
     # create admin
-    await create_new_user(client, "/users", headers=await get_client_admin_headers(client), permissions=permissions)
+    await create_new_user(client, headers=await get_client_admin_headers(client), permissions=permissions)
 
     # get the updated list of admins
-    response = await client.get("/users", headers=await get_client_admin_headers(client))
+    response = await client.get("/users/", headers=await get_client_admin_headers(client))
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -92,9 +92,9 @@ async def test_get_admin(client):
     assert response.json()["detail"] == "User not found"
 
     # create admin and obtain id
-    admin_id = await create_new_user(
-        client, "/users", headers=await get_client_admin_headers(client), permissions=permissions,
-    )["id"]
+    admin_id = (await create_new_user(
+        client, headers=await get_client_admin_headers(client), permissions=permissions,
+    ))["id"]
 
     # get specific existing admin
     response = await client.get(f"/users/{admin_id}", headers=await get_client_admin_headers(client))
@@ -118,9 +118,9 @@ async def test_update_admin(client):
     assert response.json()["detail"] == "User not found"
 
     # create admin and obtain id
-    admin_id = await create_new_user(
-        client, "/users", headers=await get_client_admin_headers(client), permissions=permissions,
-    )["id"]
+    admin_id = (await create_new_user(
+        client, headers=await get_client_admin_headers(client), permissions=permissions,
+    ))["id"]
 
     # update unexisting attribute (bad request)
     updated_admin = {"username": "Alice", "something": 42}
@@ -172,7 +172,7 @@ async def test_update_admin(client):
     assert data["permissions"] == {"EMBEDDER": ["WRITE"]}
 
     # get list of admins
-    response = await client.get("/users", headers=await get_client_admin_headers(client))
+    response = await client.get("/users/", headers=await get_client_admin_headers(client))
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
@@ -194,9 +194,9 @@ async def test_delete_admin(client):
     assert response.json()["detail"] == "User not found"
 
     # create admin and obtain id
-    admin_id = await create_new_user(
-        client, "/users", headers=await get_client_admin_headers(client), permissions=permissions,
-    )["id"]
+    admin_id = (await create_new_user(
+        client, headers=await get_client_admin_headers(client), permissions=permissions,
+    ))["id"]
 
     # delete admin
     response = await client.delete(f"/users/{admin_id}", headers=await get_client_admin_headers(client))
@@ -210,7 +210,7 @@ async def test_delete_admin(client):
     assert response.json()["detail"] == "User not found"
 
     # check admin is no more in the list of admins
-    response = await client.get("/users", headers=await get_client_admin_headers(client))
+    response = await client.get("/users/", headers=await get_client_admin_headers(client))
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -222,13 +222,13 @@ async def test_delete_admin(client):
 async def test_no_access_if_api_keys_active(secure_client):
     # create admin (forbidden)
     response = await secure_client.post(
-        "/users",
+        "/users/",
         json={"username": "Alice", "password": new_user_password},
     )
     assert response.status_code == 401
 
     # read admins (forbidden)
-    response = await secure_client.get("/users")
+    response = await secure_client.get("/users/")
     assert response.status_code == 401
 
     # edit admin (forbidden)
@@ -240,7 +240,7 @@ async def test_no_access_if_api_keys_active(secure_client):
 
     # check the default list giving the correct CAT_API_KEY
     headers = {"Authorization": f"Bearer {get_env('CAT_API_KEY')}"}
-    response = await secure_client.get("/users", headers=headers)
+    response = await secure_client.get("/users/", headers=headers)
     assert response.status_code == 200
     assert len(response.json()) == 1
     assert response.json()[0]["username"] == "admin"

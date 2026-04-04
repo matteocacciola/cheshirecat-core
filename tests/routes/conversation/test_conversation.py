@@ -14,7 +14,7 @@ from tests.utils import (
 )
 
 
-async def test_convo_history_absent(secure_client, secure_client_headers):
+async def test_convo_history_absent(secure_client, secure_client_headers, cheshire_cat):
     # no ws connection, so no convo history available
     response = await secure_client.get(f"/conversations/{chat_id}/history", headers=secure_client_headers)
     json = response.json()
@@ -23,10 +23,9 @@ async def test_convo_history_absent(secure_client, secure_client_headers):
     assert len(json["history"]) == 0
 
 
-async def test_convo_history_no_update_invalid_llm(secure_client, secure_client_headers):
+async def test_convo_history_no_update_invalid_llm(secure_client, secure_client_headers, cheshire_cat):
     user = await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -46,10 +45,9 @@ async def test_convo_history_no_update_invalid_llm(secure_client, secure_client_
     assert len(json["history"]) == 0
 
 
-async def test_convo_history_update(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+async def test_convo_history_update(secure_client, secure_client_headers, mocked_default_llm_answer_prompt, cheshire_cat):
     user = await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -89,10 +87,9 @@ async def test_convo_history_update(secure_client, secure_client_headers, mocked
         assert isinstance(item["when"], float)  # timestamp
 
 
-async def test_convo_delete(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+async def test_convo_delete(secure_client, secure_client_headers, mocked_default_llm_answer_prompt, cheshire_cat):
     user = await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -129,7 +126,7 @@ async def test_convo_delete(secure_client, secure_client_headers, mocked_default
     assert conversation is None
 
 
-async def test_convo_history_by_user(secure_client, secure_client_headers, client, mocked_default_llm_answer_prompt):
+async def test_convo_history_by_user(secure_client, secure_client_headers, client, mocked_default_llm_answer_prompt, cheshire_cat):
     convos = {
         # user_id: n_messages
         "White Rabbit": 2,
@@ -142,7 +139,6 @@ async def test_convo_history_by_user(secure_client, secure_client_headers, clien
     for username, n_messages in convos.items():
         data = await create_new_user(
             secure_client,
-            "/users",
             username=username,
             headers=secure_client_headers,
             permissions={
@@ -220,7 +216,6 @@ async def test_convo_history_by_user(secure_client, secure_client_headers, clien
 async def test_change_attributes_to_conversation(secure_client, secure_client_headers, client, cheshire_cat):
     user = await create_new_user(
         secure_client,
-        "/users",
         username="Alice",
         headers=secure_client_headers,
         permissions={
@@ -277,10 +272,9 @@ async def test_change_attributes_to_conversation(secure_client, secure_client_he
     assert response.status_code == 400
 
 
-async def test_get_empty_conversations(secure_client, secure_client_headers):
+async def test_get_empty_conversations(secure_client, secure_client_headers, cheshire_cat):
     await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -290,7 +284,7 @@ async def test_get_empty_conversations(secure_client, secure_client_headers):
 
     # check conversation history update
     response = await secure_client.get(
-        "/conversations", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+        "/conversations/", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     assert response.status_code == 200
 
@@ -299,10 +293,9 @@ async def test_get_empty_conversations(secure_client, secure_client_headers):
     assert len(json_response) == 0  # no chats for this user
 
 
-async def test_get_conversations(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+async def test_get_conversations(secure_client, secure_client_headers, mocked_default_llm_answer_prompt, cheshire_cat):
     await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -319,7 +312,7 @@ async def test_get_conversations(secure_client, secure_client_headers, mocked_de
 
     # check all the conversation histories
     response = await secure_client.get(
-        "/conversations", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+        "/conversations/", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     assert response.status_code == 200
 
@@ -336,7 +329,7 @@ async def test_get_conversations(secure_client, secure_client_headers, mocked_de
 
     # check again all the conversation histories
     response = await secure_client.get(
-        "/conversations", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+        "/conversations/", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     assert response.status_code == 200
 
@@ -354,10 +347,9 @@ async def test_get_conversations(secure_client, secure_client_headers, mocked_de
             assert item["num_messages"] == 4  # 2 mex + 2 replies
 
 
-async def test_get_conversation(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
+async def test_get_conversation(secure_client, secure_client_headers, mocked_default_llm_answer_prompt, cheshire_cat):
     await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),

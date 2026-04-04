@@ -14,7 +14,7 @@ def _test_example_dot_com() -> str | None:
         return None
 
 
-async def test_rabbithole_upload_invalid_url(secure_client, secure_client_headers):
+async def test_rabbithole_upload_invalid_url(secure_client, secure_client_headers, cheshire_cat):
     payload = {"url": "https://www.example.sbadabim"}
     response = await secure_client.post("/rabbithole/web", json=payload, headers=secure_client_headers)
 
@@ -28,7 +28,7 @@ async def test_rabbithole_upload_invalid_url(secure_client, secure_client_header
     assert len(declarative_memories) == 0
 
 
-async def test_rabbithole_upload_url(secure_client, secure_client_headers):
+async def test_rabbithole_upload_url(secure_client, secure_client_headers, cheshire_cat):
     if not (url := _test_example_dot_com()):
         assert True
         return
@@ -51,7 +51,7 @@ async def test_rabbithole_upload_url(secure_client, secure_client_headers):
     assert len(declarative_memories) == 1
 
 
-async def test_rabbithole_upload_url_to_stray(secure_client, secure_client_headers):
+async def test_rabbithole_upload_url_to_stray(secure_client, secure_client_headers, cheshire_cat):
     if not (url := _test_example_dot_com()):
         assert True
         return
@@ -74,7 +74,7 @@ async def test_rabbithole_upload_url_to_stray(secure_client, secure_client_heade
     assert len(declarative_memories) == 1
 
 
-async def test_rabbithole_upload_url_with_metadata(secure_client, secure_client_headers):
+async def test_rabbithole_upload_url_with_metadata(secure_client, secure_client_headers, cheshire_cat):
     if not (url := _test_example_dot_com()):
         assert True
         return
@@ -104,7 +104,7 @@ async def test_rabbithole_upload_url_with_metadata(secure_client, secure_client_
         assert declarative_memories[0]["metadata"][key] == value
 
 
-async def test_rabbithole_get_uploaded_web_urls(secure_client, secure_client_headers):
+async def test_rabbithole_get_uploaded_web_urls(secure_client, secure_client_headers, cheshire_cat):
     if not (url := _test_example_dot_com()):
         assert True
         return

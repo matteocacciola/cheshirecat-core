@@ -13,7 +13,6 @@ async def test_session_creation_from_websocket(
     username = "Alice"
     data = await create_new_user(
         secure_client,
-        "/users",
         username=username,
         headers=secure_client_headers,
     )
@@ -54,7 +53,7 @@ async def test_session_creation_from_websocket(
 async def test_session_creation_from_http(secure_client, secure_client_headers, cheshire_cat):
     # create a new user with username CCC
     username = "Alice"
-    data = await create_new_user(secure_client, "/users", username=username, headers=secure_client_headers)
+    data = await create_new_user(secure_client, username=username, headers=secure_client_headers)
     user_id = data["id"]
 
     content_type = "text/plain"

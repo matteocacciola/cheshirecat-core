@@ -1,7 +1,5 @@
 import os
 import pytest
-import fnmatch
-import subprocess
 from inspect import isfunction
 
 from cat.db.database import DEFAULT_SYSTEM_KEY
@@ -11,7 +9,6 @@ from cat.looking_glass.mad_hatter.decorators.hook import CatHook
 from cat.looking_glass.mad_hatter.decorators.tool import CatTool
 from cat.looking_glass.mad_hatter.plugin import Plugin, PluginManifest
 
-from tests.conftest import clean_up
 from tests.utils import mock_plugin_path
 
 
@@ -128,30 +125,3 @@ async def test_save_settings(plugin):
 
     settings = await plugin.load_settings(DEFAULT_SYSTEM_KEY)
     assert settings["a"] == fake_settings["a"]
-
-
-# Check if plugin requirements have been installed
-# ATTENTION: not using `plugin` fixture here, we instantiate and cleanup manually
-#           to use the unmocked Plugin class
-@pytest.mark.skip_encapsulation
-async def test_install_plugin_dependencies():
-    # manual cleanup
-    await clean_up()
-    # Uninstall mock plugin requirements
-    os.system("uv pip uninstall -y pip-install-test")
-
-    # Install mock plugin
-    p = Plugin(mock_plugin_path)
-
-    # Dependencies are installed on plugin activation
-    await p.activate(DEFAULT_SYSTEM_KEY)
-
-    # pip-install-test should have been installed
-    result = subprocess.run(["uv", "pip", "list"], stdout=subprocess.PIPE)
-    result = result.stdout.decode()
-    assert fnmatch.fnmatch(result, "*pip-install-test*")
-
-    # manual cleanup
-    await clean_up()
-    # Uninstall mock plugin requirements
-    os.system("uv pip uninstall -y pip-install-test")

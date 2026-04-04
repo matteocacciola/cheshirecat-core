@@ -17,7 +17,7 @@ DEFAULT_SYSTEM_KEY = "system"
 class Database:
     def __init__(self):
         self._async_db = None
-        self.sync_db = redis.Redis(**get_redis_kwargs())
+        self._sync_db = None
 
     @property
     def async_db(self) -> aioredis.Redis:
@@ -25,8 +25,17 @@ class Database:
             self._async_db = aioredis.Redis(**get_redis_kwargs())
         return self._async_db
 
+    @property
+    def sync_db(self) -> redis.Redis:
+        if self._sync_db is None:
+            self._sync_db = redis.Redis(**get_redis_kwargs())
+        return self._sync_db
+
     def reset_async(self):
         self._async_db = None
+
+    def reset_sync(self):
+        self._sync_db = None
 
 
 def get_async_db() -> aioredis.Redis:

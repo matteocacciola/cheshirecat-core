@@ -6,7 +6,7 @@ from tests.utils import get_collections_names_and_point_count, get_fake_memory_e
 
 
 # all good memory upload
-async def test_upload_memory(secure_client, secure_client_headers):
+async def test_upload_memory(secure_client, secure_client_headers, cheshire_cat):
     # upload memories
     file_name = "sample.json"
     content_type = "application/json"
@@ -26,7 +26,7 @@ async def test_upload_memory(secure_client, secure_client_headers):
 
 
 # upload a file different from a JSON
-async def test_upload_memory_check_mimetype(secure_client, secure_client_headers):
+async def test_upload_memory_check_mimetype(secure_client, secure_client_headers, cheshire_cat):
     content_type = "text/plain"
     file_name = "sample.txt"
     file_path = f"tests/mocks/{file_name}"

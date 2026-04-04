@@ -103,7 +103,8 @@ async def recall_memory_points_from_text(
     lizard = info.lizard
 
     # Embed the query to plot it in the Memory page
-    query_embedding = lizard.embedder.embed_query(text)
+    embedder = await lizard.embedder()
+    query_embedding = embedder.embed_query(text)
     collection_name = str(VectorMemoryType.DECLARATIVE if not info.stray_cat else VectorMemoryType.EPISODIC)
     metadata = {k: v for k, v in metadata.items() if k != "source"}
     if info.stray_cat:
@@ -117,7 +118,7 @@ async def recall_memory_points_from_text(
     return RecallResponse(
         query=RecallResponseQuery(text=text, vector=query_embedding),
         vectors=RecallResponseVectors(
-            embedder=lizard.embedder.name,
+            embedder=embedder.name,
             collections={
                 collection_name: [build_memory_dict(document_recall) for document_recall in dm]
             }

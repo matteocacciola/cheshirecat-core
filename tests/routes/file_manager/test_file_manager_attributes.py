@@ -1,5 +1,5 @@
 async def call_and_check(secure_client, headers):
-    response = await secure_client.get("/file_manager", headers=headers)
+    response = await secure_client.get("/file_manager/", headers=headers)
     json = response.json()
 
     assert response.status_code == 200

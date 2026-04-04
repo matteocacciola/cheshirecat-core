@@ -36,7 +36,7 @@ async def test_plugin_install_from_zip(lizard, secure_client, secure_client_head
 
     # now, lists the plugins as an agent (new plugins are installed but deactivated, initially)
     response = await secure_client.get(
-        "/plugins", headers={"X-Agent-ID": cheshire_cat.agent_key, "Authorization": f"Bearer {api_key}"}
+        "/plugins/", headers={"X-Agent-ID": cheshire_cat.agent_key, "Authorization": f"Bearer {api_key}"}
     )
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p_: p_["id"], installed_plugins))
@@ -56,14 +56,14 @@ async def test_plugin_install_from_zip(lizard, secure_client, secure_client_head
     assert response.json()["data"]["local_info"]["active"]
 
 
-async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client, secure_client_headers):
+async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client, secure_client_headers, cheshire_cat):
     # create a new agent
     ccat = await lizard.create_cheshire_cat("agent_test_test")
     core_plugins = lizard.plugin_manager.get_core_plugins_ids
 
     # list the plugins as an agent: mock_plugin is not installed yet
     response = await secure_client.get(
-        "/plugins", headers={"X-Agent-ID": ccat.agent_key, "Authorization": f"Bearer {api_key}"}
+        "/plugins/", headers={"X-Agent-ID": ccat.agent_key, "Authorization": f"Bearer {api_key}"}
     )
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p_: p_["id"], installed_plugins))
@@ -73,7 +73,7 @@ async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client,
 
     # now, lists the plugins as an agent (new plugins are installed but deactivated, initially)
     response = await secure_client.get(
-        "/plugins", headers={"X-Agent-ID": ccat.agent_key, "Authorization": f"Bearer {api_key}"}
+        "/plugins/", headers={"X-Agent-ID": ccat.agent_key, "Authorization": f"Bearer {api_key}"}
     )
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p_: p_["id"], installed_plugins))
@@ -85,7 +85,7 @@ async def test_plugin_install_after_cheshire_cat_creation(lizard, secure_client,
         assert p["local_info"]["active"] == (p["id"] in core_plugins)
 
 
-async def test_create_cheshire_cat_after_plugin_install(lizard, secure_client, secure_client_headers):
+async def test_create_cheshire_cat_after_plugin_install(lizard, secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers, plugin_id="mock_plugin")
 
     # create a new agent
@@ -94,7 +94,7 @@ async def test_create_cheshire_cat_after_plugin_install(lizard, secure_client, s
 
     # now, lists the plugins as an agent (new plugins are installed but deactivated, initially)
     response = await secure_client.get(
-        "/plugins", headers={"X-Agent-ID": ccat.agent_key, "Authorization": f"Bearer {api_key}"}
+        "/plugins/", headers={"X-Agent-ID": ccat.agent_key, "Authorization": f"Bearer {api_key}"}
     )
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p_: p_["id"], installed_plugins))
@@ -106,7 +106,7 @@ async def test_create_cheshire_cat_after_plugin_install(lizard, secure_client, s
         assert p["local_info"]["active"] == (p["id"] in core_plugins)
 
 
-async def test_plugin_uninstall(secure_client, secure_client_headers):
+async def test_plugin_uninstall(secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers)
 
     # The plugin is active, now let's activate for the agent too
@@ -141,7 +141,7 @@ async def test_plugin_uninstall(secure_client, secure_client_headers):
     assert system_settings is None
 
 
-async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_headers):
+async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_headers, cheshire_cat):
     # create a new agent
     ccat = await lizard.create_cheshire_cat("agent_test_test")
 
@@ -150,7 +150,7 @@ async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_he
     # activate for the new agent
     ccat_headers = {"X-Agent-ID": ccat.agent_key, "Authorization": f"Bearer {api_key}"}
     await secure_client.put("/plugins/toggle/mock_plugin", headers=ccat_headers)
-    response = await secure_client.get("/plugins", headers=ccat_headers)
+    response = await secure_client.get("/plugins/", headers=ccat_headers)
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p_: p_["id"], installed_plugins))
     assert "mock_plugin" in installed_plugins_names
@@ -162,7 +162,7 @@ async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_he
     await just_installed_plugin(secure_client, secure_client_headers, plugin_id="mock_plugin")
 
     # now, re-list the plugins as an agent: all the plugins should be still active
-    response = await secure_client.get("/plugins", headers=ccat_headers)
+    response = await secure_client.get("/plugins/", headers=ccat_headers)
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p_: p_["id"], installed_plugins))
     assert "mock_plugin" in installed_plugins_names
@@ -172,7 +172,9 @@ async def test_plugin_recurrent_installs(lizard, secure_client, secure_client_he
         assert p["local_info"]["active"]
 
 
-async def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_client, secure_client_headers):
+async def test_plugin_incremental_settings_on_recurrent_installs(
+    lizard, secure_client, secure_client_headers, cheshire_cat,
+):
     # create a new agent
     ccat = await lizard.create_cheshire_cat("agent_test_test")
     ccat_headers = {"X-Agent-ID": ccat.agent_key, "Authorization": f"Bearer {api_key}"}
@@ -218,7 +220,9 @@ async def test_plugin_incremental_settings_on_recurrent_installs(lizard, secure_
         os.replace("tests/mocks/mock_plugin_overrides.py", "tests/mocks/mock_plugin/mock_plugin_overrides.py")
 
 
-async def test_plugin_install_from_zip_with_missing_dependencies(lizard, secure_client, secure_client_headers, cheshire_cat):
+async def test_plugin_install_from_zip_with_missing_dependencies(
+    lizard, secure_client, secure_client_headers, cheshire_cat,
+):
     plugin_name = "mock_plugin_with_dependencies"
 
     # check that "missing dependencies" and "mock_plugin" is within the error message
