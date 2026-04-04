@@ -351,7 +351,10 @@ class CheshireCat(BotMixin):
         if points:
             await vmh.add_points_to_tenant(
                 collection_name=collection_name,
-                points=[PointStruct(**p.model_dump()) for p in points],
+                points=[
+                    PointStruct(**{**p.model_dump(exclude={"shard_key", "order_value"}), "id": uuid.uuid4().hex})
+                    for p in points
+                ],
             )
         await self.embed_procedures()
 
