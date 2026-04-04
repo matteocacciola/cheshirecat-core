@@ -13,7 +13,7 @@ async def test_get_all_file_manager_settings(secure_client, secure_client_header
         schema_name="fileManagerName",
     )
     file_manager_schemas = await sf.get_schemas()
-    response = secure_client.get("/file_manager/settings", headers=secure_client_headers)
+    response = await secure_client.get("/file_manager/settings", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -30,9 +30,9 @@ async def test_get_all_file_manager_settings(secure_client, secure_client_header
     assert json["selected_configuration"] == "DummyFileManagerConfig"
 
 
-def test_get_file_manager_settings_non_existent(secure_client, secure_client_headers):
+async def test_get_file_manager_settings_non_existent(secure_client, secure_client_headers):
     non_existent_filemanager_name = "FileManagerNonExistentConfig"
-    response = secure_client.get(
+    response = await secure_client.get(
         f"/file_manager/settings/{non_existent_filemanager_name}", headers=secure_client_headers
     )
     json = response.json()
@@ -41,9 +41,9 @@ def test_get_file_manager_settings_non_existent(secure_client, secure_client_hea
     assert f"{non_existent_filemanager_name} not supported" in json["detail"]
 
 
-def test_get_filemanager_settings(secure_client, secure_client_headers):
+async def test_get_filemanager_settings(secure_client, secure_client_headers):
     file_manager_name = "LocalFileManagerConfig"
-    response = secure_client.get(
+    response = await secure_client.get(
         f"/file_manager/settings/{file_manager_name}", headers=secure_client_headers
     )
     json = response.json()

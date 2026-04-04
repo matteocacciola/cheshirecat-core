@@ -26,8 +26,8 @@ def reset_api_key(key, value: str | None) -> None:
         del os.environ[key]
 
 
-def test_api_key_http(secure_client, client):
-    create_new_user(
+async def test_api_key_http(secure_client, client):
+    await create_new_user(
         secure_client,
         "/users",
         "user",
@@ -47,18 +47,18 @@ def test_api_key_http(secure_client, client):
 
     # all the previous headers result in a 403
     for headers in wrong_headers:
-        status_code, json = http_message(secure_client, {"text": "hey"}, headers | {"X-Agent-ID": agent_id})
+        status_code, json = await http_message(secure_client, {"text": "hey"}, headers | {"X-Agent-ID": agent_id})
         assert status_code == 401
         assert json["detail"] == "Unauthorized"
 
     # allow access if CAT_API_KEY is right
-    res = client.post(
+    res = await client.post(
         "/auth/token", json={"username": "user", "password": new_user_password},
     )
     received_token = res.json()["access_token"]
 
     headers = {header_name: f"{key_prefix} {received_token}"}
-    status_code, json = http_message(client, {"text": "hey"}, headers | {"X-Agent-ID": agent_id})
+    status_code, json = await http_message(client, {"text": "hey"}, headers | {"X-Agent-ID": agent_id})
     assert status_code == 200
     assert json["chat_id"] is not None
     assert "You did not configure" in json["message"]["text"]
@@ -66,8 +66,8 @@ def test_api_key_http(secure_client, client):
     reset_api_key("CAT_API_KEY", old_api_key)
 
 
-def test_api_key_ws(secure_client, secure_client_headers, client):
-    create_new_user(
+async def test_api_key_ws(secure_client, secure_client_headers, client):
+    await create_new_user(
         secure_client,
         "/users",
         "user",
@@ -87,15 +87,15 @@ def test_api_key_ws(secure_client, secure_client_headers, client):
 
     for token in wrong_tokens:
         with pytest.raises(WebSocketDisconnect):
-            send_websocket_message(mex, secure_client, token)
+            await send_websocket_message(mex, secure_client, token)
 
     # allow access if CAT_API_KEY is right
-    res = client.post(
+    res = await client.post(
         "/auth/token", json={"username": "user", "password": new_user_password},
     )
     received_token = res.json()["access_token"]
 
-    res = send_websocket_message(mex, secure_client, received_token)
+    res = await send_websocket_message(mex, secure_client, received_token)
     content = json.loads(res["content"])
 
     assert content["chat_id"] is not None

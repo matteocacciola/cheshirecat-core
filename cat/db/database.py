@@ -16,8 +16,17 @@ DEFAULT_SYSTEM_KEY = "system"
 @singleton
 class Database:
     def __init__(self):
-        self.async_db = aioredis.Redis(**get_redis_kwargs())
+        self._async_db = None
         self.sync_db = redis.Redis(**get_redis_kwargs())
+
+    @property
+    def async_db(self) -> aioredis.Redis:
+        if self._async_db is None:
+            self._async_db = aioredis.Redis(**get_redis_kwargs())
+        return self._async_db
+
+    def reset_async(self):
+        self._async_db = None
 
 
 def get_async_db() -> aioredis.Redis:

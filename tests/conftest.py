@@ -4,18 +4,17 @@ import pytest_asyncio
 import os
 import shutil
 import warnings
+from asgi_lifespan import LifespanManager
+from httpx import AsyncClient, ASGITransport
 from pydantic import PydanticDeprecatedSince20
 from qdrant_client import AsyncQdrantClient
-from fastapi.testclient import TestClient
 import time
 
 from cat.auth import auth_utils
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
-from cat.db.database import get_async_db
 from cat.env import get_env
-from cat.looking_glass import BillTheLizard, StrayCat
+from cat.looking_glass import StrayCat
 from cat.looking_glass.mad_hatter.plugin import Plugin
-from cat.routes.routes_utils import startup_app, shutdown_app
 from cat.startup import grinning_cat_api
 from cat.services.memory.messages import UserMessage
 from cat.services.factory.vector_db import QdrantHandler
@@ -33,11 +32,10 @@ from tests.utils import (
 pytest_plugins = ["pytest_asyncio"]
 
 memory_client = AsyncQdrantClient(":memory:")
-redis_params = {"host": get_env("CAT_REDIS_HOST"), "db": 1, "encoding": "utf-8", "decode_responses": True}
 
 # substitute classes' methods where necessary for testing purposes
 def mock_classes(monkeypatch):
-    # Mock the entire __init__ method to set _client to memory client
+    # Mock the entire __init__ method to set _client to memory client, and the close method to do nothing
     def mock_init_vector_database(self, *args, **kwargs):
         # Call the parent __init__
         super(QdrantHandler, self).__init__()
@@ -45,10 +43,7 @@ def mock_classes(monkeypatch):
         self._client = memory_client
         self.save_memory_snapshots = kwargs.get("save_memory_snapshots", False)
     monkeypatch.setattr(QdrantHandler, "__init__", mock_init_vector_database)
-
-    def mock_get_redis_kwargs():
-        return redis_params
-    monkeypatch.setattr("cat.db.database.get_redis_kwargs", mock_get_redis_kwargs)
+    monkeypatch.setattr(QdrantHandler, "close", lambda self: None)
 
     utils.get_plugins_path = lambda: "tests/mocks/mock_plugin_folder/"
     utils.get_file_manager_root_storage_path = lambda: "tests/data/storage"
@@ -63,6 +58,8 @@ def mock_classes(monkeypatch):
 
 
 async def clean_up():
+    from cat.db.database import get_sync_db
+
     # clean up service files and mocks
     to_be_removed = [
         "tests/mocks/mock_plugin.zip",
@@ -85,12 +82,15 @@ async def clean_up():
                 os.remove(tbr)
 
     # flush redis database
-    await get_async_db().flushdb()
+    get_sync_db().flushdb()
 
     # delete all the collections in Qdrant
     collections = await memory_client.get_collections()
     for collection in collections.collections:
         await memory_client.delete_collection(collection.name)
+
+    # delete all singletons!!!
+    utils.singleton.instances.clear()
 
 
 def should_skip_encapsulation(request):
@@ -99,48 +99,40 @@ def should_skip_encapsulation(request):
 
 @pytest_asyncio.fixture(autouse=True)
 async def encapsulate_each_test(request, monkeypatch):
-    if should_skip_encapsulation(request):
-        # Skip initialization for tests marked with @pytest.mark.skip_initialization
-        yield
+    from cat.db.database import Database
 
+    if should_skip_encapsulation(request):
+        yield
         return
 
-    # monkeypatch classes
     mock_classes(monkeypatch)
 
-    # env variables
     current_debug = get_env("CAT_DEBUG")
-    os.environ["CAT_DEBUG"] = "false"  # do not autoreload
+    current_redis_db = get_env("CAT_REDIS_DB")
+    os.environ["CAT_DEBUG"] = "false"
+    os.environ["CAT_REDIS_DB"] = "1"
 
-    # clean up tmp files, folders and redis database
     await clean_up()
-
-    # delete all singletons!!!
-    utils.singleton.instances.clear()
-
     yield
-
-    # clean up tmp files, folders and redis database
     await clean_up()
+
+    Database().reset_async()
 
     if current_debug:
         os.environ["CAT_DEBUG"] = current_debug
     else:
         del os.environ["CAT_DEBUG"]
+    if current_redis_db:
+        os.environ["CAT_REDIS_DB"] = current_redis_db
+    else:
+        del os.environ["CAT_REDIS_DB"]
 
 
-# Main fixture for the FastAPI app
 @pytest_asyncio.fixture(scope="function")
-async def client(encapsulate_each_test):
-    """
-    Create a new FastAPI TestClient.
-    """
-    with TestClient(grinning_cat_api) as client:
-        await startup_app(grinning_cat_api)
-
-        yield client
-
-        await shutdown_app(grinning_cat_api)
+async def client():
+    async with LifespanManager(grinning_cat_api) as manager:
+        async with AsyncClient(transport=ASGITransport(app=manager.app), base_url="http://test") as ac:
+            yield ac
 
 
 # This fixture sets the CAT_API_KEY environment variable,
@@ -172,10 +164,9 @@ def secure_client_headers():
     yield {"X-Agent-ID": agent_id, "Authorization": f"Bearer {api_key}"}
 
 
-@pytest_asyncio.fixture(scope="function")
-async def lizard(client):
-    l = BillTheLizard()
-    yield l
+@pytest.fixture(scope="function")
+def lizard(client):
+    yield grinning_cat_api.state.lizard
 
 
 @pytest_asyncio.fixture(scope="function")

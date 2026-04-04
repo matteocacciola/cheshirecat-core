@@ -8,10 +8,10 @@ import cat.core_plugins.webhooks.crud as crud_webhook
 from tests.utils import agent_id
 
 
-def test_webhooks_events(secure_client, secure_client_headers):
+async def test_webhooks_events(secure_client, secure_client_headers):
     events = get_args(WEBHOOK_EVENT)
 
-    res = secure_client.get("/webhooks/events", headers=secure_client_headers)
+    res = await secure_client.get("/webhooks/events", headers=secure_client_headers)
     assert res.status_code == 200
 
     json_response = res.json()
@@ -28,19 +28,19 @@ async def test_webhooks_create_no_auth(client):
         "secret": "secret",
     }
 
-    res = client.post("/webhooks", json=payload)
+    res = await client.post("/webhooks", json=payload)
     assert res.status_code == 401
 
     res_db = await crud_webhook.get_webhooks(agent_id=agent_id, event=payload["event"])
     assert res_db is None
 
 
-def test_webhooks_create_wrong_payloads(secure_client, secure_client_headers):
+async def test_webhooks_create_wrong_payloads(secure_client, secure_client_headers):
     payload_no_secret = {
         "url": "https://example.com",
         "event": "plugin_installed",
     }
-    res = secure_client.post("/webhooks", json=payload_no_secret, headers=secure_client_headers)
+    res = await secure_client.post("/webhooks", json=payload_no_secret, headers=secure_client_headers)
     assert res.status_code == 400
 
     payload_wrong_event = {
@@ -48,7 +48,7 @@ def test_webhooks_create_wrong_payloads(secure_client, secure_client_headers):
         "event": "wrong_event",
         "secret": "secret",
     }
-    res = secure_client.post("/webhooks", json=payload_wrong_event, headers=secure_client_headers)
+    res = await secure_client.post("/webhooks", json=payload_wrong_event, headers=secure_client_headers)
     assert res.status_code == 400
 
 
@@ -58,7 +58,7 @@ async def test_webhooks_create(secure_client, secure_client_headers):
         "event": "knowledge_source_loaded",
         "secret": "secret",
     }
-    res = secure_client.post("/webhooks", json=payload, headers=secure_client_headers)
+    res = await secure_client.post("/webhooks", json=payload, headers=secure_client_headers)
     assert res.status_code == 200
 
     another_payload = {
@@ -66,7 +66,7 @@ async def test_webhooks_create(secure_client, secure_client_headers):
         "event": "knowledge_source_loaded",
         "secret": "secret",
     }
-    res = secure_client.post("/webhooks", json=another_payload, headers=secure_client_headers)
+    res = await secure_client.post("/webhooks", json=another_payload, headers=secure_client_headers)
     assert res.status_code == 200
 
     res_db = await crud_webhook.get_webhooks(agent_id=agent_id, event=payload["event"])
@@ -83,10 +83,10 @@ async def test_webhooks_create_once(secure_client, secure_client_headers):
         "event": "knowledge_source_loaded",
         "secret": "secret",
     }
-    res = secure_client.post("/webhooks", json=payload, headers=secure_client_headers)
+    res = await secure_client.post("/webhooks", json=payload, headers=secure_client_headers)
     assert res.status_code == 200
 
-    res = secure_client.post("/webhooks", json=payload, headers=secure_client_headers)
+    res = await secure_client.post("/webhooks", json=payload, headers=secure_client_headers)
     assert res.status_code == 200
 
     res_db = await crud_webhook.get_webhooks(agent_id=agent_id, event=payload["event"])
@@ -103,7 +103,7 @@ async def test_webhooks_delete(secure_client, secure_client_headers):
         "secret": "secret",
     }
 
-    res = secure_client.request(
+    res = await secure_client.request(
         "DELETE",
         "/webhooks",
         headers=secure_client_headers,
@@ -123,14 +123,14 @@ async def test_manage_a_webhook_with_missing_header(secure_client, secure_client
 
     headers = deepcopy(secure_client_headers)
     del headers["X-Agent-ID"]
-    res = secure_client.post("/webhooks", json=payload, headers=headers)
+    res = await secure_client.post("/webhooks", json=payload, headers=headers)
     json_response = res.json()
     assert res.status_code == 500
     assert json_response["detail"] == expected_error_msg
 
     await test_webhooks_create_once(secure_client, secure_client_headers)
 
-    res = secure_client.request("DELETE", "/webhooks", json=payload, headers=headers)
+    res = await secure_client.request("DELETE", "/webhooks", json=payload, headers=headers)
     json_response = res.json()
     assert res.status_code == 500
     assert json_response["detail"] == expected_error_msg

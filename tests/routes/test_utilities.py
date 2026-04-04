@@ -39,7 +39,7 @@ async def checks_on_agent_reset(res, client, ccat_id, lizard):
     assert res.status_code == 200
 
     received_token = res.json()["access_token"]
-    response = client.post(
+    response = await client.post(
         "/utils/agents/reset", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": ccat_id}
     )
 
@@ -75,11 +75,11 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
         "password": get_env("CAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
-    res = client.post("/auth/token", json=creds)
+    res = await client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     received_token = res.json()["access_token"]
-    response = client.post(
+    response = await client.post(
         "/utils/factory/reset", headers={"Authorization": f"Bearer {received_token}"}
     )
 
@@ -104,11 +104,11 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
         "password": get_env("CAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
-    res = client.post("/auth/token", json=creds)
+    res = await client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     received_token = res.json()["access_token"]
-    response = client.post(
+    response = await client.post(
         "/utils/agents/destroy",
         headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": cheshire_cat.agent_key},
     )
@@ -142,35 +142,35 @@ async def test_agent_reset_success(client, lizard, cheshire_cat):
         "password": get_env("CAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
-    res = client.post("/auth/token", json=creds)
+    res = await client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     await checks_on_agent_reset(res, client, cheshire_cat.agent_key, lizard)
 
 
 async def test_agent_reset_by_new_admin_success(secure_client, client, lizard, cheshire_cat):
-    data = create_new_user(
+    data = await create_new_user(
         secure_client,
         "/users",
         headers={"Authorization": f"Bearer {api_key}"},
         permissions={"CHESHIRE_CAT": ["WRITE"]}
     )
-    res = client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
+    res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
 
     await checks_on_agent_reset(res, client, cheshire_cat.agent_key, lizard)
 
 
 async def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard, cheshire_cat):
     # create new admin with wrong permissions
-    data = create_new_user(
-        client, "/users", headers=get_client_admin_headers(client), permissions={"EMBEDDER": ["READ"]}
+    data = await create_new_user(
+        client, "/users", headers=await get_client_admin_headers(client), permissions={"EMBEDDER": ["READ"]}
     )
 
     creds = {"username": data["username"], "password": new_user_password}
-    res = client.post("/auth/token", json=creds)
+    res = await client.post("/auth/token", json=creds)
     received_token = res.json()["access_token"]
 
-    response = client.post(
+    response = await client.post(
         "/utils/agents/destroy",
         headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": cheshire_cat.agent_key}
     )
@@ -186,11 +186,11 @@ async def test_agent_destroy_error_because_of_not_existing_agent(client, lizard,
         "password": get_env("CAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
-    res = client.post("/auth/token", json=creds)
+    res = await client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     received_token = res.json()["access_token"]
-    response = client.post(
+    response = await client.post(
         "/utils/agents/destroy", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": "wrong_id"}
     )
 
@@ -207,11 +207,11 @@ async def test_agent_create_success(client, lizard):
 
     new_agent_id = str(uuid.uuid4())
 
-    res = client.post("/auth/token", json=creds)
+    res = await client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     received_token = res.json()["access_token"]
-    response = client.post(
+    response = await client.post(
         "/utils/agents/create",
         headers={"Authorization": f"Bearer {received_token}"},
         json={"agent_id": new_agent_id},
@@ -231,7 +231,7 @@ async def test_clone_agent(secure_client, secure_client_headers, lizard, cheshir
     payload = {"agent_id": new_agent_id}
 
     # Make the POST request to clone the agent
-    response = secure_client.post(
+    response = await secure_client.post(
         "/utils/agents/clone",
         json=payload,
         headers=secure_client_headers,
@@ -298,7 +298,7 @@ async def test_reclone_agent(secure_client, secure_client_headers, lizard, chesh
     payload = {"agent_id": new_agent_id}
 
     # Make the POST request to clone the agent
-    response = secure_client.post(
+    response = await secure_client.post(
         "/utils/agents/clone",
         json=payload,
         headers=secure_client_headers,
@@ -312,8 +312,8 @@ async def test_reclone_agent(secure_client, secure_client_headers, lizard, chesh
     assert response_data["cloned"] is False
 
 
-def test_get_agents(client, cheshire_cat):
-    response = client.get("/utils/agents", headers=get_client_admin_headers(client))
+async def test_get_agents(client, cheshire_cat):
+    response = await client.get("/utils/agents", headers=await get_client_admin_headers(client))
     assert response.status_code == 200
     data = response.json()
     assert isinstance(data, list)
@@ -322,19 +322,19 @@ def test_get_agents(client, cheshire_cat):
         assert agent["metadata"] == {}
 
 
-def test_update_agent(client, cheshire_cat):
+async def test_update_agent(client, cheshire_cat):
     new_metadata = {"key": "value"}
 
-    response = client.put(
+    response = await client.put(
         "/utils/agents",
-        headers=get_client_admin_headers(client) | {"X-Agent-ID": cheshire_cat.agent_key},
+        headers=await get_client_admin_headers(client) | {"X-Agent-ID": cheshire_cat.agent_key},
         json={"metadata": new_metadata},
     )
     assert response.status_code == 200
     data = response.json()
     assert data["updated"]
 
-    response = client.get("/utils/agents", headers=get_client_admin_headers(client))
+    response = await client.get("/utils/agents", headers=await get_client_admin_headers(client))
     data = response.json()
     for agent in data:
         if agent["agent_id"] == cheshire_cat.agent_key:

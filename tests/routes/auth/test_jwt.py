@@ -20,10 +20,10 @@ def test_is_jwt():
     assert is_jwt(actual_jwt)
 
 
-def test_refuse_issue_jwt(secure_client, client):
+async def test_refuse_issue_jwt(secure_client, client):
     creds = {"username": "user", "password": "wrong"}
 
-    create_new_user(
+    await create_new_user(
         secure_client,
         "/users",
         creds["username"],
@@ -31,7 +31,7 @@ def test_refuse_issue_jwt(secure_client, client):
         permissions=get_base_permissions(),
     )
 
-    res = client.post("/auth/token", json=creds)
+    res = await client.post("/auth/token", json=creds)
 
     # wrong credentials
     assert res.status_code == 401
@@ -41,7 +41,7 @@ def test_refuse_issue_jwt(secure_client, client):
 
 async def test_issue_jwt(secure_client, client, cheshire_cat):
     creds = {"username": "user", "password": new_user_password}
-    create_new_user(
+    await create_new_user(
         secure_client,
         "/users",
         creds["username"],
@@ -50,7 +50,7 @@ async def test_issue_jwt(secure_client, client, cheshire_cat):
         password=creds["password"],
     )
 
-    res = client.post("/auth/token", json=creds)
+    res = await client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     res_json = res.json()
@@ -81,18 +81,18 @@ async def test_issue_jwt(secure_client, client, cheshire_cat):
         assert False
 
 
-def test_issue_jwt_for_new_user(client, secure_client, secure_client_headers):
+async def test_issue_jwt_for_new_user(client, secure_client, secure_client_headers):
     # create new user
     creds = {"username": "Alice", "password": "Alice"}
 
     # we should not obtain a JWT for this user
     # because it does not exist
-    res = client.post("/auth/token", json=creds)
+    res = await client.post("/auth/token", json=creds)
     assert res.status_code == 401
     assert res.json()["detail"] == "Invalid Credentials"
 
     # let's create the user
-    res = secure_client.post(
+    res = await secure_client.post(
         "/users",
         json=creds | {"permissions": {str(AuthResource.LLM): [str(AuthPermission.WRITE)]}},
         headers=secure_client_headers,
@@ -100,7 +100,7 @@ def test_issue_jwt_for_new_user(client, secure_client, secure_client_headers):
     assert res.status_code == 200
 
     # now we should get a JWT
-    res = client.post("/auth/token", json=creds)
+    res = await client.post("/auth/token", json=creds)
     assert res.status_code == 200
 
     res_json = res.json()
@@ -113,7 +113,7 @@ def test_issue_jwt_for_new_user(client, secure_client, secure_client_headers):
 
 # test token expiration after successful login
 # NOTE: here we are using the secure_client fixture (see conftest.py)
-def test_jwt_expiration(secure_client, client, cheshire_cat):
+async def test_jwt_expiration(secure_client, client, cheshire_cat):
     message = {"text": "hey"}
 
     # set ultrashort JWT expiration time
@@ -121,13 +121,13 @@ def test_jwt_expiration(secure_client, client, cheshire_cat):
     os.environ["CAT_JWT_EXPIRE_MINUTES"] = "0.05"  # 3 seconds
 
     # not allowed
-    status_code, response_json = http_message(client, message, {"X-Agent-ID": agent_id, "X-Chat-ID": chat_id})
+    status_code, response_json = await http_message(client, message, {"X-Agent-ID": agent_id, "X-Chat-ID": chat_id})
     assert status_code == 401
     assert response_json["detail"] == "Unauthorized"
 
     # request JWT
     creds = {"username": "user", "password": new_user_password}
-    create_new_user(
+    await create_new_user(
         secure_client,
         "/users",
         creds["username"],
@@ -136,13 +136,13 @@ def test_jwt_expiration(secure_client, client, cheshire_cat):
         password=creds["password"],
     )
 
-    res = client.post("/auth/token", json=creds)
+    res = await client.post("/auth/token", json=creds)
     assert res.status_code == 200
     token = res.json()["access_token"]
 
     # allowed via JWT
     headers = {"Authorization": f"Bearer {token}", "X-Agent-ID": agent_id, "X-Chat-ID": chat_id}
-    status_code, _ = http_message(client, message, headers)
+    status_code, _ = await http_message(client, message, headers)
     assert status_code == 200
 
     # wait for expiration time
@@ -150,7 +150,7 @@ def test_jwt_expiration(secure_client, client, cheshire_cat):
 
     # not allowed because JWT expired
     headers = {"Authorization": f"Bearer {token}", "X-Agent-ID": agent_id, "X-Chat-ID": chat_id}
-    status_code, response_json = http_message(client, message, headers)
+    status_code, response_json = await http_message(client, message, headers)
     assert status_code == 401
     assert response_json["detail"] == "Unauthorized"
 
@@ -163,17 +163,17 @@ def test_jwt_expiration(secure_client, client, cheshire_cat):
 
 # test ws and http endpoints can get user_id from JWT
 # NOTE: here we are using the secure_client fixture (see conftest.py)
-def test_jwt_imposes_user_id(secure_client, client, cheshire_cat):
+async def test_jwt_imposes_user_id(secure_client, client, cheshire_cat):
     message = {"text": "hey"}
 
     # not allowed
-    status_code, response_json = http_message(client, message, {"X-Agent-ID": agent_id, "X-Chat-ID": chat_id})
+    status_code, response_json = await http_message(client, message, {"X-Agent-ID": agent_id, "X-Chat-ID": chat_id})
     assert status_code == 401
     assert response_json["detail"] == "Unauthorized"
 
     # request JWT
     creds = {"username": "user", "password": new_user_password}
-    create_new_user(
+    await create_new_user(
         secure_client,
         "/users",
         creds["username"],
@@ -181,11 +181,11 @@ def test_jwt_imposes_user_id(secure_client, client, cheshire_cat):
         permissions=get_base_permissions(),
         password=creds["password"],
     )
-    res = client.post("/auth/token", json=creds)
+    res = await client.post("/auth/token", json=creds)
     assert res.status_code == 200
     token = res.json()["access_token"]
 
     # send user specific message via http
     headers = {"Authorization": f"Bearer {token}", "X-Agent-ID": agent_id, "X-Chat-ID": chat_id}
-    status_code, _ = http_message(client, message, headers)
+    status_code, _ = await http_message(client, message, headers)
     assert status_code == 200

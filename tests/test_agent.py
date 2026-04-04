@@ -24,7 +24,7 @@ async def test_execute_agent(stray):
 
 
 async def test_execute_agent_with_form_submit(secure_client, secure_client_headers, stray, monkeypatch):
-    just_installed_plugin(secure_client, secure_client_headers)
+    await just_installed_plugin(secure_client, secure_client_headers)
 
     mocked_model = "{\"pizza_type\": \"Margherita\", \"pizza_border\": \"high\", \"phone\": \"1234567890\"}"
     mocked_output = f"Form submitted: {mocked_model}".replace('"', "'")
@@ -101,7 +101,7 @@ async def test_execute_main_agent_with_tool(stray, monkeypatch):
 
 
 async def test_execute_main_agent_with_mcp_client_tool(stray, secure_client, secure_client_headers, monkeypatch):
-    just_installed_plugin(secure_client, secure_client_headers)
+    await just_installed_plugin(secure_client, secure_client_headers)
 
     result = "Processed test with param2=42"
     details = {"param3": None, "param4": None, "param5": None, "param6": None}

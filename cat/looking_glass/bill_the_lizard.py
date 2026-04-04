@@ -398,6 +398,14 @@ class BillTheLizard(OrchestratorMixin):
         if self.websocket_manager:
             await self.websocket_manager.close_connections()
 
+        endpoints = [
+            endpoint
+            for plugin_id in self.plugin_manager.active_plugins
+            for endpoint in self.plugin_manager.plugins[plugin_id].endpoints
+        ]
+        for endpoint in endpoints:
+            endpoint.deactivate(self.fastapi_app)
+
         self.core_auth_handler = None
         self.plugin_manager = None
         self.rabbit_hole = None

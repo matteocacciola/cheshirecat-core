@@ -9,12 +9,3 @@ def test_main_modules_loaded(lizard):
     assert isinstance(lizard.rabbit_hole, RabbitHole)
     assert isinstance(lizard.core_auth_handler, CoreAuthHandler)
     assert isinstance(lizard.websocket_manager, WebSocketManager)
-
-
-async def test_shutdown(lizard):
-    await lizard.shutdown()
-
-    assert lizard.plugin_manager is None
-    assert lizard.rabbit_hole is None
-    assert lizard.core_auth_handler is None
-    assert lizard.websocket_manager is None

@@ -36,15 +36,15 @@ async def _check_on_file_upload(response, file_name, content_type, secure_client
 
     # check memory contents
     # check declarative memory is not empty
-    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = await get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
 
     _check_analytics(await crud_embeddings.get_analytics(agent_id), file_name)
     return json_res
 
 
-def _check_upon_request(secure_client, secure_client_headers, file_name):
-    response = secure_client.get("/analytics/embedder", headers=secure_client_headers)
+async def _check_upon_request(secure_client, secure_client_headers, file_name):
+    response = await secure_client.get("/analytics/embedder", headers=secure_client_headers)
     analytics = response.json()
     _check_analytics(analytics, file_name)
 
@@ -52,23 +52,23 @@ def _check_upon_request(secure_client, secure_client_headers, file_name):
 async def test_rabbithole_upload_txt(secure_client, secure_client_headers):
     content_type = "text/plain"
     file_name = "sample.txt"
-    response, _ = send_file(file_name, content_type, secure_client, secure_client_headers)
+    response, _ = await send_file(file_name, content_type, secure_client, secure_client_headers)
 
     await _check_on_file_upload(response, file_name, content_type, secure_client, secure_client_headers)
-    _check_upon_request(secure_client, secure_client_headers, file_name)
+    await _check_upon_request(secure_client, secure_client_headers, file_name)
 
 
 async def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_headers, cheshire_cat):
     # set a new file manager
     file_manager_name = "LocalFileManagerConfig"
-    response = secure_client.put(
+    response = await secure_client.put(
         f"/file_manager/settings/{file_manager_name}", headers=secure_client_headers, json={},
     )
     assert response.status_code == 200
 
     content_type = "text/plain"
     file_name = "sample.txt"
-    response, _ = send_file(file_name, content_type, secure_client, secure_client_headers, ch_id=chat_id)
+    response, _ = await send_file(file_name, content_type, secure_client, secure_client_headers, ch_id=chat_id)
 
     assert response.status_code == 200
     json_res = response.json()
@@ -77,7 +77,7 @@ async def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_heade
     assert "File is being ingested" in json_res["info"]
 
     _check_analytics(await crud_embeddings.get_analytics(agent_id), file_name)
-    _check_upon_request(secure_client, secure_client_headers, file_name)
+    await _check_upon_request(secure_client, secure_client_headers, file_name)
 
     # check that the file has been stored in the proper folder
     file_exists = (await cheshire_cat.file_manager()).file_exists(file_name, os.path.join(agent_id, chat_id))
@@ -106,13 +106,13 @@ async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_header
 
     content_type = "application/pdf"
     file_name = "sample.pdf"
-    response, _ = send_file(file_name, content_type, secure_client, secure_client_headers)
+    response, _ = await send_file(file_name, content_type, secure_client, secure_client_headers)
 
     await _check_on_file_upload(response, file_name, content_type, secure_client, secure_client_headers)
-    _check_upon_request(secure_client, secure_client_headers, file_name)
+    await _check_upon_request(secure_client, secure_client_headers, file_name)
 
     # declarative memory should be empty for another agent
-    declarative_memories = get_memory_contents(
+    declarative_memories = await get_memory_contents(
         secure_client, {"X-Agent-ID": "another_agent_test", "Authorization": f"Bearer {api_key}"}
     )
     assert len(declarative_memories) == 0
@@ -126,7 +126,7 @@ async def test_rabbithole_upload_batch_one_file(secure_client, secure_client_hea
     file_path = f"tests/mocks/{file_name}"
     with open(file_path, "rb") as f:
         files = [("files", (file_name, f, content_type))]
-        response = secure_client.post("/rabbithole/batch", files=files, headers=secure_client_headers)
+        response = await secure_client.post("/rabbithole/batch", files=files, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200
@@ -137,7 +137,7 @@ async def test_rabbithole_upload_batch_one_file(secure_client, secure_client_hea
     assert json_res[file_name]["content_type"] == content_type
     assert "File is being ingested" in json_res[file_name]["info"]
 
-    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = await get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
 
     _check_analytics(await crud_embeddings.get_analytics(agent_id), file_name)
@@ -149,7 +149,7 @@ async def test_rabbithole_upload_batch_one_file_to_chat(secure_client, secure_cl
     file_path = f"tests/mocks/{file_name}"
     with open(file_path, "rb") as f:
         files = [("files", (file_name, f, content_type))]
-        response = secure_client.post(f"/rabbithole/batch/{chat_id}", files=files, headers=secure_client_headers)
+        response = await secure_client.post(f"/rabbithole/batch/{chat_id}", files=files, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200
@@ -160,7 +160,7 @@ async def test_rabbithole_upload_batch_one_file_to_chat(secure_client, secure_cl
     assert json_res[file_name]["content_type"] == content_type
     assert "File is being ingested" in json_res[file_name]["info"]
 
-    memories = get_memory_contents(
+    memories = await get_memory_contents(
         secure_client, secure_client_headers | {"X-Chat-ID": chat_id}, VectorMemoryType.EPISODIC,
     )
     assert len(memories) > 0
@@ -176,7 +176,7 @@ async def test_rabbithole_upload_batch_multiple_files(secure_client, secure_clie
         file_path = f"tests/mocks/{file_name}"
         files.append(("files", (file_name, open(file_path, "rb"), content_type)))
 
-    response = secure_client.post("/rabbithole/batch", files=files, headers=secure_client_headers)
+    response = await secure_client.post("/rabbithole/batch", files=files, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200
@@ -188,7 +188,7 @@ async def test_rabbithole_upload_batch_multiple_files(secure_client, secure_clie
         assert json_res[file_name]["content_type"] == files_to_upload[file_name]
         assert "File is being ingested" in json_res[file_name]["info"]
 
-    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = await get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
 
     analytics = await crud_embeddings.get_analytics(agent_id)
@@ -197,7 +197,7 @@ async def test_rabbithole_upload_batch_multiple_files(secure_client, secure_clie
         _check_analytics(analytics, file_name, num_files=len(files_to_upload))
 
 
-def test_rabbithole_upload_doc_with_metadata(secure_client, secure_client_headers):
+async def test_rabbithole_upload_doc_with_metadata(secure_client, secure_client_headers):
     content_type = "application/pdf"
     file_name = "sample.pdf"
 
@@ -210,12 +210,12 @@ def test_rabbithole_upload_doc_with_metadata(secure_client, secure_client_header
     # upload file endpoint only accepts form-encoded data
     payload = {"metadata": json.dumps(metadata)}
 
-    response, _ = send_file(file_name, content_type, secure_client, secure_client_headers, payload)
+    response, _ = await send_file(file_name, content_type, secure_client, secure_client_headers, payload)
 
     # check response
     assert response.status_code == 200
 
-    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = await get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
     for dm in declarative_memories:
         for k, v in metadata.items():
@@ -224,7 +224,7 @@ def test_rabbithole_upload_doc_with_metadata(secure_client, secure_client_header
             assert dm["metadata"][k] == v
 
 
-def test_rabbithole_upload_docs_batch_with_metadata(secure_client, secure_client_headers):
+async def test_rabbithole_upload_docs_batch_with_metadata(secure_client, secure_client_headers):
     files = []
     files_to_upload = {"sample.pdf": "application/pdf", "sample.txt": "text/plain"}
     for file_name in files_to_upload:
@@ -252,12 +252,12 @@ def test_rabbithole_upload_docs_batch_with_metadata(secure_client, secure_client
         "metadata": json.dumps(metadata)
     }
 
-    response = secure_client.post("/rabbithole/batch", files=files, data=payload, headers=secure_client_headers)
+    response = await secure_client.post("/rabbithole/batch", files=files, data=payload, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200
 
-    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = await get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
     for dm in declarative_memories:
         assert "when" in dm["metadata"]
@@ -267,10 +267,10 @@ def test_rabbithole_upload_docs_batch_with_metadata(secure_client, secure_client
             assert dm["metadata"][k] == v
 
 
-def test_simple_upload_pdf_with_image_only(secure_client, secure_client_headers):
+async def test_simple_upload_pdf_with_image_only(secure_client, secure_client_headers):
     new_chunker = "RecursiveTextChunkerSettings"
     payload = {"encoding_name": "cl100k_base","chunk_size": 256,"chunk_overlap": 64}
-    response = secure_client.put(f"/chunking/settings/{new_chunker}", json=payload, headers=secure_client_headers)
+    response = await secure_client.put(f"/chunking/settings/{new_chunker}", json=payload, headers=secure_client_headers)
     assert response.status_code == 200
 
     content_type = "application/pdf"
@@ -278,8 +278,8 @@ def test_simple_upload_pdf_with_image_only(secure_client, secure_client_headers)
     file_path = f"tests/mocks/{file_name}"
     with open(file_path, "rb") as f:
         files = {"file": (file_name, f, content_type)}
-        response = secure_client.post(f"/rabbithole/{chat_id}", files=files, headers=secure_client_headers)
+        response = await secure_client.post(f"/rabbithole/{chat_id}", files=files, headers=secure_client_headers)
         assert response.status_code == 200
 
-        response = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
+        response = await secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
         assert response.status_code == 200

@@ -16,7 +16,7 @@ async def test_get_all_llm_settings(secure_client, secure_client_headers, cheshi
     )
     llms_schemas = await sf.get_schemas()
 
-    response = secure_client.get("/llm/settings", headers=secure_client_headers)
+    response = await secure_client.get("/llm/settings", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -32,18 +32,18 @@ async def test_get_all_llm_settings(secure_client, secure_client_headers, cheshi
     assert json["selected_configuration"] == "LLMDefaultConfig"
 
 
-def test_get_llm_settings_non_existent(secure_client, secure_client_headers):
+async def test_get_llm_settings_non_existent(secure_client, secure_client_headers):
     non_existent_llm_name = "LLMNonExistentConfig"
-    response = secure_client.get(f"/llm/settings/{non_existent_llm_name}", headers=secure_client_headers)
+    response = await secure_client.get(f"/llm/settings/{non_existent_llm_name}", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 400
     assert f"{non_existent_llm_name} not supported" in json["detail"]
 
 
-def test_get_llm_settings(secure_client, secure_client_headers):
+async def test_get_llm_settings(secure_client, secure_client_headers):
     llm_name = "LLMDefaultConfig"
-    response = secure_client.get(f"/llm/settings/{llm_name}", headers=secure_client_headers)
+    response = await secure_client.get(f"/llm/settings/{llm_name}", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -53,10 +53,10 @@ def test_get_llm_settings(secure_client, secure_client_headers):
     assert json["scheme"]["type"] == "object"
 
 
-def test_upsert_llm_settings_success(secure_client, secure_client_headers):
+async def test_upsert_llm_settings_success(secure_client, secure_client_headers):
     # set a different LLM
     new_llm = "LLMDefaultConfig"
-    response = secure_client.put(f"/llm/settings/{new_llm}", headers=secure_client_headers)
+    response = await secure_client.put(f"/llm/settings/{new_llm}", headers=secure_client_headers)
 
     # check immediate response
     json = response.json()
@@ -64,51 +64,51 @@ def test_upsert_llm_settings_success(secure_client, secure_client_headers):
     assert json["name"] == new_llm
 
     # retrieve all LLMs settings to check if it was saved in DB
-    response = secure_client.get("/llm/settings", headers=secure_client_headers)
+    response = await secure_client.get("/llm/settings", headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
     assert json["selected_configuration"] == new_llm
 
     # check also specific LLM endpoint
-    response = secure_client.get(f"/llm/settings/{new_llm}", headers=secure_client_headers)
+    response = await secure_client.get(f"/llm/settings/{new_llm}", headers=secure_client_headers)
     assert response.status_code == 200
     json = response.json()
     assert json["name"] == new_llm
     assert json["scheme"]["languageModelName"] == new_llm
 
 
-def test_forbidden_access_no_auth(client):
-    response = client.get("/llm/settings")
+async def test_forbidden_access_no_auth(client):
+    response = await client.get("/llm/settings")
     assert response.status_code == 401
 
 
-def test_granted_access_on_permissions(secure_client, secure_client_headers, client):
+async def test_granted_access_on_permissions(secure_client, secure_client_headers, client):
     # create user
-    data = create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"LLM": ["READ"]})
-    res = client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
+    data = await create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"LLM": ["READ"]})
+    res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 
-    response = client.get("/llm/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
+    response = await client.get("/llm/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
     assert response.status_code == 200
 
 
-def test_forbidden_access_no_permission(secure_client, secure_client_headers, client):
+async def test_forbidden_access_no_permission(secure_client, secure_client_headers, client):
     # create user
-    data = create_new_user(secure_client, "/users", headers=secure_client_headers)
-    res = client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
+    data = await create_new_user(secure_client, "/users", headers=secure_client_headers)
+    res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 
-    response = client.get("/llm/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
+    response = await client.get("/llm/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
     assert response.status_code == 403
     assert response.json()["detail"] == "Forbidden"
 
 
-def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client):
+async def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client):
     # create user
-    data = create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"LLM": ["DELETE"]})
-    res = client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
+    data = await create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"LLM": ["DELETE"]})
+    res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 
-    response = client.get("/llm/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
+    response = await client.get("/llm/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
     assert response.status_code == 403
     assert response.json()["detail"] == "Forbidden"

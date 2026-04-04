@@ -14,9 +14,9 @@ def _test_example_dot_com() -> str | None:
         return None
 
 
-def test_rabbithole_upload_invalid_url(secure_client, secure_client_headers):
+async def test_rabbithole_upload_invalid_url(secure_client, secure_client_headers):
     payload = {"url": "https://www.example.sbadabim"}
-    response = secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
+    response = await secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 400
@@ -24,17 +24,17 @@ def test_rabbithole_upload_invalid_url(secure_client, secure_client_headers):
     assert "https://www.example.sbadabim" in json["detail"]
 
     # check declarative memory is still empty
-    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = await get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 0
 
 
-def test_rabbithole_upload_url(secure_client, secure_client_headers):
+async def test_rabbithole_upload_url(secure_client, secure_client_headers):
     if not (url := _test_example_dot_com()):
         assert True
         return
 
     payload = {"url": url}
-    response = secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
+    response = await secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
 
     if response.status_code != 400:
         assert True
@@ -47,17 +47,17 @@ def test_rabbithole_upload_url(secure_client, secure_client_headers):
     assert json["url"] == payload["url"]
 
     # check declarative memories have been stored
-    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = await get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 1
 
 
-def test_rabbithole_upload_url_to_stray(secure_client, secure_client_headers):
+async def test_rabbithole_upload_url_to_stray(secure_client, secure_client_headers):
     if not (url := _test_example_dot_com()):
         assert True
         return
 
     payload = {"url": url}
-    response = secure_client.post(f"/rabbithole/web/{chat_id}", json=payload, headers=secure_client_headers)
+    response = await secure_client.post(f"/rabbithole/web/{chat_id}", json=payload, headers=secure_client_headers)
 
     if response.status_code != 400:
         assert True
@@ -70,11 +70,11 @@ def test_rabbithole_upload_url_to_stray(secure_client, secure_client_headers):
     assert json["url"] == payload["url"]
 
     # check declarative memories have been stored
-    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = await get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 1
 
 
-def test_rabbithole_upload_url_with_metadata(secure_client, secure_client_headers):
+async def test_rabbithole_upload_url_with_metadata(secure_client, secure_client_headers):
     if not (url := _test_example_dot_com()):
         assert True
         return
@@ -86,7 +86,7 @@ def test_rabbithole_upload_url_with_metadata(secure_client, secure_client_header
     }
     payload = {"url": url, "metadata": metadata}
 
-    response = secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
+    response = await secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200
@@ -95,7 +95,7 @@ def test_rabbithole_upload_url_with_metadata(secure_client, secure_client_header
     assert json["url"] == payload["url"]
 
     # check declarative memories have been stored
-    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = await get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 1
     assert "when" in declarative_memories[0]["metadata"]
     assert "source" in declarative_memories[0]["metadata"]
@@ -104,18 +104,18 @@ def test_rabbithole_upload_url_with_metadata(secure_client, secure_client_header
         assert declarative_memories[0]["metadata"][key] == value
 
 
-def test_rabbithole_get_uploaded_web_urls(secure_client, secure_client_headers):
+async def test_rabbithole_get_uploaded_web_urls(secure_client, secure_client_headers):
     if not (url := _test_example_dot_com()):
         assert True
         return
 
     # First upload a URL
     payload = {"url": url}
-    response = secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
+    response = await secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
     assert response.status_code == 200
 
     # Now get the uploaded URLs
-    response = secure_client.get("/rabbithole/web/", headers=secure_client_headers)
+    response = await secure_client.get("/rabbithole/web/", headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200

@@ -32,8 +32,8 @@ def check_correct_websocket_reply(reply):
     assert isinstance(why["memory"], list)
 
 
-def test_websocket(secure_client, secure_client_headers):
-    user = create_new_user(
+async def test_websocket(secure_client, secure_client_headers):
+    user = await create_new_user(
         secure_client,
         "/users",
         "user",
@@ -43,7 +43,7 @@ def test_websocket(secure_client, secure_client_headers):
 
     msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
     # send a websocket message
-    res = send_websocket_message(msg, secure_client, api_key, query_params={"user_id": user["id"]})
+    res = await send_websocket_message(msg, secure_client, api_key, query_params={"user_id": user["id"]})
     content = json.loads(res["content"])
 
     assert content["agent_id"] == agent_id
@@ -52,7 +52,7 @@ def test_websocket(secure_client, secure_client_headers):
     check_correct_websocket_reply(content["message"])
 
     # check analytics
-    response = secure_client.get("/analytics/llm", headers=secure_client_headers)
+    response = await secure_client.get("/analytics/llm", headers=secure_client_headers)
     analytics = response.json()
     #{agent_id: {user_id: {chat_id: {llm_id: <content>}}}}
     assert isinstance(analytics, dict)
@@ -84,8 +84,8 @@ def test_websocket(secure_client, secure_client_headers):
     assert info["total_calls"] == 1
 
 
-def test_websocket_with_additional_items_in_message(secure_client):
-    user = create_new_user(
+async def test_websocket_with_additional_items_in_message(secure_client):
+    user = await create_new_user(
         secure_client,
         "/users",
         "user",
@@ -99,7 +99,7 @@ def test_websocket_with_additional_items_in_message(secure_client):
         "prompt_settings": {"temperature": 0.5}
     }
     # send websocket message
-    res = send_websocket_message(msg, secure_client, api_key, query_params={"user_id": user["id"]})
+    res = await send_websocket_message(msg, secure_client, api_key, query_params={"user_id": user["id"]})
     content = json.loads(res["content"])
 
     assert content["agent_id"] == agent_id
@@ -115,11 +115,11 @@ async def test_websocket_with_non_saved_user(secure_client):
         assert user is None
 
         msg = {"text": "It's late! It's late", "image": "tests/mocks/sample.png"}
-        send_websocket_message(msg, secure_client, api_key, {"user_id": mocked_user_id})
+        await send_websocket_message(msg, secure_client, api_key, {"user_id": mocked_user_id})
 
 
-def test_websocket_multiple_messages(secure_client):
-    user = create_new_user(
+async def test_websocket_multiple_messages(secure_client):
+    user = await create_new_user(
         secure_client,
         "/users",
         "user",
@@ -128,18 +128,18 @@ def test_websocket_multiple_messages(secure_client):
     )
 
     # send websocket message
-    replies = send_n_websocket_messages(3, secure_client, query_params={"user_id": user["id"]})
+    replies = await send_n_websocket_messages(3, secure_client, query_params={"user_id": user["id"]})
 
     for res in replies:
         content = json.loads(res["content"])
         check_correct_websocket_reply(content["message"])
 
 
-def test_websocket_multiple_connections(secure_client, secure_client_headers, lizard):
+async def test_websocket_multiple_connections(secure_client, secure_client_headers, lizard):
     mex = {"text": "It's late!"}
 
-    data = create_new_user(secure_client, "/users", username="Alice", headers=secure_client_headers)
-    data2 = create_new_user(secure_client, "/users", username="Caterpillar", headers=secure_client_headers)
+    data = await create_new_user(secure_client, "/users", username="Alice", headers=secure_client_headers)
+    data2 = await create_new_user(secure_client, "/users", username="Caterpillar", headers=secure_client_headers)
 
     chat_id = str(uuid.uuid4())
     chat_id2 = str(uuid.uuid4())

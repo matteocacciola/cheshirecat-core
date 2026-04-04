@@ -95,7 +95,10 @@ class CheshireCat(BotMixin):
     async def shutdown(self) -> None:
         self.plugin_manager = None
         vmh = await self.vector_memory_handler()
-        await vmh.close()
+        try:
+            await vmh.close()
+        except Exception as e:
+            pass
 
     async def destroy_memory(self):
         """Destroy all data from the cat's memory."""

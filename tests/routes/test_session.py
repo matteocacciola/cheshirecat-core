@@ -11,7 +11,7 @@ async def test_session_creation_from_websocket(
 ):
     # create a new user with username CCC
     username = "Alice"
-    data = create_new_user(
+    data = await create_new_user(
         secure_client,
         "/users",
         username=username,
@@ -19,7 +19,7 @@ async def test_session_creation_from_websocket(
     )
 
     # get the token, to be used in the websocket connection
-    res = client.post(
+    res = await client.post(
         "/auth/token",
         json={"username": data["username"], "password": new_user_password},
     )
@@ -28,7 +28,7 @@ async def test_session_creation_from_websocket(
 
     # send websocket message
     mex = {"text": "Where do I go?"}
-    res = send_websocket_message(mex, client, received_token, query_params={"user_id": user_id}, ch_id=chat_id)
+    res = await send_websocket_message(mex, client, received_token, query_params={"user_id": user_id}, ch_id=chat_id)
     content = json.loads(res["content"])
 
     # check response
@@ -54,7 +54,7 @@ async def test_session_creation_from_websocket(
 async def test_session_creation_from_http(secure_client, secure_client_headers, cheshire_cat):
     # create a new user with username CCC
     username = "Alice"
-    data = create_new_user(secure_client, "/users", username=username, headers=secure_client_headers)
+    data = await create_new_user(secure_client, "/users", username=username, headers=secure_client_headers)
     user_id = data["id"]
 
     content_type = "text/plain"
@@ -64,7 +64,7 @@ async def test_session_creation_from_http(secure_client, secure_client_headers, 
         files = {"file": (file_name, f, content_type)}
 
         # sending file from Alice
-        response = secure_client.post(
+        response = await secure_client.post(
             "/rabbithole/",
             files=files,
             headers={"X-User-ID": user_id, "Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},

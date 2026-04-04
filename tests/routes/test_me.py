@@ -3,8 +3,8 @@ from cat.auth.permissions import get_base_permissions
 from tests.utils import create_new_user, agent_id, new_user_password
 
 
-def test_get_me_success(secure_client, secure_client_headers, client):
-    user = create_new_user(
+async def test_get_me_success(secure_client, secure_client_headers, client):
+    user = await create_new_user(
         secure_client,
         "/users",
         "user",
@@ -12,7 +12,7 @@ def test_get_me_success(secure_client, secure_client_headers, client):
         permissions=get_base_permissions(),
     )
 
-    res = client.post(
+    res = await client.post(
         "/auth/token",
         json={"username": "user", "password": new_user_password},
     )
@@ -20,7 +20,7 @@ def test_get_me_success(secure_client, secure_client_headers, client):
     token = res.json()["access_token"]
 
     headers = {"Authorization": f"Bearer {token}"}
-    response = client.get("/me", headers=headers)
+    response = await client.get("/me", headers=headers)
 
     assert response.status_code == 200
     data = response.json()
