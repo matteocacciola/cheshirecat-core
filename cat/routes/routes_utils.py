@@ -1,6 +1,5 @@
 import asyncio
 import json
-import os
 from ast import literal_eval
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
