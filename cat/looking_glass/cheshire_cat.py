@@ -97,7 +97,7 @@ class CheshireCat(BotMixin):
         vmh = await self.vector_memory_handler()
         try:
             await vmh.close()
-        except Exception as e:
+        except Exception:
             pass
 
     async def destroy_memory(self):
