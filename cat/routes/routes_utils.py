@@ -308,44 +308,41 @@ async def create_jwt_content(credentials: UserCredentials, redis_search_service:
         "agents": final_valid_matches,
     }
 
-
 def sanitize_source_name(source_name: str, path: str) -> str:
     # Security: Validate and sanitize the source parameter
-    if not source_name or source_name.strip() == "":
+    if not source_name or (source_name := source_name.strip()) == "":
         raise CustomValidationException("Invalid filename")
 
-    # Remove any path separators and resolve path components
-    # This prevents directory traversal attacks like "../../../etc/passwd"
-    sanitized_source = os.path.basename(source_name.strip())
-    sanitized_source, sanitized_extension = os.path.splitext(sanitized_source)
+    # map Windows paths to Unix
+    source_name = source_name.replace('\\','/')
 
-    # Additional validation: reject suspicious patterns
-    forbidden_patterns = ['.', '..', '/', '\\', '\x00']
-    if any(pattern in sanitized_source for pattern in forbidden_patterns):
-        raise CustomValidationException("Invalid filename")
-
-    # Validate filename characters (allow only alphanumeric, dash, underscore, dot)
-    if not sanitized_source.replace('.', '').replace('-', '').replace('_', '').isalnum():
+    # Validate path characters (allow only alphanumeric, dash, underscore, dot, slash)
+    if not source_name.replace('.', '').replace('-', '').replace('_', '').replace('/','').isalnum():
         raise CustomValidationException("Filename contains invalid characters")
 
-    # Prevent hidden files and ensure reasonable length
-    if sanitized_source.startswith('.') or len(sanitized_source) > 255:
+    source_path = Path(source_name)
+    # Prevent hidden files and dirs and ensure reasonable length
+    if any(part.startswith('.') for part in source_path.parts) or len(source_name) > 255:
+        raise CustomValidationException("Invalid filename")
+
+    # Additional validation: reject suspicious patterns ('\\', '.' and '..' handled above)
+    forbidden_patterns = ['\x00']
+    if any(pattern in piece for pattern in forbidden_patterns for piece in source_path.parts):
         raise CustomValidationException("Invalid filename")
 
     # Optional: Additional path validation using pathlib for extra safety
-    sanitized_source = f"{sanitized_source}{sanitized_extension}"
     try:
         # This ensures the resolved path doesn't escape the intended directory
         base_path = Path(path).resolve()
-        requested_path = (base_path / sanitized_source).resolve()
+        requested_path = (base_path / source_path).resolve()
 
         # Ensure the resolved path is within the base directory
-        if not str(requested_path).startswith(str(base_path)):
+        if not requested_path.is_relative_to(base_path):
             raise CustomValidationException("Access denied")
     except (OSError, ValueError):
         raise CustomValidationException("Invalid file path")
 
-    return sanitized_source
+    return str(source_path)
 
 
 def run_background_task(background_tasks: BackgroundTasks, func, *args, **kwargs):
