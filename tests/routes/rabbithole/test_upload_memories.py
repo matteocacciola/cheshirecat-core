@@ -12,7 +12,7 @@ async def test_upload_memory(secure_client, secure_client_headers):
     content_type = "application/json"
     with open("tests/mocks/sample.json", "rb") as f:
         files = {"file": (file_name, f, content_type)}
-        response = await secure_client.post("/rabbithole/memory/", files=files, headers=secure_client_headers)
+        response = await secure_client.post("/rabbithole/memory", files=files, headers=secure_client_headers)
 
     assert response.status_code == 200
     json_res = response.json()
@@ -32,7 +32,7 @@ async def test_upload_memory_check_mimetype(secure_client, secure_client_headers
     file_path = f"tests/mocks/{file_name}"
     with open(file_path, "rb") as f:
         files = {"file": (file_name, f, content_type)}
-        response = await secure_client.post("/rabbithole/memory/", files=files, headers=secure_client_headers)
+        response = await secure_client.post("/rabbithole/memory", files=files, headers=secure_client_headers)
     
     assert response.status_code == 400
     assert (
@@ -47,7 +47,7 @@ async def test_upload_memory_check_embedder(secure_client, secure_client_headers
     fake_memory = await get_fake_memory_export(secure_client, embedder_name=another_embedder)
 
     response = await secure_client.post(
-        "/rabbithole/memory/",
+        "/rabbithole/memory",
         files={
             "file": ("test_file.json", json.dumps(fake_memory), "application/json")
         },
@@ -66,7 +66,7 @@ async def test_upload_memory_check_dimensionality(secure_client, secure_client_h
     fake_memory = await get_fake_memory_export(secure_client, dim=wrong_dim)
 
     response = await secure_client.post(
-        "/rabbithole/memory/",
+        "/rabbithole/memory",
         files={
             "file": ("test_file.json", json.dumps(fake_memory), "application/json")
         },

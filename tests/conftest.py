@@ -1,6 +1,6 @@
+from inspect import iscoroutinefunction
 from uuid import uuid4
 import pytest
-import pytest_asyncio
 import os
 import shutil
 import warnings
@@ -15,7 +15,7 @@ from cat.auth.permissions import AuthUserInfo, get_base_permissions
 from cat.env import get_env
 from cat.looking_glass import StrayCat
 from cat.looking_glass.mad_hatter.plugin import Plugin
-from cat.startup import grinning_cat_api
+from cat.startup import create_app
 from cat.services.memory.messages import UserMessage
 from cat.services.factory.vector_db import QdrantHandler
 import cat.utils as utils
@@ -29,7 +29,7 @@ from tests.utils import (
     fake_timestamp,
 )
 
-pytest_plugins = ["pytest_asyncio"]
+pytest_plugins = ["pytest"]
 
 memory_client = AsyncQdrantClient(":memory:")
 
@@ -55,6 +55,11 @@ def mock_classes(monkeypatch):
 
     # mock the agent_id in the request
     auth_utils.extract_agent_id_from_request = lambda: agent_id
+
+    async def immediate_task(background_tasks, func, *args, **kwargs):
+        await func(*args, **kwargs) if iscoroutinefunction(func) else func(*args, **kwargs)
+
+    monkeypatch.setattr("cat.routes.routes_utils.run_background_task", immediate_task)
 
 
 async def clean_up():
@@ -97,7 +102,7 @@ def should_skip_encapsulation(request):
     return request.node.get_closest_marker("skip_encapsulation") is not None
 
 
-@pytest_asyncio.fixture(autouse=True)
+@pytest.fixture(autouse=True)
 async def encapsulate_each_test(request, monkeypatch):
     from cat.db.database import Database
 
@@ -128,16 +133,18 @@ async def encapsulate_each_test(request, monkeypatch):
         del os.environ["CAT_REDIS_DB"]
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def client():
-    async with LifespanManager(grinning_cat_api) as manager:
+    app = create_app()
+    async with LifespanManager(app) as manager:
         async with AsyncClient(transport=ASGITransport(app=manager.app), base_url="http://test") as ac:
+            ac._fastapi_test_app = app
             yield ac
 
 
 # This fixture sets the CAT_API_KEY environment variable,
 # making mandatory for clients to possess api key or JWT
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def secure_client(client):
     current_api_key = os.getenv("CAT_API_KEY")
     current_jwt_secret = os.getenv("CAT_JWT_SECRET")
@@ -165,17 +172,17 @@ def secure_client_headers():
 
 
 @pytest.fixture(scope="function")
-def lizard(client):
-    yield grinning_cat_api.state.lizard
+async def lizard(client):
+    yield client._fastapi_test_app.state.lizard
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def cheshire_cat(lizard):
     cheshire_cat = await lizard.create_cheshire_cat(agent_id)
     yield cheshire_cat
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def plugin_manager(lizard):
     plugin_manager = lizard.plugin_manager
 
@@ -188,7 +195,7 @@ async def plugin_manager(lizard):
     await plugin_manager.uninstall_plugin("mock_plugin")
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def agent_plugin_manager(cheshire_cat):
     plugin_manager = cheshire_cat.plugin_manager
 
@@ -202,7 +209,7 @@ async def agent_plugin_manager(cheshire_cat):
     yield plugin_manager
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def stray_no_memory(cheshire_cat, agent_plugin_manager):
     stray_cat = await StrayCat.create(
         user_data=AuthUserInfo(id=str(uuid4()), name="Alice", permissions=get_base_permissions()),
@@ -213,7 +220,7 @@ async def stray_no_memory(cheshire_cat, agent_plugin_manager):
 
 
 # fixture to have available an instance of StrayCat
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def stray(stray_no_memory):
     stray_no_memory.working_memory.user_message = UserMessage(text="meow")
     yield stray_no_memory
@@ -238,7 +245,7 @@ def patch_time_now(monkeypatch):
 # this fixture will give test functions a ready instantiated plugin
 # (and having the `client` fixture, a clean setup every unit)
 @pytest.fixture(scope="function")
-def plugin(lizard):
+async def plugin(lizard):
     p = Plugin(mock_plugin_path)
     yield p
 

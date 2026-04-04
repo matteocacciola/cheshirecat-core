@@ -21,7 +21,8 @@ from cat.routes.routes_utils import (
     GetPluginDetailsResponse,
     DeletePluginResponse,
     InstallPluginFromRegistryResponse,
-    create_plugin_manifest
+    create_plugin_manifest,
+    run_background_task,
 )
 from cat.utils import get_allowed_plugins_mime_types, write_temp_file
 
@@ -172,7 +173,7 @@ async def install_plugin(
     log.info(f"Uploading {content_type} plugin {filename}")
     try:
         plugin_archive_path = await write_temp_file(filename, await file.read())  # type: ignore[union-attr]
-        background_tasks.add_task(info.lizard.install_plugin, plugin_archive_path)
+        run_background_task(background_tasks, info.lizard.install_plugin, plugin_archive_path)
     except Exception as e:
         raise CustomValidationException(f"Could not install plugin from file: {e}")
 
@@ -192,7 +193,7 @@ async def install_plugin_from_registry(
     # download zip from registry
     try:
         tmp_plugin_path = await info.lizard.plugin_registry.download_plugin(payload["url"])
-        background_tasks.add_task(info.lizard.install_plugin, tmp_plugin_path)
+        run_background_task(background_tasks, info.lizard.install_plugin, tmp_plugin_path)
     except Exception as e:
         raise CustomValidationException(f"Could not install plugin from registry: {e}")
 

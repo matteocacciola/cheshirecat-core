@@ -68,7 +68,7 @@ async def check_files_deleted(secure_client, secure_client_headers, collection: 
     # upload another document
     with open(file_path, "rb") as f:
         files = {"file": ("sample2.pdf", f, content_type)}
-        response = await secure_client.post("/rabbithole/", files=files, headers=headers)
+        response = await secure_client.post("/rabbithole", files=files, headers=headers)
         assert response.status_code == 200
 
     # check memory contents

@@ -100,7 +100,7 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
 
     with open(file_path, "rb") as f:
         files = {"file": ("sample2.pdf", f, content_type)}
-        _ = await secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
+        _ = await secure_client.post("/rabbithole", files=files, headers=secure_client_headers)
 
     memories = await af.context_retrieval(
         VectorMemoryType.DECLARATIVE,

@@ -8,7 +8,13 @@ from starlette.responses import StreamingResponse
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
 from cat.exceptions import CustomNotFoundException, CustomValidationException
-from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse, sanitize_source_name
+from cat.routes.routes_utils import (
+    GetSettingsResponse,
+    GetSettingResponse,
+    UpsertSettingResponse,
+    sanitize_source_name,
+    run_background_task,
+)
 from cat.services.factory.file_manager import FileResponse
 from cat.services.memory.models import VectorMemoryType
 from cat.services.service_factory import ServiceFactory
@@ -95,7 +101,7 @@ async def upsert_file_manager_setting(
 
     current_file_manager = await ccat.file_manager()  # type: ignore[union-attr]
     if previous_file_manager != current_file_manager:
-        background_tasks.add_task(ccat.transfer_files_from, previous_file_manager)  # type: ignore[union-attr]
+        run_background_task(background_tasks, ccat.transfer_files_from, previous_file_manager)
 
     return UpsertSettingResponse(**result)
 

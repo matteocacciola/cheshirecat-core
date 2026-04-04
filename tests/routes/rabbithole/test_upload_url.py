@@ -16,7 +16,7 @@ def _test_example_dot_com() -> str | None:
 
 async def test_rabbithole_upload_invalid_url(secure_client, secure_client_headers):
     payload = {"url": "https://www.example.sbadabim"}
-    response = await secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
+    response = await secure_client.post("/rabbithole/web", json=payload, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 400
@@ -34,7 +34,7 @@ async def test_rabbithole_upload_url(secure_client, secure_client_headers):
         return
 
     payload = {"url": url}
-    response = await secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
+    response = await secure_client.post("/rabbithole/web", json=payload, headers=secure_client_headers)
 
     if response.status_code != 400:
         assert True
@@ -86,7 +86,7 @@ async def test_rabbithole_upload_url_with_metadata(secure_client, secure_client_
     }
     payload = {"url": url, "metadata": metadata}
 
-    response = await secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
+    response = await secure_client.post("/rabbithole/web", json=payload, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200
@@ -111,11 +111,11 @@ async def test_rabbithole_get_uploaded_web_urls(secure_client, secure_client_hea
 
     # First upload a URL
     payload = {"url": url}
-    response = await secure_client.post("/rabbithole/web/", json=payload, headers=secure_client_headers)
+    response = await secure_client.post("/rabbithole/web", json=payload, headers=secure_client_headers)
     assert response.status_code == 200
 
     # Now get the uploaded URLs
-    response = await secure_client.get("/rabbithole/web/", headers=secure_client_headers)
+    response = await secure_client.get("/rabbithole/web", headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200

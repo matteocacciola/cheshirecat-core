@@ -1,14 +1,12 @@
 import asyncio
 from typing import List, Dict
 from fastapi import FastAPI
-from langchain_community.cache import RedisSemanticCache
-from langchain_core.globals import set_llm_cache as set_llm_cache_langchain
 
 from cat.auth.auth_utils import DEFAULT_ADMIN_USERNAME, hash_password
 from cat.auth.permissions import get_full_permissions
 from cat.db import crud
 from cat.db.cruds import settings as crud_settings, plugins as crud_plugins, users as crud_users
-from cat.db.database import DEFAULT_SYSTEM_KEY, DEFAULT_CONVERSATIONS_KEY, get_db_connection_string
+from cat.db.database import DEFAULT_SYSTEM_KEY, DEFAULT_CONVERSATIONS_KEY
 from cat.db.models import Setting
 from cat.env import get_env
 from cat.log import log
@@ -58,17 +56,6 @@ class BillTheLizard(OrchestratorMixin):
         self.rabbit_hole = None
         self.core_auth_handler = None
 
-    async def _set_llm_cache(self):
-        embedder = await self.embedder()
-
-        set_llm_cache_langchain(
-            RedisSemanticCache(
-                redis_url=get_db_connection_string(),
-                embedding=embedder,
-                score_threshold=0.95,
-            )
-        )
-
     async def bootstrap(self):
         """
         Fully initialise the lizard inside uvicorn's running event loop.
@@ -104,12 +91,6 @@ class BillTheLizard(OrchestratorMixin):
                 "password": hash_password(get_env("CAT_ADMIN_DEFAULT_PASSWORD")),
                 "permissions": permissions,  # base admin has all permissions, but CHAT
             })
-
-        # RedisSemanticCache: shared across all Swarm replicas — a near-identical prompt
-        # answered on replica A gets a cache hit on replica B.  score_threshold=0.95 avoids
-        # returning stale answers for semantically similar but meaningfully different prompts.
-        # Placed after bootstrap_services() so the embedder is fully initialised.
-        await self._set_llm_cache()
 
         # Start Redis Pub/Sub listener so WebSocket messages are delivered
         # cross-replica in Docker Swarm deployments.  Degrades gracefully to
@@ -282,8 +263,6 @@ class BillTheLizard(OrchestratorMixin):
                 # limit concurrent embeddings to avoid overwhelming resources
                 semaphore = asyncio.Semaphore(5)  # Max 5 concurrent
                 await asyncio.gather(*[embed_with_limit(entry) for entry in stored_files_by_ccat])
-
-            await self._set_llm_cache() # reset LLM cache after re-embedding to avoid stale cached results
 
             success = True
         except Exception as e:

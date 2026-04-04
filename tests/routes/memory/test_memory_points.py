@@ -58,7 +58,7 @@ async def test_create_memory_point(secure_client, secure_client_headers, cheshir
 
     # check memory contents
     params = {"text": "dear, hello"}
-    response = await secure_client.get("/memory/recall/", params=params, headers=headers)
+    response = await secure_client.get("/memory/recall", params=params, headers=headers)
     json = response.json()
     assert response.status_code == 200
     assert len(json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)]) == 1
@@ -82,7 +82,7 @@ async def test_point_deleted(secure_client, secure_client_headers, mocked_defaul
     # get point back
     params = {"text": "Mad Hatter"}
     response = await secure_client.get(
-        "/memory/recall/", params=params, headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+        "/memory/recall", params=params, headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     json = response.json()
     assert response.status_code == 200
@@ -106,7 +106,7 @@ async def test_point_deleted(secure_client, secure_client_headers, mocked_defaul
     # there is no point now
     params = {"text": "Mad Hatter"}
     response = await secure_client.get(
-        "/memory/recall/", params=params, headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+        "/memory/recall", params=params, headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     json = response.json()
     assert response.status_code == 200
@@ -133,7 +133,7 @@ async def test_points_deleted_by_metadata(secure_client, secure_client_headers):
     # upload another document
     with open(file_path, "rb") as f:
         files = {"file": ("sample2.pdf", f, content_type)}
-        response = await secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
+        response = await secure_client.post("/rabbithole", files=files, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200

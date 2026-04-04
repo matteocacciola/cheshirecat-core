@@ -5,7 +5,9 @@ from ast import literal_eval
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Dict, List, Any, Type
-from fastapi import Query
+from fastapi import Query, BackgroundTasks
+from langchain_core.caches import InMemoryCache
+from langchain_core.globals import set_llm_cache
 from pydantic import BaseModel, model_serializer
 
 from cat import utils
@@ -235,6 +237,7 @@ def create_dict_parser(param_name: str, description: str | None = None):
 async def startup_app(app):
     from cat.looking_glass import BillTheLizard
 
+    set_llm_cache(InMemoryCache())
     utils.pod_id()
 
     bill_the_lizard = BillTheLizard()
@@ -343,3 +346,7 @@ def sanitize_source_name(source_name: str, path: str) -> str:
         raise CustomValidationException("Invalid file path")
 
     return sanitized_source
+
+
+def run_background_task(background_tasks: BackgroundTasks, func, *args, **kwargs):
+    background_tasks.add_task(func, *args, **kwargs)

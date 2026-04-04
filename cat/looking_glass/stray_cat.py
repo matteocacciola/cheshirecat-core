@@ -233,7 +233,7 @@ class StrayCat(BotMixin):
                 system_prompt=system_prompt,
                 user_prompt=self.working_memory.user_message.text,  # type: ignore[arg-type]
                 context=[m.document for m in self.working_memory.context_memories],
-                history=[(await h.langchainfy()) for h in self.working_memory.history[-config.latest_n_history:]],
+                history=[h.langchainfy() for h in self.working_memory.history[-config.latest_n_history:]],
                 tools=tools,
             )
 

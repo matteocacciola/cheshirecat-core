@@ -24,7 +24,7 @@ class RabbitHole:
         self.stray = None
         self.embedder = None
 
-    def setup(self, _cat: "BotMixin"):  # type: ignore[name-defined]
+    async def setup(self, _cat: "BotMixin"):  # type: ignore[name-defined]
         from cat.looking_glass import CheshireCat, StrayCat
 
         if isinstance(_cat, CheshireCat):
@@ -34,7 +34,7 @@ class RabbitHole:
 
         if isinstance(_cat, StrayCat):
             self.stray = _cat
-            self.cat = _cat.lizard.get_cheshire_cat(_cat.agent_key)
+            self.cat = await _cat.lizard.get_cheshire_cat(_cat.agent_key)
             return
 
         raise ValueError("RabbitHole can only be setup with CheshireCat or StrayCat instances.")
@@ -58,7 +58,7 @@ class RabbitHole:
         The method also performs a check on the dimensionality of the embeddings (i.e. length of each vector).
         """
         try:
-            self.setup(cat)
+            await self.setup(cat)
             lizard = self.cat.lizard
 
             # Load fyle byte in a dict
@@ -131,7 +131,7 @@ class RabbitHole:
         points = []
 
         try:
-            self.setup(cat)
+            await self.setup(cat)
 
             filename = filename or (file if isinstance(file, str) else None)
             if not filename:

@@ -50,9 +50,9 @@ def test_create_plugin(plugin):
     assert plugin.tools == []
 
 
-def test_activate_plugin(plugin):
+async def test_activate_plugin(plugin):
     # activate it
-    plugin.activate(DEFAULT_SYSTEM_KEY)
+    await plugin.activate(DEFAULT_SYSTEM_KEY)
 
     assert plugin.active is True
 
@@ -97,7 +97,7 @@ def test_activate_plugin(plugin):
 
 async def test_deactivate_plugin(plugin):
     # The plugin is non active by default
-    plugin.activate(DEFAULT_SYSTEM_KEY)
+    await plugin.activate(DEFAULT_SYSTEM_KEY)
 
     # deactivate it
     await plugin.deactivate(DEFAULT_SYSTEM_KEY)

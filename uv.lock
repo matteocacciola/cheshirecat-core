@@ -809,7 +809,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "aiofiles" },
-    { name = "asgi-lifespan", specifier = ">=2.1.0" },
+    { name = "asgi-lifespan" },
     { name = "autopep8" },
     { name = "bcrypt" },
     { name = "cryptography" },
