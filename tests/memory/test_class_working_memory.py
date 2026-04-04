@@ -7,26 +7,26 @@ from cat.services.memory.working_memory import WorkingMemory
 from tests.utils import agent_id, chat_id
 
 
-def create_working_memory_with_convo_history():
+async def create_working_memory_with_convo_history():
     """Utility to create a working memory and populate its convo history."""
-    working_memory = WorkingMemory(agent_id=agent_id, user_id=generate_uuid(), chat_id=chat_id)
+    working_memory = await WorkingMemory.create(agent_id=agent_id, user_id=generate_uuid(), chat_id=chat_id)
     human_message = UserMessage(text="Hi")
-    working_memory.update_history(who="user", content=human_message)
+    await working_memory.update_history(who="user", content=human_message)
     cat_message = CatMessage(text="Meow")
-    working_memory.update_history(who="assistant", content=cat_message)
+    await working_memory.update_history(who="assistant", content=cat_message)
     return working_memory
 
 
-def test_create_working_memory():
-    wm = WorkingMemory(agent_id=agent_id, user_id=generate_uuid(), chat_id=chat_id)
+async def test_create_working_memory():
+    wm = await WorkingMemory.create(agent_id=agent_id, user_id=generate_uuid(), chat_id=chat_id)
     assert wm.history == []
     assert wm.user_message_json is None
     assert wm.context_memories == []
     assert len(wm.model_interactions) == 0
 
 
-def test_update_history():
-    wm = create_working_memory_with_convo_history()
+async def test_update_history():
+    wm = await create_working_memory_with_convo_history()
 
     assert len(wm.history) == 2
     for message in wm.history:
@@ -40,8 +40,8 @@ def test_update_history():
     assert wm.history[1].content.text == "Meow"
 
 
-def test_langchainfy_chat_history():
-    wm = create_working_memory_with_convo_history()
+async def test_langchainfy_chat_history():
+    wm = await create_working_memory_with_convo_history()
     langchain_convo = [h.langchainfy() for h in wm.history[-5:]]
 
     assert len(langchain_convo) == len(wm.history)
@@ -56,8 +56,8 @@ def test_langchainfy_chat_history():
     assert langchain_convo[1].content == "Meow"
 
 
-def test_working_memory_as_dictionary_object():
-    wm = WorkingMemory(agent_id=agent_id, user_id=generate_uuid(), chat_id=chat_id)
+async def test_working_memory_as_dictionary_object():
+    wm = await WorkingMemory.create(agent_id=agent_id, user_id=generate_uuid(), chat_id=chat_id)
     wm.a = "a"
     wm["b"] = "b"
     assert wm.a == "a"

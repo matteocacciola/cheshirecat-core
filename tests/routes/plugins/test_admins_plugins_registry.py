@@ -9,8 +9,8 @@ async def mock_registry_download_plugin(url: str):
     return create_mock_plugin_zip(True)
 
 
-def test_list_registry_plugins(secure_client, secure_client_headers):
-    response = secure_client.get("/plugins/installed", headers=secure_client_headers)
+async def test_list_registry_plugins(secure_client, secure_client_headers, cheshire_cat):
+    response = await secure_client.get("/plugins/installed", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -27,9 +27,9 @@ def test_list_registry_plugins(secure_client, secure_client_headers):
         assert key in json["filters"].keys()
 
 
-def test_list_registry_plugins_by_query(secure_client, secure_client_headers):
+async def test_list_registry_plugins_by_query(secure_client, secure_client_headers, cheshire_cat):
     params = {"query": "podcast"}
-    response = secure_client.get("/plugins/installed", params=params, headers=secure_client_headers)
+    response = await secure_client.get("/plugins/installed", params=params, headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -40,7 +40,7 @@ def test_list_registry_plugins_by_query(secure_client, secure_client_headers):
         assert params["query"] in plugin_text  # verify searched text
 
 
-def test_plugin_install_from_registry(secure_client, secure_client_headers, monkeypatch, lizard):
+async def test_plugin_install_from_registry(secure_client, secure_client_headers, monkeypatch, lizard, cheshire_cat):
     # Mock the download from the registry creating a zip on-the-fly
     monkeypatch.setattr(lizard.plugin_registry, "download_plugin", mock_registry_download_plugin)
 
@@ -53,14 +53,14 @@ def test_plugin_install_from_registry(secure_client, secure_client_headers, monk
 
     # install plugin from registry
     payload = {"url": "https://mockup_url.com"}
-    response = secure_client.post("/plugins/install/registry", json=payload, headers=secure_client_headers)
+    response = await secure_client.post("/plugins/install/registry", json=payload, headers=secure_client_headers)
 
     assert response.status_code == 200
     assert response.json()["url"] == payload["url"]
     assert response.json()["info"] == "Plugin is being installed asynchronously"
 
     # GET plugin endpoint responds
-    response = secure_client.get("/plugins/system/details/mock_plugin", headers=secure_client_headers)
+    response = await secure_client.get("/plugins/system/details/mock_plugin", headers=secure_client_headers)
     assert response.status_code == 200
     json = response.json()
     assert json["data"]["id"] == "mock_plugin"
@@ -68,7 +68,7 @@ def test_plugin_install_from_registry(secure_client, secure_client_headers, monk
     assert json["data"]["local_info"]["active"]
 
     # GET plugins endpoint lists the plugin
-    response = secure_client.get("/plugins/installed", headers=secure_client_headers)
+    response = await secure_client.get("/plugins/installed", headers=secure_client_headers)
     assert response.status_code == 200
     installed_plugins = response.json()["installed"]
     installed_plugins_names = list(map(lambda p: p["id"], installed_plugins))
@@ -83,13 +83,15 @@ def test_plugin_install_from_registry(secure_client, secure_client_headers, monk
 
 
 # take away from the list of available registry plugins, the ones that are already installed
-def test_list_registry_plugins_without_duplicating_installed_plugins(secure_client, secure_client_headers):
+async def test_list_registry_plugins_without_duplicating_installed_plugins(
+    secure_client, secure_client_headers, cheshire_cat,
+):
     # 1. install plugin from registry
     # TODO !!!
 
     # 2. get available plugins searching for the one just installed
     params = {"query": "podcast"}
-    response = secure_client.get("/plugins/installed", params=params, headers=secure_client_headers)
+    response = await secure_client.get("/plugins/installed", params=params, headers=secure_client_headers)
     #json = response.json()
 
     # 3. plugin should show up among installed by not among registry ones
@@ -99,11 +101,11 @@ def test_list_registry_plugins_without_duplicating_installed_plugins(secure_clie
 
 
 @pytest.mark.skip("This test has to be activated when also search by tag and author is activated in core")
-def test_list_registry_plugins_by_author(secure_client, secure_client_headers):
+async def test_list_registry_plugins_by_author(secure_client, secure_client_headers, cheshire_cat):
     params = {
         "author": "Nicola Corbellini"
     }
-    response = secure_client.get("/plugins/installed", params=params, headers=secure_client_headers)
+    response = await secure_client.get("/plugins/installed", params=params, headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -114,11 +116,11 @@ def test_list_registry_plugins_by_author(secure_client, secure_client_headers):
 
 
 @pytest.mark.skip("This test has to be activated when also search by tag and author is activated in core")
-def test_list_registry_plugins_by_tag(secure_client, secure_client_headers):
+async def test_list_registry_plugins_by_tag(secure_client, secure_client_headers, cheshire_cat):
     params = {
         "tag": "llm"
     }
-    response = secure_client.get("/plugins/installed", params=params, headers=secure_client_headers)
+    response = await secure_client.get("/plugins/installed", params=params, headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200

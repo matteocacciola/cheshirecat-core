@@ -6,20 +6,19 @@ from cat import StrayCat
 from tests.utils import send_websocket_message, api_key, agent_id, create_new_user, new_user_password, chat_id
 
 
-def test_session_creation_from_websocket(
+async def test_session_creation_from_websocket(
     secure_client, secure_client_headers, client, cheshire_cat, mocked_default_llm_answer_prompt
 ):
     # create a new user with username CCC
     username = "Alice"
-    data = create_new_user(
+    data = await create_new_user(
         secure_client,
-        "/users",
         username=username,
         headers=secure_client_headers,
     )
 
     # get the token, to be used in the websocket connection
-    res = client.post(
+    res = await client.post(
         "/auth/token",
         json={"username": data["username"], "password": new_user_password},
     )
@@ -28,7 +27,7 @@ def test_session_creation_from_websocket(
 
     # send websocket message
     mex = {"text": "Where do I go?"}
-    res = send_websocket_message(mex, client, received_token, query_params={"user_id": user_id}, ch_id=chat_id)
+    res = await send_websocket_message(mex, client, received_token, query_params={"user_id": user_id}, ch_id=chat_id)
     content = json.loads(res["content"])
 
     # check response
@@ -38,7 +37,7 @@ def test_session_creation_from_websocket(
 
     # verify session
     user = AuthUserInfo(id=user_id, name=data["username"], permissions=data["permissions"])
-    stray_cat = StrayCat(
+    stray_cat = await StrayCat.create(
         user_data=user,
         agent_id=agent_id,
         stray_id=chat_id,
@@ -51,10 +50,10 @@ def test_session_creation_from_websocket(
     assert convo[0].content.text == mex["text"]
 
 
-def test_session_creation_from_http(secure_client, secure_client_headers, cheshire_cat):
+async def test_session_creation_from_http(secure_client, secure_client_headers, cheshire_cat):
     # create a new user with username CCC
     username = "Alice"
-    data = create_new_user(secure_client, "/users", username=username, headers=secure_client_headers)
+    data = await create_new_user(secure_client, username=username, headers=secure_client_headers)
     user_id = data["id"]
 
     content_type = "text/plain"
@@ -64,7 +63,7 @@ def test_session_creation_from_http(secure_client, secure_client_headers, cheshi
         files = {"file": (file_name, f, content_type)}
 
         # sending file from Alice
-        response = secure_client.post(
+        response = await secure_client.post(
             "/rabbithole/",
             files=files,
             headers={"X-User-ID": user_id, "Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
@@ -75,7 +74,7 @@ def test_session_creation_from_http(secure_client, secure_client_headers, cheshi
 
     # verify session
     user = AuthUserInfo(id=user_id, name=data["username"], permissions=data["permissions"])
-    stray_cat = StrayCat(
+    stray_cat = await StrayCat.create(
         user_data=user, agent_id=agent_id, plugin_manager_generator=lambda: cheshire_cat.plugin_manager,
     )
 

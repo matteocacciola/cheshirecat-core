@@ -52,7 +52,7 @@ services:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      - ./data/long_term_memory/vector:/qdrant/storage
+      - qdrant-data:/qdrant/storage
     restart: unless-stopped
 
   grinning-cat-healthcheck:
@@ -69,5 +69,5 @@ services:
     restart: always
 
 volumes:
-  qdrant_data:
+  qdrant-data:
   redis-data:

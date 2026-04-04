@@ -3,7 +3,7 @@ from fastapi import APIRouter, Body, BackgroundTasks
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
-from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
+from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse, run_background_task
 from cat.services.service_factory import ServiceFactory
 
 
@@ -17,13 +17,14 @@ async def get_embedders_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Embedders"""
     lizard = info.lizard
-    return ServiceFactory(
-        agent_key=lizard.agent_key,
+    sf = ServiceFactory(
+        agent_key=lizard.agent_key,  # type: ignore[arg-type]
         hook_manager=lizard.plugin_manager,
         factory_allowed_handler_name="factory_allowed_embedders",
         setting_category="embedder",
         schema_name="languageEmbedderName",
-    ).get_factory_settings()
+    )
+    return await sf.get_factory_settings()
 
 
 @router.get("/settings/{embedder_name}", response_model=GetSettingResponse)
@@ -33,13 +34,14 @@ async def get_embedder_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Embedder"""
     lizard = info.lizard
-    return ServiceFactory(
-        agent_key=lizard.agent_key,
+    sf = ServiceFactory(
+        agent_key=lizard.agent_key,  # type: ignore[arg-type]
         hook_manager=lizard.plugin_manager,
         factory_allowed_handler_name="factory_allowed_embedders",
         setting_category="embedder",
         schema_name="languageEmbedderName",
-    ).get_factory_setting(embedder_name)
+    )
+    return await sf.get_factory_setting(embedder_name)
 
 
 @router.put("/settings/{embedder_name}", response_model=UpsertSettingResponse)
@@ -51,20 +53,21 @@ async def upsert_embedder_setting(
 ) -> UpsertSettingResponse:
     """Upsert the Embedder setting"""
     lizard = info.lizard
-    previous_embedder = lizard.embedder
-
-    result = ServiceFactory(
-        agent_key=lizard.agent_key,
+    previous_embedder = await lizard.embedder()
+    sf = ServiceFactory(
+        agent_key=lizard.agent_key,  # type: ignore[arg-type]
         hook_manager=lizard.plugin_manager,
         factory_allowed_handler_name="factory_allowed_embedders",
         setting_category="embedder",
         schema_name="languageEmbedderName",
-    ).upsert_service(embedder_name, payload)
+    )
 
-    current_embedder = lizard.embedder
+    result = await sf.upsert_service(embedder_name, payload)
+
+    current_embedder = await lizard.embedder()
 
     # a characterizing feature of the embedder has been updated: inform the Cheshire Cats
     if previous_embedder != current_embedder:
-        background_tasks.add_task(info.lizard.embed_all_in_cheshire_cats)
+        run_background_task(background_tasks, info.lizard.embed_all_in_cheshire_cats)
 
     return UpsertSettingResponse(**result)

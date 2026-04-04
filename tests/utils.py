@@ -4,6 +4,9 @@ import uuid
 import random
 from typing import Dict
 from urllib.parse import urlencode
+from httpx_ws import aconnect_ws
+from httpx_ws.transport import ASGIWebSocketTransport
+import httpx
 
 from cat.auth.permissions import get_base_permissions, AuthResource, AuthPermission
 from cat.db.cruds import users as crud_users
@@ -21,51 +24,52 @@ mock_plugin_path = "tests/mocks/mock_plugin/"
 fake_timestamp = 1705855981
 
 
-def get_class_from_decorated_singleton(singleton):
-    return singleton().__class__
-
-
-def send_file(file_name, content_type, client, headers, payload = None, ch_id = None):
+async def send_file(file_name, content_type, client, headers, payload = None, ch_id = None):
     file_path = f"tests/mocks/{file_name}"
 
     url = "/rabbithole/" if not ch_id else f"/rabbithole/{ch_id}"
     with open(file_path, "rb") as f:
         files = {"file": (file_name, f, content_type)}
-        response = client.post(url, files=files, data=payload, headers=headers)
+        response = await client.post(url, files=files, data=payload, headers=headers)
     return response, file_path
 
 
 # utility function to communicate with the cat via websocket
-def send_websocket_message(msg, client, token, query_params = None, ch_id = None):
+async def send_websocket_message(msg, client, token, query_params=None, ch_id=None):
     url = f"/ws/{agent_id}" if not ch_id else f"/ws/{agent_id}/{ch_id}"
     if query_params:
         url += "?" + urlencode(query_params)
 
-    with client.websocket_connect(url, headers={"Authorization": f"Bearer {token}"}) as websocket:
-        # Send ws message
-        websocket.send_json(msg)
-        # get reply
-        return websocket.receive_json()
+    app = client._fastapi_test_app
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+
+    async with httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app)) as ws_client:
+        async with aconnect_ws(f"http://server{url}", ws_client, headers=headers) as websocket:
+            await websocket.send_json(msg)
+            response = await websocket.receive_json()
+            return response
 
 
 # utility to send n messages via chat
-def send_n_websocket_messages(num_messages, client, image = None, ch_id = None, query_params = None):
+async def send_n_websocket_messages(num_messages, client, image = None, ch_id = None, query_params = None):
     responses = []
 
     url = f"/ws/{agent_id}" if not ch_id else f"/ws/{agent_id}/{ch_id}"
     if query_params:
         url += "?" + urlencode(query_params)
 
-    with client.websocket_connect(url, headers={"Authorization": f"Bearer {api_key}"}) as websocket:
-        for m in range(num_messages):
-            message = {"text": f"Red Queen {m}"}
-            if image:
-                message["image"] = image
-            # sed ws message
-            websocket.send_json(message)
-            # get reply
-            reply = websocket.receive_json()
-            responses.append(reply)
+    app = client._fastapi_test_app
+    async with httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app)) as ws_client:
+        async with aconnect_ws(
+                f"http://server{url}", ws_client, headers={"Authorization": f"Bearer {api_key}"},
+        ) as websocket:
+            for m in range(num_messages):
+                message = {"text": f"Red Queen {m}"}
+                if image:
+                    message["image"] = image
+                await websocket.send_json(message)
+                response = await websocket.receive_json()
+                responses.append(response)
 
     return responses
 
@@ -94,10 +98,10 @@ def create_mock_plugin_zip(flat: bool, plugin_id = "mock_plugin"):
 
 
 # utility to retrieve declarative memory contents
-def get_memory_contents(client, headers = None, collection: VectorMemoryType | None = VectorMemoryType.DECLARATIVE):
+async def get_memory_contents(client, headers = None, collection: VectorMemoryType | None = VectorMemoryType.DECLARATIVE):
     headers = headers or {} | {"X-Agent-ID": agent_id}
     params = {"text": "Something"}
-    response = client.get("/memory/recall/", params=params, headers=headers)
+    response = await client.get("/memory/recall", params=params, headers=headers)
     assert response.status_code == 200
     json = response.json()
     memories = json["vectors"]["collections"][str(collection)]
@@ -105,22 +109,22 @@ def get_memory_contents(client, headers = None, collection: VectorMemoryType | N
 
 
 # utility to get collections and point count from `GET /memory/collections` in a simpler format
-def get_collections_names_and_point_count(client, headers = None):
+async def get_collections_names_and_point_count(client, headers = None):
     headers = headers or {} | {"X-Agent-ID": agent_id}
-    response = client.get("/memory/collections", headers=headers)
+    response = await client.get("/memory/collections", headers=headers)
     json = response.json()
     assert response.status_code == 200
     collections_n_points = {c["name"]: c["vectors_count"] for c in json["collections"]}
     return collections_n_points
 
 
-def create_new_user(client, route: str, username = "Alice", headers = None, permissions = None, password = None):
+async def create_new_user(client, username = "Alice", headers = None, permissions = None, password = None):
     new_user = {
         "username": username,
         "password": password or new_user_password,
         "permissions": permissions or {str(AuthResource.CHAT): [str(AuthPermission.WRITE)]}
     }
-    response = client.post(route, json=new_user, headers=headers)
+    response = await client.post("/users/", json=new_user, headers=headers)
     assert response.status_code == 200
     return response.json()
 
@@ -140,16 +144,15 @@ def check_user_fields(u):
         assert False, "Not a UUID"
 
 
-def get_fake_memory_export(client, embedder_name = "DumbEmbedder", dim = 2367):
-    user = create_new_user(
+async def get_fake_memory_export(client, embedder_name = "DumbEmbedder", dim = 2367):
+    user = await create_new_user(
         client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
 
-    user = crud_users.get_user_by_username(agent_id, user["username"])
+    user = await crud_users.get_user_by_username(agent_id, user["username"])
     return {
         "embedder": embedder_name,
         "collections": {
@@ -165,28 +168,28 @@ def get_fake_memory_export(client, embedder_name = "DumbEmbedder", dim = 2367):
     }
 
 
-def get_client_admin_headers(client):
+async def get_client_admin_headers(client):
     creds = {
         "username": "admin",
         "password": get_env("CAT_ADMIN_DEFAULT_PASSWORD"),
     }
 
-    res = client.post("/auth/token", json=creds)
+    res = await client.post("/auth/token", json=creds)
     assert res.status_code == 200
     token = res.json()["access_token"]
 
     return {"Authorization": f"Bearer {token}"}
 
 
-def just_installed_plugin(client, headers, activate = False, plugin_id = "mock_plugin", expected_status_code = 200):
+async def just_installed_plugin(client, headers, activate = False, plugin_id = "mock_plugin", expected_status_code = 200):
     # create zip file with a plugin
     zip_path = create_mock_plugin_zip(flat=True, plugin_id=plugin_id)
     zip_file_name = zip_path.split("/")[-1]  # mock_plugin.zip in tests/mocks folder
 
     # upload plugin via endpoint
     with open(zip_path, "rb") as f:
-        response = client.post(
-            "/plugins/install/upload/",
+        response = await client.post(
+            "/plugins/install/upload",
             files={"file": (zip_file_name, f, "application/zip")},
             headers=headers
         )
@@ -198,7 +201,7 @@ def just_installed_plugin(client, headers, activate = False, plugin_id = "mock_p
 
         if activate:
             # mock_plugin is installed but not enabled yet
-            response = client.put(f"/plugins/toggle/{plugin_id}", headers=headers)
+            response = await client.put(f"/plugins/toggle/{plugin_id}", headers=headers)
             # request was processed
             assert response.status_code == 200
 
@@ -206,6 +209,6 @@ def just_installed_plugin(client, headers, activate = False, plugin_id = "mock_p
 
 
 # utility to make http requests with some headers
-def http_message(client, message: Dict, headers = None):
-    response = client.post("/message", headers=headers, json=message)
+async def http_message(client, message: Dict, headers = None):
+    response = await client.post("/message", headers=headers, json=message)
     return response.status_code, response.json()

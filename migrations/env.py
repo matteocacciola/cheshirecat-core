@@ -116,7 +116,7 @@ class MigrationEnvironment:
     def get_migration_history(self) -> List[Dict[str, Any]]:
         """Get migration history"""
         data = self.redis.json().get(self.MIGRATIONS_KEY)
-        return data if data else []
+        return data if data else []  # type: ignore[return-value]
 
     def add_to_history(self, revision: str, action: str) -> None:
         """Add migration to history"""
@@ -147,7 +147,7 @@ class MigrationEnvironment:
             current = end
             while current:
                 if current in self.revisions:
-                    rev = self.revisions[current]
+                    rev = self.revisions[current]  # type: ignore[union-attr]
                     chain.insert(0, rev)
                     current = rev.down_revision
                 else:
@@ -159,7 +159,7 @@ class MigrationEnvironment:
         current = end
         while current and current != start:
             if current in self.revisions:
-                rev = self.revisions[current]
+                rev = self.revisions[current]  # type: ignore[union-attr]
                 chain.insert(0, rev)
                 current = rev.down_revision
             else:
@@ -179,7 +179,7 @@ class MigrationEnvironment:
         current = self.get_current_head()
 
         if target == "head":
-            target = self._get_head_revision()
+            target = self._get_head_revision()  # type: ignore[union-attr]
 
         if not target:
             print("No migrations to apply")
@@ -232,7 +232,7 @@ class MigrationEnvironment:
                     temp_current = rev.down_revision
                 else:
                     break
-            target = temp_current
+            target = temp_current  # type: ignore[union-attr]
         else:
             # Get all revisions from target to current
             chain = []
@@ -266,7 +266,7 @@ class MigrationEnvironment:
         print(f"Downgrade complete. Current head: {target or 'base'}")
 
     def current(self) -> None:
-        """Show current revision"""
+        """Show the current revision"""
         head = self.get_current_head()
         if head and head in self.revisions:
             rev = self.revisions[head]

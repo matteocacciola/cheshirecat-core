@@ -8,10 +8,10 @@ import cat.core_plugins.webhooks.crud as crud_webhook
 from tests.utils import agent_id
 
 
-def test_webhooks_events(secure_client, secure_client_headers):
+async def test_webhooks_events(secure_client, secure_client_headers, cheshire_cat):
     events = get_args(WEBHOOK_EVENT)
 
-    res = secure_client.get("/webhooks/events", headers=secure_client_headers)
+    res = await secure_client.get("/webhooks/events", headers=secure_client_headers)
     assert res.status_code == 200
 
     json_response = res.json()
@@ -21,26 +21,26 @@ def test_webhooks_events(secure_client, secure_client_headers):
         assert event in json_response
 
 
-def test_webhooks_create_no_auth(client):
+async def test_webhooks_create_no_auth(client, cheshire_cat):
     payload = {
         "url": "https://example.com",
         "event": "knowledge_source_loaded",
         "secret": "secret",
     }
 
-    res = client.post("/webhooks", json=payload)
+    res = await client.post("/webhooks/", json=payload)
     assert res.status_code == 401
 
-    res_db = crud_webhook.get_webhooks(agent_id=agent_id, event=payload["event"])
+    res_db = await crud_webhook.get_webhooks(agent_id=agent_id, event=payload["event"])
     assert res_db is None
 
 
-def test_webhooks_create_wrong_payloads(secure_client, secure_client_headers):
+async def test_webhooks_create_wrong_payloads(secure_client, secure_client_headers, cheshire_cat):
     payload_no_secret = {
         "url": "https://example.com",
         "event": "plugin_installed",
     }
-    res = secure_client.post("/webhooks", json=payload_no_secret, headers=secure_client_headers)
+    res = await secure_client.post("/webhooks/", json=payload_no_secret, headers=secure_client_headers)
     assert res.status_code == 400
 
     payload_wrong_event = {
@@ -48,17 +48,17 @@ def test_webhooks_create_wrong_payloads(secure_client, secure_client_headers):
         "event": "wrong_event",
         "secret": "secret",
     }
-    res = secure_client.post("/webhooks", json=payload_wrong_event, headers=secure_client_headers)
+    res = await secure_client.post("/webhooks/", json=payload_wrong_event, headers=secure_client_headers)
     assert res.status_code == 400
 
 
-def test_webhooks_create(secure_client, secure_client_headers):
+async def test_webhooks_create(secure_client, secure_client_headers, cheshire_cat):
     payload = {
         "url": "https://example.com",
         "event": "knowledge_source_loaded",
         "secret": "secret",
     }
-    res = secure_client.post("/webhooks", json=payload, headers=secure_client_headers)
+    res = await secure_client.post("/webhooks/", json=payload, headers=secure_client_headers)
     assert res.status_code == 200
 
     another_payload = {
@@ -66,10 +66,10 @@ def test_webhooks_create(secure_client, secure_client_headers):
         "event": "knowledge_source_loaded",
         "secret": "secret",
     }
-    res = secure_client.post("/webhooks", json=another_payload, headers=secure_client_headers)
+    res = await secure_client.post("/webhooks/", json=another_payload, headers=secure_client_headers)
     assert res.status_code == 200
 
-    res_db = crud_webhook.get_webhooks(agent_id=agent_id, event=payload["event"])
+    res_db = await crud_webhook.get_webhooks(agent_id=agent_id, event=payload["event"])
     registered_urls = [item["url"] for item in res_db]
     assert res_db is not None
     assert len(res_db) == 2
@@ -77,25 +77,25 @@ def test_webhooks_create(secure_client, secure_client_headers):
     assert another_payload["url"] in registered_urls
 
 
-def test_webhooks_create_once(secure_client, secure_client_headers):
+async def test_webhooks_create_once(secure_client, secure_client_headers, cheshire_cat):
     payload = {
         "url": "https://example.com",
         "event": "knowledge_source_loaded",
         "secret": "secret",
     }
-    res = secure_client.post("/webhooks", json=payload, headers=secure_client_headers)
+    res = await secure_client.post("/webhooks/", json=payload, headers=secure_client_headers)
     assert res.status_code == 200
 
-    res = secure_client.post("/webhooks", json=payload, headers=secure_client_headers)
+    res = await secure_client.post("/webhooks/", json=payload, headers=secure_client_headers)
     assert res.status_code == 200
 
-    res_db = crud_webhook.get_webhooks(agent_id=agent_id, event=payload["event"])
+    res_db = await crud_webhook.get_webhooks(agent_id=agent_id, event=payload["event"])
     assert res_db is not None
     assert len(res_db) == 1
 
 
-def test_webhooks_delete(secure_client, secure_client_headers):
-    test_webhooks_create(secure_client, secure_client_headers)
+async def test_webhooks_delete(secure_client, secure_client_headers, cheshire_cat):
+    await test_webhooks_create(secure_client, secure_client_headers, cheshire_cat)
 
     payload = {
         "url": "https://example.com",
@@ -103,16 +103,16 @@ def test_webhooks_delete(secure_client, secure_client_headers):
         "secret": "secret",
     }
 
-    res = secure_client.request(
+    res = await secure_client.request(
         "DELETE",
-        "/webhooks",
+        "/webhooks/",
         headers=secure_client_headers,
         json=payload,
     )
     assert res.status_code == 200
 
 
-def test_manage_a_webhook_with_missing_header(secure_client, secure_client_headers):
+async def test_manage_a_webhook_with_missing_header(secure_client, secure_client_headers, cheshire_cat):
     payload = {
         "url": "https://example.com",
         "event": "knowledge_source_loaded",
@@ -123,14 +123,14 @@ def test_manage_a_webhook_with_missing_header(secure_client, secure_client_heade
 
     headers = deepcopy(secure_client_headers)
     del headers["X-Agent-ID"]
-    res = secure_client.post("/webhooks", json=payload, headers=headers)
+    res = await secure_client.post("/webhooks/", json=payload, headers=headers)
     json_response = res.json()
     assert res.status_code == 500
     assert json_response["detail"] == expected_error_msg
 
-    test_webhooks_create_once(secure_client, secure_client_headers)
+    await test_webhooks_create_once(secure_client, secure_client_headers, cheshire_cat)
 
-    res = secure_client.request("DELETE", "/webhooks", json=payload, headers=headers)
+    res = await secure_client.request("DELETE", "/webhooks/", json=payload, headers=headers)
     json_response = res.json()
     assert res.status_code == 500
     assert json_response["detail"] == expected_error_msg

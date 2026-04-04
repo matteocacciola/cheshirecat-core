@@ -26,7 +26,7 @@ async def get_collections(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> GetCollectionsResponse:
     """Get the list of available collections"""
-    vector_memory_handler = info.cheshire_cat.vector_memory_handler
+    vector_memory_handler = await info.cheshire_cat.vector_memory_handler()
     existing_collections = await vector_memory_handler.get_collection_names()
 
     collections_metadata = [GetCollectionsItem(
@@ -45,7 +45,7 @@ async def destroy_all_collection_points(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> WipeCollectionsResponse:
     """Delete and create all collections"""
-    vector_memory_handler = info.cheshire_cat.vector_memory_handler
+    vector_memory_handler = await info.cheshire_cat.vector_memory_handler()
 
     to_return = {
         collection: bool(await vector_memory_handler.delete_tenant_points(collection))
@@ -67,7 +67,7 @@ async def destroy_all_single_collection_points(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> WipeCollectionsResponse:
     """Delete and recreate a collection"""
-    vector_memory_handler = info.cheshire_cat.vector_memory_handler
+    vector_memory_handler = await info.cheshire_cat.vector_memory_handler()
     existing_collections = await vector_memory_handler.get_collection_names()
 
     # check if the collection exists
@@ -90,7 +90,7 @@ async def create_single_collection(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
 ) -> GetCollectionsItem:
     """Create a new collection"""
-    vector_memory_handler = info.cheshire_cat.vector_memory_handler
+    vector_memory_handler = await info.cheshire_cat.vector_memory_handler()  # type: ignore[union-attr]
 
     # check if collection exists
     existing_collections = await vector_memory_handler.get_collection_names()
@@ -100,10 +100,10 @@ async def create_single_collection(
             vectors_count=await vector_memory_handler.get_tenant_vectors_count(collection_id)
         )
 
-    lizard = info.cheshire_cat.lizard
+    embedder = await info.cheshire_cat.lizard.embedder()  # type: ignore[union-attr]
     await vector_memory_handler.create_collection(
-        lizard.embedder.name,
-        lizard.embedder.size,
+        embedder.name,
+        embedder.size,
         collection_id
     )
 

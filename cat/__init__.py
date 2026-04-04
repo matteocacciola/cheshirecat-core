@@ -26,7 +26,7 @@ from .services.factory.llm import LLMSettings, LargeLanguageModel
 from .services.factory.vector_db import BaseVectorDatabaseHandler, VectorDatabaseSettings
 from .services.memory.messages import CatMessage, ConversationMessage, MessageWhy, UserMessage
 from .services.memory.models import RecallSettings, PointStruct
-from .utils import get_caller_info, run_sync_or_async
+from .utils import get_caller_info
 
 __all__ = [
     "AgenticWorkflowConfig",
@@ -73,6 +73,5 @@ __all__ = [
     "log",
     "mcp_client",
     "plugin",
-    "run_sync_or_async",
     "tool",
 ]

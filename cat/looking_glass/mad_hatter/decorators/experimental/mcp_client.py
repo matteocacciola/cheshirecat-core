@@ -9,7 +9,6 @@ from slugify import slugify
 from cat.log import log
 from cat.looking_glass.mad_hatter.procedures import CatProcedure, CatProcedureType
 from cat.services.memory.models import DocumentRecall
-from cat.utils import run_sync_or_async
 
 
 class CatMcpClient(Client, CatProcedure, ABC):
@@ -37,7 +36,7 @@ class CatMcpClient(Client, CatProcedure, ABC):
         self._expected_tool_name: str | None = None
 
     def __repr__(self) -> str:
-        return f"CatMcpClient(name={self.name}, tools={len(self.mcp_tools)})"
+        return f"CatMcpClient(name={self.name}, tools={', '.join([t.name for t in self._cached_tools]) if self._cached_tools else 'Not loaded'})"
 
     def source_name(self, mcp_tool: Tool) -> str:
         return f"{self.name}_{mcp_tool.name}"
@@ -50,15 +49,15 @@ class CatMcpClient(Client, CatProcedure, ABC):
         Returns:
             Tool: The currently expected tool name.
         """
-        return self._expected_tool_name
+        return self._expected_tool_name  # type: ignore[return-value]
 
     @expected_tool_name.setter
     def expected_tool_name(self, expected_tool_name: str):
         self._expected_tool_name = expected_tool_name
 
-    def to_document_recall(self) -> List[DocumentRecall]:
+    async def to_document_recall(self) -> List[DocumentRecall]:
         result = []
-        for mcp_tool in self.mcp_tools:
+        for mcp_tool in await self.mcp_tools():
             triggers_map = {
                 "description": [mcp_tool.description or mcp_tool.name],
             }
@@ -92,7 +91,7 @@ class CatMcpClient(Client, CatProcedure, ABC):
         obj.expected_tool_name = input_params["tool_source"]
         return obj
 
-    def langchainfy(self) -> StructuredTool | None:
+    async def langchainfy(self) -> StructuredTool | None:
         def create_tool_caller(tool_name: str):
             """Create a closure that calls the MCP tool."""
             async def tool_caller(**kwargs):
@@ -108,7 +107,7 @@ class CatMcpClient(Client, CatProcedure, ABC):
         this = self
         original_func = self.call_tool
 
-        for mcp_tool in self.mcp_tools:
+        for mcp_tool in await self.mcp_tools():
             if self.source_name(mcp_tool) == self.expected_tool_name:
                 # Convert the MCP tool to a LangChain StructuredTool
                 return StructuredTool.from_function(
@@ -121,20 +120,15 @@ class CatMcpClient(Client, CatProcedure, ABC):
         log.warning(f"{self.name} - Tool '{self.expected_tool_name}' not found in MCP tools.")
         return None
 
-    async def _get_mcp_tools_async(self) -> List[Tool]:
-        """Asynchronously fetch MCP tools using a proper context manager."""
-        async with self:
-            return await self.list_tools()
+    async def mcp_tools(self) -> List[Tool]:
+        if self._cached_tools is None:
+            async with self:
+                self._cached_tools = await self.list_tools()
+        return self._cached_tools  # type: ignore[return-value]
 
     @property
     def type(self) -> CatProcedureType:
         return CatProcedureType.MCP
-
-    @property
-    def mcp_tools(self) -> List[Tool]:
-        if self._cached_tools is None:
-            self._cached_tools = run_sync_or_async(self._get_mcp_tools_async)
-        return self._cached_tools
 
     @property
     @abstractmethod

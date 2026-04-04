@@ -11,6 +11,7 @@ authors = [
 ]
 dependencies = [
     "aiofiles",
+    "asgi-lifespan",
     "autopep8",
     "bcrypt",
     "cryptography",
@@ -20,6 +21,7 @@ dependencies = [
     "filetype",
     "gunicorn",
     "httpx",
+    "httpx-ws",
     "langchain",
     "langchain-community",
     "lxml",
@@ -87,3 +89,6 @@ extend-ignore = ["E722", "F821", "E741"]
 
 [tool.uv]
 package = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

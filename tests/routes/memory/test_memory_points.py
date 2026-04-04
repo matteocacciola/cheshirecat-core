@@ -12,40 +12,38 @@ from tests.utils import (
 )
 
 
-def test_create_point_wrong_collection(secure_client, secure_client_headers, cheshire_cat):
-    create_new_user(
+async def test_create_point_wrong_collection(secure_client, secure_client_headers, cheshire_cat):
+    await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     req_json = {"content": "Hello dear"}
 
     # wrong collection
-    res = secure_client.post("/memory/collections/wrongcollection/points", json=req_json, headers=headers)
+    res = await secure_client.post("/memory/collections/wrongcollection/points", json=req_json, headers=headers)
     assert res.status_code == 400
 
 
-def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
-    create_new_user(
+async def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
+    await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     # create a point
     content = "Hello dear"
     metadata = {"custom_key": "custom_value"}
     req_json = {"content": content, "metadata": metadata}
-    res = secure_client.post("/memory/collections/declarative/points", json=req_json, headers=headers)
+    res = await secure_client.post("/memory/collections/declarative/points", json=req_json, headers=headers)
     assert res.status_code == 200
     json = res.json()
     assert json["content"] == content
@@ -58,7 +56,7 @@ def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat,
 
     # check memory contents
     params = {"text": "dear, hello"}
-    response = secure_client.get("/memory/recall/", params=params, headers=headers)
+    response = await secure_client.get("/memory/recall", params=params, headers=headers)
     json = response.json()
     assert response.status_code == 200
     assert len(json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)]) == 1
@@ -67,22 +65,21 @@ def test_create_memory_point(secure_client, secure_client_headers, cheshire_cat,
     assert memory["metadata"] == expected_metadata
 
 
-def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_answer_prompt):
-    create_new_user(
+async def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_answer_prompt, cheshire_cat):
+    await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
-    send_file("sample.pdf", "application/pdf", secure_client, secure_client_headers)
+    await send_file("sample.pdf", "application/pdf", secure_client, secure_client_headers)
 
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
 
     # get point back
     params = {"text": "Mad Hatter"}
-    response = secure_client.get(
-        "/memory/recall/", params=params, headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+    response = await secure_client.get(
+        "/memory/recall", params=params, headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     json = response.json()
     assert response.status_code == 200
@@ -91,41 +88,41 @@ def test_point_deleted(secure_client, secure_client_headers, mocked_default_llm_
     mem = json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)][0]
 
     # delete point (wrong collection)
-    res = secure_client.delete(f"/memory/collections/wrongcollection/points/{mem['id']}", headers=secure_client_headers)
+    res = await secure_client.delete(f"/memory/collections/wrongcollection/points/{mem['id']}", headers=secure_client_headers)
     assert res.status_code == 400
 
     # delete point (wrong id)
-    res = secure_client.delete("/memory/collections/declarative/points/wrong_id", headers=secure_client_headers)
+    res = await secure_client.delete("/memory/collections/declarative/points/wrong_id", headers=secure_client_headers)
     assert res.status_code == 400
 
     # delete point (all right)
-    res = secure_client.delete(f"/memory/collections/declarative/points/{mem['id']}", headers=secure_client_headers)
+    res = await secure_client.delete(f"/memory/collections/declarative/points/{mem['id']}", headers=secure_client_headers)
     assert res.status_code == 200
     assert res.json()["deleted"] == mem["id"]
 
     # there is no point now
     params = {"text": "Mad Hatter"}
-    response = secure_client.get(
-        "/memory/recall/", params=params, headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+    response = await secure_client.get(
+        "/memory/recall", params=params, headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
     )
     json = response.json()
     assert response.status_code == 200
     assert len(json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)]) == num - 1
 
     # delete again the same point (should not be found)
-    res = secure_client.delete(f"/memory/collections/declarative/points/{mem['id']}", headers=secure_client_headers)
+    res = await secure_client.delete(f"/memory/collections/declarative/points/{mem['id']}", headers=secure_client_headers)
     assert res.status_code == 400
 
 
 # test delete points by filter
-def test_points_deleted_by_metadata(secure_client, secure_client_headers):
+async def test_points_deleted_by_metadata(secure_client, secure_client_headers, cheshire_cat):
     content_type = "application/pdf"
-    response, file_path = send_file("sample.pdf", content_type, secure_client, secure_client_headers)
+    response, file_path = await send_file("sample.pdf", content_type, secure_client, secure_client_headers)
 
     # check response
     assert response.status_code == 200
     # check memory contents
-    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = await get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
 
     dm_len = len(declarative_memories)
@@ -133,62 +130,61 @@ def test_points_deleted_by_metadata(secure_client, secure_client_headers):
     # upload another document
     with open(file_path, "rb") as f:
         files = {"file": ("sample2.pdf", f, content_type)}
-        response = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
+        response = await secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
 
     # check response
     assert response.status_code == 200
     # check memory contents
-    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = await get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == dm_len * 2
 
     # delete nothing
     metadata = {"source": "invented.pdf"}
-    res = secure_client.request(
+    res = await secure_client.request(
         "DELETE", "/memory/collections/declarative/points", json=metadata, headers=secure_client_headers
     )
     # check memory contents
     assert res.status_code == 200
-    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = await get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == dm_len * 2
 
     # delete first document
     metadata = {"source": "sample.pdf"}
-    res = secure_client.request(
+    res = await secure_client.request(
         "DELETE", "/memory/collections/declarative/points", json=metadata, headers=secure_client_headers
     )
     # check memory contents
     assert res.status_code == 200
     json = res.json()
     assert isinstance(json["deleted"], dict)
-    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = await get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) > 0
 
     # delete second document
     metadata = {"source": "sample2.pdf"}
-    res = secure_client.request(
+    res = await secure_client.request(
         "DELETE", "/memory/collections/declarative/points", json=metadata, headers=secure_client_headers
     )
     # check memory contents
     assert res.status_code == 200
-    declarative_memories = get_memory_contents(secure_client, secure_client_headers)
+    declarative_memories = await get_memory_contents(secure_client, secure_client_headers)
     assert len(declarative_memories) == 0
 
 
-def test_get_collection_points_wrong_collection(secure_client, secure_client_headers):
+async def test_get_collection_points_wrong_collection(secure_client, secure_client_headers, cheshire_cat):
     # not existing collection
-    res = secure_client.get("/memory/collections/unexistent/points", headers=secure_client_headers)
+    res = await secure_client.get("/memory/collections/unexistent/points", headers=secure_client_headers)
     assert res.status_code == 400
 
 
-def test_get_collection_points(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
-    create_new_user(
+async def test_get_collection_points(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
+    await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     # create 100 points
@@ -197,11 +193,11 @@ def test_get_collection_points(secure_client, secure_client_headers, cheshire_ca
 
     # Add points
     for req_json in new_points:
-        res = secure_client.post("/memory/collections/declarative/points", json=req_json, headers=headers)
+        res = await secure_client.post("/memory/collections/declarative/points", json=req_json, headers=headers)
         assert res.status_code == 200
 
     # get all the points no limit, by default is 100
-    res = secure_client.get("/memory/collections/declarative/points", headers=headers)
+    res = await secure_client.get("/memory/collections/declarative/points", headers=headers)
     assert res.status_code == 200
     json = res.json()
 
@@ -236,15 +232,14 @@ def test_get_collection_points(secure_client, secure_client_headers, cheshire_ca
     assert points_payloads == expected_payloads
 
 
-def test_get_collection_points_offset(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
-    create_new_user(
+async def test_get_collection_points_offset(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
+    await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     # create 200 points
@@ -253,7 +248,7 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, ches
 
     # Add points
     for req_json in new_points:
-        res = secure_client.post("/memory/collections/declarative/points", json=req_json, headers=headers)
+        res = await secure_client.post("/memory/collections/declarative/points", json=req_json, headers=headers)
         assert res.status_code == 200
 
     # get all the points with limit 10
@@ -262,7 +257,7 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, ches
     all_points = []
 
     while True:
-        res = secure_client.get(
+        res = await secure_client.get(
             f"/memory/collections/declarative/points?limit={limit}&offset={next_offset}",
             headers = headers
         )
@@ -305,15 +300,14 @@ def test_get_collection_points_offset(secure_client, secure_client_headers, ches
     assert points_payloads == expected_payloads
 
 
-def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_client_headers, cheshire_cat):
-    create_new_user(
+async def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_client_headers, cheshire_cat):
+    await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     req_json = {"content": "Hello dear"}
@@ -321,23 +315,22 @@ def test_edit_point_wrong_collection_and_not_exist(secure_client, secure_client_
     point_id = 100
 
     # wrong collection
-    res = secure_client.put(f"/memory/collections/wrongcollection/points/{point_id}", json=req_json, headers=headers)
+    res = await secure_client.put(f"/memory/collections/wrongcollection/points/{point_id}", json=req_json, headers=headers)
     assert res.status_code == 400
 
     # point do not exist
-    res = secure_client.put("/memory/collections/declarative/points/{point_id}", json=req_json, headers=headers)
+    res = await secure_client.put("/memory/collections/declarative/points/{point_id}", json=req_json, headers=headers)
     assert res.status_code == 400
 
 
-def test_edit_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
-    create_new_user(
+async def test_edit_memory_point(secure_client, secure_client_headers, cheshire_cat, patch_time_now):
+    await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
     )
-    user = crud_users.get_user_by_username(agent_id, "user")
+    user = await crud_users.get_user_by_username(agent_id, "user")
     headers = secure_client_headers | {"X-User-ID": user["id"]}
 
     # create a point
@@ -345,7 +338,7 @@ def test_edit_memory_point(secure_client, secure_client_headers, cheshire_cat, p
     metadata = {"custom_key": "custom_value"}
     req_json = {"content": content, "metadata": metadata}
     # create a point
-    res = secure_client.post("/memory/collections/declarative/points", json=req_json, headers=headers)
+    res = await secure_client.post("/memory/collections/declarative/points", json=req_json, headers=headers)
     assert res.status_code == 200
     json = res.json()
     assert json["id"]
@@ -356,7 +349,7 @@ def test_edit_memory_point(secure_client, secure_client_headers, cheshire_cat, p
     metadata = {"custom_key": "new_custom_value"}
     req_json = {"content": content, "metadata": metadata}
 
-    res = secure_client.put(f"/memory/collections/declarative/points/{point_id}", json=req_json, headers=headers)
+    res = await secure_client.put(f"/memory/collections/declarative/points/{point_id}", json=req_json, headers=headers)
     # check response
     assert res.status_code == 200
     json = res.json()
@@ -370,7 +363,7 @@ def test_edit_memory_point(secure_client, secure_client_headers, cheshire_cat, p
 
     # check memory contents
     params = {"text": "dear, hello"}
-    response = secure_client.get("/memory/recall/", params=params, headers=headers)
+    response = await secure_client.get("/memory/recall", params=params, headers=headers)
     json = response.json()
     assert response.status_code == 200
     assert len(json["vectors"]["collections"][str(VectorMemoryType.DECLARATIVE)]) == 1

@@ -15,15 +15,16 @@ import argparse
 import sys
 from datetime import datetime
 from pathlib import Path
+import redis
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-def get_redis_client():
+def get_redis_client() -> redis.Redis:
     """Get Redis client from environment or defaults"""
-    from cat.db.database import get_db
+    from cat.db.database import get_redis_kwargs
 
-    return get_db()
+    return redis.Redis(**get_redis_kwargs())
 
 
 def generate_revision_id() -> str:

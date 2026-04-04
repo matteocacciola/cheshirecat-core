@@ -1,5 +1,5 @@
-def test_list_plugins(lizard, secure_client, secure_client_headers):
-    response = secure_client.get("/plugins/installed", headers=secure_client_headers)
+async def test_list_plugins(lizard, secure_client, secure_client_headers, cheshire_cat):
+    response = await secure_client.get("/plugins/installed", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -25,8 +25,8 @@ def test_list_plugins(lizard, secure_client, secure_client_headers):
     assert isinstance(json["registry"], list)
 
 
-def test_get_plugin_id(secure_client, secure_client_headers):
-    response = secure_client.get("/plugins/system/details/base_plugin", headers=secure_client_headers)
+async def test_get_plugin_id(secure_client, secure_client_headers, cheshire_cat):
+    response = await secure_client.get("/plugins/system/details/base_plugin", headers=secure_client_headers)
 
     json = response.json()
 
@@ -37,8 +37,8 @@ def test_get_plugin_id(secure_client, secure_client_headers):
     assert json["data"]["local_info"]["active"]
 
 
-def test_get_non_existent_plugin(secure_client, secure_client_headers):
-    response = secure_client.get("/plugins/system/details/no_plugin", headers=secure_client_headers)
+async def test_get_non_existent_plugin(secure_client, secure_client_headers, cheshire_cat):
+    response = await secure_client.get("/plugins/system/details/no_plugin", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 404

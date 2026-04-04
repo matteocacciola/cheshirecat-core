@@ -7,15 +7,16 @@ from cat.services.service_factory import ServiceFactory
 from tests.utils import api_key
 
 
-def test_get_all_auth_handler_settings(secure_client, secure_client_headers, cheshire_cat):
-    auth_handler_schemas = ServiceFactory(
+async def test_get_all_auth_handler_settings(secure_client, secure_client_headers, cheshire_cat):
+    sf = ServiceFactory(
         agent_key=cheshire_cat.agent_key,
         hook_manager=cheshire_cat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_auth_handlers",
         setting_category="auth_handler",
         schema_name="authorizatorName",
-    ).get_schemas()
-    response = secure_client.get("/auth_handler/settings", headers=secure_client_headers)
+    )
+    auth_handler_schemas = await sf.get_schemas()
+    response = await secure_client.get("/auth_handler/settings", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -32,9 +33,9 @@ def test_get_all_auth_handler_settings(secure_client, secure_client_headers, che
     assert json["selected_configuration"] == "CoreAuthConfig"
 
 
-def test_get_auth_handler_settings_non_existent(secure_client, secure_client_headers):
+async def test_get_auth_handler_settings_non_existent(secure_client, secure_client_headers, cheshire_cat):
     non_existent_auth_handler_name = "AuthHandlerNonExistent"
-    response = secure_client.get(
+    response = await secure_client.get(
         f"/auth_handler/settings/{non_existent_auth_handler_name}", headers=secure_client_headers
     )
     json = response.json()
@@ -44,9 +45,9 @@ def test_get_auth_handler_settings_non_existent(secure_client, secure_client_hea
 
 
 @pytest.mark.skip("Have at least another auth_handler class to test")
-def test_get_auth_handler_settings(secure_client, secure_client_headers):
+async def test_get_auth_handler_settings(secure_client, secure_client_headers):
     auth_handler_name = "AuthEnvironmentVariablesConfig"
-    response = secure_client.get(f"/auth_handler/settings/{auth_handler_name}", headers=secure_client_headers)
+    response = await secure_client.get(f"/auth_handler/settings/{auth_handler_name}", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -57,11 +58,11 @@ def test_get_auth_handler_settings(secure_client, secure_client_headers):
 
 
 @pytest.mark.skip("Have at least another auth_handler class to test")
-def test_upsert_auth_handler_settings(secure_client, secure_client_headers):
+async def test_upsert_auth_handler_settings(secure_client, secure_client_headers):
     # set a different auth_handler from default one (same class different size)
     new_auth_handler = "AuthApiKeyConfig"
     auth_handler_config = {"api_key": api_key}
-    response = secure_client.put(
+    response = await secure_client.put(
         f"/auth_handler/settings/{new_auth_handler}", json=auth_handler_config, headers=secure_client_headers
     )
     json = response.json()
@@ -73,19 +74,19 @@ def test_upsert_auth_handler_settings(secure_client, secure_client_headers):
     # Retrieve all auth_handlers settings to check if it was saved in DB
 
     ## We are now forced to use api_key, otherwise we don't get in
-    response = secure_client.get("/auth_handler/settings", headers=secure_client_headers)
+    response = await secure_client.get("/auth_handler/settings", headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 403
     assert json["detail"] == "Forbidden"
 
     ## let's use the configured api_key for http
-    response = secure_client.get("/auth_handler/settings", headers=secure_client_headers)
+    response = await secure_client.get("/auth_handler/settings", headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
     assert json["selected_configuration"] == new_auth_handler
 
     ## check also specific auth_handler endpoint
-    response = secure_client.get(f"/auth_handler/settings/{new_auth_handler}", headers=secure_client_headers)
+    response = await secure_client.get(f"/auth_handler/settings/{new_auth_handler}", headers=secure_client_headers)
     assert response.status_code == 200
     json = response.json()
     assert json["name"] == new_auth_handler

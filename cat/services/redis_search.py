@@ -4,7 +4,7 @@ from redis import RedisError
 
 from cat.auth.auth_utils import check_password
 import cat.db.cruds.users as crud_users
-from cat.db.database import get_db, DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY
+from cat.db.database import get_async_db, DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY
 from cat.log import log
 from cat.utils import singleton
 
@@ -49,9 +49,9 @@ return nil
 @singleton
 class RedisSearchService:
     def __init__(self):
-        self.redis_client = get_db()
+        self.redis_client = get_async_db()
 
-    def search_user_by_credentials(self, username: str, password: str) -> List[str] | None:
+    async def search_user_by_credentials(self, username: str, password: str) -> List[str] | None:
         """
         Search for users by username across all agents and verify password.
 
@@ -66,13 +66,13 @@ class RedisSearchService:
             RedisError: If Redis connection fails.
         """
         try:
-            username_search_sha = self.redis_client.script_load(USERNAME_SEARCH_SCRIPT)
+            username_search_sha = await self.redis_client.script_load(USERNAME_SEARCH_SCRIPT)
 
             # Phase 1: Find all users with this username across all agents
-            result = self.redis_client.evalsha(username_search_sha, 0, username)
+            result = await self.redis_client.evalsha(username_search_sha, 0, username)
 
             # Phase 2: Find the user with the username and password within the "system" agent
-            system_user = crud_users.get_user_by_credentials(DEFAULT_SYSTEM_KEY, username, password)
+            system_user = await crud_users.get_user_by_credentials(DEFAULT_SYSTEM_KEY, username, password)
 
             if not result and not system_user:
                 return None

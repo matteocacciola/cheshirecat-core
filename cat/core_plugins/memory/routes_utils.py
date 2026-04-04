@@ -18,7 +18,8 @@ class MemoryPoint(MemoryPointBase):
 
 async def verify_memory_point_existence(cheshire_cat: CheshireCat, collection_id: str, point_id: str) -> None:
     # check if point exists
-    points = await cheshire_cat.vector_memory_handler.retrieve_tenant_points(collection_id, [point_id])
+    vmh = await cheshire_cat.vector_memory_handler()
+    points = await vmh.retrieve_tenant_points(collection_id, [point_id])
     if not points:
         raise CustomNotFoundException("Point does not exist.")
 
@@ -27,7 +28,8 @@ async def upsert_memory_point(
     collection_id: str, point: MemoryPointBase, info: AuthorizedInfo, point_id: str = None
 ) -> MemoryPoint:
     # embed content
-    embedding = info.lizard.embedder.embed_query(point.content)
+    embedder = await info.lizard.embedder()
+    embedding = embedder.embed_query(point.content)
 
     # ensure source is set
     if not point.metadata.get("source"):
@@ -38,7 +40,8 @@ async def upsert_memory_point(
         point.metadata["when"] = time.time()  # if when is not in the metadata set the current time
 
     # create point
-    qdrant_point = await info.cheshire_cat.vector_memory_handler.add_point_to_tenant(
+    vmh = await info.cheshire_cat.vector_memory_handler()  # type: ignore[assignment]
+    qdrant_point = await vmh.add_point_to_tenant(
         collection_name=collection_id,
         content=point.content,
         vector=embedding,
@@ -47,8 +50,8 @@ async def upsert_memory_point(
     )
 
     return MemoryPoint(
-        metadata=qdrant_point.payload["metadata"],
-        content=qdrant_point.payload["page_content"],
-        vector=qdrant_point.vector,
-        id=qdrant_point.id
+        metadata=qdrant_point.payload["metadata"],  # type: ignore[attr-defined]
+        content=qdrant_point.payload["page_content"],  # type: ignore[attr-defined]
+        vector=qdrant_point.vector,  # type: ignore[attr-defined]
+        id=qdrant_point.id  # type: ignore[attr-defined]
     )

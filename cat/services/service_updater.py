@@ -12,7 +12,7 @@ class ServiceUpdater:
     def __init__(self, factory: ServiceFactory):
         self._factory = factory
 
-    def _update_factory_object(self, settings_name: str, settings: Dict) -> UpdaterFactory:
+    async def _update_factory_object(self, settings_name: str, settings: Dict) -> UpdaterFactory:
         """
         Update the settings of the factory object. This method upserts the settings in the database and returns
         an UpdaterFactory object containing the old and new settings.
@@ -24,11 +24,11 @@ class ServiceUpdater:
         Returns:
             UpdaterFactory: object containing old and new settings
         """
-        current_setting = crud_settings.get_settings_by_category(self._factory.agent_key, self._factory.setting_category)
+        current_setting = await crud_settings.get_settings_by_category(self._factory.agent_key, self._factory.setting_category)
 
         # upsert the settings for the factory
         crypto = StringCrypto()
-        final_setting = crud_settings.upsert_setting_by_category(self._factory.agent_key, models.Setting(
+        final_setting = await crud_settings.upsert_setting_by_category(self._factory.agent_key, models.Setting(
             name=settings_name,
             category=self._factory.setting_category,
             value={
@@ -41,7 +41,7 @@ class ServiceUpdater:
 
         return UpdaterFactory(old_setting=current_setting, new_setting=final_setting)
 
-    def replace_service(self, model_provider_name: str, settings: Dict) -> Dict:
+    async def replace_service(self, model_provider_name: str, settings: Dict) -> Dict:
         """
         Replace the current service with a new one based on the provided name and settings.
 
@@ -54,7 +54,7 @@ class ServiceUpdater:
         """
         updater = None
         try:
-            updater = self._update_factory_object(model_provider_name, settings)
+            updater = await self._update_factory_object(model_provider_name, settings)
 
             return {"name": model_provider_name, "value": updater.new_setting["value"]}  # type: ignore
         except Exception as e:
@@ -62,6 +62,6 @@ class ServiceUpdater:
 
             # something went wrong: rollback
             if updater is not None and updater.old_setting is not None:
-                self.replace_service(updater.old_setting["name"], updater.old_setting["value"])  # type: ignore
+                await self.replace_service(updater.old_setting["name"], updater.old_setting["value"])
 
             raise e

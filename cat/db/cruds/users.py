@@ -1,15 +1,15 @@
 from datetime import datetime, timezone
-from typing import Dict
+from typing import Dict, List
 from uuid import uuid4
 from redis.exceptions import LockError, RedisError
 
 from cat.auth.auth_utils import check_password
 from cat.db import crud
-from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY, DEFAULT_USERS_KEY
+from cat.db.database import DEFAULT_AGENTS_KEY, DEFAULT_SYSTEM_KEY, DEFAULT_USERS_KEY, get_async_db
 from cat.log import log
 
 
-def _extract_user_data(user_data: Dict, excluded_keys: Dict | None = None) -> Dict:
+def _extract_user_data(user_data: Dict, excluded_keys: List | None = None) -> Dict:
     """
     Extract user data, excluding sensitive fields.
 
@@ -43,7 +43,7 @@ def format_key(agent_id: str, user_id: str) -> str:
     )
 
 
-def get_users(
+async def get_users(
     agent_id: str,
     with_password: bool = False,
     with_timestamps: bool = False,
@@ -68,18 +68,11 @@ def get_users(
     """
     try:
         # Get database connection
-        db = crud.get_db()
+        db = get_async_db()
 
         # Scan for user keys matching the pattern
         pattern = format_key(agent_id, "*")
-        cursor = 0
-        all_keys = []
-
-        while True:
-            cursor, keys = db.scan(cursor, match=pattern, count=100)
-            all_keys.extend(keys)
-            if cursor == 0:
-                break
+        all_keys = [k async for k in db.scan_iter(match=pattern, count=100)]
 
         if not all_keys:
             return {}
@@ -106,7 +99,7 @@ def get_users(
             key_str = key.decode() if isinstance(key, bytes) else key
             pipe.json().get(key_str)
 
-        users_data = pipe.execute()
+        users_data = await pipe.execute()
 
         # Build result dictionary
         excluded_keys = []
@@ -132,7 +125,7 @@ def get_users(
         raise
 
 
-def get_users_stream(
+async def get_users_stream(
     agent_id: str,
     with_password: bool = False,
     with_timestamps: bool = False,
@@ -162,7 +155,7 @@ def get_users_stream(
             process_user(user_id, user_data)
     """
     try:
-        db = crud.get_db()
+        db = get_async_db()
         pattern = format_key(agent_id, "*")
         cursor = 0
 
@@ -175,7 +168,7 @@ def get_users_stream(
 
         while True:
             # Scan for next batch of keys
-            cursor, keys = db.scan(cursor, match=pattern, count=batch_size)
+            cursor, keys = await db.scan(cursor, match=pattern, count=batch_size)
 
             if keys:
                 # Batch read this chunk of users
@@ -184,7 +177,7 @@ def get_users_stream(
                     key_str = key.decode() if isinstance(key, bytes) else key
                     pipe.json().get(key_str)
 
-                users_data = pipe.execute()
+                users_data = await pipe.execute()
 
                 # Yield each user in this batch
                 for key, user_data in zip(keys, users_data):
@@ -205,7 +198,7 @@ def get_users_stream(
         raise
 
 
-def create_user(agent_id: str, new_user: Dict) -> Dict | None:
+async def create_user(agent_id: str, new_user: Dict) -> Dict | None:
     """
     Create a new user in Redis atomically.
 
@@ -228,13 +221,13 @@ def create_user(agent_id: str, new_user: Dict) -> Dict | None:
         username = new_user["username"]
         lock_pattern = format_key(agent_id, f"username_lock:{username}")
 
-        with crud.distributed_lock(lock_pattern):
-            if get_user_by_username(agent_id, username, with_password=True):
+        async with crud.distributed_lock(lock_pattern):
+            if await get_user_by_username(agent_id, username, with_password=True):
                 log.debug(f"User {username} already exists for {agent_id}")
                 return None
 
             existing_id = new_user.get("id")
-            if existing_id and get_user(agent_id, existing_id):
+            if existing_id and await get_user(agent_id, existing_id):  # type: ignore[union-attr]
                 log.debug(f"User ID {existing_id} already exists for {agent_id}")
                 return None
 
@@ -245,7 +238,7 @@ def create_user(agent_id: str, new_user: Dict) -> Dict | None:
             new_user_copy["updated_at"] = new_user_copy["created_at"]
 
             # Store user in its own Redis key
-            crud.store(format_key(agent_id, new_id), new_user_copy)
+            await crud.store(format_key(agent_id, new_id), new_user_copy)
             log.debug(f"Created user {new_id} for {agent_id}")
 
             return _extract_user_data(new_user_copy)
@@ -254,7 +247,7 @@ def create_user(agent_id: str, new_user: Dict) -> Dict | None:
         raise
 
 
-def _get_user_by(agent_id: str, key: str, value: str, full: bool = False) -> Dict | None:
+async def _get_user_by(agent_id: str, key: str, value: str, full: bool = False) -> Dict | None:
     """
     Helper function to retrieve a user by a specific key.
 
@@ -273,7 +266,7 @@ def _get_user_by(agent_id: str, key: str, value: str, full: bool = False) -> Dic
     try:
         # Optimize: for 'id' lookup, directly read the specific key
         if key == "id":
-            user_data = crud.read(format_key(agent_id, value))
+            user_data = await crud.read(format_key(agent_id, value))
             if not user_data:
                 log.debug(f"No user found for {agent_id}, id: {value}")
                 return None
@@ -287,14 +280,14 @@ def _get_user_by(agent_id: str, key: str, value: str, full: bool = False) -> Dic
 
         # For other lookups (e.g., username), scan and process in batches with early exit
         # This avoids loading all users into memory at once
-        db = crud.get_db()
+        db = get_async_db()
         pattern = format_key(agent_id, "*")
         cursor = 0
         batch_size = 100  # Process in batches to avoid memory issues with large datasets
 
         while True:
             # Scan for next batch of keys
-            cursor, keys = db.scan(cursor, match=pattern, count=batch_size)
+            cursor, keys = await db.scan(cursor, match=pattern, count=batch_size)
 
             if keys:
                 # Batch read this chunk of users using pipeline
@@ -303,7 +296,7 @@ def _get_user_by(agent_id: str, key: str, value: str, full: bool = False) -> Dic
                     key_str = user_key.decode() if isinstance(user_key, bytes) else user_key
                     pipe.json().get(key_str)
 
-                users_data = pipe.execute()
+                users_data = await pipe.execute()
 
                 # Check this batch for a match (early exit on first match)
                 for user_data in users_data:
@@ -324,15 +317,15 @@ def _get_user_by(agent_id: str, key: str, value: str, full: bool = False) -> Dic
         raise
 
 
-def get_user(agent_id: str, user_id: str, full: bool = False) -> Dict | None:
-    return _get_user_by(agent_id, "id", user_id, full)
+async def get_user(agent_id: str, user_id: str, full: bool = False) -> Dict | None:
+    return await _get_user_by(agent_id, "id", user_id, full)
 
 
-def get_user_by_username(agent_id: str, username: str, with_password: bool = False) -> Dict | None:
-    return _get_user_by(agent_id, "username", username, with_password)
+async def get_user_by_username(agent_id: str, username: str, with_password: bool = False) -> Dict | None:
+    return await _get_user_by(agent_id, "username", username, with_password)
 
 
-def update_user(agent_id: str, user_id: str, updated_info: Dict) -> Dict | None:
+async def update_user(agent_id: str, user_id: str, updated_info: Dict) -> Dict | None:
     """
     Update a user in Redis atomically.
 
@@ -350,7 +343,7 @@ def update_user(agent_id: str, user_id: str, updated_info: Dict) -> Dict | None:
     """
     try:
         # Get existing user with password
-        if not (existing_user := get_user(agent_id, user_id, full=True)):
+        if not (existing_user := await get_user(agent_id, user_id, full=True)):
             log.debug(f"User {user_id} not found for {agent_id}")
             return None
 
@@ -365,7 +358,7 @@ def update_user(agent_id: str, user_id: str, updated_info: Dict) -> Dict | None:
         )
 
         # Update the user's individual key
-        crud.store(format_key(agent_id, user_id), updated_info_copy)
+        await crud.store(format_key(agent_id, user_id), updated_info_copy)
         log.debug(f"Updated user {user_id} for {agent_id}")
 
         return _extract_user_data(updated_info_copy)
@@ -374,7 +367,7 @@ def update_user(agent_id: str, user_id: str, updated_info: Dict) -> Dict | None:
         raise
 
 
-def delete_user(agent_id: str, user_id: str) -> Dict | None:
+async def delete_user(agent_id: str, user_id: str) -> Dict | None:
     """
     Delete a user from Redis atomically.
 
@@ -390,13 +383,12 @@ def delete_user(agent_id: str, user_id: str) -> Dict | None:
     """
     try:
         # Get user before deleting to return it
-        if not (user := get_user(agent_id, user_id, full=True)):
+        if not (user := await get_user(agent_id, user_id, full=True)):
             log.debug(f"User {user_id} not found for {agent_id}")
             return None
 
         # Delete the entire user key
-        db = crud.get_db()
-        db.delete(format_key(agent_id, user_id))
+        await get_async_db().delete(format_key(agent_id, user_id))
 
         log.debug(f"Deleted user {user_id} for {agent_id}")
         return user
@@ -405,7 +397,7 @@ def delete_user(agent_id: str, user_id: str) -> Dict | None:
         raise
 
 
-def get_user_by_credentials(agent_id: str, username: str, password: str) -> Dict | None:
+async def get_user_by_credentials(agent_id: str, username: str, password: str) -> Dict | None:
     """
     Authenticate a user by username and password.
 
@@ -421,7 +413,7 @@ def get_user_by_credentials(agent_id: str, username: str, password: str) -> Dict
         RedisError: If Redis connection fails.
     """
     try:
-        user = get_user_by_username(agent_id, username, with_password=True)
+        user = await get_user_by_username(agent_id, username, with_password=True)
         if not user:
             log.debug(f"Authentication failed: user {username} not found for {agent_id}")
             return None
@@ -437,7 +429,7 @@ def get_user_by_credentials(agent_id: str, username: str, password: str) -> Dict
         raise
 
 
-def destroy_all(agent_id: str):
+async def destroy_all(agent_id: str):
     """
     Delete all users for a specific agent from Redis.
 
@@ -450,7 +442,7 @@ def destroy_all(agent_id: str):
     try:
         # Use the wildcard pattern to destroy all user keys for this agent
         pattern = format_key(agent_id, "*")
-        crud.destroy(pattern)
+        await crud.destroy(pattern)
         log.debug(f"Destroyed all user keys for {agent_id}")
     except RedisError as e:
         log.error(f"Redis error destroying users for {agent_id}: {e}")

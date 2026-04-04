@@ -16,13 +16,14 @@ async def get_llms_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Large Language Models"""
     ccat = info.cheshire_cat
-    return ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+    sf = ServiceFactory(
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_llms",
         setting_category="llm",
         schema_name="languageModelName",
-    ).get_factory_settings()
+    )
+    return await sf.get_factory_settings()
 
 
 @router.get("/settings/{language_model_name}", response_model=GetSettingResponse, summary="Get LLM Settings")
@@ -32,13 +33,14 @@ async def get_llm_settings(
 ) -> GetSettingResponse:
     """Get settings and scheme of the specified Large Language Model"""
     ccat = info.cheshire_cat
-    return ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+    sf = ServiceFactory(
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_llms",
         setting_category="llm",
         schema_name="languageModelName",
-    ).get_factory_setting(language_model_name)
+    )
+    return await sf.get_factory_setting(language_model_name)
 
 
 @router.put("/settings/{language_model_name}", response_model=UpsertSettingResponse, summary="Upsert LLM Settings")
@@ -49,12 +51,13 @@ async def upsert_llm_setting(
 ) -> UpsertSettingResponse:
     """Upsert the Large Language Model setting"""
     ccat = info.cheshire_cat
-
-    result = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+    sf = ServiceFactory(
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_llms",
         setting_category="llm",
         schema_name="languageModelName",
-    ).upsert_service(language_model_name, payload)
+    )
+
+    result = await sf.upsert_service(language_model_name, payload)
     return UpsertSettingResponse(**result)

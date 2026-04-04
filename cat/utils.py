@@ -1,4 +1,3 @@
-import asyncio
 import copy
 import socket
 import base64
@@ -7,10 +6,9 @@ import inspect
 import os
 import subprocess
 import tempfile
-import threading
 from enum import Enum as BaseEnum, EnumMeta
 from io import BytesIO
-from typing import Dict, List, Type, TypeVar, Any, Callable, Union, Generic, Tuple
+from typing import Dict, List, Type, TypeVar, Any, Generic, Tuple
 from urllib.parse import urlparse
 import aiofiles
 import filetype
@@ -26,7 +24,7 @@ _T = TypeVar("_T")
 
 
 class singleton(Generic[_T]):
-    instances = {}
+    instances: dict = {}  # type: ignore[var-annotated]
 
     def __init__(self, class_: type[_T]):
         self._class = class_
@@ -118,7 +116,7 @@ def to_camel_case(text: str) -> str:
         Camel case formatted string.
     """
     s = text.replace("-", " ").replace("_", " ").capitalize()
-    s = s.split()
+    s = s.split()  # type: ignore[assignment]
     if len(text) == 0:
         return text
     return s[0] + "".join(i.capitalize() for i in s[1:])
@@ -181,7 +179,7 @@ HOW TO FIX: go to your OpenAI account and add a credit card"""
 
 def parse_json(json_string: str, pydantic_model: BaseModel = None) -> Dict:
     # instantiate parser
-    parser = JsonOutputParser(pydantic_object=pydantic_model)
+    parser = JsonOutputParser(pydantic_object=pydantic_model)  # type: ignore[arg]
 
     # clean to help small LLMs
     replaces = {
@@ -230,7 +228,7 @@ def get_caller_info(skip: int | None = 2, return_short: bool = True, return_stri
     None is returned if skipped levels exceed stack height.
     """
     stack = inspect.stack()
-    start = 0 + skip
+    start = 0 + skip  # type: ignore[operator]
     if len(stack) < start + 1:
         return None
 
@@ -273,11 +271,11 @@ def get_allowed_plugins_mime_types() -> List:
 
 def inspect_calling_folder() -> str:
     # who's calling?
-    calling_frame = inspect.currentframe().f_back.f_back
+    calling_frame = inspect.currentframe().f_back.f_back  # type: ignore[union-attr]
     # Get the module associated with the frame
     # Get the absolute and then relative path of the calling module's file
     abs_path = os.path.abspath(
-        inspect.getabsfile(inspect.getmodule(calling_frame))
+        inspect.getabsfile(inspect.getmodule(calling_frame))  # type: ignore[arg-type]
     )
 
     # throw exception if this method is called from outside the plugins folder
@@ -297,7 +295,7 @@ def inspect_calling_folder() -> str:
     return plugin_suffix.split("/")[0]
 
 
-def inspect_calling_agent() -> Union["CheshireCat", "BillTheLizard"]:
+def inspect_calling_agent() -> Any:
     instance = None
 
     # get the stack of calls
@@ -330,7 +328,7 @@ def inspect_calling_agent() -> Union["CheshireCat", "BillTheLizard"]:
 def restore_original_model(d: _T | Dict | None, model: Type[_T]) -> _T | None:
     # if _T is not a BaseModeDict, return the original object
     if not issubclass(model, BaseModel):
-        return d
+        return d  # type: ignore[return-value]
 
     # restore the original model
     if isinstance(d, Dict):
@@ -358,12 +356,12 @@ def pod_id() -> str:
 def retrieve_image(content_image: str | None) -> str | None:
     def get_image_data() -> bytes:
         # If the image is a file, read it and encode it as a data URI
-        if content_image.startswith("file://"):
-            with open(content_image[7:], "rb") as f:
+        if content_image.startswith("file://"):  # type: ignore[union-attr]
+            with open(content_image[7:], "rb") as f:  # type: ignore[index]
                 image_data = f.read()
             return image_data
         # If the image is a URL, download it and encode it as a data URI.
-        response = requests.get(content_image)
+        response = requests.get(content_image)  # type: ignore[union-attr]
         response.raise_for_status()
         return response.content
 
@@ -376,7 +374,7 @@ def retrieve_image(content_image: str | None) -> str | None:
         content = get_image_data()
         # Open the image using Pillow to determine its MIME type
         img = Image.open(BytesIO(content))
-        mime_type = Image.MIME[img.format]  # e.g., "image/png"
+        mime_type = Image.MIME[img.format]   # type: ignore[union-attr] # e.g., "image/png"
         # Encode the image to base64
         encoded_image = base64.b64encode(content).decode("utf-8")
         # Add the image as a data URI with the correct MIME type
@@ -384,93 +382,6 @@ def retrieve_image(content_image: str | None) -> str | None:
     except requests.RequestException as e:
         log.error(f"Failed to download image: {e} from {content_image}")
         return None
-
-
-def run_sync_or_async(callback: Callable[..., Any], *args, **kwargs) -> Any:
-    """
-    Execute a callback function whether it's synchronous or asynchronous.
-
-    If the callback is async and there's already a running event loop,
-    it will be executed in a new event loop in a separate thread to avoid
-    blocking the main event loop.
-
-    Args:
-        callback: The function to execute (sync or async)
-        *args: Positional arguments to pass to the callback
-        **kwargs: Keyword arguments to pass to the callback
-
-    Returns:
-        The result of the callback execution
-
-    Raises:
-        Any exception raised by the callback
-    """
-    # Handle async functions
-    if inspect.iscoroutinefunction(callback):
-        try:
-            # Check if there's already a running event loop
-            asyncio.get_running_loop()
-
-            # If we're here, there's a running loop, so we need to run
-            # the async function in a separate thread with its own event loop
-            return _run_async_in_thread(callback(*args, **kwargs))
-        except RuntimeError:
-            # No running event loop, safe to use asyncio.run
-            return asyncio.run(callback(*args, **kwargs))
-
-    # Handle coroutine objects (already created coroutines)
-    if inspect.iscoroutine(callback):
-        try:
-            asyncio.get_running_loop()
-            return _run_async_in_thread(callback)
-        except RuntimeError:
-            return asyncio.run(callback)
-
-    # Handle synchronous functions
-    return callback(*args, **kwargs)
-
-
-def _run_async_in_thread(coro) -> Any:
-    """
-    Run a coroutine in a new event loop in a separate thread.
-
-    Args:
-        coro: The coroutine to execute
-
-    Returns:
-        The result of the coroutine execution
-
-    Raises:
-        Any exception raised by the coroutine
-    """
-    result = None
-    exception = None
-
-    def thread_target():
-        nonlocal result, exception
-        try:
-            # Create a new event loop for this thread
-            new_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(new_loop)
-
-            # Run the coroutine to completion
-            result = new_loop.run_until_complete(coro)
-
-            # Clean up
-            new_loop.close()
-        except Exception as e:
-            exception = e
-
-    # Start the thread and wait for it to complete
-    thread = threading.Thread(target=thread_target)
-    thread.start()
-    thread.join()
-
-    # Re-raise any exception that occurred in the thread
-    if exception is not None:
-        raise exception
-
-    return result
 
 
 def colored_text(text: str, color: str):

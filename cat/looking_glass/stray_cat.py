@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from typing import List, Final, Callable
 from langchain_core.tools import StructuredTool
@@ -9,10 +10,10 @@ from cat.log import log
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.procedures import CatProcedure
 from cat.looking_glass.models import AgenticWorkflowTask, AgenticWorkflowOutput, ChatResponse
+from cat.mixins import BotMixin
 from cat.services.memory.messages import CatMessage, UserMessage
 from cat.services.memory.models import VectorMemoryType, RecallSettings
 from cat.services.memory.working_memory import WorkingMemory
-from cat.services.mixin import BotMixin
 from cat.services.notifier import NotifierService
 from cat.templates import prompts
 
@@ -68,15 +69,26 @@ class StrayCat(BotMixin):
         self._agent_id: Final[str] = agent_id
         self.user: Final[AuthUserInfo] = user_data
         self.plugin_manager_generator: Final[Callable[[], MadHatter]] = plugin_manager_generator
-        self.notifier: Final[NotifierService] = NotifierService(self.user, self.agent_key, self.id)
+        self.notifier: Final[NotifierService] = NotifierService(self.user, self.agent_key, self.id)  # type: ignore[call-arg]
 
-        # bootstrap stray cat
-        super().__init__()
-
-        self.working_memory = WorkingMemory(agent_id=self.agent_key, user_id=self.user.id, chat_id=self.id)
+        self.working_memory = None
+        self._agentic_workflow = None
         self.latest_n_history = 1
 
-        self._agentic_workflow = self.agentic_workflow
+    @classmethod
+    async def create(
+        cls,
+        agent_id: str,
+        user_data: AuthUserInfo,
+        plugin_manager_generator: Callable[[], MadHatter],
+        stray_id: str | None = None
+    ) -> "StrayCat":
+        """Factory method to create a StrayCat instance and its working memory."""
+        cat = cls(agent_id, user_data, plugin_manager_generator, stray_id)
+        cat.working_memory = await WorkingMemory.create(agent_id=agent_id, user_id=user_data.id, chat_id=cat.id)
+        cat._agentic_workflow = await cat.agentic_workflow()
+
+        return cat
 
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""
@@ -100,15 +112,16 @@ class StrayCat(BotMixin):
             config (RecallSettings): Configuration settings for memory retrieval. It includes retrieval parameters and
                 metadata to refine the memory extraction process.
         """
-        # recall declarative memory from vector collections
-        agent_memories = await self._agentic_workflow.context_retrieval(
-            collection=VectorMemoryType.DECLARATIVE, params=config,
-        )
-
-        # recall episodic memory from vector collections
-        chat_memories = await self._agentic_workflow.context_retrieval(
-            collection=VectorMemoryType.EPISODIC,
-            params=config.model_copy(deep=True, update={"metadata": {"chat_id": self.id}}),
+        # Recall declarative and episodic memories in parallel — they are fully independent
+        # Qdrant queries that hit different collections, so there is no reason to serialise them.
+        agent_memories, chat_memories = await asyncio.gather(
+            self._agentic_workflow.context_retrieval(
+                collection=VectorMemoryType.DECLARATIVE, params=config,
+            ),
+            self._agentic_workflow.context_retrieval(
+                collection=VectorMemoryType.EPISODIC,
+                params=config.model_copy(deep=True, update={"metadata": {"chat_id": self.id}}),
+            ),
         )
 
         self.working_memory.context_memories = list(set(agent_memories) | set(chat_memories))
@@ -134,12 +147,13 @@ class StrayCat(BotMixin):
         tools = []
         for m in memories:
             try:
-                if lp := CatProcedure.from_document_recall(document=m, stray=self).langchainfy():
+                cp = CatProcedure.from_document_recall(document=m, stray=self)
+                if lp := await cp.langchainfy():
                     tools.append(lp)
             except Exception as e:
                 log.warning(f"Agent id: {self.agent_key}. Could not reconstruct procedure from memory. Error: {e}")
 
-        tools = self.plugin_manager.execute_hook("agent_allowed_tools", tools, caller=self)
+        tools = await self.plugin_manager.execute_hook("agent_allowed_tools", tools, caller=self)
 
         return tools
 
@@ -170,45 +184,54 @@ class StrayCat(BotMixin):
         plugin_manager = self.plugin_manager
 
         # Run a totally custom reply (skips all the side effects of the framework)
-        if fast_reply := plugin_manager.execute_hook("fast_reply", None, caller=self):
+        if fast_reply := await plugin_manager.execute_hook("fast_reply", None, caller=self):
             return CatMessage(text=fast_reply)
 
         # obtain prompt parts from plugins
-        prompt_prefix = plugin_manager.execute_hook("agent_prompt_prefix", prompts.MAIN_PROMPT, caller=self)
-        prompt_suffix = plugin_manager.execute_hook("agent_prompt_suffix", "", caller=self)
+        prompt_prefix = await plugin_manager.execute_hook("agent_prompt_prefix", prompts.MAIN_PROMPT, caller=self)
+        prompt_suffix = await plugin_manager.execute_hook("agent_prompt_suffix", "", caller=self)
         system_prompt = prompt_prefix + prompt_suffix
 
         # hook to modify/enrich user input; this is the latest user message
         self.working_memory.user_message = utils.restore_original_model(
-            plugin_manager.execute_hook("before_cat_reads_message", self.working_memory.user_message, caller=self),
+            await plugin_manager.execute_hook("before_cat_reads_message", self.working_memory.user_message, caller=self),
             UserMessage
         )
 
         try:
+            embedder = await self.lizard.embedder()
             config = RecallSettings(
-                embedding=self.lizard.embedder.embed_query(self.working_memory.user_message.text),
+                embedding=embedder.embed_query(self.working_memory.user_message.text),  # type: ignore[arg-type]
                 metadata=self.working_memory.user_message.get("metadata", {})
             )
 
             # hook to do something before recall begins
-            config = self.plugin_manager.execute_hook("before_cat_recalls_memories", config, caller=self)
+            config = await self.plugin_manager.execute_hook("before_cat_recalls_memories", config, caller=self)
+
+            # Start the PROCEDURAL fetch immediately — it queries a different Qdrant collection
+            # and is completely independent of the DECLARATIVE + EPISODIC recalls below.
+            # Both sets of queries will run concurrently on the event loop.
+            procedures_task = asyncio.ensure_future(self.get_procedures(config))
 
             await self.recall_context_to_working_memory(config)
 
             # hook to modify/enrich retrieved memories
-            self.plugin_manager.execute_hook("after_cat_recalls_memories", config, caller=self)
+            await self.plugin_manager.execute_hook("after_cat_recalls_memories", config, caller=self)
 
             # if the agent is set to fast reply, skip everything and return the output
-            agent_output = plugin_manager.execute_hook("agent_fast_reply", caller=self)
+            agent_output = await plugin_manager.execute_hook("agent_fast_reply", caller=self)
             if agent_output:
+                procedures_task.cancel()
                 return CatMessage(text=agent_output.output)
 
-            tools = await self.get_procedures(config)
+            # By the time we reach here the PROCEDURAL query has very likely already finished
+            # (it ran concurrently with recalls + hooks); this await is typically instant.
+            tools = await procedures_task
 
             # prepare agent input
             agent_input = AgenticWorkflowTask(
                 system_prompt=system_prompt,
-                user_prompt=self.working_memory.user_message.text,
+                user_prompt=self.working_memory.user_message.text,  # type: ignore[arg-type]
                 context=[m.document for m in self.working_memory.context_memories],
                 history=[h.langchainfy() for h in self.working_memory.history[-config.latest_n_history:]],
                 tools=tools,
@@ -216,8 +239,8 @@ class StrayCat(BotMixin):
 
             agent_output = await self._agentic_workflow.run(
                 task=agent_input,
-                llm=self.large_language_model,
-                callbacks=plugin_manager.execute_hook("llm_callbacks", [], caller=self),
+                llm=await self.large_language_model(),
+                callbacks=await plugin_manager.execute_hook("llm_callbacks", [], caller=self),
             )
 
             if agent_output.output == utils.default_llm_answer_prompt():
@@ -229,17 +252,17 @@ class StrayCat(BotMixin):
             )
 
         # prepare a final cat message
-        final_output = CatMessage(text=agent_output.output)
+        final_output = CatMessage(text=agent_output.output)  # type: ignore[arg-type]
 
         # run a message through plugins
         final_output = utils.restore_original_model(
-            plugin_manager.execute_hook(
+            await plugin_manager.execute_hook(
                 "before_cat_sends_message", final_output, agent_output, caller=self
             ),
             CatMessage,
         )
 
-        return final_output
+        return final_output  # type: ignore[return-value]
 
     async def run_http(self, user_message: UserMessage) -> ChatResponse:
         try:
@@ -250,7 +273,7 @@ class StrayCat(BotMixin):
             message = CatMessage(text="", error=str(e))
 
         return ChatResponse(
-            agent_id=self.agent_key,
+            agent_id=self.agent_key,  # type: ignore[arg-type]
             user_id=self.user.id,
             chat_id=self.id,
             message=message,

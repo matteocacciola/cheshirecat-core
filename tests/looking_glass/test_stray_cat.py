@@ -1,5 +1,3 @@
-import pytest
-
 from cat import AgenticWorkflowTask
 from cat.db.cruds import users as crud_users
 from cat.looking_glass import StrayCat
@@ -7,7 +5,7 @@ from cat.services.memory.messages import MessageWhy
 from cat.services.memory.models import VectorMemoryType, RecallSettings
 from cat.services.memory.working_memory import WorkingMemory
 
-from tests.utils import api_key, create_mock_plugin_zip, send_file, http_message
+from tests.utils import api_key, send_file, http_message, just_installed_plugin
 
 
 def test_stray_initialization(stray_no_memory):
@@ -17,25 +15,24 @@ def test_stray_initialization(stray_no_memory):
     assert isinstance(stray_no_memory.working_memory, WorkingMemory)
 
 
-@pytest.mark.asyncio
 async def test_stray_nlp(lizard, stray_no_memory):
     agent_input = AgenticWorkflowTask(
         user_prompt="hey",
     )
-    res = await stray_no_memory.agentic_workflow.run(
+    af = await stray_no_memory.agentic_workflow()
+    res = await af.run(
         task=agent_input,
-        llm=stray_no_memory.large_language_model,
+        llm=await stray_no_memory.large_language_model(),
     )
     assert "You did not configure" in res.output
 
-    embedding = lizard.embedder.embed_documents(["hey"])
+    embedding = (await lizard.embedder()).embed_documents(["hey"])
     assert isinstance(embedding[0], list)
     assert isinstance(embedding[0][0], float)
 
 
-@pytest.mark.asyncio
 async def test_stray_call(secure_client, stray_no_memory):
-    crud_users.create_user(
+    await crud_users.create_user(
         stray_no_memory.agent_key,
         {
             "id": stray_no_memory.user.id,
@@ -54,7 +51,7 @@ async def test_stray_call(secure_client, stray_no_memory):
 
     # send message
     message = "what time is it?"
-    status_code, response_json = http_message(secure_client,{"text": message}, ccat_headers)
+    status_code, response_json = await http_message(secure_client,{"text": message}, ccat_headers)
 
     assert status_code == 200
     assert response_json["agent_id"] == stray_no_memory.agent_key
@@ -71,12 +68,11 @@ async def test_stray_call(secure_client, stray_no_memory):
     assert isinstance(why, MessageWhy)
 
 
-@pytest.mark.asyncio
 async def test_stray_recall_all_memories(secure_client, secure_client_headers, stray, lizard):
-    send_file("sample.pdf", "application/pdf", secure_client, secure_client_headers)
+    await send_file("sample.pdf", "application/pdf", secure_client, secure_client_headers)
 
-    query = lizard.embedder.embed_query("")
-    memories = await stray.agentic_workflow.context_retrieval(
+    query = (await lizard.embedder()).embed_query("")
+    memories = await (await stray.agentic_workflow()).context_retrieval(
         VectorMemoryType.DECLARATIVE, RecallSettings(embedding=query, k=None)
     )
 
@@ -86,14 +82,15 @@ async def test_stray_recall_all_memories(secure_client, secure_client_headers, s
         assert isinstance(mem.vector, list)
 
 
-@pytest.mark.asyncio
 async def test_stray_recall_by_metadata(secure_client, secure_client_headers, stray, lizard):
     content_type = "application/pdf"
-    query = lizard.embedder.embed_query("late")
+    query = (await lizard.embedder()).embed_query("late")
+
+    af = await stray.agentic_workflow()
 
     file_name = "sample.pdf"
-    _, file_path = send_file(file_name, content_type, secure_client, secure_client_headers)
-    memories = await stray.agentic_workflow.context_retrieval(
+    _, file_path = await send_file(file_name, content_type, secure_client, secure_client_headers)
+    memories = await af.context_retrieval(
         VectorMemoryType.DECLARATIVE,
         RecallSettings(threshold=0.1, embedding=query, metadata={"source": file_name}),
     )
@@ -103,9 +100,9 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
 
     with open(file_path, "rb") as f:
         files = {"file": ("sample2.pdf", f, content_type)}
-        _ = secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
+        _ = await secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
 
-    memories = await stray.agentic_workflow.context_retrieval(
+    memories = await af.context_retrieval(
         VectorMemoryType.DECLARATIVE,
         RecallSettings(threshold=0.1, embedding=query, metadata={"source": file_name}),
     )
@@ -114,9 +111,8 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
         assert mem.document.metadata["source"] == file_name
 
 
-@pytest.mark.asyncio
 async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray):
-    crud_users.create_user(
+    await crud_users.create_user(
         stray.agent_key,
         {
             "id": stray.user.id,
@@ -126,23 +122,15 @@ async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray
         },
     )
 
-    ccat_headers = {"X-Agent-ID": stray.agent_key, "Authorization": f"Bearer {api_key}"}
 
-    # manually install the plugin
-    zip_path = create_mock_plugin_zip(flat=True, plugin_id="mock_plugin_fast_reply")
-    zip_file_name = zip_path.split("/")[-1]  # mock_plugin.zip in tests/mocks folder
-    with open(zip_path, "rb") as f:
-        secure_client.post(
-            "/plugins/install/upload/",
-            files={"file": (zip_file_name, f, "application/zip")},
-            headers=secure_client_headers
-        )
+    await just_installed_plugin(secure_client, secure_client_headers, plugin_id="mock_plugin_fast_reply")
 
     # activate for the new agent
-    secure_client.put("/plugins/toggle/mock_plugin_fast_reply", headers=ccat_headers)
+    ccat_headers = {"X-Agent-ID": stray.agent_key, "Authorization": f"Bearer {api_key}"}
+    await secure_client.put("/plugins/toggle/mock_plugin_fast_reply", headers=ccat_headers)
 
     # send message
-    status_code, response_json = http_message(
+    status_code, response_json = await http_message(
         secure_client, {"text": "hello"}, ccat_headers | {"X-Chat-ID": stray.id, "X-User-ID": stray.user.id},
     )
     assert status_code == 200
@@ -153,7 +141,7 @@ async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray
     assert response_json["message"]["text"] == "This is a fast reply"
 
     # there should be NO side effects
-    upd_stray = StrayCat(
+    upd_stray = await StrayCat.create(
         user_data=stray.user,
         agent_id=stray.agent_key,
         stray_id=stray.id,

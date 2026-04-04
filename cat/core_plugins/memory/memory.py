@@ -36,8 +36,8 @@ def before_cat_recalls_memories(config: RecallSettings, cat) -> None:
 
 
 @hook(priority=1)
-def agent_fast_reply(cat) -> AgenticWorkflowOutput | None:
-    settings = cat.plugin_manager.get_plugin().load_settings()
+async def agent_fast_reply(cat) -> AgenticWorkflowOutput | None:
+    settings = await cat.plugin_manager.get_plugin().load_settings()
     if settings["enable_llm_knowledge"]:
         return None
 

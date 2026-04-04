@@ -4,15 +4,16 @@ from fastapi.encoders import jsonable_encoder
 from cat.services.service_factory import ServiceFactory
 
 
-def test_get_all_file_manager_settings(secure_client, secure_client_headers, cheshire_cat):
-    file_manager_schemas = ServiceFactory(
+async def test_get_all_file_manager_settings(secure_client, secure_client_headers, cheshire_cat):
+    sf = ServiceFactory(
         agent_key=cheshire_cat.agent_key,
         hook_manager=cheshire_cat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_file_managers",
         setting_category="file_manager",
         schema_name="fileManagerName",
-    ).get_schemas()
-    response = secure_client.get("/file_manager/settings", headers=secure_client_headers)
+    )
+    file_manager_schemas = await sf.get_schemas()
+    response = await secure_client.get("/file_manager/settings", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -29,9 +30,9 @@ def test_get_all_file_manager_settings(secure_client, secure_client_headers, che
     assert json["selected_configuration"] == "DummyFileManagerConfig"
 
 
-def test_get_file_manager_settings_non_existent(secure_client, secure_client_headers):
+async def test_get_file_manager_settings_non_existent(secure_client, secure_client_headers, cheshire_cat):
     non_existent_filemanager_name = "FileManagerNonExistentConfig"
-    response = secure_client.get(
+    response = await secure_client.get(
         f"/file_manager/settings/{non_existent_filemanager_name}", headers=secure_client_headers
     )
     json = response.json()
@@ -40,9 +41,9 @@ def test_get_file_manager_settings_non_existent(secure_client, secure_client_hea
     assert f"{non_existent_filemanager_name} not supported" in json["detail"]
 
 
-def test_get_filemanager_settings(secure_client, secure_client_headers):
+async def test_get_filemanager_settings(secure_client, secure_client_headers, cheshire_cat):
     file_manager_name = "LocalFileManagerConfig"
-    response = secure_client.get(
+    response = await secure_client.get(
         f"/file_manager/settings/{file_manager_name}", headers=secure_client_headers
     )
     json = response.json()

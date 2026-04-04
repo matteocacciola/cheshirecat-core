@@ -21,7 +21,4 @@ def test_get_env():
 
     # default env variables
     for k, v in get_supported_env_variables().items():
-        if k == "CAT_DEBUG":
-            assert get_env(k) == "false"  # we test installation with autoreload off
-        else:
-            assert get_env(k) == os.getenv(k, v)
+        assert get_env(k) == os.getenv(k, v)

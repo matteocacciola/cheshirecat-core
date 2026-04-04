@@ -19,9 +19,14 @@ class ContextMixin(ABC):
     Mixin for shared methods between all the classes managing settings of the agents.
     Provides access to chat request/response, user info, and core subsystems.
     """
-    def __init__(self):
-        self.service_provider = ServiceProvider(self.agent_key, self.mad_hatter)
-        self._white_rabbit = None
+    _white_rabbit: WhiteRabbit = None
+    _service_provider: ServiceProvider = None
+
+    @property
+    def service_provider(self):
+        if not self._service_provider:
+            self._service_provider = ServiceProvider(self.agent_key, self.mad_hatter)  # type: ignore[arg-type]
+        return self._service_provider
 
     @property
     def mad_hatter(self) -> MadHatter:
@@ -57,7 +62,6 @@ class ContextMixin(ABC):
         """The agent's unique identifier, if applicable."""
         pass
 
-    @property
     @abstractmethod
     def embedder(self) -> Embeddings:
         """
@@ -89,9 +93,8 @@ class OrchestratorMixin(ContextMixin, ABC):
     Mixin for shared methods for the orchestrator class.
     Provides access to chat request/response, user info, and core subsystems.
     """
-    @property
-    def embedder(self) -> Embeddings:
-        return self.service_provider.get_embedder()
+    async def embedder(self) -> Embeddings:
+        return await self.service_provider.get_embedder()
 
 
 class BotMixin(ContextMixin, ABC):
@@ -100,7 +103,7 @@ class BotMixin(ContextMixin, ABC):
     Provides access to chat request/response, user info, and core subsystems.
     """
     @property
-    def lizard(self) -> "BillTheLizard":
+    def lizard(self) -> "BillTheLizard":  # type: ignore[name-defined]
         """
         Instance of `BillTheLizard`. Use it to access the main components of the Cat.
 
@@ -112,33 +115,26 @@ class BotMixin(ContextMixin, ABC):
 
         return BillTheLizard()
 
-    @property
-    def embedder(self) -> Embeddings:
-        return self.lizard.embedder
+    async def embedder(self) -> Embeddings:
+        return await self.lizard.embedder()
 
-    @property
-    def large_language_model(self) -> LargeLanguageModel:
-        return self.service_provider.get_large_language_model()
+    async def large_language_model(self) -> LargeLanguageModel:
+        return await self.service_provider.get_large_language_model()
 
-    @property
-    def custom_auth_handler(self) -> BaseAuthHandler:
-        return self.service_provider.get_custom_auth_handler()
+    async def custom_auth_handler(self) -> BaseAuthHandler:
+        return await self.service_provider.get_custom_auth_handler()
 
-    @property
-    def file_manager(self) -> BaseFileManager:
-        return self.service_provider.get_file_manager()
+    async def file_manager(self) -> BaseFileManager:
+        return await self.service_provider.get_file_manager()
 
-    @property
-    def chunker(self) -> BaseChunker:
-        return self.service_provider.get_chunker()
+    async def chunker(self) -> BaseChunker:
+        return await self.service_provider.get_chunker()
 
-    @property
-    def vector_memory_handler(self) -> BaseVectorDatabaseHandler:
-        return self.service_provider.get_vector_memory_handler()
+    async def vector_memory_handler(self) -> BaseVectorDatabaseHandler:
+        return await self.service_provider.get_vector_memory_handler()
 
-    @property
-    def agentic_workflow(self) -> BaseAgenticWorkflowHandler:
-        return self.service_provider.get_agentic_workflow()
+    async def agentic_workflow(self) -> BaseAgenticWorkflowHandler:
+        return await self.service_provider.get_agentic_workflow()
 
     @property
     def rabbit_hole(self) -> RabbitHole:
@@ -155,6 +151,5 @@ class BotMixin(ContextMixin, ABC):
         return self.lizard.rabbit_hole
 
     # each time we access the file handlers, plugins can intervene
-    @property
-    def file_handlers(self) -> Dict:
-        return self.mad_hatter.execute_hook("rabbithole_instantiates_parsers", {}, caller=self)
+    async def file_handlers(self) -> Dict:
+        return await self.mad_hatter.execute_hook("rabbithole_instantiates_parsers", {}, caller=self)

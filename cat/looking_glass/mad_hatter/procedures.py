@@ -25,12 +25,12 @@ class CatProcedure(ABC):
 
     stray = None
 
-    def inject_stray_cat(self, stray: "StrayCat") -> "CatProcedure":
+    def inject_stray_cat(self, stray: "StrayCat") -> "CatProcedure":  # type: ignore[name-defined]
         self.stray = stray
         return self
 
     @abstractmethod
-    def to_document_recall(self) -> List[DocumentRecall]:
+    async def to_document_recall(self) -> List[DocumentRecall]:
         """
         Convert CatProcedure into a list of DocumentRecall objects for memory storage.
 
@@ -40,7 +40,7 @@ class CatProcedure(ABC):
         pass
 
     @classmethod
-    def from_document_recall(cls, document: DocumentRecall, stray: "StrayCat") -> "CatProcedure":
+    def from_document_recall(cls, document: DocumentRecall, stray: "StrayCat") -> "CatProcedure":  # type: ignore[name-defined]
         """
         Factory method to reconstruct a CatProcedure from stored metadata.
         Delegates to each subclass's own reconstruction logic.
@@ -83,7 +83,7 @@ class CatProcedure(ABC):
         pass
 
     @abstractmethod
-    def langchainfy(self) -> StructuredTool | None:
+    async def langchainfy(self) -> StructuredTool | None:
         """
         Provides an abstract method interface to define the `langchainfy` method for generating a `StructuredTool`
         instance.

@@ -54,7 +54,7 @@ def get_base_permissions() -> Dict[str, List[str]]:
     }
 
 
-def check_permissions(resource: AuthResource, permission: AuthPermission, is_chat: bool = False) -> "AuthorizedInfo":
+def check_permissions(resource: AuthResource, permission: AuthPermission, is_chat: bool = False) -> "AuthorizedInfo":  # type: ignore[name-defined]
     """
     Helper function to inject cat and stray into endpoints after checking for required permissions.
 
@@ -70,7 +70,7 @@ def check_permissions(resource: AuthResource, permission: AuthPermission, is_cha
     return Depends(HTTPAuth(resource=resource, permission=permission, is_chat=is_chat))
 
 
-def check_websocket_permissions(resource: AuthResource, permission: AuthPermission) -> "AuthorizedInfo":
+def check_websocket_permissions(resource: AuthResource, permission: AuthPermission) -> "AuthorizedInfo":  # type: ignore[name-defined]
     """
     Helper function to inject cat and stray into endpoints after checking for required permissions.
 

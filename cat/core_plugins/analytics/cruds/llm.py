@@ -32,7 +32,7 @@ def format_key(agent_id: str, user_id: str, chat_id: str, llm_id: str) -> str:
     return f"{KEY_PREFIX}:llms:{agent_id}:{user_id}:{chat_id}:{llm_id}"
 
 
-def get_analytics(
+async def get_analytics(
     agent_id: str = "*", user_id: str = "*", chat_id: str = "*", llm_id: str = "*"
 ) -> Dict[str, Dict[str, Dict[str, Dict[str, Any]]]]:
     """
@@ -50,13 +50,13 @@ def get_analytics(
     try:
         pattern = format_key(agent_id, user_id, chat_id, llm_id)
 
-        return get_nested_analytics(pattern, expected_parts=6)
+        return await get_nested_analytics(pattern, expected_parts=6)
     except RedisError as e:
         log.error(f"Redis error while fetching analytics for the LLMs: {e}")
         raise
 
 
-def update_analytics(agent_id: str, user_id: str, chat_id: str, llm_id: str, tokens: LLMUsedTokens) -> Dict[str, Any]:
+async def update_analytics(agent_id: str, user_id: str, chat_id: str, llm_id: str, tokens: LLMUsedTokens) -> Dict[str, Any]:
     """
     Update LLM analytics in Redis atomically.
 
@@ -77,13 +77,13 @@ def update_analytics(agent_id: str, user_id: str, chat_id: str, llm_id: str, tok
     key = format_key(agent_id, user_id, chat_id, llm_id)
 
     try:
-        analytics = base_get_analytics(key) or {}
+        analytics = await base_get_analytics(key) or {}
         analytics["input_tokens"] = analytics.get("input_tokens", 0) + tokens.input
         analytics["output_tokens"] = analytics.get("output_tokens", 0) + tokens.output
         analytics["total_tokens"] = analytics.get("total_tokens", 0) + tokens.input + tokens.output
         analytics["total_calls"] = analytics.get("total_calls", 0) + 1
 
-        return base_set_analytics(key, analytics)
+        return await base_set_analytics(key, analytics)
     except (RedisError, ValueError) as e:
         log.error(f"Error updating settings for key.replace(KEY_PREFIX + ':', ''): {e}")
         raise

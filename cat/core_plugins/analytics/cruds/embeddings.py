@@ -24,7 +24,7 @@ def format_key(agent_id: str, embedder_id: str) -> str:
     return f"{KEY_PREFIX}:embedders:{agent_id}:{embedder_id}"
 
 
-def get_analytics(agent_id: str = "*", embedder_id: str = "*") -> Dict[str, Dict[str, Any]]:
+async def get_analytics(agent_id: str = "*", embedder_id: str = "*") -> Dict[str, Dict[str, Any]]:
     """
     Retrieve analytics data from Redis based on agent and embedder patterns.
 
@@ -37,13 +37,13 @@ def get_analytics(agent_id: str = "*", embedder_id: str = "*") -> Dict[str, Dict
     """
     try:
         pattern = format_key(agent_id, embedder_id)
-        return get_nested_analytics(pattern, expected_parts=4)
+        return await get_nested_analytics(pattern, expected_parts=4)
     except RedisError as e:
         log.error(f"Redis error while fetching analytics for the Embedders: {e}")
         raise
 
 
-def update_analytics(agent_id: str, embedder_id: str, filename: str, n_embeddings: int) -> Dict[str, Any]:
+async def update_analytics(agent_id: str, embedder_id: str, filename: str, n_embeddings: int) -> Dict[str, Any]:
     """
     Update Embedder analytics in Redis atomically.
 
@@ -63,12 +63,12 @@ def update_analytics(agent_id: str, embedder_id: str, filename: str, n_embedding
     key = format_key(agent_id, embedder_id)
 
     try:
-        analytics = base_get_analytics(key) or {}
+        analytics = await base_get_analytics(key) or {}
         analytics["files"] = analytics.get("files", {})
         analytics["files"][filename] = analytics["files"].get(filename, 0) + n_embeddings
         analytics["total_embeddings"] = analytics.get("total_embeddings", 0) + n_embeddings
 
-        return base_set_analytics(key, analytics)
+        return await base_set_analytics(key, analytics)
     except (RedisError, ValueError) as e:
         log.error(f"Error updating settings for {key.replace(KEY_PREFIX + ':', '')}: {e}")
         raise

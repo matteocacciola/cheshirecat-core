@@ -6,16 +6,17 @@ from cat.services.service_factory import ServiceFactory
 from tests.utils import create_new_user, new_user_password, agent_id
 
 
-def test_get_all_chunker_settings(secure_client, secure_client_headers, cheshire_cat):
-    chunkers_schemas = ServiceFactory(
+async def test_get_all_chunker_settings(secure_client, secure_client_headers, cheshire_cat):
+    sf = ServiceFactory(
         agent_key=cheshire_cat.agent_key,
         hook_manager=cheshire_cat.plugin_manager,
         factory_allowed_handler_name="factory_allowed_chunkers",
         setting_category="chunker",
         schema_name="chunkerName",
-    ).get_schemas()
+    )
+    chunkers_schemas = await sf.get_schemas()
 
-    response = secure_client.get("/chunking/settings", headers=secure_client_headers)
+    response = await secure_client.get("/chunking/settings", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -30,18 +31,18 @@ def test_get_all_chunker_settings(secure_client, secure_client_headers, cheshire
     assert json["selected_configuration"] == "RecursiveTextChunkerSettings"
 
 
-def test_get_chunker_settings_non_existent(secure_client, secure_client_headers):
+async def test_get_chunker_settings_non_existent(secure_client, secure_client_headers, cheshire_cat):
     non_existent_chunker_name = "ChunkerNonExistentConfig"
-    response = secure_client.get(f"/chunking/settings/{non_existent_chunker_name}", headers=secure_client_headers)
+    response = await secure_client.get(f"/chunking/settings/{non_existent_chunker_name}", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 400
     assert f"{non_existent_chunker_name} not supported" in json["detail"]
 
 
-def test_get_chunker_settings(secure_client, secure_client_headers):
+async def test_get_chunker_settings(secure_client, secure_client_headers, cheshire_cat):
     chunker_name = "RecursiveTextChunkerSettings"
-    response = secure_client.get(f"/chunking/settings/{chunker_name}", headers=secure_client_headers)
+    response = await secure_client.get(f"/chunking/settings/{chunker_name}", headers=secure_client_headers)
     json = response.json()
 
     assert response.status_code == 200
@@ -51,13 +52,13 @@ def test_get_chunker_settings(secure_client, secure_client_headers):
     assert json["scheme"]["type"] == "object"
 
 
-def test_upsert_chunker_settings_success(secure_client, secure_client_headers):
+async def test_upsert_chunker_settings_success(secure_client, secure_client_headers, cheshire_cat):
     invented_model_name = "this_should_be_a_model"
 
     # set a different chunker
     new_chunker = "RecursiveTextChunkerSettings"
     payload = {"model_name": invented_model_name}
-    response = secure_client.put(f"/chunking/settings/{new_chunker}", json=payload, headers=secure_client_headers)
+    response = await secure_client.put(f"/chunking/settings/{new_chunker}", json=payload, headers=secure_client_headers)
 
     # check immediate response
     json = response.json()
@@ -66,7 +67,7 @@ def test_upsert_chunker_settings_success(secure_client, secure_client_headers):
     assert json["value"]["model_name"] == invented_model_name
 
     # retrieve all Chunker settings to check if it was saved in DB
-    response = secure_client.get("/chunking/settings", headers=secure_client_headers)
+    response = await secure_client.get("/chunking/settings", headers=secure_client_headers)
     json = response.json()
     assert response.status_code == 200
     assert json["selected_configuration"] == new_chunker
@@ -74,7 +75,7 @@ def test_upsert_chunker_settings_success(secure_client, secure_client_headers):
     assert saved_config[0]["value"]["model_name"] == invented_model_name
 
     # check also specific Chunker endpoint
-    response = secure_client.get(f"/chunking/settings/{new_chunker}", headers=secure_client_headers)
+    response = await secure_client.get(f"/chunking/settings/{new_chunker}", headers=secure_client_headers)
     assert response.status_code == 200
     json = response.json()
     assert json["name"] == new_chunker
@@ -82,41 +83,41 @@ def test_upsert_chunker_settings_success(secure_client, secure_client_headers):
     assert json["scheme"]["chunkerName"] == new_chunker
 
 
-def test_forbidden_access_no_auth(client):
-    response = client.get("/chunking/settings")
+async def test_forbidden_access_no_auth(client):
+    response = await client.get("/chunking/settings")
     assert response.status_code == 401
 
 
-def test_granted_access_on_permissions(secure_client, secure_client_headers, client):
+async def test_granted_access_on_permissions(secure_client, secure_client_headers, client, cheshire_cat):
     # create user
-    data = create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"CHUNKER": ["READ"]})
+    data = await create_new_user(secure_client, headers=secure_client_headers, permissions={"CHUNKER": ["READ"]})
 
     creds = {"username": data["username"], "password": new_user_password}
 
-    res = client.post("/auth/token", json=creds)
+    res = await client.post("/auth/token", json=creds)
     received_token = res.json()["access_token"]
 
-    response = client.get("/chunking/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
+    response = await client.get("/chunking/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
     assert response.status_code == 200
 
 
-def test_forbidden_access_no_permission(secure_client, secure_client_headers, client):
+async def test_forbidden_access_no_permission(secure_client, secure_client_headers, client, cheshire_cat):
     # create user
-    data = create_new_user(secure_client, "/users", headers=secure_client_headers)
-    res = client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
+    data = await create_new_user(secure_client, headers=secure_client_headers)
+    res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 
-    response = client.get("/chunking/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
+    response = await client.get("/chunking/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
     assert response.status_code == 403
     assert response.json()["detail"] == "Forbidden"
 
 
-def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client):
+async def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client, cheshire_cat):
     # create user
-    data = create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"CHUNKER": ["DELETE"]})
-    res = client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
+    data = await create_new_user(secure_client, headers=secure_client_headers, permissions={"CHUNKER": ["DELETE"]})
+    res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 
-    response = client.get("/chunking/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
+    response = await client.get("/chunking/settings", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
     assert response.status_code == 403
     assert response.json()["detail"] == "Forbidden"

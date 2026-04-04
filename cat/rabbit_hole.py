@@ -24,7 +24,7 @@ class RabbitHole:
         self.stray = None
         self.embedder = None
 
-    def setup(self, _cat: "BotMixin"):
+    async def setup(self, _cat: "BotMixin"):  # type: ignore[name-defined]
         from cat.looking_glass import CheshireCat, StrayCat
 
         if isinstance(_cat, CheshireCat):
@@ -34,14 +34,14 @@ class RabbitHole:
 
         if isinstance(_cat, StrayCat):
             self.stray = _cat
-            self.cat = _cat.lizard.get_cheshire_cat(_cat.agent_key)
+            self.cat = await _cat.lizard.get_cheshire_cat(_cat.agent_key)
             return
 
         raise ValueError("RabbitHole can only be setup with CheshireCat or StrayCat instances.")
 
     """Manages content ingestion. I'm late... I'm late!"""
 
-    async def ingest_memory(self, cat: "CheshireCat", file: BytesIO, filename: str):
+    async def ingest_memory(self, cat: "CheshireCat", file: BytesIO, filename: str):  # type: ignore[name-defined]
         """Upload memories to the declarative memory from a JSON file.
 
         Args:
@@ -58,7 +58,7 @@ class RabbitHole:
         The method also performs a check on the dimensionality of the embeddings (i.e. length of each vector).
         """
         try:
-            self.setup(cat)
+            await self.setup(cat)
             lizard = self.cat.lizard
 
             # Load fyle byte in a dict
@@ -66,7 +66,8 @@ class RabbitHole:
 
             # Check the embedder used for the uploaded memories is the same the Cat is using now
             upload_embedder = memories["embedder"]
-            cat_embedder = str(lizard.embedder.__class__.__name__)
+            embedder = await lizard.embedder()
+            cat_embedder = str(embedder.__class__.__name__)
             if upload_embedder != cat_embedder:
                 raise Exception(f"Embedder mismatch for file '{filename}': file embedder {upload_embedder} is different from {cat_embedder}")
 
@@ -85,14 +86,16 @@ class RabbitHole:
             log.info(f"Agent id: {self.cat.agent_key}. Preparing to load {len(points)} vector memories")
 
             # Check embedding size is correct
-            embedder_size = lizard.embedder.size
-            len_mismatch = [len(p.vector) == embedder_size for p in points]
+            embedder = await lizard.embedder()
+            embedder_size = embedder.size
+            len_mismatch = [len(p.vector) == embedder_size for p in points]  # type: ignore[union-attr]
 
             if not any(len_mismatch):
                 raise Exception(f"Embedding size mismatch for file '{filename}': vectors length should be {embedder_size}")
 
             # Upsert memories in batch mode
-            await cat.vector_memory_handler.add_points_to_tenant(
+            vmh = await cat.vector_memory_handler()
+            await vmh.add_points_to_tenant(
                 collection_name=str(VectorMemoryType.DECLARATIVE), points=points,
             )
         except Exception as e:
@@ -100,7 +103,7 @@ class RabbitHole:
 
     async def ingest_file(
         self,
-        cat: "BotMixin",
+        cat: "BotMixin",  # type: ignore[name-defined]
         file: str | BytesIO,
         metadata: Dict,
         filename: str | None = None,
@@ -128,7 +131,7 @@ class RabbitHole:
         points = []
 
         try:
-            self.setup(cat)
+            await self.setup(cat)
 
             filename = filename or (file if isinstance(file, str) else None)
             if not filename:
@@ -151,7 +154,7 @@ class RabbitHole:
             # store in file storage
             if store_file and not is_url:
                 chat_id = self.stray.id if self.stray else None
-                self.cat.save_file(file_bytes, content_type, source, chat_id)
+                await self.cat.save_file(file_bytes, content_type, source, chat_id)
 
             # notify client
             await self._send_notification_message(f"Finished reading {source}, I made {len(docs)} thoughts on it.")
@@ -167,7 +170,7 @@ class RabbitHole:
                     log.error(f"Failed to send error notification: {notify_error}")
         finally:
             # hook the points after they are stored in the vector memory
-            self.cat.plugin_manager.execute_hook(
+            await self.cat.plugin_manager.execute_hook(
                 "after_rabbithole_stored_documents", source, points, caller=self.stray or self.cat,
             )
 
@@ -221,8 +224,8 @@ class RabbitHole:
                     log.error(f"Agent id: {self.cat.agent_key}. Error: {e}")
                     return None, None, content_type, True
             # Get file bytes - use async file reading
-            fb = await asyncio.to_thread(lambda: open(file, "rb").read())
-            return sanitize_filename(os.path.basename(file)), fb, mimetypes.guess_type(file)[0], False
+            fb = await asyncio.to_thread(lambda: open(file, "rb").read())  # type: ignore[union-attr]
+            return sanitize_filename(os.path.basename(file)), fb, mimetypes.guess_type(file)[0], False  # type: ignore[return-value]
 
         if not isinstance(file, BytesIO) and not isinstance(file, str):
             raise ValueError(f"{type(file)} is not a valid type.")
@@ -232,18 +235,19 @@ class RabbitHole:
         if not file_bytes:
             raise ValueError(f"Something went wrong with the source '{source}'")
 
-        log.debug(f"Attempting to parse source: {source}. Detected MIME type: {content_type}. Available handlers: {list(self.cat.file_handlers.keys())}")
+        fh = await self.cat.file_handlers()
+        log.debug(f"Attempting to parse source: {source}. Detected MIME type: {content_type}. Available handlers: {list(fh.keys())}")
 
         # Load the bytes in the Blob schema and parse the content. Parser based on the mime type
         await self._send_notification_message("I'm parsing the content. Big content could require some minutes...")
-        super_docs = MimeTypeBasedParser(handlers=self.cat.file_handlers).parse(
+        super_docs = MimeTypeBasedParser(handlers=fh).parse(
             Blob(data=file_bytes, mimetype=content_type).from_data(data=file_bytes, mime_type=content_type, path=source)
         )
 
         # Split
         await self._send_notification_message("Parsing completed. Now let's go with reading process...")
-        docs = self._split_text(docs=super_docs)
-        return source, file_bytes, content_type, docs, is_url
+        docs = await self._split_text(docs=super_docs)
+        return source, file_bytes, content_type, docs, is_url  # type: ignore[return-value]
 
     async def store_documents(
         self,
@@ -278,7 +282,7 @@ class RabbitHole:
         """
         log.info(f"Agent id: {self.cat.agent_key}. Preparing to memorize {len(docs)} vectors for {source}.")
 
-        embedder = self.cat.lizard.embedder
+        embedder = await self.cat.lizard.embedder()
         plugin_manager = self.cat.plugin_manager
 
         # add custom metadata (sent via endpoint) and default metadata (source and when and eventual chat_id)
@@ -291,7 +295,7 @@ class RabbitHole:
             )
 
         # hook the docs before they are stored in the vector memory
-        docs = plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, caller=self.stray or self.cat)
+        docs = await plugin_manager.execute_hook("before_rabbithole_stores_documents", docs, caller=self.stray or self.cat)
 
         # hook the points before they are stored in the vector memory
         valid_documents = list(filter(lambda doc_: doc_.page_content.strip(), docs))
@@ -305,11 +309,12 @@ class RabbitHole:
         ) for doc, vector in zip(valid_documents, storing_vectors)]
 
         collection_name = str(VectorMemoryType.DECLARATIVE if not self.stray else VectorMemoryType.EPISODIC)
-        await self.cat.vector_memory_handler.add_points_to_tenant(collection_name=collection_name, points=points)
+        vmh = await self.cat.vector_memory_handler()
+        await vmh.add_points_to_tenant(collection_name=collection_name, points=points)
 
         return points
 
-    def _split_text(self, docs: List[Document]):
+    async def _split_text(self, docs: List[Document]):
         """Split LangChain documents in chunks.
 
         This method splits the incoming documents in chunks. Other two hooks are available to edit the
@@ -332,10 +337,10 @@ class RabbitHole:
         plugin_manager = self.cat.plugin_manager
 
         # do something on the docs before they are split
-        docs = plugin_manager.execute_hook("before_rabbithole_splits_documents", docs, caller=self.stray or self.cat)
+        docs = await plugin_manager.execute_hook("before_rabbithole_splits_documents", docs, caller=self.stray or self.cat)
 
         # split docs
-        chunker = self.cat.chunker
+        chunker = await self.cat.chunker()
         docs = chunker.split_documents(docs)
 
         # join each short chunk with previous one, instead of deleting them
@@ -379,7 +384,7 @@ class RabbitHole:
         min_chunk_size = max(50, chunk_size // 20)  # At least 50 chars
         max_merge_size = chunk_size + chunk_overlap  # Respect splitter's intended size
 
-        merged_docs = []
+        merged_docs: list = []  # type: ignore[var-annotated]
         i = 0
 
         while i < len(docs):

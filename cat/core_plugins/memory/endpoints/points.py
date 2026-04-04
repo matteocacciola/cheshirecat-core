@@ -103,20 +103,22 @@ async def recall_memory_points_from_text(
     lizard = info.lizard
 
     # Embed the query to plot it in the Memory page
-    query_embedding = lizard.embedder.embed_query(text)
+    embedder = await lizard.embedder()
+    query_embedding = embedder.embed_query(text)
     collection_name = str(VectorMemoryType.DECLARATIVE if not info.stray_cat else VectorMemoryType.EPISODIC)
     metadata = {k: v for k, v in metadata.items() if k != "source"}
     if info.stray_cat:
         metadata["chat_id"] = info.stray_cat.id
 
-    dm = await info.cheshire_cat.vector_memory_handler.recall_tenant_memory_from_embedding(
+    vmh = await info.cheshire_cat.vector_memory_handler()
+    dm = await vmh.recall_tenant_memory_from_embedding(
         collection_name, query_embedding, k=k, metadata=metadata,
     )
 
     return RecallResponse(
         query=RecallResponseQuery(text=text, vector=query_embedding),
         vectors=RecallResponseVectors(
-            embedder=lizard.embedder.name,
+            embedder=embedder.name,
             collections={
                 collection_name: [build_memory_dict(document_recall) for document_recall in dm]
             }
@@ -210,7 +212,8 @@ async def delete_memory_point(
         await verify_memory_point_existence(info.cheshire_cat, collection_id, point_id)
 
         # delete point
-        await info.cheshire_cat.vector_memory_handler.delete_tenant_points_by_ids(collection_id, [point_id])
+        vmh = await info.cheshire_cat.vector_memory_handler()
+        await vmh.delete_tenant_points_by_ids(collection_id, [point_id])
 
         return DeleteMemoryPointResponse(deleted=point_id)
     except Exception as e:
@@ -234,16 +237,17 @@ async def delete_memory_points_by_metadata(
         metadata = metadata or {}
 
         # delete points
-        ret = await ccat.vector_memory_handler.delete_tenant_points(collection_id, metadata)
+        ret = await (await ccat.vector_memory_handler()).delete_tenant_points(collection_id, metadata)
 
         if source := metadata.get("source"):
+            file_manager = await ccat.file_manager()
             # delete the file with path `metadata["source"]` from the file storage
-            ccat.file_manager.remove_file(os.path.join(ccat.agent_key, source))
+            file_manager.remove_file(os.path.join(ccat.agent_key, source))
 
             # delete the file with path `metadata["source"]/metadata["chat_id"]` from the file storage
             chat_id = metadata.get("chat_id")
             if chat_id:
-                ccat.file_manager.remove_file(os.path.join(ccat.agent_key, chat_id, source))
+                file_manager.remove_file(os.path.join(ccat.agent_key, chat_id, source))
 
         return DeleteMemoryPointsByMetadataResponse(deleted=ret)
     except Exception as e:
@@ -324,7 +328,8 @@ async def get_points_in_collection(
         if offset == "":
             offset = None
 
-        points, next_offset = await info.cheshire_cat.vector_memory_handler.get_all_tenant_points(
+        vmh = await info.cheshire_cat.vector_memory_handler()
+        points, next_offset = await vmh.get_all_tenant_points(
             collection_name=collection_id, limit=limit, offset=offset, metadata=metadata
         )
 

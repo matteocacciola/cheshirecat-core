@@ -11,9 +11,9 @@ def test_hook_discovery(plugin_manager):
         assert h.plugin_id == "mock_plugin"
 
 
-def test_hook_priority_execution(stray):
+async def test_hook_async_priority_execution(stray):
     fake_message = CatMessage(text="Priorities:")
     agent_output = AgenticWorkflowOutput()
 
-    out = stray.plugin_manager.execute_hook("before_cat_sends_message", fake_message, agent_output, caller=stray)
+    out = await stray.plugin_manager.execute_hook("before_cat_sends_message", fake_message, agent_output, caller=stray)
     assert out.text == "Priorities: priority 3 priority 2"

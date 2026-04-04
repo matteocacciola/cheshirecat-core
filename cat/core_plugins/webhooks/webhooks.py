@@ -98,7 +98,7 @@ async def register_webhook(
     agent_id = parse_agent_key(info, webhook)
 
     settings = webhook.model_dump(exclude={"event"}) | {"secret": crypto.encrypt(webhook.secret)}
-    stored_webhook = crud_webhook.set_webhook(agent_id, webhook.event, settings)
+    stored_webhook = await crud_webhook.set_webhook(agent_id, webhook.event, settings)
     return WebhookResponse(
         url=stored_webhook["url"],
         event=webhook.event,
@@ -116,12 +116,12 @@ async def delete_webhook(
     agent_id = parse_agent_key(info, webhook)
 
     secret = crypto.encrypt(webhook.secret)
-    crud_webhook.delete_webhook(agent_id, webhook.event, webhook.url, secret)
+    await crud_webhook.delete_webhook(agent_id, webhook.event, webhook.url, secret)
 
 
 @hook(priority=0)
-def after_rabbithole_stored_documents(source, stored_points: List[PointStruct], cat) -> None:
-    webhooks = crud_webhook.get_webhooks(cat.agent_key, "knowledge_source_loaded")
+async def after_rabbithole_stored_documents(source, stored_points: List[PointStruct], cat) -> None:
+    webhooks = await crud_webhook.get_webhooks(cat.agent_key, "knowledge_source_loaded")
     if webhooks is None:
         return
 
@@ -142,18 +142,18 @@ def after_rabbithole_stored_documents(source, stored_points: List[PointStruct], 
 
 
 @hook(priority=0)
-def lizard_notify_plugin_installation(plugin_id: str, plugin_path: str, lizard) -> None:
-    webhooks = crud_webhook.get_webhooks(lizard.agent_key, "plugin_installed")
+async def lizard_notify_plugin_installation(plugin_id: str, plugin_path: str, lizard) -> None:
+    webhooks = await crud_webhook.get_webhooks(lizard.agent_key, "plugin_installed")
     if webhooks is None:
         return
 
-    success = plugin_id and lizard.plugin_manager.plugins.get(plugin_id)
+    success = bool(plugin_id and lizard.plugin_manager.plugins.get(plugin_id))
     notify_plugin_event_to_webhooks(plugin_id, webhooks, success, "installation")
 
 
 @hook(priority=0)
-def lizard_notify_plugin_uninstallation(plugin_id: str, lizard) -> None:
-    webhooks = crud_webhook.get_webhooks(lizard.agent_key, "plugin_uninstalled")
+async def lizard_notify_plugin_uninstallation(plugin_id: str, lizard) -> None:
+    webhooks = await crud_webhook.get_webhooks(lizard.agent_key, "plugin_uninstalled")
     if webhooks is None:
         return
 
@@ -162,8 +162,8 @@ def lizard_notify_plugin_uninstallation(plugin_id: str, lizard) -> None:
 
 
 @hook(priority=0)
-def after_all_cheshire_cats_embedded(success: bool, lizard) -> None:
-    webhooks = crud_webhook.get_webhooks(lizard.agent_key, "embedder_updated")
+async def after_all_cheshire_cats_embedded(success: bool, lizard) -> None:
+    webhooks = await crud_webhook.get_webhooks(lizard.agent_key, "embedder_updated")
     if webhooks is None:
         return
 
@@ -178,8 +178,8 @@ def after_all_cheshire_cats_embedded(success: bool, lizard) -> None:
 
 
 @hook(priority=0)
-def after_file_manager_transfer_on_agent(success: bool, cat) -> None:
-    webhooks = crud_webhook.get_webhooks(cat.agent_key, "knowledge_source_files_transferred")
+async def after_file_manager_transfer_on_agent(success: bool, cat) -> None:
+    webhooks = await crud_webhook.get_webhooks(cat.agent_key, "knowledge_source_files_transferred")
     if webhooks is None:
         return
 
@@ -194,8 +194,8 @@ def after_file_manager_transfer_on_agent(success: bool, cat) -> None:
 
 
 @hook(priority=0)
-def after_vector_memory_transfer_on_agent(success: bool, cat) -> None:
-    webhooks = crud_webhook.get_webhooks(cat.agent_key, "vector_memory_files_transferred")
+async def after_vector_memory_transfer_on_agent(success: bool, cat) -> None:
+    webhooks = await crud_webhook.get_webhooks(cat.agent_key, "vector_memory_files_transferred")
     if webhooks is None:
         return
 

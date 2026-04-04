@@ -42,7 +42,7 @@ class CatMessage(BaseMessage):
     why: MessageWhy | None = None
     error: str | None = None
 
-    @computed_field
+    @computed_field  # type: ignore[prop-decorator]
     @property
     def type(self) -> str:
         return "chat"
@@ -94,5 +94,5 @@ class ConversationMessage(BaseModel):
 
         content = [{"type": "text", "text": self.content.text}]
         if (image_formatted := retrieve_image(self.content.image)) is not None:
-            content.append({"type": "image_url", "image_url": {"url": image_formatted}})
+            content.append({"type": "image_url", "image_url": {"url": image_formatted}})  # type: ignore[dict-item]
         return HumanMessage(name=self.who, content=content)

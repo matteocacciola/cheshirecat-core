@@ -11,20 +11,20 @@ from cat.services.service_factory import ServiceFactory
 from tests.utils import agent_id
 
 
-def test_get_settings(cheshire_cat):
-    values = crud_settings.get_settings(DEFAULT_SYSTEM_KEY, "user")
+async def test_get_settings(cheshire_cat):
+    values = await crud_settings.get_settings(DEFAULT_SYSTEM_KEY, "user")
     assert isinstance(values, list)
     assert len(values) == 0
 
-    values = crud_settings.get_settings(agent_id, "user")
+    values = await crud_settings.get_settings(agent_id, "user")
     assert isinstance(values, list)
     assert len(values) == 0
 
-    values = crud_settings.get_settings(agent_id, "CoreAuthConfi")
+    values = await crud_settings.get_settings(agent_id, "CoreAuthConfi")
     assert isinstance(values, list)
     assert len(values) == 1
 
-    crud_settings.create_setting(agent_id, models.Setting(**{
+    await crud_settings.create_setting(agent_id, models.Setting(**{
         "name": "CoreAuthConfig2",
         "value": {},
         "category": ServiceFactory(
@@ -37,12 +37,12 @@ def test_get_settings(cheshire_cat):
         "setting_id": "96f4c9d4-b58d-41c5-88e2-c87b94fe012c",
         "updated_at": 1729169367
     }))
-    values = crud_settings.get_settings(agent_id, "CoreAuthConfi")
+    values = await crud_settings.get_settings(agent_id, "CoreAuthConfi")
     assert isinstance(values, list)
     assert len(values) == 2
 
 
-def test_get_setting_by_category(cheshire_cat):
+async def test_get_setting_by_category(cheshire_cat):
     factory = ServiceFactory(
         agent_key=cheshire_cat.agent_key,
         hook_manager=cheshire_cat.plugin_manager,
@@ -51,15 +51,15 @@ def test_get_setting_by_category(cheshire_cat):
         schema_name="authorizatorName",
     )
 
-    value = crud_settings.get_settings_by_category(agent_id, "")
+    value = await crud_settings.get_settings_by_category(agent_id, "")
     assert value is None
 
-    value = crud_settings.get_settings_by_category(agent_id, factory.setting_category)
+    value = await crud_settings.get_settings_by_category(agent_id, factory.setting_category)
     assert isinstance(value, dict)
 
 
-def test_get_setting_by_name(cheshire_cat):
-    value = crud_settings.get_settings_by_category(
+async def test_get_setting_by_name(cheshire_cat):
+    value = await crud_settings.get_settings_by_category(
         agent_id,
         ServiceFactory(
             agent_key=cheshire_cat.agent_key,
@@ -73,7 +73,7 @@ def test_get_setting_by_name(cheshire_cat):
     assert value["name"] == "CoreAuthConfig"
 
 
-def test_get_setting_by_id(cheshire_cat):
+async def test_get_setting_by_id(cheshire_cat):
     setting_id = "96f4c9d4-b58d-41c5-88e2-c87b94fe012c"
     expected = {
         "name": "CoreAuthConfig2",
@@ -89,14 +89,14 @@ def test_get_setting_by_id(cheshire_cat):
         "updated_at": 1729169367
     }
 
-    crud_settings.create_setting(agent_id, models.Setting(**expected))
+    await crud_settings.create_setting(agent_id, models.Setting(**expected))
 
-    value = crud_settings.get_setting_by_id(agent_id, setting_id)
+    value = await crud_settings.get_setting_by_id(agent_id, setting_id)
     assert isinstance(value, dict)
     assert value == expected
 
 
-def test_delete_setting_by_id(cheshire_cat):
+async def test_delete_setting_by_id(cheshire_cat):
     setting_id = "96f4c9d4-b58d-41c5-88e2-c87b94fe012c"
     add = {
         "name": "CoreAuthConfig2",
@@ -112,15 +112,15 @@ def test_delete_setting_by_id(cheshire_cat):
         "updated_at": 1729169367
     }
 
-    crud_settings.create_setting(agent_id, models.Setting(**add))
-    crud_settings.delete_setting_by_id(agent_id, setting_id)
+    await crud_settings.create_setting(agent_id, models.Setting(**add))
+    await crud_settings.delete_setting_by_id(agent_id, setting_id)
 
-    value = crud_settings.get_setting_by_id(agent_id, setting_id)
+    value = await crud_settings.get_setting_by_id(agent_id, setting_id)
 
     assert value is None
 
 
-def test_delete_settings_by_category(cheshire_cat):
+async def test_delete_settings_by_category(cheshire_cat):
     category = ServiceFactory(
         agent_key=cheshire_cat.agent_key,
         hook_manager=cheshire_cat.plugin_manager,
@@ -128,15 +128,15 @@ def test_delete_settings_by_category(cheshire_cat):
         setting_category="auth_handler",
         schema_name="authorizatorName",
     ).setting_category
-    value = crud_settings.get_settings_by_category(agent_id, category)
+    value = await crud_settings.get_settings_by_category(agent_id, category)
     assert isinstance(value, dict)
 
-    crud_settings.delete_settings_by_category(agent_id, category)
-    value = crud_settings.get_settings_by_category(agent_id, category)
+    await crud_settings.delete_settings_by_category(agent_id, category)
+    value = await crud_settings.get_settings_by_category(agent_id, category)
     assert value is None
 
 
-def test_create_setting_with_empty_name(cheshire_cat):
+async def test_create_setting_with_empty_name(cheshire_cat):
     add = {
         "name": "",
         "value": {},
@@ -152,10 +152,10 @@ def test_create_setting_with_empty_name(cheshire_cat):
     }
 
     with pytest.raises(Exception):
-        crud_settings.create_setting(agent_id, models.Setting(**add))
+        await crud_settings.create_setting(agent_id, models.Setting(**add))
 
 
-def test_update_setting_by_id(cheshire_cat):
+async def test_update_setting_by_id(cheshire_cat):
     setting_id = "96f4c9d4-b58d-41c5-88e2-c87b94fe012c"
     add = {
         "name": "CoreAuthConfig2",
@@ -171,17 +171,17 @@ def test_update_setting_by_id(cheshire_cat):
         "updated_at": 1729169367
     }
 
-    crud_settings.create_setting(agent_id, models.Setting(**add))
+    await crud_settings.create_setting(agent_id, models.Setting(**add))
 
     expected = add.copy()
     expected["name"] = "CoreAuthConfig3"
-    crud_settings.upsert_setting_by_id(agent_id, models.Setting(**expected))
+    await crud_settings.upsert_setting_by_id(agent_id, models.Setting(**expected))
 
-    value = crud_settings.get_setting_by_id(agent_id, setting_id)
+    value = await crud_settings.get_setting_by_id(agent_id, setting_id)
     assert value == expected
 
 
-def test_upsert_setting_by_name(cheshire_cat):
+async def test_upsert_setting_by_name(cheshire_cat):
     name = "CoreAuthConfig2"
     add = {
         "name": name,
@@ -198,22 +198,22 @@ def test_upsert_setting_by_name(cheshire_cat):
     }
 
     # not existing, new one
-    crud_settings.upsert_setting_by_name(agent_id, models.Setting(**add))
-    value = crud_settings.get_setting_by_name(agent_id, name)
+    await crud_settings.upsert_setting_by_name(agent_id, models.Setting(**add))
+    value = await crud_settings.get_setting_by_name(agent_id, name)
     assert value == add
 
     # existing: update
     expected = add.copy()
     new_id = str(uuid.uuid4())
     expected["setting_id"] = new_id
-    crud_settings.upsert_setting_by_name(agent_id, models.Setting(**expected))
-    value = crud_settings.get_setting_by_name(agent_id, name)
+    await crud_settings.upsert_setting_by_name(agent_id, models.Setting(**expected))
+    value = await crud_settings.get_setting_by_name(agent_id, name)
     assert value == expected
 
 
-def test_get_users(lizard):
-    users = crud_users.get_users(lizard.agent_key)
-    assert users != {}
+async def test_get_users(lizard):
+    users = await crud_users.get_users(lizard.agent_key)
+    assert len(users) > 0
 
     ids = list(users.keys())
     assert len(ids) == 1
@@ -221,15 +221,15 @@ def test_get_users(lizard):
     assert users[ids[0]]["username"] == "admin"
 
 
-def test_get_user(lizard):
+async def test_get_user(lizard):
     # admin already exists as username
-    user = crud_users.create_user(lizard.agent_key, {
+    user = await crud_users.create_user(lizard.agent_key, {
         "username": "admin",
         "password": hash_password("admin"),
         "permissions": get_full_permissions()
     })
     assert user is None
-    users = crud_users.get_users(lizard.agent_key)
+    users = await crud_users.get_users(lizard.agent_key)
     assert len(users) == 1
 
     # create
@@ -238,19 +238,19 @@ def test_get_user(lizard):
         "password": hash_password("admin2"),
         "permissions": get_full_permissions()
     }
-    user = crud_users.create_user(lizard.agent_key, expected_user)
+    user = await crud_users.create_user(lizard.agent_key, expected_user)
     assert user["username"] == expected_user["username"]
     assert user["permissions"] == expected_user["permissions"]
-    users = list(crud_users.get_users(lizard.agent_key).values())
+    users = list((await crud_users.get_users(lizard.agent_key)).values())
     assert len(users) == 2
 
     new_user_id = [user["id"] for user in users if user["username"] == expected_user["username"]][0]
-    user = crud_users.get_user(lizard.agent_key, new_user_id)
+    user = await crud_users.get_user(lizard.agent_key, new_user_id)
     assert user["username"] == expected_user["username"]
     assert user["permissions"] == expected_user["permissions"]
 
 
-def test_get_user_by_username(lizard):
+async def test_get_user_by_username(lizard):
     username = "admin2"
 
     # create
@@ -259,56 +259,56 @@ def test_get_user_by_username(lizard):
         "password": hash_password("admin2"),
         "permissions": get_full_permissions()
     }
-    crud_users.create_user(lizard.agent_key, expected_user)
+    await crud_users.create_user(lizard.agent_key, expected_user)
 
-    user = crud_users.get_user_by_username(lizard.agent_key, username)
+    user = await crud_users.get_user_by_username(lizard.agent_key, username)
     assert user["username"] == expected_user["username"]
     assert user["permissions"] == expected_user["permissions"]
 
 
-def test_update_user(lizard):
+async def test_update_user(lizard):
     # create
     new_user = {
         "username": "admin2",
         "password": hash_password("admin2"),
         "permissions": get_full_permissions()
     }
-    user = crud_users.create_user(lizard.agent_key, new_user)
+    user = await crud_users.create_user(lizard.agent_key, new_user)
 
     expected_user = user.copy()
     expected_user["username"] = "admin3"
 
-    crud_users.update_user(lizard.agent_key, user["id"], expected_user)
-    user = crud_users.get_user_by_username(lizard.agent_key, "admin3")
+    await crud_users.update_user(lizard.agent_key, user["id"], expected_user)
+    user = await crud_users.get_user_by_username(lizard.agent_key, "admin3")
 
     assert user is not None
 
 
-def test_delete_user(lizard):
+async def test_delete_user(lizard):
     # create
     new_user = {
         "username": "admin2",
         "password": hash_password("admin2"),
         "permissions": get_full_permissions()
     }
-    user = crud_users.create_user(lizard.agent_key, new_user)
+    user = await crud_users.create_user(lizard.agent_key, new_user)
 
-    crud_users.delete_user(lizard.agent_key, user["id"])
-    user = crud_users.get_user_by_username(lizard.agent_key, "admin2")
+    await crud_users.delete_user(lizard.agent_key, user["id"])
+    user = await crud_users.get_user_by_username(lizard.agent_key, "admin2")
 
     assert user is None
 
 
-def test_get_user_by_credentials(lizard):
+async def test_get_user_by_credentials(lizard):
     # create
     new_user = {
         "username": "admin2",
         "password": hash_password("admin2"),
         "permissions": get_full_permissions()
     }
-    crud_users.create_user(lizard.agent_key, new_user)
+    await crud_users.create_user(lizard.agent_key, new_user)
 
-    user = crud_users.get_user_by_credentials(lizard.agent_key, new_user["username"], "admin2")
+    user = await crud_users.get_user_by_credentials(lizard.agent_key, new_user["username"], "admin2")
     assert user is not None
     assert user["username"] == new_user["username"]
     assert user["permissions"] == new_user["permissions"]

@@ -16,13 +16,14 @@ async def get_agentic_workflow_settings(
 ) -> GetSettingsResponse:
     """Get the list of the Agentic Workflow settings"""
     ccat = info.cheshire_cat
-    return ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+    sf = ServiceFactory(
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_agentic_workflows",
         setting_category="agentic_workflow",
         schema_name="agenticWorkflowName",
-    ).get_factory_settings()
+    )
+    return await sf.get_factory_settings()
 
 
 @router.get("/settings/{agentic_workflow_name}", response_model=GetSettingResponse)
@@ -32,13 +33,14 @@ async def get_agentic_workflow_setting(
 ) -> GetSettingResponse:
     """Get the settings of a specific Agentic Workflow"""
     ccat = info.cheshire_cat
-    return ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+    sf = ServiceFactory(
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_agentic_workflows",
         setting_category="agentic_workflow",
         schema_name="agenticWorkflowName",
-    ).get_factory_setting(agentic_workflow_name)
+    )
+    return await sf.get_factory_setting(agentic_workflow_name)
 
 
 @router.put("/settings/{agentic_workflow_name}", response_model=UpsertSettingResponse)
@@ -50,11 +52,12 @@ async def upsert_agentic_workflow_setting(
     """Upsert the settings of a specific Agentic Workflow"""
     ccat = info.cheshire_cat
 
-    result = ServiceFactory(
-        agent_key=ccat.agent_key,
-        hook_manager=ccat.plugin_manager,
+    sf = ServiceFactory(
+        agent_key=ccat.agent_key,  # type: ignore[union-attr]
+        hook_manager=ccat.plugin_manager,  # type: ignore[union-attr]
         factory_allowed_handler_name="factory_allowed_agentic_workflows",
         setting_category="agentic_workflow",
         schema_name="agenticWorkflowName",
-    ).upsert_service(agentic_workflow_name, payload)
+    )
+    result = await sf.upsert_service(agentic_workflow_name, payload)
     return UpsertSettingResponse(**result)

@@ -48,7 +48,7 @@ class CatEndpoint:
         log.info(f"Activating custom endpoint {self.methods} {self.name}")
 
         # Set the fastapi api_route into the Custom Endpoint
-        if any(api_route.path == self.name and api_route.methods == self.methods for api_route in grinning_cat_api.routes):
+        if any(api_route.path == self.name and api_route.methods == self.methods for api_route in grinning_cat_api.routes):  # type: ignore[attr-defined]
             log.debug(f"There is already an active {self.methods} endpoint with path {self.name}")
             return
 
@@ -71,11 +71,11 @@ class CatEndpoint:
 
         # Set the fastapi api_route into the Custom Endpoint
         for api_route in grinning_cat_api.routes:
-            if api_route.path == self.name and api_route.methods == self.methods:
+            if api_route.path == self.name and api_route.methods == self.methods:  # type: ignore[attr-defined]
                 self.api_route = api_route
                 break
         
-        assert self.api_route.path == self.name
+        assert self.api_route.path == self.name  # type: ignore[attr-defined]
 
     def deactivate(self, grinning_cat_api: FastAPI | None = None):
         if not grinning_cat_api:
@@ -86,7 +86,7 @@ class CatEndpoint:
         # https://github.com/fastapi/fastapi/discussions/9855
         to_remove = None
         for api_route in grinning_cat_api.routes:
-            if api_route.path == self.name and api_route.methods == self.methods:
+            if api_route.path == self.name and api_route.methods == self.methods:  # type: ignore[attr-defined]
                 to_remove = api_route
                 break
 
@@ -127,14 +127,14 @@ class Endpoint:
                 def my_endpoint():
                     return {"Hello":"Alice"}
         """
-        tags = tags or self.default_tags
+        tags = tags or self.default_tags  # type: ignore[assignment]
 
         def _make_endpoint(endpoint_function: Callable):
             custom_endpoint = CatEndpoint(
-                prefix=prefix,
+                prefix=prefix,  # type: ignore[arg-type]
                 path=path,
                 function=endpoint_function,
-                methods=set(methods),
+                methods=set(methods),  # type: ignore[arg-type]
                 tags=tags,
                 **kwargs,
             )
@@ -162,7 +162,7 @@ class Endpoint:
                 def my_get_endpoint():
                     return {"Hello":"Alice"}
         """
-        tags = tags or self.default_tags
+        tags = tags or self.default_tags  # type: ignore[assignment]
 
         return self.endpoint(
             path=path,
@@ -198,7 +198,7 @@ class Endpoint:
                 def my_post_endpoint(item: Item):
                     return {"Hello": item.name, "Description": item.description}
         """
-        tags = tags or self.default_tags
+        tags = tags or self.default_tags  # type: ignore[assignment]
 
         return self.endpoint(
             path=path,
@@ -234,7 +234,7 @@ class Endpoint:
                 def my_put_endpoint(item: Item):
                     return {"Hello": item.name, "Description": item.description}
         """
-        tags = tags or self.default_tags
+        tags = tags or self.default_tags  # type: ignore[assignment]
 
         return self.endpoint(
             path=path,
@@ -270,7 +270,7 @@ class Endpoint:
                 def my_delete_endpoint(item: Item):
                     return {"Hello": item.name, "Description": item.description}
         """
-        tags = tags or self.default_tags
+        tags = tags or self.default_tags  # type: ignore[assignment]
 
         return self.endpoint(
             path=path,

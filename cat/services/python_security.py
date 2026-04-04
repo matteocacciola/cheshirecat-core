@@ -93,7 +93,7 @@ class PythonSecurityVisitor(ast.NodeVisitor):
             while isinstance(current, (ast.Attribute, ast.Name)):
                 if isinstance(current, ast.Attribute):
                     func_path.append(current.attr)
-                    current = current.value
+                    current = current.value  # type: ignore[assignment]
                 else:  # ast.Name
                     func_path.append(current.id)
                     break

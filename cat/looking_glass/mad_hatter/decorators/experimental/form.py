@@ -59,7 +59,7 @@ class CatForm(CatProcedure, ABC):  # base model of forms
     def autopilot(self) -> bool:
         return self._autopilot
 
-    def to_document_recall(self) -> List[DocumentRecall]:
+    async def to_document_recall(self) -> List[DocumentRecall]:
         triggers_map = {
             "description": [f"{self.name}: {self.description}"],
             "examples": self.examples,
@@ -82,7 +82,7 @@ class CatForm(CatProcedure, ABC):  # base model of forms
                 ),
             )
             for trigger_type, trigger_list in triggers_map.items()
-            for trigger_content in trigger_list
+            for trigger_content in trigger_list  # type: ignore[union-attr]
         ]
 
     @classmethod
@@ -90,15 +90,15 @@ class CatForm(CatProcedure, ABC):  # base model of forms
         # CatForm has no constructor params
         return cls()
 
-    def langchainfy(self) -> StructuredTool:
+    async def langchainfy(self) -> StructuredTool:
         """
         Convert CatProcedure to a langchain compatible StructuredTool object.
 
         Returns:
             The langchain compatible StructuredTool object.
         """
-        description = self.description + ("\n\nE.g.:\n" if self.examples else "")
-        for example in self.examples:
+        description = self.description + ("\n\nE.g.:\n" if self.examples else "")  # type: ignore[operator]
+        for example in self.examples:  # type: ignore[union-attr]
             description += f"- {example}\n"
 
         return StructuredTool.from_function(
@@ -118,7 +118,7 @@ class CatForm(CatProcedure, ABC):  # base model of forms
     # Check user confirm the form data
     async def _confirm(self) -> bool:
         # Get user message
-        user_message = self.stray.cheshire_cat.working_memory.user_message.text
+        user_message = self.stray.cheshire_cat.working_memory.user_message.text  # type: ignore[union-attr]
 
         # Confirm prompt
         confirm_prompt = """Your task is to produce a JSON representing whether a user is confirming or not.
@@ -137,7 +137,7 @@ JSON must be in this format:
     # it is triggered at the beginning of every form.next()
     async def _check_exit_intent(self) -> bool:
         # Get user message
-        user_message = self.stray.cheshire_cat.working_memory.user_message.text
+        user_message = self.stray.cheshire_cat.working_memory.user_message.text  # type: ignore[union-attr]
 
         # Stop examples
         stop_examples = """
@@ -228,7 +228,7 @@ JSON:
         return output_model
 
     def _extraction_prompt(self, latest_n: int = 10):
-        history = "".join([str(h) for h in self.stray.cheshire_cat.working_memory.history[-latest_n:]])
+        history = "".join([str(h) for h in self.stray.cheshire_cat.working_memory.history[-latest_n:]])  # type: ignore[union-attr]
 
         # JSON structure
         # BaseModel.__fields__['my_field'].type_
@@ -336,7 +336,7 @@ Updated JSON:
             log.error(f"Error while executing form: {e}")
             return ""
 
-    async def _run_agent(self, prompt_template: str, prompt_variables: Dict | None = None) -> "AgenticWorkflowOutput":
+    async def _run_agent(self, prompt_template: str, prompt_variables: Dict | None = None) -> "AgenticWorkflowOutput":  # type: ignore[name-defined]
         from cat.looking_glass.models import AgenticWorkflowTask
 
         agent_input = AgenticWorkflowTask(
@@ -344,7 +344,7 @@ Updated JSON:
             prompt_variables=prompt_variables,
         )
 
-        response = await self._agent.run(task=agent_input, llm=self.stray.large_language_model)
+        response = await self._agent.run(task=agent_input, llm=self.stray.large_language_model)  # type: ignore[union-attr]
         return response
 
 
