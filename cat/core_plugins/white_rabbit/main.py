@@ -35,7 +35,7 @@ async def re_embed_mcp_tools():
 
 
 def re_embed_mcp_tools_async():
-    asyncio.run(re_embed_mcp_tools)
+    asyncio.run(re_embed_mcp_tools())
 
 
 @hook
