@@ -1,9 +1,11 @@
+import asyncio
 from abc import ABC, abstractmethod
 from typing import Type, List, Iterable
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import ConfigDict
 
+from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.services.factory.models import BaseFactoryConfigModel
 
 
@@ -14,9 +16,11 @@ class BaseChunker(ABC):
     MUST be implemented by subclasses.
     """
     @abstractmethod
-    def split_documents(self, documents: Iterable[Document]) -> List[Document]:
+    async def split_documents(self, documents: Iterable[Document]) -> List[Document]:
         """
         Split the documents into smaller chunks.
+        Implementations that perform CPU-bound work should offload it via
+        ``asyncio.to_thread`` to avoid blocking the event loop.
 
         Args:
             documents: the documents to split
@@ -25,6 +29,18 @@ class BaseChunker(ABC):
             The list of documents after splitting
         """
         pass
+
+    @property
+    @abstractmethod
+    def analyzer(self):
+        pass
+
+
+class EmbeddedBaseChunker(BaseChunker, ABC):
+    async def _ensure_embedder(self):
+        if hasattr(self.analyzer, "embedder") and not self.analyzer.embedder:
+            embedder = await BillTheLizard().embedder()
+            self.analyzer.embedder = embedder
 
     @property
     @abstractmethod
@@ -51,8 +67,9 @@ class RecursiveTextChunker(BaseChunker):
             disallowed_special=(),  # Disallow control for other special tokens
         )
 
-    def split_documents(self, documents: Iterable[Document]) -> List[Document]:
-        return self.analyzer.split_documents(documents)
+    async def split_documents(self, documents: Iterable[Document]) -> List[Document]:
+        docs = list(documents)
+        return await asyncio.to_thread(self.analyzer.split_documents, docs)
 
 
 

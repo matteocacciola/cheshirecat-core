@@ -19,7 +19,7 @@ from .looking_glass.mad_hatter.procedures import CatProcedureType
 from .looking_glass.mad_hatter.registry import PluginRegistry
 from .services.factory.agentic_workflow import AgenticWorkflowConfig, BaseAgenticWorkflowHandler
 from .services.factory.auth_handler import AuthHandlerConfig, BaseAuthHandler
-from .services.factory.chunker import BaseChunker, ChunkerSettings
+from .services.factory.chunker import BaseChunker, EmbeddedBaseChunker, ChunkerSettings
 from .services.factory.embedder import EmbedderSettings, EmbedderMultimodalSettings, Embeddings, MultimodalEmbeddings
 from .services.factory.file_manager import BaseFileManager, FileManagerConfig
 from .services.factory.llm import LLMSettings, LargeLanguageModel
@@ -49,6 +49,7 @@ __all__ = [
     "CheshireCat",
     "ChunkerSettings",
     "ConversationMessage",
+    "EmbeddedBaseChunker",
     "EmbedderSettings",
     "EmbedderMultimodalSettings",
     "Embeddings",

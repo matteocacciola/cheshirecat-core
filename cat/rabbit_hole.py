@@ -341,7 +341,7 @@ class RabbitHole:
 
         # split docs
         chunker = await self.cat.chunker()
-        docs = chunker.split_documents(docs)
+        docs = await chunker.split_documents(docs)
 
         # join each short chunk with previous one, instead of deleting them
         try:
