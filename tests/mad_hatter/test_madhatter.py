@@ -68,8 +68,8 @@ async def test_plugin_install(lizard, plugin_is_flat):
 
     # plugin is activated by default
     assert len(plugin_manager.plugins["mock_plugin"].hooks) == 3
-    assert len(plugin_manager.plugins["mock_plugin"].procedures) == 3
-    assert len(plugin_manager.plugins["mock_plugin"].tools) == 1
+    assert len(plugin_manager.plugins["mock_plugin"].procedures) == 4
+    assert len(plugin_manager.plugins["mock_plugin"].tools) == 2
     assert len(plugin_manager.plugins["mock_plugin"].forms) == 1
     assert len(plugin_manager.plugins["mock_plugin"].mcp_clients) == 1
 

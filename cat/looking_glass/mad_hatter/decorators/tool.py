@@ -1,4 +1,3 @@
-import asyncio
 import importlib
 import inspect
 from typing import Callable, List, Dict
@@ -99,8 +98,8 @@ class CatTool(CatProcedure):
         obj_name = input_params["func"]["name"]
         obj_module = importlib.import_module(obj_module_path)
         func = getattr(obj_module, obj_name, None)
-        if not callable(func) and hasattr(func, "func"):
-            func = func.func  # type: ignore[union-attr]  # unwrap if it's a tool object
+        if isinstance(func, CatTool):
+            func = func.func  # unwrap: @tool replaces the module-level name with a CatTool
 
         # if func is still None, raise an error
         if func is None:
@@ -117,20 +116,29 @@ class CatTool(CatProcedure):
         )
 
     def _get_function(self) -> Callable:
-        # create a closure to capture self.stray
-        def func_with_cat(*args, **kwargs):
-            sig = inspect.signature(original_func)
-            valid_params = set(sig.parameters.keys())
-            filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_params}
-            filtered_kwargs["cat"] = stray
-            return original_func(*args, **filtered_kwargs)
-
         # wrap func to inject the cat instance if func has the cat argument
         original_func = self.func
         if "cat" not in original_func.__code__.co_varnames or self.stray is None:  # type: ignore[union-attr]
             return self.func  # type: ignore[return-value]
 
         stray = self.stray
+
+        # create a closure to capture self.stray
+        if inspect.iscoroutinefunction(original_func):
+            async def func_with_cat(*args, **kwargs):
+                sig = inspect.signature(original_func)
+                valid_params = set(sig.parameters.keys())
+                filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_params}
+                filtered_kwargs["cat"] = stray
+                return await original_func(*args, **filtered_kwargs)
+        else:
+            def func_with_cat(*args, **kwargs):
+                sig = inspect.signature(original_func)
+                valid_params = set(sig.parameters.keys())
+                filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_params}
+                filtered_kwargs["cat"] = stray
+                return original_func(*args, **filtered_kwargs)
+
         return func_with_cat
 
     async def langchainfy(self) -> StructuredTool:
@@ -150,7 +158,7 @@ class CatTool(CatProcedure):
             "args_schema": self.input_schema,
         }
         fnc = self._get_function()
-        kwargs["coroutine" if asyncio.iscoroutine(fnc) else "func"] = fnc  # type: ignore[assignment]
+        kwargs["coroutine" if inspect.iscoroutinefunction(fnc) else "func"] = fnc  # type: ignore[assignment]
 
         return StructuredTool.from_function(**kwargs)
 

@@ -70,7 +70,7 @@ async def test_activate_plugin(plugin):
             assert hook.priority == 1  # default priority
 
     # tools
-    assert len(plugin.tools) == 1
+    assert len(plugin.tools) == 2
     tool = plugin.tools[0]
     assert isinstance(tool, CatTool)
     assert tool.name == "mock_tool"

@@ -13,7 +13,7 @@ async def _check_activation(secure_client, secure_client_headers):
 
     assert mock_plugin["id"] == "mock_plugin"
     assert len(mock_plugin["local_info"]["hooks"]) == 3
-    assert len(mock_plugin["local_info"]["tools"]) == 1
+    assert len(mock_plugin["local_info"]["tools"]) == 2
     assert len(mock_plugin["local_info"]["forms"]) == 1
     assert len(mock_plugin["local_info"]["endpoints"]) == 7
 
