@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta, timezone
 from typing import List
 from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR, EVENT_JOB_SUBMITTED
-from apscheduler.executors.pool import ThreadPoolExecutor, ProcessPoolExecutor
+from apscheduler.executors.asyncio import AsyncIOExecutor
+from apscheduler.executors.pool import ProcessPoolExecutor
 from apscheduler.jobstores.redis import RedisJobStore
-from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pydantic import BaseModel, Field
 
 from cat import log, utils
@@ -53,13 +54,13 @@ class WhiteRabbit:
         }
 
         executors = {
-            "default": ThreadPoolExecutor(20),
+            "default": AsyncIOExecutor(),
             "processpool": ProcessPoolExecutor(5),
         }
 
         job_defaults = {"coalesce": False, "max_instances": 10}
 
-        self.scheduler = BackgroundScheduler(
+        self.scheduler = AsyncIOScheduler(
             jobstores=jobstores,
             executors=executors,
             job_defaults=job_defaults,

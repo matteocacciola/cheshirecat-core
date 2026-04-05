@@ -1,4 +1,3 @@
-import asyncio
 from cat import hook, log, BillTheLizard, CatProcedureType
 from cat.core_plugins.white_rabbit.white_rabbit import WhiteRabbit
 import cat.db.cruds.settings as crud_settings
@@ -34,10 +33,6 @@ async def re_embed_mcp_tools():
         lizard.white_rabbit.release_lock(scheduled_job_id)
 
 
-def re_embed_mcp_tools_async():
-    asyncio.run(re_embed_mcp_tools())
-
-
 @hook
 async def after_lizard_bootstrap(lizard: BillTheLizard):
     # Start scheduling system and attach it to the BillTheLizard core class
@@ -56,7 +51,7 @@ async def after_lizard_bootstrap(lizard: BillTheLizard):
         lizard.white_rabbit.remove_job(scheduled_job_id)
 
     lizard.white_rabbit.schedule_interval_job(
-        job=re_embed_mcp_tools_async,
+        job=re_embed_mcp_tools,
         job_id=scheduled_job_id,
         days=interval_job_days,
     )
