@@ -112,7 +112,7 @@ class CatForm(CatProcedure, ABC):  # base model of forms
         return CatProcedureType.TOOL
 
     @abstractmethod
-    def submit(self, form_data) -> str:
+    async def submit(self, form_data) -> str:
         pass
 
     # Check user confirm the form data
@@ -308,7 +308,7 @@ Updated JSON:
             if self._state == CatFormState.WAIT_CONFIRM:
                 should_confirm = await self._confirm()
                 if should_confirm:
-                    result = self.submit(self._model)
+                    result = await self.submit(self._model)
                     self._state = CatFormState.CLOSED
                     return result
 
@@ -324,7 +324,7 @@ Updated JSON:
             # If state is COMPLETE, ask confirm (or execute action directly)
             if self._state == CatFormState.COMPLETE:
                 if not self.ask_confirm:
-                    result = self.submit(self._model)
+                    result = await self.submit(self._model)
                     self._state = CatFormState.CLOSED
                     return result
 
