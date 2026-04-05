@@ -5,7 +5,6 @@ from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import ConfigDict
 
-from cat.looking_glass.bill_the_lizard import BillTheLizard
 from cat.services.factory.models import BaseFactoryConfigModel
 
 
@@ -38,6 +37,8 @@ class BaseChunker(ABC):
 
 class EmbeddedBaseChunker(BaseChunker, ABC):
     async def _ensure_embedder(self):
+        from cat.looking_glass.bill_the_lizard import BillTheLizard
+
         if hasattr(self.analyzer, "embedder") and not self.analyzer.embedder:
             embedder = await BillTheLizard().embedder()
             self.analyzer.embedder = embedder
