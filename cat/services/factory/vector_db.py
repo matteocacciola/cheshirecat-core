@@ -553,8 +553,7 @@ class QdrantHandler(BaseVectorDatabaseHandler):
 
     def _eq(self, other: "QdrantHandler") -> bool:  # type: ignore[override]
         return (
-                self.client.__class__.__name__ == other.__class__.__name__
-                and self.qdrant_https == other.qdrant_https
+                self.qdrant_https == other.qdrant_https
                 and self.qdrant_host == other.qdrant_host
                 and self.port == other.port
                 and self.api_key == other.api_key
