@@ -14,6 +14,7 @@ from cat.services.factory.file_manager import DummyFileManagerConfig
 from cat.services.factory.llm import LLMDefaultConfig
 from cat.services.factory.models import BaseFactoryConfigModel
 from cat.services.factory.vector_db import QdrantConfig
+from cat.utils import SUFFIX_TO_CRYPT
 
 
 class ServiceFactory:
@@ -64,10 +65,14 @@ class ServiceFactory:
 
         return schemas
 
-    async def get_from_config_name(self, config_name: str) -> Any:
+    async def _get_factory_class(self, config_name: str):
         # get plugin file manager factory class
         classes = await self._get_allowed_classes()
         factory_class = next((cls for cls in classes if cls.__name__ == config_name), None)
+        return factory_class
+
+    async def get_from_config_name(self, config_name: str) -> Any:
+        factory_class = await self._get_factory_class(config_name)
         if not factory_class:
             log.warning(
                 f"Class {config_name} not found in the list of allowed classes for setting '{self.setting_category}'"
@@ -105,12 +110,18 @@ class ServiceFactory:
         return result
 
     async def get_factory_settings(self) -> GetSettingsResponse:
+        async def get_class_value(class_name: str) -> Dict[str, Any]:
+            if class_name != saved_settings["name"]:
+                return {}
+            factory_class = await self._get_factory_class(class_name)
+            return factory_class.parse_config(saved_settings["value"])
+
         saved_settings = await crud_settings.get_settings_by_category(self._agent_key, self.setting_category)
         schemas = await self.get_schemas()
 
         settings = [GetSettingResponse(
             name=class_name,
-            value=saved_settings["value"] if class_name == saved_settings["name"] else {},  # type: ignore[index]
+            value=await get_class_value(class_name),
             scheme=scheme
         ) for class_name, scheme in schemas.items()]
 
@@ -124,8 +135,10 @@ class ServiceFactory:
             raise CustomValidationException(
                 f"{configuration_name} not supported. Must be one of {allowed_configurations}")
 
+        factory_class = await self._get_factory_class(configuration_name)
+
         setting = await crud_settings.get_setting_by_name(self._agent_key, configuration_name)
-        setting = {} if setting is None else setting["value"]
+        setting = {} if setting is None else factory_class.parse_config(setting["value"])
 
         scheme = schemas[configuration_name]
 
@@ -136,7 +149,7 @@ class ServiceFactory:
         return {
             k: (
                 self.default_config_class.crypto.encrypt(v.default)
-                if isinstance(v.default, str) and any(suffix in k for suffix in ["_key", "_secret"]) and v.default
+                if isinstance(v.default, str) and any(suffix in k for suffix in SUFFIX_TO_CRYPT) and v.default
                 else v.default
             )
             for k, v in self.default_config_class.model_fields.items()

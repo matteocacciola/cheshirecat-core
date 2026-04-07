@@ -377,8 +377,8 @@ class RabbitHole:
             return docs
 
         # Get configuration with safe defaults
-        chunk_size = getattr(chunker.analyzer, "chunk_size", getattr(chunker.analyzer, "max_chunk_size", 1000))
-        chunk_overlap = getattr(chunker.analyzer, "chunk_overlap", 100)
+        chunk_size = getattr(chunker.splitter, "chunk_size", getattr(chunker.splitter, "max_chunk_size", 1000))
+        chunk_overlap = getattr(chunker.splitter, "chunk_overlap", 100)
 
         # Conservative thresholds
         min_chunk_size = max(50, chunk_size // 20)  # At least 50 chars

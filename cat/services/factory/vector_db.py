@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import uuid
@@ -64,6 +65,17 @@ class BaseVectorDatabaseHandler(ABC):
             return False
 
         return self.__class__.__name__ == other.__class__.__name__ and self._eq(other)
+
+    def __del__(self):
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self.close())
+            else:
+                loop.run_until_complete(self.close())
+        except Exception:
+            log.warning(f"Error while closing the vector database handler for the agent `{self.agent_id}`", exc_info=True)
+            pass
 
     @property
     def agent_id(self) -> str:
