@@ -57,7 +57,7 @@ def mock_classes(monkeypatch, memory_client):
     utils.get_file_manager_root_storage_path = lambda: "tests/data/storage"
 
     # do not check plugin dependencies at every restart
-    def mock_install_requirements(self):
+    async def mock_install_requirements(self):
         pass
     monkeypatch.setattr(Plugin, "_install_requirements", mock_install_requirements)
 
