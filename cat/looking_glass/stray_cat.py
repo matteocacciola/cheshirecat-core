@@ -1,6 +1,6 @@
 import asyncio
 import uuid
-from typing import List, Final, Callable
+from typing import List, Final
 from langchain_core.tools import StructuredTool
 from websockets.exceptions import ConnectionClosedOK
 
