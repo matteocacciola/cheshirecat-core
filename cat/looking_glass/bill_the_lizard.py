@@ -125,9 +125,8 @@ class BillTheLizard(OrchestratorMixin):
                     Setting(name="metadata", value=metadata),
                 )
 
-            vmh = await ccat.vector_memory_handler()
             embedder = await self.embedder()
-            await vmh.initialize(embedder.name, embedder.size)
+            await ccat.vmh.initialize(embedder.name, embedder.size)
             await ccat.embed_procedures()
 
             await self.plugin_manager.execute_hook("after_cheshire_cat_creation", ccat, caller=self)
@@ -256,8 +255,7 @@ class BillTheLizard(OrchestratorMixin):
             # now, I have to re-initialize all the vector databases in a serialized way, outside threads to avoid
             # race conditions
             for entry in stored_files_by_ccat:
-                vmh = await entry["ccat"].vector_memory_handler()
-                await vmh.initialize(embedder_name, embedder_size)
+                await entry["ccat"].vmh.initialize(embedder_name, embedder_size)
 
                 # finally, I can re-embed all the stored files in an asynchronous way
                 # limit concurrent embeddings to avoid overwhelming resources

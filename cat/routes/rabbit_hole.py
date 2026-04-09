@@ -239,8 +239,7 @@ async def get_source_urls(
     collection = str(VectorMemoryType.DECLARATIVE if not info.stray_cat else VectorMemoryType.EPISODIC)
 
     # Get all points
-    vmh = await info.cheshire_cat.vector_memory_handler()  # type: ignore[union-attr]
-    memory_points, _ = await vmh.get_all_tenant_points_from_web(collection)
+    memory_points, _ = await info.cheshire_cat.vmh.get_all_tenant_points_from_web(collection)
 
     # retrieve all the memory points where the metadata["source"] is a URL
     result = []

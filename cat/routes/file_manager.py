@@ -160,8 +160,7 @@ async def delete_file(
         res = fh.remove_file(os.path.join(path, sanitized_source))
 
         # delete points
-        vmh = await info.cheshire_cat.vector_memory_handler()  # type: ignore[union-attr]
-        await vmh.delete_tenant_points(str(collection_id), metadata)  # type: ignore[arg-type]
+        await info.cheshire_cat.vmh.delete_tenant_points(str(collection_id), metadata)  # type: ignore[arg-type]
 
         return FileManagerDeletedFiles(deleted=res)
     except Exception as e:
@@ -186,8 +185,7 @@ async def delete_files(
         # delete points
         for file in files:
             metadata |= {"source": file.name}
-            vmh = await info.cheshire_cat.vector_memory_handler()  # type: ignore[union-attr]
-            await vmh.delete_tenant_points(str(collection_id), metadata)  # type: ignore[arg-type]
+            await info.cheshire_cat.vmh.delete_tenant_points(str(collection_id), metadata)  # type: ignore[arg-type]
 
         return FileManagerDeletedFiles(deleted=res)
     except Exception as e:

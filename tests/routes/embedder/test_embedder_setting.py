@@ -92,9 +92,8 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
     cheshire_cat = await lizard.create_cheshire_cat(agent_id)
 
     headers = {"X-Agent-ID": agent_id, "Authorization": f"Bearer {api_key}"}
-    vmh = await cheshire_cat.vector_memory_handler()
 
-    embedded_procedures_before = await vmh.get_tenant_vectors_count(
+    embedded_procedures_before = await cheshire_cat.vmh.get_tenant_vectors_count(
         str(VectorMemoryType.PROCEDURAL)
     )
     assert embedded_procedures_before == 0
@@ -189,8 +188,7 @@ async def test_upsert_embedder_settings_with_episodic_memory_without_conversatio
     response, _ = await send_file(file_name, content_type, secure_client, headers, ch_id=chat_id)
     assert response.status_code == 200
 
-    vmh = await cheshire_cat.vector_memory_handler()
-    episodic_memories_before = await vmh.get_tenant_vectors_count(
+    episodic_memories_before = await cheshire_cat.vmh.get_tenant_vectors_count(
         str(VectorMemoryType.EPISODIC)
     )
     assert episodic_memories_before > 0

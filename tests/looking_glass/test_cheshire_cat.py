@@ -21,6 +21,7 @@ async def test_main_modules_loaded(cheshire_cat):
     assert isinstance(await cheshire_cat.chunker(), BaseChunker)
     assert isinstance(await cheshire_cat.embedder(), Embeddings)
     assert isinstance(await cheshire_cat.vector_memory_handler(), BaseVectorDatabaseHandler)
+    assert isinstance(await cheshire_cat.vmh, BaseVectorDatabaseHandler)
 
 
 async def test_default_llm_loaded(cheshire_cat):

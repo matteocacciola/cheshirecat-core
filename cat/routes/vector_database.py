@@ -57,7 +57,7 @@ async def upsert_vector_database_setting(
     """Upsert the Vector Database setting"""
     ccat = info.cheshire_cat
 
-    previous_vector_db = await ccat.vector_memory_handler()  # type: ignore[union-attr]
+    previous_vector_db = ccat.vmh
 
     sf = ServiceFactory(
         agent_key=ccat.agent_key,  # type: ignore[union-attr]
@@ -68,8 +68,8 @@ async def upsert_vector_database_setting(
     )
     result = await sf.upsert_service(vector_database_name, payload)
 
-    current_vector_db = await ccat.vector_memory_handler()  # type: ignore[union-attr]
-    if previous_vector_db != current_vector_db:
+    ccat.vmh = await ccat.vector_memory_handler()
+    if previous_vector_db != ccat.vmh:
         run_background_task(background_tasks, ccat.transfer_vector_points_from, previous_vector_db)
 
     return UpsertSettingResponse(**result)

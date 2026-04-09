@@ -94,8 +94,7 @@ class RabbitHole:
                 raise Exception(f"Embedding size mismatch for file '{filename}': vectors length should be {embedder_size}")
 
             # Upsert memories in batch mode
-            vmh = await cat.vector_memory_handler()
-            await vmh.add_points_to_tenant(
+            await cat.vmh.add_points_to_tenant(
                 collection_name=str(VectorMemoryType.DECLARATIVE), points=points,
             )
         except Exception as e:
@@ -309,8 +308,7 @@ class RabbitHole:
         ) for doc, vector in zip(valid_documents, storing_vectors)]
 
         collection_name = str(VectorMemoryType.DECLARATIVE if not self.stray else VectorMemoryType.EPISODIC)
-        vmh = await self.cat.vector_memory_handler()
-        await vmh.add_points_to_tenant(collection_name=collection_name, points=points)
+        await self.cat.vmh.add_points_to_tenant(collection_name=collection_name, points=points)
 
         return points
 

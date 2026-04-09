@@ -84,8 +84,7 @@ async def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_heade
     assert file_exists
 
     # check that the file has generated no entry in the declarative vector memory
-    vmh = await cheshire_cat.vector_memory_handler()
-    points, _ = await vmh.get_all_tenant_points(
+    points, _ = await cheshire_cat.vmh.get_all_tenant_points(
         str(VectorMemoryType.DECLARATIVE),
         metadata={"source": file_name, "chat_id": chat_id},
         with_vectors=False,
@@ -93,7 +92,7 @@ async def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_heade
     assert len(points) == 0
 
     # check that the file has generated entries in the episodic vector memory
-    points, _ = await vmh.get_all_tenant_points(
+    points, _ = await cheshire_cat.vmh.get_all_tenant_points(
         str(VectorMemoryType.EPISODIC),
         metadata={"source": file_name, "chat_id": chat_id},
         with_vectors=False,

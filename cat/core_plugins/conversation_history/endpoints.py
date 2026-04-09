@@ -72,7 +72,7 @@ async def delete_conversation(
         (await cat.file_manager()).remove_folder(os.path.join(cat.agent_key, stray_cat.id))
 
         # delete the elements of the conversation from the vector memory
-        await (await cat.vector_memory_handler()).delete_tenant_points(
+        await cat.vmh.delete_tenant_points(
             str(VectorMemoryType.EPISODIC), {"chat_id": stray_cat.id},
         )
 

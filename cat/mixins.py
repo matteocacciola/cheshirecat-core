@@ -102,6 +102,8 @@ class BotMixin(ContextMixin, ABC):
     Mixin for shared methods between StrayCat and CheshireCat.
     Provides access to chat request/response, user info, and core subsystems.
     """
+    _vmh = None
+
     @property
     def lizard(self) -> "BillTheLizard":  # type: ignore[name-defined]
         """
@@ -153,3 +155,11 @@ class BotMixin(ContextMixin, ABC):
     # each time we access the file handlers, plugins can intervene
     async def file_handlers(self) -> Dict:
         return await self.mad_hatter.execute_hook("rabbithole_instantiates_parsers", {}, caller=self)
+
+    @property
+    def vmh(self) -> BaseVectorDatabaseHandler:
+        return self._vmh
+
+    @vmh.setter
+    def vmh(self, value: BaseVectorDatabaseHandler):
+        self._vmh = value

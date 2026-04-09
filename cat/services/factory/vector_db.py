@@ -73,8 +73,8 @@ class BaseVectorDatabaseHandler(ABC):
                 loop.create_task(self.close())
             else:
                 loop.run_until_complete(self.close())
-        except Exception:
-            log.warning(f"Error while closing the vector database handler for the agent `{self.agent_id}`", exc_info=True)
+        except Exception as e:
+            log.warning(f"Error while closing the vector database handler for the agent `{self.agent_id}`: {e}")
             pass
 
     @property
