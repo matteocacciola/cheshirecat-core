@@ -68,8 +68,7 @@ class ConnectionAuth(ABC):
 
         # fallback to agent-specific auth if needed and available
         if not user and ccat is not None:
-            ch = await ccat.custom_auth_handler()
-            user = await ch.authorize(
+            user = await ccat.custom_auth_handler.authorize(
                 connection,
                 self.resource,
                 self.permission,
@@ -85,14 +84,9 @@ class ConnectionAuth(ABC):
             self._not_allowed(connection)
 
         if ccat is not None and (chat_id := extract_chat_id_from_request(connection)):
-            stray_cat = await StrayCat.create(
-                user_data=user,  # type: ignore[arg-type]
-                agent_id=ccat.agent_key,
-                stray_id=chat_id,
-                plugin_manager_generator=ccat.plugin_manager_generator,
-            )
+            stray_cat = await StrayCat.from_cat(user_data=user, cat=ccat, stray_id=chat_id)  # type: ignore[arg-type]
 
-        return AuthorizedInfo(lizard=lizard, cheshire_cat=ccat, user=user, stray_cat=stray_cat, agent_id=agent_id)
+        return AuthorizedInfo(lizard=lizard, cheshire_cat=ccat, user=user, stray_cat=stray_cat, agent_id=agent_id)  # type: ignore[arg-type]
 
     @abstractmethod
     def _not_authorized(self, connection: HTTPConnection, **kwargs):

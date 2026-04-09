@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from cat.db import models
 from cat.db.cruds import settings as crud_settings
+from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.services.factory.agentic_workflow import BaseAgenticWorkflowHandler
 from cat.services.factory.auth_handler import BaseAuthHandler
@@ -12,6 +13,7 @@ from cat.services.service_factory import ServiceFactory
 from cat.services.factory.chunker import BaseChunker
 from cat.services.factory.file_manager import BaseFileManager
 from cat.services.factory.vector_db import BaseVectorDatabaseHandler
+from cat.utils import singleton
 
 
 class FactoryParams(BaseModel):
@@ -20,16 +22,14 @@ class FactoryParams(BaseModel):
     schema_name: str
 
 
+@singleton
 class ServiceProvider:
-    def __init__(self, agent_key: str, plugin_manager: MadHatter):
-        self._agent_key = agent_key
-        self._plugin_manager = plugin_manager
-
-    async def _create_service_object(self, factory: ServiceFactory):
+    @staticmethod
+    async def _create_service_object(agent_key: str, factory: ServiceFactory):
         # if no config is saved, use default one and save to db
         # create the settings for the factory
         await crud_settings.upsert_setting_by_name(
-            self._agent_key,
+            agent_key,
             models.Setting(
                 name=factory.default_config_class.__name__,
                 category=factory.setting_category,
@@ -37,61 +37,66 @@ class ServiceProvider:
             ),
         )
 
-    def _get_factory_object(self, factory_params: FactoryParams) -> ServiceFactory:
-        return ServiceFactory(self._agent_key, self._plugin_manager, **factory_params.model_dump())
+    async def _get_service_object(self, agent_key: str, plugin_manager: MadHatter, factory_params: FactoryParams) -> Any:
+        factory = ServiceFactory(agent_key, plugin_manager, **factory_params.model_dump())
 
-    async def _get_service_object(self, factory_params: FactoryParams) -> Any:
-        factory = self._get_factory_object(factory_params)
-
-        if not (selected_config := await crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)):
+        if not (selected_config := await crud_settings.get_settings_by_category(agent_key, factory.setting_category)):
             # if no config is saved, use the default one and save to db
             # create the settings for the factory
-            await self._create_service_object(factory)
+            await self._create_service_object(agent_key, factory)
 
             # reload from db and return
-            selected_config = await crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)
+            selected_config = await crud_settings.get_settings_by_category(agent_key, factory.setting_category)
 
         return await factory.get_from_config_name(selected_config["name"])  # type: ignore[index]
 
-    async def get_embedder(self) -> Embeddings:
-        return await self._get_service_object(self._factory_services_params["embedder"])
+    async def get_embedder(self, agent_key: str, plugin_manager: MadHatter) -> Embeddings:
+        return await self._get_service_object(agent_key, plugin_manager, self._factory_services_params["embedder"])
 
-    async def get_large_language_model(self) -> LargeLanguageModel:
-        return await self._get_service_object(self._factory_services_params["large_language_model"])
+    async def get_large_language_model(self, agent_key: str, plugin_manager: MadHatter) -> LargeLanguageModel:
+        return await self._get_service_object(
+            agent_key, plugin_manager, self._factory_services_params["large_language_model"]
+        )
 
-    async def get_custom_auth_handler(self) -> BaseAuthHandler:
-        return await self._get_service_object(self._factory_services_params["auth_handler"])
+    async def get_custom_auth_handler(self, agent_key: str, plugin_manager: MadHatter) -> BaseAuthHandler:
+        return await self._get_service_object(
+            agent_key, plugin_manager, self._factory_services_params["auth_handler"]
+        )
 
-    async def get_file_manager(self) -> BaseFileManager:
-        return await self._get_service_object(self._factory_services_params["file_manager"])
+    async def get_file_manager(self, agent_key: str, plugin_manager: MadHatter) -> BaseFileManager:
+        return await self._get_service_object(agent_key, plugin_manager, self._factory_services_params["file_manager"])
 
-    async def get_chunker(self) -> BaseChunker:
-        return await self._get_service_object(self._factory_services_params["chunker"])
+    async def get_chunker(self, agent_key: str, plugin_manager: MadHatter) -> BaseChunker:
+        return await self._get_service_object(agent_key, plugin_manager, self._factory_services_params["chunker"])
 
-    async def get_vector_memory_handler(self) -> BaseVectorDatabaseHandler:
-        return await self._get_service_object(self._factory_services_params["vector_memory_handler"])
+    async def get_vector_memory_handler(self, agent_key: str, plugin_manager: MadHatter) -> BaseVectorDatabaseHandler:
+        return await self._get_service_object(
+            agent_key, plugin_manager, self._factory_services_params["vector_memory_handler"]
+        )
 
-    async def get_agentic_workflow(self) -> BaseAgenticWorkflowHandler:
-        agentic_workflow = await self._get_service_object(self._factory_services_params["agentic_workflow"])
-        agentic_workflow.vector_memory_handler = await self.get_vector_memory_handler()
+    async def get_agentic_workflow(self, agent_key: str, plugin_manager: MadHatter) -> BaseAgenticWorkflowHandler:
+        agentic_workflow = await self._get_service_object(
+            agent_key, plugin_manager, self._factory_services_params["agentic_workflow"]
+        )
+        agentic_workflow.vector_memory_handler = await self.get_vector_memory_handler(agent_key, plugin_manager)
         return agentic_workflow
 
-    async def bootstrap_services(self, list_factory_params: Dict[str, FactoryParams]):
+    async def bootstrap_services(self, agent_key: str, plugin_manager: MadHatter):
+        list_factory_params = (
+            self._orchestrator_factory_services_params
+            if agent_key == DEFAULT_SYSTEM_KEY
+            else self._bot_factory_services_params
+        )
+
         for _, factory_params in list_factory_params.items():
-            factory = self._get_factory_object(factory_params)
-            selected_config = await crud_settings.get_settings_by_category(self._agent_key, factory.setting_category)
+            factory = ServiceFactory(agent_key, plugin_manager, **factory_params.model_dump())
+            selected_config = await crud_settings.get_settings_by_category(agent_key, factory.setting_category)
             if selected_config:
                 continue
 
             # if no config is saved, use default one and save to db
             # create the settings for the factory
-            await self._create_service_object(factory)
-
-    async def bootstrap_services_orchestrator(self):
-        await self.bootstrap_services(self._orchestrator_factory_services_params)
-
-    async def bootstrap_services_bot(self):
-        await self.bootstrap_services(self._bot_factory_services_params)
+            await self._create_service_object(agent_key, factory)
 
     @property
     def _orchestrator_factory_services_params(self) -> Dict[str, FactoryParams]:

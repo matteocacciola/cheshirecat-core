@@ -94,7 +94,7 @@ class RabbitHole:
                 raise Exception(f"Embedding size mismatch for file '{filename}': vectors length should be {embedder_size}")
 
             # Upsert memories in batch mode
-            await cat.vmh.add_points_to_tenant(
+            await cat.vector_memory_handler.add_points_to_tenant(
                 collection_name=str(VectorMemoryType.DECLARATIVE), points=points,
             )
         except Exception as e:
@@ -308,7 +308,7 @@ class RabbitHole:
         ) for doc, vector in zip(valid_documents, storing_vectors)]
 
         collection_name = str(VectorMemoryType.DECLARATIVE if not self.stray else VectorMemoryType.EPISODIC)
-        await self.cat.vmh.add_points_to_tenant(collection_name=collection_name, points=points)
+        await self.cat.vector_memory_handler.add_points_to_tenant(collection_name=collection_name, points=points)
 
         return points
 
@@ -338,12 +338,11 @@ class RabbitHole:
         docs = await plugin_manager.execute_hook("before_rabbithole_splits_documents", docs, caller=self.stray or self.cat)
 
         # split docs
-        chunker = await self.cat.chunker()
-        docs = await chunker.split_documents(docs)
+        docs = await self.cat.chunker.split_documents(docs)
 
         # join each short chunk with previous one, instead of deleting them
         try:
-            return self._merge_short_chunks(docs, chunker)
+            return self._merge_short_chunks(docs, self.cat.chunker)
         except Exception as e:
             # Log error but don't fail the entire process
             log.warning(f"Error merging short chunks: {e}. Proceeding with original chunks.")

@@ -34,8 +34,6 @@ class StrayCat(BotMixin):
         Unique identifier of the cat session.
     user: AuthUserInfo
         User data object containing user information.
-    plugin_manager_generator: Callable[[], MadHatter]
-        Function that generates the plugin manager for this cat.
     notifier: NotifierService
         Notifier service to send messages/updates to the client via Websocket.
     working_memory: WorkingMemory
@@ -58,38 +56,33 @@ class StrayCat(BotMixin):
         >> cat.working_memory.location
         "Rome"
     """
-    def __init__(
-        self,
-        agent_id: str,
-        user_data: AuthUserInfo,
-        plugin_manager_generator: Callable[[], MadHatter],
-        stray_id: str | None = None,
-    ):
+    def __init__(self, agent_id: str, user_data: AuthUserInfo, stray_id: str | None = None):
         self.id = stray_id or str(uuid.uuid4())
         self._agent_id: Final[str] = agent_id
         self.user: Final[AuthUserInfo] = user_data
-        self.plugin_manager_generator: Final[Callable[[], MadHatter]] = plugin_manager_generator
         self.notifier: Final[NotifierService] = NotifierService(self.user, self.agent_key, self.id)  # type: ignore[call-arg]
 
         self.working_memory = None
-        self._agentic_workflow = None
+        self._plugin_manager = None
         self.latest_n_history = 1
 
     @classmethod
-    async def create(
-        cls,
-        agent_id: str,
-        user_data: AuthUserInfo,
-        plugin_manager_generator: Callable[[], MadHatter],
-        stray_id: str | None = None
-    ) -> "StrayCat":
+    async def from_cat(cls, cat: "CheshireCat", user_data: AuthUserInfo, stray_id: str | None = None) -> "StrayCat":
         """Factory method to create a StrayCat instance and its working memory."""
-        cat = cls(agent_id, user_data, plugin_manager_generator, stray_id)
-        cat.working_memory = await WorkingMemory.create(agent_id=agent_id, user_id=user_data.id, chat_id=cat.id)
-        cat._agentic_workflow = await cat.agentic_workflow()
-        cat.vmh = await cat.vector_memory_handler()
+        instance = cls(cat.agent_key, user_data, stray_id)
+        instance.working_memory = await WorkingMemory.create(
+            agent_id=instance.agent_key, user_id=user_data.id, chat_id=instance.id
+        )
+        instance.plugin_manager = cat.plugin_manager
 
-        return cat
+        instance.agentic_workflow = cat.agentic_workflow
+        instance.chunker = cat.chunker
+        instance.custom_auth_handler = cat.custom_auth_handler
+        instance.file_manager = cat.file_manager
+        instance.large_language_model = cat.large_language_model
+        instance.vector_memory_handler = cat.vector_memory_handler
+
+        return instance
 
     def __eq__(self, other: "StrayCat") -> bool:
         """Check if two cats are equal."""
@@ -240,7 +233,7 @@ class StrayCat(BotMixin):
 
             agent_output = await self._agentic_workflow.run(
                 task=agent_input,
-                llm=await self.large_language_model(),
+                llm=self.large_language_model,
                 callbacks=await plugin_manager.execute_hook("llm_callbacks", [], caller=self),
             )
 
@@ -303,4 +296,8 @@ class StrayCat(BotMixin):
 
     @property
     def plugin_manager(self) -> MadHatter:
-        return self.plugin_manager_generator()
+        return self._plugin_manager
+
+    @plugin_manager.setter
+    def plugin_manager(self, value: MadHatter):
+        self._plugin_manager = value

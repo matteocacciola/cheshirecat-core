@@ -93,7 +93,7 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
 
     headers = {"X-Agent-ID": agent_id, "Authorization": f"Bearer {api_key}"}
 
-    embedded_procedures_before = await cheshire_cat.vmh.get_tenant_vectors_count(
+    embedded_procedures_before = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.PROCEDURAL)
     )
     assert embedded_procedures_before == 0
@@ -113,11 +113,11 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
 
     response, _ = await send_file("sample.pdf", "application/pdf", secure_client, headers, ch_id=chat_id)
     assert response.status_code == 200
-    declarative_memories_before = await vmh.get_tenant_vectors_count(
+    declarative_memories_before = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.DECLARATIVE)
     )
     assert declarative_memories_before > 0
-    episodic_memories = await vmh.get_tenant_vectors_count(
+    episodic_memories = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.EPISODIC)
     )
     assert episodic_memories > 0
@@ -140,12 +140,12 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
 
     await asyncio.sleep(1)  # give some time for the background tasks to complete
 
-    embedder_procedures_after = await vmh.get_tenant_vectors_count(
+    embedder_procedures_after = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.PROCEDURAL)
     )
     assert embedder_procedures_after == embedded_procedures_before
 
-    declarative_memories_after = await vmh.get_tenant_vectors_count(
+    declarative_memories_after = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.DECLARATIVE)
     )
     assert declarative_memories_after == declarative_memories_before
@@ -156,7 +156,7 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
     assert res.status_code == 200
     json = res.json()
     assert isinstance(json["deleted"], bool)
-    declarative_memories = await vmh.get_tenant_vectors_count(
+    declarative_memories = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.DECLARATIVE)
     )
     assert declarative_memories == 0
@@ -188,7 +188,7 @@ async def test_upsert_embedder_settings_with_episodic_memory_without_conversatio
     response, _ = await send_file(file_name, content_type, secure_client, headers, ch_id=chat_id)
     assert response.status_code == 200
 
-    episodic_memories_before = await cheshire_cat.vmh.get_tenant_vectors_count(
+    episodic_memories_before = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.EPISODIC)
     )
     assert episodic_memories_before > 0
@@ -210,7 +210,7 @@ async def test_upsert_embedder_settings_with_episodic_memory_without_conversatio
 
         await asyncio.sleep(1)  # give some time for the background tasks to complete
 
-        episodic_memories_after = await vmh.get_tenant_vectors_count(
+        episodic_memories_after = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
             str(VectorMemoryType.EPISODIC)
         )
         assert episodic_memories_after != episodic_memories_before

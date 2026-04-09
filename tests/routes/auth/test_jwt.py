@@ -59,8 +59,7 @@ async def test_issue_jwt(secure_client, client, cheshire_cat):
     assert is_jwt(received_token)
 
     # is the JWT correct for core auth handler?
-    auth_handler = await cheshire_cat.custom_auth_handler()
-    user_info = await auth_handler.authorize_user_from_jwt(
+    user_info = await cheshire_cat.custom_auth_handler.authorize_user_from_jwt(
         received_token, AuthResource.CHAT, AuthPermission.READ, key_id=agent_id
     )
     assert len(user_info.id) == 36 and len(user_info.id.split("-")) == 5  # uuid4

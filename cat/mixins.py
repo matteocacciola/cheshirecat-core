@@ -1,7 +1,10 @@
+import asyncio
+import inspect
 from abc import ABC, abstractmethod
 from typing import Dict
 
 from cat.core_plugins.white_rabbit.white_rabbit import WhiteRabbit
+from cat.log import log
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.rabbit_hole import RabbitHole
 from cat.services.factory.agentic_workflow import BaseAgenticWorkflowHandler
@@ -25,7 +28,7 @@ class ContextMixin(ABC):
     @property
     def service_provider(self):
         if not self._service_provider:
-            self._service_provider = ServiceProvider(self.agent_key, self.mad_hatter)  # type: ignore[arg-type]
+            self._service_provider = ServiceProvider()
         return self._service_provider
 
     @property
@@ -58,7 +61,7 @@ class ContextMixin(ABC):
 
     @property
     @abstractmethod
-    def agent_key(self) -> str | None:
+    def agent_key(self) -> str:
         """The agent's unique identifier, if applicable."""
         pass
 
@@ -94,7 +97,7 @@ class OrchestratorMixin(ContextMixin, ABC):
     Provides access to chat request/response, user info, and core subsystems.
     """
     async def embedder(self) -> Embeddings:
-        return await self.service_provider.get_embedder()
+        return await self.service_provider.get_embedder(self.agent_key, self.mad_hatter)
 
 
 class BotMixin(ContextMixin, ABC):
@@ -102,7 +105,12 @@ class BotMixin(ContextMixin, ABC):
     Mixin for shared methods between StrayCat and CheshireCat.
     Provides access to chat request/response, user info, and core subsystems.
     """
-    _vmh = None
+    _agentic_workflow = None
+    _chunker = None
+    _custom_auth_handler = None
+    _file_manager = None
+    _large_language_model = None
+    _vector_memory_handler = None
 
     @property
     def lizard(self) -> "BillTheLizard":  # type: ignore[name-defined]
@@ -120,23 +128,53 @@ class BotMixin(ContextMixin, ABC):
     async def embedder(self) -> Embeddings:
         return await self.lizard.embedder()
 
-    async def large_language_model(self) -> LargeLanguageModel:
-        return await self.service_provider.get_large_language_model()
+    @property
+    def agentic_workflow(self) -> BaseAgenticWorkflowHandler:
+        return self._agentic_workflow
 
-    async def custom_auth_handler(self) -> BaseAuthHandler:
-        return await self.service_provider.get_custom_auth_handler()
+    @agentic_workflow.setter
+    def agentic_workflow(self, value: BaseAgenticWorkflowHandler):
+        self._agentic_workflow = value
 
-    async def file_manager(self) -> BaseFileManager:
-        return await self.service_provider.get_file_manager()
+    @property
+    def chunker(self) -> BaseChunker:
+        return self._chunker
 
-    async def chunker(self) -> BaseChunker:
-        return await self.service_provider.get_chunker()
+    @chunker.setter
+    def chunker(self, value: BaseChunker):
+        self._chunker = value
 
-    async def vector_memory_handler(self) -> BaseVectorDatabaseHandler:
-        return await self.service_provider.get_vector_memory_handler()
+    @property
+    def custom_auth_handler(self) -> BaseAuthHandler:
+        return self._custom_auth_handler
 
-    async def agentic_workflow(self) -> BaseAgenticWorkflowHandler:
-        return await self.service_provider.get_agentic_workflow()
+    @custom_auth_handler.setter
+    def custom_auth_handler(self, value: BaseAuthHandler):
+        self._custom_auth_handler = value
+
+    @property
+    def file_manager(self) -> BaseFileManager:
+        return self._file_manager
+
+    @file_manager.setter
+    def file_manager(self, value: BaseFileManager):
+        self._file_manager = value
+
+    @property
+    def large_language_model(self) -> LargeLanguageModel:
+        return self._large_language_model
+
+    @large_language_model.setter
+    def large_language_model(self, value: LargeLanguageModel):
+        self._large_language_model = value
+
+    @property
+    def vector_memory_handler(self) -> BaseVectorDatabaseHandler:
+        return self._vector_memory_handler
+
+    @vector_memory_handler.setter
+    def vector_memory_handler(self, value: BaseVectorDatabaseHandler):
+        self._vector_memory_handler = value
 
     @property
     def rabbit_hole(self) -> RabbitHole:
@@ -156,10 +194,35 @@ class BotMixin(ContextMixin, ABC):
     async def file_handlers(self) -> Dict:
         return await self.mad_hatter.execute_hook("rabbithole_instantiates_parsers", {}, caller=self)
 
-    @property
-    def vmh(self) -> BaseVectorDatabaseHandler:
-        return self._vmh
+    def __del__(self):
+        if not inspect.iscoroutinefunction(self.shutdown):
+            self.shutdown()
+            return
 
-    @vmh.setter
-    def vmh(self, value: BaseVectorDatabaseHandler):
-        self._vmh = value
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self.shutdown())
+            else:
+                loop.run_until_complete(self.shutdown())
+        except Exception:
+            message = f"Error while shutting down {self.__class__.__name__} '{self.agent_key}'"
+            if hasattr(self, "id"):
+                message += f" - id '{getattr(self, 'id')}'"
+            log.warning(message)
+            pass
+
+    async def shutdown(self) -> None:
+        setattr(self, "plugin_manager", None)
+        self._agentic_workflow = None
+        self._chunker = None
+        self._custom_auth_handler = None
+        self._file_manager = None
+        self._large_language_model = None
+        if self._vector_memory_handler:
+            try:
+                await self._vector_memory_handler.close()
+            except:
+                pass
+            self._vector_memory_handler = None
+        self._service_provider = None

@@ -80,7 +80,7 @@ class BillTheLizard(OrchestratorMixin):
         self.rabbit_hole = RabbitHole()
         self.core_auth_handler = CoreAuthHandler()
 
-        await self.service_provider.bootstrap_services_orchestrator()
+        await self.service_provider.bootstrap_services(self.agent_key, self.plugin_manager)
 
         # Initialize the default admin if not present
         if not await crud_users.get_users(DEFAULT_SYSTEM_KEY, limit=1):
@@ -126,7 +126,7 @@ class BillTheLizard(OrchestratorMixin):
                 )
 
             embedder = await self.embedder()
-            await ccat.vmh.initialize(embedder.name, embedder.size)
+            await ccat.vector_memory_handler.initialize(embedder.name, embedder.size)
             await ccat.embed_procedures()
 
             await self.plugin_manager.execute_hook("after_cheshire_cat_creation", ccat, caller=self)
@@ -255,7 +255,7 @@ class BillTheLizard(OrchestratorMixin):
             # now, I have to re-initialize all the vector databases in a serialized way, outside threads to avoid
             # race conditions
             for entry in stored_files_by_ccat:
-                await entry["ccat"].vmh.initialize(embedder_name, embedder_size)
+                await entry["ccat"].vector_memory_handler.initialize(embedder_name, embedder_size)
 
                 # finally, I can re-embed all the stored files in an asynchronous way
                 # limit concurrent embeddings to avoid overwhelming resources

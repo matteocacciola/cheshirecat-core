@@ -57,9 +57,8 @@ class LocalFileManager(BaseFileManager):
 
     def _list_files(self, remote_root_dir: str) -> List[FileResponse]:
         def get_file_hash(file_path: str, chunk_size: int = 8192) -> str:
-            file_path = Path(file_path)
             sha256 = hashlib.sha256()
-            with file_path.open("rb") as f:
+            with Path(file_path).open("rb") as f:
                 while chunk := f.read(chunk_size):
                     sha256.update(chunk)
             return sha256.hexdigest()

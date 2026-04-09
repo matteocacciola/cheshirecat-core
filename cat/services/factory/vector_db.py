@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import json
 import os
 import uuid
@@ -67,6 +68,10 @@ class BaseVectorDatabaseHandler(ABC):
         return self.__class__.__name__ == other.__class__.__name__ and self._eq(other)
 
     def __del__(self):
+        if not inspect.iscoroutinefunction(self.close):
+            self.close()
+            return
+
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():

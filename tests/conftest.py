@@ -199,10 +199,9 @@ async def agent_plugin_manager(cheshire_cat):
 
 @pytest.fixture(scope="function")
 async def stray_no_memory(cheshire_cat, agent_plugin_manager):
-    stray_cat = await StrayCat.create(
+    stray_cat = await StrayCat.from_cat(
         user_data=AuthUserInfo(id=str(uuid4()), name="Alice", permissions=get_base_permissions()),
-        agent_id=cheshire_cat.agent_key,
-        plugin_manager_generator=lambda: agent_plugin_manager,
+        cat=cheshire_cat,
     )
     yield stray_cat
 

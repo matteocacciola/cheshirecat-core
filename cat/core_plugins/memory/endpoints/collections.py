@@ -26,11 +26,11 @@ async def get_collections(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
 ) -> GetCollectionsResponse:
     """Get the list of available collections"""
-    existing_collections = await info.cheshire_cat.vmh.get_collection_names()
+    existing_collections = await info.cheshire_cat.vector_memory_handler.get_collection_names()
 
     collections_metadata = [GetCollectionsItem(
         name=collection,
-        vectors_count=await info.cheshire_cat.vmh.get_tenant_vectors_count(collection)
+        vectors_count=await info.cheshire_cat.vector_memory_handler.get_tenant_vectors_count(collection)
     ) for collection in existing_collections]
 
     return GetCollectionsResponse(collections=collections_metadata)
@@ -45,8 +45,8 @@ async def destroy_all_collection_points(
 ) -> WipeCollectionsResponse:
     """Delete and create all collections"""
     to_return = {
-        collection: bool(await info.cheshire_cat.vmh.delete_tenant_points(collection))
-        for collection in await info.cheshire_cat.vmh.get_collection_names()
+        collection: bool(await info.cheshire_cat.vector_memory_handler.delete_tenant_points(collection))
+        for collection in await info.cheshire_cat.vector_memory_handler.get_collection_names()
     }
 
     return WipeCollectionsResponse(deleted=to_return)
@@ -64,13 +64,13 @@ async def destroy_all_single_collection_points(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> WipeCollectionsResponse:
     """Delete and recreate a collection"""
-    existing_collections = await info.cheshire_cat.vmh.get_collection_names()
+    existing_collections = await info.cheshire_cat.vector_memory_handler.get_collection_names()
 
     # check if the collection exists
     if collection_id not in existing_collections:
         raise CustomNotFoundException("Collection does not exist.")
 
-    ret = await info.cheshire_cat.vmh.delete_tenant_points(collection_id)
+    ret = await info.cheshire_cat.vector_memory_handler.delete_tenant_points(collection_id)
     return WipeCollectionsResponse(deleted={collection_id: bool(ret)})
 
 
@@ -87,15 +87,15 @@ async def create_single_collection(
 ) -> GetCollectionsItem:
     """Create a new collection"""
     # check if collection exists
-    existing_collections = await info.cheshire_cat.vmh.get_collection_names()
+    existing_collections = await info.cheshire_cat.vector_memory_handler.get_collection_names()
     if collection_id in existing_collections:
         return GetCollectionsItem(
             name=collection_id,
-            vectors_count=await info.cheshire_cat.vmh.get_tenant_vectors_count(collection_id)
+            vectors_count=await info.cheshire_cat.vector_memory_handler.get_tenant_vectors_count(collection_id)
         )
 
     embedder = await info.cheshire_cat.lizard.embedder()  # type: ignore[union-attr]
-    await info.cheshire_cat.vmh.create_collection(
+    await info.cheshire_cat.vector_memory_handler.create_collection(
         embedder.name,
         embedder.size,
         collection_id

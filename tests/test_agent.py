@@ -13,10 +13,9 @@ async def test_execute_agent(stray):
     )
 
     # empty agent execution
-    af = await stray.agentic_workflow()
-    out = await af.run(
+    out = await stray.agentic_workflow.run(
         task=agent_input,
-        llm=await stray.large_language_model(),
+        llm=stray.large_language_model,
     )
     assert isinstance(out, AgenticWorkflowOutput)
     assert out.intermediate_steps == []
@@ -57,10 +56,9 @@ async def test_execute_agent_with_form_submit(secure_client, secure_client_heade
         user_prompt=message,
         tools=tools,
     )
-    af = await stray.agentic_workflow()
-    out = await af.run(
+    out = await stray.agentic_workflow.run(
         task=agent_input,
-        llm=await stray.large_language_model(),
+        llm=stray.large_language_model,
     )
     assert isinstance(out, AgenticWorkflowOutput)
     assert len(out.intermediate_steps) == 1
@@ -90,10 +88,9 @@ async def test_execute_main_agent_with_tool(stray, monkeypatch):
         user_prompt=message,
         tools=tools,
     )
-    af = await stray.agentic_workflow()
-    out = await af.run(
+    out = await stray.agentic_workflow.run(
         task=agent_input,
-        llm=await stray.large_language_model(),
+        llm=stray.large_language_model,
     )
     assert isinstance(out, AgenticWorkflowOutput)
     assert len(out.intermediate_steps) == 1
@@ -127,10 +124,9 @@ async def test_execute_main_agent_with_mcp_client_tool(stray, secure_client, sec
         user_prompt=message,
         tools=tools,
     )
-    af = await stray.agentic_workflow()
-    out = await af.run(
+    out = await stray.agentic_workflow.run(
         task=agent_input,
-        llm=await stray.large_language_model(),
+        llm=stray.large_language_model,
     )
     assert isinstance(out, AgenticWorkflowOutput)
     assert len(out.intermediate_steps) == 1
