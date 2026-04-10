@@ -39,11 +39,11 @@ The Grinning Cat is a framework to build custom AI agents:
 - 🌍 Supports any language model via LangChain
 
 We are committed to openness, privacy and creativity, we want to bring AI to the long tail. If you want to know more
-about our vision and values, read the [Code of Ethics](CODE-OF-ETHICS.md).
+about our vision and values, read the [Code of Ethics](docs/CODE-OF-ETHICS.md).
 
 # Key differences of this version
 The current version is a multi-tenant fork of the original [Cheshire Cat](https://www.github.com/cheshire-cat-ai/core).
-The main differences are reported in the [CHANGELOG](CHANGELOG.md).
+The main differences are reported in the [DIFFERENCE WITH CHESHIRECAT report](docs/DIFFERENCES-WITH-CHESHIRECAT.md).
 
 # Quickstart
 To make Grinning Cat run on your machine, you just need [`docker`](https://docs.docker.com/get-docker/) installed:
@@ -172,7 +172,7 @@ and containing one of the following payloads:
 
 # Compatibility 
 This new version is no more completely compatible with the original version, since the architecture has been changed.
-Please, refer to [COMPATIBILITY.md](COMPATIBILITY.md) for more information.
+Please, refer to [COMPATIBILITY.md](docs/COMPATIBILITY.md) for more information.
 
 # Best practices
 
@@ -328,7 +328,7 @@ List of resources:
 # Roadmap & Contributing
 
 All contributions are welcome! Fork the project, create a branch, and make your changes.
-Then, follow the [contribution guidelines](CONTRIBUTING.md) to submit your pull request.
+Then, follow the [contribution guidelines](docs/CONTRIBUTING.md) to submit your pull request.
 
 If you like this fork, give it a star ⭐! It is very important to have your support. Thanks again!🙏
 

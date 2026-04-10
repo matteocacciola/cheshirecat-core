@@ -8,7 +8,7 @@ from tests.utils import just_installed_plugin, agent_id
 
 async def _check_installed_in_cat(secure_client, secure_client_headers, is_active):
     # GET plugins endpoint lists the plugin
-    response = await secure_client.get("/plugins", headers=secure_client_headers)
+    response = await secure_client.get("/plugins/", headers=secure_client_headers)
     available_plugins = response.json()["installed"]
     mock_plugin = [p for p in available_plugins if p["id"] == "mock_plugin"][0]
     assert isinstance(mock_plugin["local_info"]["active"], bool)
@@ -16,7 +16,7 @@ async def _check_installed_in_cat(secure_client, secure_client_headers, is_activ
 
     assert mock_plugin["id"] == "mock_plugin"
     assert len(mock_plugin["local_info"]["hooks"]) == 3
-    assert len(mock_plugin["local_info"]["tools"]) == 1
+    assert len(mock_plugin["local_info"]["tools"]) == 2
     assert len(mock_plugin["local_info"]["forms"]) == 1
     assert len(mock_plugin["local_info"]["endpoints"]) == 7
 
@@ -24,7 +24,7 @@ async def _check_installed_in_cat(secure_client, secure_client_headers, is_activ
 async def _check_not_installed_in_cat(lizard, secure_client, secure_client_headers):
     core_plugins = lizard.plugin_manager.get_core_plugins_ids
     # GET plugins endpoint lists the plugin
-    response = await secure_client.get("/plugins", headers=secure_client_headers)
+    response = await secure_client.get("/plugins/", headers=secure_client_headers)
     available_plugins = response.json()["installed"]
     assert len(available_plugins) == len(core_plugins)  # core plugins only
 
@@ -32,7 +32,7 @@ async def _check_not_installed_in_cat(lizard, secure_client, secure_client_heade
     assert len(mock_plugin) == 0  # plugin not available
 
 
-async def test_toggle_non_existent_plugin(secure_client, secure_client_headers):
+async def test_toggle_non_existent_plugin(secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers)
 
     response = await secure_client.put("/plugins/system/toggle/no_plugin", headers=secure_client_headers)
@@ -42,7 +42,7 @@ async def test_toggle_non_existent_plugin(secure_client, secure_client_headers):
     assert response_json["detail"] == "Plugin not found"
 
 
-async def test_toggle_plugin(lizard, secure_client, secure_client_headers):
+async def test_toggle_plugin(lizard, secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers)
 
     assert "mock_plugin" in (await crud_settings.get_setting_by_name(DEFAULT_SYSTEM_KEY, "active_plugins"))["value"]
@@ -82,6 +82,6 @@ async def test_toggle_plugin(lizard, secure_client, secure_client_headers):
     await _check_installed_in_cat(secure_client, secure_client_headers, False)
 
 
-async def test_untoggle_base_plugin(lizard, secure_client, secure_client_headers):
+async def test_untoggle_base_plugin(lizard, secure_client, secure_client_headers, cheshire_cat):
     with pytest.raises(Exception):
         await secure_client.put("/plugins/system/toggle/base_plugin", headers=secure_client_headers)

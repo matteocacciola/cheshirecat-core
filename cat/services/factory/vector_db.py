@@ -1,3 +1,5 @@
+import asyncio
+import inspect
 import json
 import os
 import uuid
@@ -64,6 +66,21 @@ class BaseVectorDatabaseHandler(ABC):
             return False
 
         return self.__class__.__name__ == other.__class__.__name__ and self._eq(other)
+
+    def __del__(self):
+        if not inspect.iscoroutinefunction(self.close):
+            self.close()
+            return
+
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(self.close())
+            else:
+                loop.run_until_complete(self.close())
+        except Exception as e:
+            log.warning(f"Error while closing the vector database handler for the agent `{self.agent_id}`: {e}")
+            pass
 
     @property
     def agent_id(self) -> str:
@@ -529,36 +546,30 @@ class QdrantHandler(BaseVectorDatabaseHandler):
 
         try:
             parsed_url = urlparse(host)
-            self.qdrant_https = parsed_url.scheme == "https"
-            self.qdrant_host = parsed_url.netloc + parsed_url.path
+            self.is_https = parsed_url.scheme == "https"
+            self.host = parsed_url.netloc + parsed_url.path
         except:
-            self.qdrant_https = False
-            self.qdrant_host = host
+            self.is_https = False
+            self.host = host
 
         qdrant_client_timeout = int(client_timeout) if client_timeout is not None else None
 
         try:
             self._client = AsyncQdrantClient(
-                host=self.qdrant_host,
+                host=self.host,
                 port=self.port,
-                https=self.qdrant_https,
+                https=self.is_https,
                 api_key=self.api_key,
                 prefer_grpc=True,
                 force_disable_check_same_thread=True,
                 timeout=qdrant_client_timeout,
             )
         except Exception as e:
-            log.error(f"Qdrant does not respond to {self.qdrant_host}:{port}")
+            log.error(f"Qdrant does not respond to {self.host}:{port}")
             raise e
 
-    def _eq(self, other: "QdrantHandler") -> bool:  # type: ignore[override]
-        return (
-                self.client.__class__.__name__ == other.__class__.__name__
-                and self.qdrant_https == other.qdrant_https
-                and self.qdrant_host == other.qdrant_host
-                and self.port == other.port
-                and self.api_key == other.api_key
-        )
+    def _eq(self, other: "QdrantHandler") -> bool:
+        return self.client.init_options == other.client.init_options
 
     @property
     def client(self):

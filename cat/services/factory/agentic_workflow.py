@@ -66,7 +66,7 @@ class BaseAgenticWorkflowHandler(ABC):
         return cleaned.strip()
 
     @staticmethod
-    def _extract_info(action) -> Tuple[Tuple[str | None, Dict, Dict] | None, str]:
+    def _extract_info(action) -> Tuple[Tuple[str | None, Dict, Dict] | None, str | None]:
         if not isinstance(action, tuple) or len(action) < 2:
             return None, str(action)
 

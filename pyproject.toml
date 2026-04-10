@@ -21,6 +21,7 @@ dependencies = [
     "filetype",
     "gunicorn",
     "httpx",
+    "httpx-ws",
     "langchain",
     "langchain-community",
     "lxml",

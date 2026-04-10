@@ -11,6 +11,7 @@ from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
 from cat.exceptions import CustomValidationException
 from cat.log import log
+from cat.routes.routes_utils import run_background_task
 from cat.services.memory.models import VectorMemoryType
 from cat.utils import guess_file_type, write_temp_file
 
@@ -152,7 +153,7 @@ async def upload_files(
 
     for file in files:
         filename = file.filename
-        background_tasks.add_task(task, file_name=filename, content=await file.read())  # type: ignore[arg-type]
+        run_background_task(background_tasks, task, file_name=filename, content=await file.read())
         response[filename] = UploadSingleFileResponse(
             filename=filename, content_type=file.content_type, info="File is being ingested asynchronously"  # type: ignore[arg-type]
         )
@@ -179,7 +180,8 @@ async def upload_url(
             response.raise_for_status()
 
             # upload file to long-term memory, in the background
-            background_tasks.add_task(
+            run_background_task(
+                background_tasks,
                 info.lizard.rabbit_hole.ingest_file,
                 cat=info.stray_cat or info.cheshire_cat,
                 file=upload_config.url,
@@ -206,7 +208,8 @@ async def upload_memory(
         )
 
     # Ingest memories in background and notify client
-    background_tasks.add_task(
+    run_background_task(
+        background_tasks,
         info.lizard.rabbit_hole.ingest_memory,
         cat=info.cheshire_cat,
         file=BytesIO(await file.read()),
@@ -236,8 +239,7 @@ async def get_source_urls(
     collection = str(VectorMemoryType.DECLARATIVE if not info.stray_cat else VectorMemoryType.EPISODIC)
 
     # Get all points
-    vmh = await info.cheshire_cat.vector_memory_handler()  # type: ignore[union-attr]
-    memory_points, _ = await vmh.get_all_tenant_points_from_web(collection)
+    memory_points, _ = await info.cheshire_cat.vector_memory_handler.get_all_tenant_points_from_web(collection)
 
     # retrieve all the memory points where the metadata["source"] is a URL
     result = []
@@ -308,7 +310,7 @@ async def upload_file(
         )
 
     filename = file.filename
-    background_tasks.add_task(task, content=await file.read())
+    run_background_task(background_tasks, task, content=await file.read())
 
     return UploadSingleFileResponse(
         filename=filename, content_type=file.content_type, info="File is being ingested asynchronously",  # type: ignore[arg-type]

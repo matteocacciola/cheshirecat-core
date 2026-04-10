@@ -1,5 +1,6 @@
+import asyncio
 from abc import ABC, abstractmethod
-from typing import Type, List, Iterable
+from typing import Type, List, Iterable, Any
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from pydantic import ConfigDict
@@ -13,10 +14,15 @@ class BaseChunker(ABC):
     smaller chunks. The chunkers are used to split text into smaller chunks that can be processed by the model.
     MUST be implemented by subclasses.
     """
+    def __init__(self):
+        self._splitter = None
+
     @abstractmethod
-    def split_documents(self, documents: Iterable[Document]) -> List[Document]:
+    async def split_documents(self, documents: Iterable[Document]) -> List[Document]:
         """
         Split the documents into smaller chunks.
+        Implementations that perform CPU-bound work should offload it via
+        ``asyncio.to_thread`` to avoid blocking the event loop.
 
         Args:
             documents: the documents to split
@@ -26,20 +32,35 @@ class BaseChunker(ABC):
         """
         pass
 
-    @property
     @abstractmethod
-    def analyzer(self):
+    def _get_splitter(self) -> Any:
         pass
+
+    @property
+    def splitter(self):
+        if not self._splitter:
+            self._splitter = self._get_splitter()
+        return self._splitter
+
+
+class EmbeddedBaseChunker(BaseChunker, ABC):
+    async def _ensure_embedder(self):
+        from cat.looking_glass.bill_the_lizard import BillTheLizard
+
+        if hasattr(self.splitter, "embedder") and not self.splitter.embedder:
+            embedder = await BillTheLizard().embedder()
+            self.splitter.embedder = embedder
 
 
 class RecursiveTextChunker(BaseChunker):
     def __init__(self, encoding_name: str, chunk_size: int, chunk_overlap: int):
+        super().__init__()
+
         self._encoding_name = encoding_name
         self._chunk_size = chunk_size
         self._chunk_overlap = chunk_overlap
 
-    @property
-    def analyzer(self):
+    def _get_splitter(self) -> RecursiveCharacterTextSplitter:
         return RecursiveCharacterTextSplitter.from_tiktoken_encoder(
             chunk_size=self._chunk_size,
             chunk_overlap=self._chunk_overlap,
@@ -51,9 +72,9 @@ class RecursiveTextChunker(BaseChunker):
             disallowed_special=(),  # Disallow control for other special tokens
         )
 
-    def split_documents(self, documents: Iterable[Document]) -> List[Document]:
-        return self.analyzer.split_documents(documents)
-
+    async def split_documents(self, documents: Iterable[Document]) -> List[Document]:
+        docs = list(documents)
+        return await asyncio.to_thread(self.splitter.split_documents, docs)
 
 
 class ChunkerSettings(BaseFactoryConfigModel, ABC):

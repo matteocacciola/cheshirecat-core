@@ -3,7 +3,7 @@ from tests.mocks.mock_plugin.mock_plugin_overrides import MockPluginSettings
 
 
 # endpoint to get settings and settings schema
-async def test_get_all_plugin_settings(lizard, secure_client, secure_client_headers):
+async def test_get_all_plugin_settings(lizard, secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers)
     response = await secure_client.get("/plugins/system/settings", headers=secure_client_headers)
     json = response.json()
@@ -31,7 +31,7 @@ async def test_get_all_plugin_settings(lizard, secure_client, secure_client_head
             assert setting["scheme"] == {}
 
 
-async def test_get_plugin_settings_non_existent(secure_client, secure_client_headers):
+async def test_get_plugin_settings_non_existent(secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers)
 
     non_existent_plugin = "ghost_plugin"
@@ -43,7 +43,7 @@ async def test_get_plugin_settings_non_existent(secure_client, secure_client_hea
 
 
 # endpoint to get settings and settings schema
-async def test_get_plugin_settings(secure_client, secure_client_headers):
+async def test_get_plugin_settings(secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers)
 
     response = await secure_client.get("/plugins/system/settings/mock_plugin", headers=secure_client_headers)

@@ -3,7 +3,7 @@ import pytest
 from tests.utils import just_installed_plugin, create_new_user, new_user_password, agent_id, get_client_admin_headers
 
 
-async def test_custom_endpoint_base(client, secure_client, secure_client_headers):
+async def test_custom_endpoint_base(client, secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers)
     # activate the plugin
     await secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
@@ -13,7 +13,7 @@ async def test_custom_endpoint_base(client, secure_client, secure_client_headers
     assert response.json()["result"] == "endpoint default prefix"
 
 
-async def test_custom_endpoint_prefix(client, secure_client, secure_client_headers):
+async def test_custom_endpoint_prefix(client, secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers)
     # activate the plugin
     await secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
@@ -23,7 +23,7 @@ async def test_custom_endpoint_prefix(client, secure_client, secure_client_heade
     assert response.json()["result"] == "endpoint prefix tests"
 
 
-async def test_custom_endpoint_get(secure_client, secure_client_headers):
+async def test_custom_endpoint_get(secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers)
     # activate the plugin
     await secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
@@ -36,7 +36,7 @@ async def test_custom_endpoint_get(secure_client, secure_client_headers):
     assert len(response.json()["user_id"]) == 36
 
 
-async def test_custom_endpoint_get_admin_not_found(client, secure_client, secure_client_headers):
+async def test_custom_endpoint_get_admin_not_found(client, secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers)
     await secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
 
@@ -44,14 +44,14 @@ async def test_custom_endpoint_get_admin_not_found(client, secure_client, secure
     assert response.status_code == 200
 
 
-async def test_custom_endpoint_get_not_found(secure_client, secure_client_headers):
+async def test_custom_endpoint_get_not_found(secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers)
 
     response = await secure_client.get("/tests/crud", headers=secure_client_headers)
     assert response.status_code == 404
 
 
-async def test_custom_endpoint_post(client, secure_client, secure_client_headers):
+async def test_custom_endpoint_post(client, secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers)
     # activate the plugin
     await secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
@@ -64,7 +64,7 @@ async def test_custom_endpoint_post(client, secure_client, secure_client_headers
     assert response.json()["description"] == "it's magic"
 
 
-async def test_custom_endpoint_put(client, secure_client, secure_client_headers):
+async def test_custom_endpoint_put(client, secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers)
     # activate the plugin
     await secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
@@ -77,7 +77,7 @@ async def test_custom_endpoint_put(client, secure_client, secure_client_headers)
     assert response.json()["name"] == "the cat"
     assert response.json()["description"] == "it's magic"
 
-async def test_custom_endpoint_delete(client, secure_client, secure_client_headers):
+async def test_custom_endpoint_delete(client, secure_client, secure_client_headers, cheshire_cat):
     await just_installed_plugin(secure_client, secure_client_headers)
     # activate the plugin
     await secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
@@ -90,7 +90,9 @@ async def test_custom_endpoint_delete(client, secure_client, secure_client_heade
 
 
 @pytest.mark.parametrize("switch_type", ["deactivate", "uninstall"])
-async def test_custom_endpoints_on_plugin_deactivation_or_uninstall(switch_type, secure_client, secure_client_headers):
+async def test_custom_endpoints_on_plugin_deactivation_or_uninstall(
+    switch_type, secure_client, secure_client_headers, cheshire_cat,
+):
     # install and activate the plugin
     await just_installed_plugin(secure_client, secure_client_headers, activate=True)
 
@@ -127,14 +129,16 @@ async def test_custom_endpoints_on_plugin_deactivation_or_uninstall(switch_type,
 
 @pytest.mark.parametrize("resource", ["PLUGIN", "LLM"])
 @pytest.mark.parametrize("permission", ["READ", "DELETE"])
-async def test_custom_endpoint_permissions(resource, permission, client, secure_client, secure_client_headers):
+async def test_custom_endpoint_permissions(
+    resource, permission, client, secure_client, secure_client_headers, cheshire_cat,
+):
     await just_installed_plugin(secure_client, secure_client_headers)
     # activate the plugin
     await secure_client.put("/plugins/toggle/mock_plugin", headers=secure_client_headers)
 
     # create user with permissions
     data = await create_new_user(
-        secure_client, "/users", headers=secure_client_headers, permissions={resource: [permission]}
+        secure_client, headers=secure_client_headers, permissions={resource: [permission]}
     )
     # get jwt for user
     response = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})

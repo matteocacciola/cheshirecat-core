@@ -22,6 +22,8 @@ from cat.log import log
 
 _T = TypeVar("_T")
 
+SUFFIX_TO_CRYPT = ["_key", "_secret", "_password"]
+
 
 class singleton(Generic[_T]):
     instances: dict = {}  # type: ignore[var-annotated]

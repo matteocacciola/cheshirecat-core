@@ -4,6 +4,9 @@ import uuid
 import random
 from typing import Dict
 from urllib.parse import urlencode
+from httpx_ws import aconnect_ws
+from httpx_ws.transport import ASGIWebSocketTransport
+import httpx
 
 from cat.auth.permissions import get_base_permissions, AuthResource, AuthPermission
 from cat.db.cruds import users as crud_users
@@ -32,16 +35,19 @@ async def send_file(file_name, content_type, client, headers, payload = None, ch
 
 
 # utility function to communicate with the cat via websocket
-async def send_websocket_message(msg, client, token, query_params = None, ch_id = None):
+async def send_websocket_message(msg, client, token, query_params=None, ch_id=None):
     url = f"/ws/{agent_id}" if not ch_id else f"/ws/{agent_id}/{ch_id}"
     if query_params:
         url += "?" + urlencode(query_params)
 
-    async with client.websocket_connect(url, headers={"Authorization": f"Bearer {token}"}) as websocket:
-        # Send ws message
-        websocket.send_json(msg)
-        # get reply
-        return websocket.receive_json()
+    app = client._fastapi_test_app
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+
+    async with httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app)) as ws_client:
+        async with aconnect_ws(f"http://server{url}", ws_client, headers=headers) as websocket:
+            await websocket.send_json(msg)
+            response = await websocket.receive_json()
+            return response
 
 
 # utility to send n messages via chat
@@ -52,16 +58,18 @@ async def send_n_websocket_messages(num_messages, client, image = None, ch_id = 
     if query_params:
         url += "?" + urlencode(query_params)
 
-    async with client.websocket_connect(url, headers={"Authorization": f"Bearer {api_key}"}) as websocket:
-        for m in range(num_messages):
-            message = {"text": f"Red Queen {m}"}
-            if image:
-                message["image"] = image
-            # sed ws message
-            websocket.send_json(message)
-            # get reply
-            reply = websocket.receive_json()
-            responses.append(reply)
+    app = client._fastapi_test_app
+    async with httpx.AsyncClient(transport=ASGIWebSocketTransport(app=app)) as ws_client:
+        async with aconnect_ws(
+                f"http://server{url}", ws_client, headers={"Authorization": f"Bearer {api_key}"},
+        ) as websocket:
+            for m in range(num_messages):
+                message = {"text": f"Red Queen {m}"}
+                if image:
+                    message["image"] = image
+                await websocket.send_json(message)
+                response = await websocket.receive_json()
+                responses.append(response)
 
     return responses
 
@@ -93,7 +101,7 @@ def create_mock_plugin_zip(flat: bool, plugin_id = "mock_plugin"):
 async def get_memory_contents(client, headers = None, collection: VectorMemoryType | None = VectorMemoryType.DECLARATIVE):
     headers = headers or {} | {"X-Agent-ID": agent_id}
     params = {"text": "Something"}
-    response = await client.get("/memory/recall/", params=params, headers=headers)
+    response = await client.get("/memory/recall", params=params, headers=headers)
     assert response.status_code == 200
     json = response.json()
     memories = json["vectors"]["collections"][str(collection)]
@@ -110,13 +118,13 @@ async def get_collections_names_and_point_count(client, headers = None):
     return collections_n_points
 
 
-async def create_new_user(client, route: str, username = "Alice", headers = None, permissions = None, password = None):
+async def create_new_user(client, username = "Alice", headers = None, permissions = None, password = None):
     new_user = {
         "username": username,
         "password": password or new_user_password,
         "permissions": permissions or {str(AuthResource.CHAT): [str(AuthPermission.WRITE)]}
     }
-    response = await client.post(route, json=new_user, headers=headers)
+    response = await client.post("/users/", json=new_user, headers=headers)
     assert response.status_code == 200
     return response.json()
 
@@ -139,7 +147,6 @@ def check_user_fields(u):
 async def get_fake_memory_export(client, embedder_name = "DumbEmbedder", dim = 2367):
     user = await create_new_user(
         client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -182,7 +189,7 @@ async def just_installed_plugin(client, headers, activate = False, plugin_id = "
     # upload plugin via endpoint
     with open(zip_path, "rb") as f:
         response = await client.post(
-            "/plugins/install/upload/",
+            "/plugins/install/upload",
             files={"file": (zip_file_name, f, "application/zip")},
             headers=headers
         )

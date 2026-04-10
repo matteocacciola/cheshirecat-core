@@ -9,7 +9,7 @@ from cat.services.service_factory import ServiceFactory
 from tests.utils import send_file, api_key, chat_id
 
 
-async def test_get_all_embedder_settings(secure_client, secure_client_headers, lizard):
+async def test_get_all_embedder_settings(secure_client, secure_client_headers, lizard, cheshire_cat):
     sf = ServiceFactory(
         agent_key=lizard.agent_key,
         hook_manager=lizard.plugin_manager,
@@ -35,7 +35,7 @@ async def test_get_all_embedder_settings(secure_client, secure_client_headers, l
     assert json["selected_configuration"] == "EmbedderDumbConfig"
 
 
-async def test_get_embedder_settings_non_existent(secure_client, secure_client_headers):
+async def test_get_embedder_settings_non_existent(secure_client, secure_client_headers, cheshire_cat):
     non_existent_embedder_name = "EmbedderNonExistentConfig"
     response = await secure_client.get(f"/embedder/settings/{non_existent_embedder_name}", headers=secure_client_headers)
     json = response.json()
@@ -44,7 +44,7 @@ async def test_get_embedder_settings_non_existent(secure_client, secure_client_h
     assert f"{non_existent_embedder_name} not supported" in json["detail"]
 
 
-async def test_get_embedder_settings(secure_client, secure_client_headers):
+async def test_get_embedder_settings(secure_client, secure_client_headers, cheshire_cat):
     embedder_name = "EmbedderDumbConfig"
     response = await secure_client.get(f"/embedder/settings/{embedder_name}", headers=secure_client_headers)
     json = response.json()
@@ -56,7 +56,7 @@ async def test_get_embedder_settings(secure_client, secure_client_headers):
     assert json["scheme"]["type"] == "object"
 
 
-async def test_upsert_embedder_settings(secure_client, secure_client_headers):
+async def test_upsert_embedder_settings(secure_client, secure_client_headers, cheshire_cat):
     # set a different embedder from default one (same class different size)
     new_embedder = "EmbedderFakeConfig"
     embedder_config = {"size": 64}
@@ -87,14 +87,13 @@ async def test_upsert_embedder_settings(secure_client, secure_client_headers):
     assert json["scheme"]["languageEmbedderName"] == new_embedder
 
 
-async def test_upsert_embedder_settings_updates_collections(secure_client, lizard):
+async def test_upsert_embedder_settings_updates_collections(secure_client, lizard, cheshire_cat):
     agent_id = "test_embedder_settings_updates_collections"
     cheshire_cat = await lizard.create_cheshire_cat(agent_id)
 
     headers = {"X-Agent-ID": agent_id, "Authorization": f"Bearer {api_key}"}
-    vmh = await cheshire_cat.vector_memory_handler()
 
-    embedded_procedures_before = await vmh.get_tenant_vectors_count(
+    embedded_procedures_before = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.PROCEDURAL)
     )
     assert embedded_procedures_before == 0
@@ -114,17 +113,17 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
 
     response, _ = await send_file("sample.pdf", "application/pdf", secure_client, headers, ch_id=chat_id)
     assert response.status_code == 200
-    declarative_memories_before = await vmh.get_tenant_vectors_count(
+    declarative_memories_before = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.DECLARATIVE)
     )
     assert declarative_memories_before > 0
-    episodic_memories = await vmh.get_tenant_vectors_count(
+    episodic_memories = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.EPISODIC)
     )
     assert episodic_memories > 0
 
     # check that only the file sent to the agent's RAG exists in the list of files
-    res = await secure_client.request("GET", "/file_manager", headers=headers)
+    res = await secure_client.request("GET", "/file_manager/", headers=headers)
     assert res.status_code == 200
     json = res.json()
     files = json["files"]
@@ -141,12 +140,12 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
 
     await asyncio.sleep(1)  # give some time for the background tasks to complete
 
-    embedder_procedures_after = await vmh.get_tenant_vectors_count(
+    embedder_procedures_after = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.PROCEDURAL)
     )
     assert embedder_procedures_after == embedded_procedures_before
 
-    declarative_memories_after = await vmh.get_tenant_vectors_count(
+    declarative_memories_after = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.DECLARATIVE)
     )
     assert declarative_memories_after == declarative_memories_before
@@ -157,20 +156,20 @@ async def test_upsert_embedder_settings_updates_collections(secure_client, lizar
     assert res.status_code == 200
     json = res.json()
     assert isinstance(json["deleted"], bool)
-    declarative_memories = await vmh.get_tenant_vectors_count(
+    declarative_memories = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.DECLARATIVE)
     )
     assert declarative_memories == 0
 
     # check that the file does not exist anymore in the list of files
-    res = await secure_client.request("GET", "/file_manager", headers=headers)
+    res = await secure_client.request("GET", "/file_manager/", headers=headers)
     assert res.status_code == 200
     json = res.json()
     files = json["files"]
     assert len(files) == 0
 
 
-async def test_upsert_embedder_settings_with_episodic_memory_without_conversation(secure_client, lizard):
+async def test_upsert_embedder_settings_with_episodic_memory_without_conversation(secure_client, lizard, cheshire_cat):
     agent_id = "test_embedder_settings_updates_collections"
     cheshire_cat = await lizard.create_cheshire_cat(agent_id)
 
@@ -189,14 +188,13 @@ async def test_upsert_embedder_settings_with_episodic_memory_without_conversatio
     response, _ = await send_file(file_name, content_type, secure_client, headers, ch_id=chat_id)
     assert response.status_code == 200
 
-    vmh = await cheshire_cat.vector_memory_handler()
-    episodic_memories_before = await vmh.get_tenant_vectors_count(
+    episodic_memories_before = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
         str(VectorMemoryType.EPISODIC)
     )
     assert episodic_memories_before > 0
 
     # check that the file does not appear in the list of files, because it is episodic
-    res = await secure_client.request("GET", "/file_manager", headers=headers)
+    res = await secure_client.request("GET", "/file_manager/", headers=headers)
     assert res.status_code == 200
     json = res.json()
     files = json["files"]
@@ -212,7 +210,7 @@ async def test_upsert_embedder_settings_with_episodic_memory_without_conversatio
 
         await asyncio.sleep(1)  # give some time for the background tasks to complete
 
-        episodic_memories_after = await vmh.get_tenant_vectors_count(
+        episodic_memories_after = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(
             str(VectorMemoryType.EPISODIC)
         )
         assert episodic_memories_after != episodic_memories_before

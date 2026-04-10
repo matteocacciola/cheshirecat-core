@@ -3,7 +3,7 @@ from fastapi import APIRouter, Body, BackgroundTasks
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthResource, AuthPermission, check_permissions
-from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
+from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse, run_background_task
 from cat.services.service_factory import ServiceFactory
 
 
@@ -68,6 +68,6 @@ async def upsert_embedder_setting(
 
     # a characterizing feature of the embedder has been updated: inform the Cheshire Cats
     if previous_embedder != current_embedder:
-        background_tasks.add_task(info.lizard.embed_all_in_cheshire_cats)
+        run_background_task(background_tasks, info.lizard.embed_all_in_cheshire_cats)
 
     return UpsertSettingResponse(**result)

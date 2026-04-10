@@ -33,7 +33,7 @@ async def test_get_all_agentic_workflow_settings(secure_client, secure_client_he
     assert json["selected_configuration"] == "CoreAgenticWorkflowConfig"
 
 
-async def test_get_agentic_workflow_settings_non_existent(secure_client, secure_client_headers):
+async def test_get_agentic_workflow_settings_non_existent(secure_client, secure_client_headers, cheshire_cat):
     non_existent_agentic_workflow_name = "AgenticWorkflowNonExistent"
     response = await secure_client.get(
         f"/agentic_workflow/settings/{non_existent_agentic_workflow_name}", headers=secure_client_headers

@@ -16,15 +16,15 @@ from tests.utils import just_installed_plugin
 
 async def test_main_modules_loaded(cheshire_cat):
     assert isinstance(cheshire_cat.plugin_manager, MadHatter)
-    assert isinstance(await cheshire_cat.large_language_model(), BaseLanguageModel)
-    assert isinstance(await cheshire_cat.file_manager(), BaseFileManager)
-    assert isinstance(await cheshire_cat.chunker(), BaseChunker)
+    assert isinstance(cheshire_cat.large_language_model, BaseLanguageModel)
+    assert isinstance(cheshire_cat.file_manager, BaseFileManager)
+    assert isinstance(cheshire_cat.chunker, BaseChunker)
     assert isinstance(await cheshire_cat.embedder(), Embeddings)
-    assert isinstance(await cheshire_cat.vector_memory_handler(), BaseVectorDatabaseHandler)
+    assert isinstance(cheshire_cat.vector_memory_handler, BaseVectorDatabaseHandler)
 
 
 async def test_default_llm_loaded(cheshire_cat):
-    assert isinstance(await cheshire_cat.large_language_model(), LLMDefault)
+    assert isinstance(cheshire_cat.large_language_model, LLMDefault)
 
 
 async def test_default_embedder_loaded(lizard):

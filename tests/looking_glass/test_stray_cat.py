@@ -19,10 +19,9 @@ async def test_stray_nlp(lizard, stray_no_memory):
     agent_input = AgenticWorkflowTask(
         user_prompt="hey",
     )
-    af = await stray_no_memory.agentic_workflow()
-    res = await af.run(
+    res = await stray_no_memory.agentic_workflow.run(
         task=agent_input,
-        llm=await stray_no_memory.large_language_model(),
+        llm=stray_no_memory.large_language_model,
     )
     assert "You did not configure" in res.output
 
@@ -72,7 +71,7 @@ async def test_stray_recall_all_memories(secure_client, secure_client_headers, s
     await send_file("sample.pdf", "application/pdf", secure_client, secure_client_headers)
 
     query = (await lizard.embedder()).embed_query("")
-    memories = await (await stray.agentic_workflow()).context_retrieval(
+    memories = await stray.agentic_workflow.context_retrieval(
         VectorMemoryType.DECLARATIVE, RecallSettings(embedding=query, k=None)
     )
 
@@ -86,11 +85,9 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
     content_type = "application/pdf"
     query = (await lizard.embedder()).embed_query("late")
 
-    af = await stray.agentic_workflow()
-
     file_name = "sample.pdf"
     _, file_path = await send_file(file_name, content_type, secure_client, secure_client_headers)
-    memories = await af.context_retrieval(
+    memories = await stray.agentic_workflow.context_retrieval(
         VectorMemoryType.DECLARATIVE,
         RecallSettings(threshold=0.1, embedding=query, metadata={"source": file_name}),
     )
@@ -102,7 +99,7 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
         files = {"file": ("sample2.pdf", f, content_type)}
         _ = await secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
 
-    memories = await af.context_retrieval(
+    memories = await stray.agentic_workflow.context_retrieval(
         VectorMemoryType.DECLARATIVE,
         RecallSettings(threshold=0.1, embedding=query, metadata={"source": file_name}),
     )
@@ -111,7 +108,7 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
         assert mem.document.metadata["source"] == file_name
 
 
-async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray):
+async def test_stray_fast_reply_hook(secure_client, secure_client_headers, cheshire_cat, stray):
     await crud_users.create_user(
         stray.agent_key,
         {
@@ -121,7 +118,6 @@ async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray
             "permissions": stray.user.permissions
         },
     )
-
 
     await just_installed_plugin(secure_client, secure_client_headers, plugin_id="mock_plugin_fast_reply")
 
@@ -141,10 +137,5 @@ async def test_stray_fast_reply_hook(secure_client, secure_client_headers, stray
     assert response_json["message"]["text"] == "This is a fast reply"
 
     # there should be NO side effects
-    upd_stray = await StrayCat.create(
-        user_data=stray.user,
-        agent_id=stray.agent_key,
-        stray_id=stray.id,
-        plugin_manager_generator=lambda: stray.plugin_manager,
-    )
+    upd_stray = await StrayCat.from_cat(user_data=stray.user, cat=cheshire_cat, stray_id=stray.id)
     assert len(upd_stray.working_memory.history) == 0

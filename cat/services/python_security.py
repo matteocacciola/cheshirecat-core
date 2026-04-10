@@ -1,154 +1,105 @@
 import ast
-from _ast import AST
+from pathlib import Path
 
 
-# Max depth for AST traversal to prevent overly complex/obfuscated code
-MAX_AST_DEPTH = 100
+FORBIDDEN_MODULES = {
+    "ctypes", "cffi", "pty", "termios",
+    "socket",  # direct networking
+    "pickle", "shelve",  # arbitrary deserialization
+    "importlib",  # dynamic import
+    "zipimport", "pkgutil",
+}
 
-
-# --- Security Configuration ---
-# List of forbidden modules/functions that should not be imported or called directly
-FORBIDDEN_IMPORTS = [
-    "ctypes", # Access C functions
-    "__import__", "exec", "eval", # Code execution
-    "compile", # Code compilation
-    "open", # Direct file access (consider allowing with strict path validation if needed for plugin data)
-]
-
-# List of forbidden function calls (even if their modules are not strictly forbidden)
-FORBIDDEN_CALLS = [
-    "os.system", "os.exec", "os.fork", "os.spawn",
-    "subprocess.run", "subprocess.call", "subprocess.Popen",
-    "shutil.rmtree", "shutil.move", "shutil.copy",
-    "tempfile.mkdtemp", "tempfile.mkstemp",
-    "eval", "exec", "__import__", "compile",
-    "builtins.open", # Explicitly disallow open from builtins if allowing a custom "open"
-]
-
-# Allowlist for sub-commands that are considered safe when invoked as literal commands
-ALLOWED_SUBCOMMANDS = {
-    "subprocess.run": ["crawl4ai-setup", "playwright", "pip"],  # `pip` if needed for plugin installation
-    "subprocess.call": ["python"],
-    "subprocess.Popen": ["python"],
-    "shutil.rmtree": ["/tmp"],
-    "shutil.move": ["/tmp"],
-    "shutil.copy": ["/tmp"],
-    "tempfile.mkdtemp": ["/tmp"],
-    "tempfile.mkstemp": ["/tmp"],
+FORBIDDEN_BUILTINS = {
+    "__import__", "exec", "eval", "compile",
+    "open",  # use pathlib or a safe wrapper, instead
+    "breakpoint",  # access to the debugger
+    "globals", "locals", "vars",  # access to the environment
+    "memoryview",  # access to raw memory
 }
 
 
-# Define a custom exception for malicious code detection
-class MaliciousCodeError(Exception):
-    pass
+class ASTSecurityVisitor(ast.NodeVisitor):
+    def __init__(self, filepath: str):
+        self.filepath = filepath
+        self._depth = 0
 
+    def _fail(self, node: ast.AST, reason: str):
+        raise SecurityError(f"{self.filepath}:{node.lineno}: {reason}")
 
-# Custom AST visitor to find forbidden elements
-class PythonSecurityVisitor(ast.NodeVisitor):
-    def __init__(self, file_path: str):
-        self.file_path = file_path
-        self.found_malicious = False
-        self.current_depth = 0
-
-    def generic_visit(self, node: AST):
-        self.current_depth += 1
-        if self.current_depth > MAX_AST_DEPTH:
-            self.found_malicious = True
-            raise MaliciousCodeError(f"AST depth exceeded maximum: {MAX_AST_DEPTH}")
+    def generic_visit(self, node: ast.AST):
+        self._depth += 1
+        if self._depth > 200:
+            raise SecurityError(f"{self.filepath}: AST too complex")
         super().generic_visit(node)
-        self.current_depth -= 1
+        self._depth -= 1
 
     def visit_Import(self, node: ast.Import):
         for alias in node.names:
-            if alias.name in FORBIDDEN_IMPORTS:
-                self.found_malicious = True
-                raise MaliciousCodeError(f"Forbidden import: {alias.name} in {self.file_path} line {node.lineno}")
-        self.generic_visit(node)  # type: ignore
+            root = alias.name.split(".")[0]
+            if root in FORBIDDEN_MODULES:
+                self._fail(node, f"import forbidden: {alias.name}")
+        self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom):
-        if node.module and node.module in FORBIDDEN_IMPORTS:
-            self.found_malicious = True
-            raise MaliciousCodeError(
-                f"Forbidden import from module: {node.module} in {self.file_path} line {node.lineno}")
-        for alias in node.names:
-            full_name = f"{node.module}.{alias.name}" if node.module else alias.name
-            if full_name in FORBIDDEN_IMPORTS:  # Check if importing a forbidden specific item
-                self.found_malicious = True
-                raise MaliciousCodeError(f"Forbidden import: {full_name} in {self.file_path} line {node.lineno}")
-        self.generic_visit(node)  # type: ignore
+        if node.module:
+            root = node.module.split(".")[0]
+            if root in FORBIDDEN_MODULES:
+                self._fail(node, f"import forbidden: {node.module}")
+        self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call):
-        # Check for direct calls to forbidden built-in functions
-        if isinstance(node.func, ast.Name) and node.func.id in FORBIDDEN_IMPORTS:
-            self.found_malicious = True
-            raise MaliciousCodeError(
-                f"Direct call to forbidden built-in: {node.func.id} in {self.file_path} line {node.lineno}"
-            )
+        # Case: direct name (exec, eval, open, ...)
+        if isinstance(node.func, ast.Name):
+            if node.func.id in FORBIDDEN_BUILTINS:
+                self._fail(node, f"builtin forbidden: {node.func.id}")
 
-        # Check for forbidden attribute access (e.g., os.system)
+        # Case: attribute (os.system, subprocess.Popen, ...)
         if isinstance(node.func, ast.Attribute):
-            # Reconstruct the full call name
-            func_path = []
-            current = node.func
-            while isinstance(current, (ast.Attribute, ast.Name)):
-                if isinstance(current, ast.Attribute):
-                    func_path.append(current.attr)
-                    current = current.value  # type: ignore[assignment]
-                else:  # ast.Name
-                    func_path.append(current.id)
-                    break
-            full_call_name = ".".join(reversed(func_path))
-            if full_call_name not in FORBIDDEN_CALLS:
-                self.generic_visit(node)  # type: ignore
-                return
+            full = _reconstruct_attr(node.func)
+            if full:
+                # Block __dunder__ on whaetever object
+                if any(part.startswith("__") for part in full.split(".")):
+                    self._fail(node, f"dunder access forbidden: {full}")
 
-            if (
-                    full_call_name not in ALLOWED_SUBCOMMANDS
-                    or not (allowed_subcommands := ALLOWED_SUBCOMMANDS.get(full_call_name))
-            ):
-                self.found_malicious = True
-                raise MaliciousCodeError(
-                    f"Forbidden function call: {full_call_name} in {self.file_path} line {node.lineno}"
-                )
+        # # Block getattr(x, "something") — classic bypass mean
+        # if isinstance(node.func, ast.Name) and node.func.id == "getattr":
+        #     self._fail(node, "getattr() forbidden (mean for bypass)")
 
-            # Special-case: allow certain literal subprocess.run invocations
-            found = False
-            for arg in node.args:
-                if isinstance(arg, ast.Constant) and isinstance(arg.value, str) and arg.value in allowed_subcommands:
-                    found = True
-                    break
-                if (
-                        isinstance(arg, ast.List)
-                        and any(
-                            isinstance(el, ast.Constant) and isinstance(el.value, str) and el.value in allowed_subcommands
-                            for el in arg.elts
-                        )
-                ):
-                    found = True
-                    break
+        self.generic_visit(node)
 
-            if not found:
-                self.found_malicious = True
-                raise MaliciousCodeError(
-                    f"Forbidden function call: {full_call_name} in {self.file_path} line {node.lineno}"
-                )
+    def visit_Attribute(self, node: ast.Attribute):
+        # Block the access to __class__, __bases__, __subclasses__, etc.
+        if node.attr.startswith("__") and node.attr.endswith("__"):
+            dunder_whitelist = {
+                "__init__", "__str__", "__repr__", "__len__", "__iter__", "__next__", "__enter__", "__exit__",
+            }
+            if node.attr not in dunder_whitelist:
+                self._fail(node, f"dunder access forbidden: {node.attr}")
+        self.generic_visit(node)
 
-        self.generic_visit(node)  # type: ignore
 
-    # Detect `exec` and `eval` usage
-    def visit_Expr(self, node: ast.Expr):
-        if isinstance(node.value, ast.Call):
-            if isinstance(node.value.func, ast.Name) and node.value.func.id in ["exec", "eval"]:
-                self.found_malicious = True
-                raise MaliciousCodeError(
-                    f"Direct call to code execution function: {node.value.func.id} in {self.file_path} line {node.lineno}"
-                )
-        self.generic_visit(node)  # type: ignore
+def _reconstruct_attr(node: ast.Attribute) -> str | None:
+    parts = []
+    current = node
+    while isinstance(current, ast.Attribute):
+        parts.append(current.attr)
+        current = current.value
+    if isinstance(current, ast.Name):
+        parts.append(current.id)
+        return ".".join(reversed(parts))
+    return None
 
-    # Detect direct calls to builtins like `open` or `__import__`
-    def visit_Name(self, node: ast.Name):
-        if node.id in ["open", "__import__"] and isinstance(node.ctx, ast.Load):
-            # This only catches the name usage, `visit_Call` will catch the actual call.
-            # This is more for flagging the mere presence if desired, but `visit_Call` is more precise.
-            pass  # We handle this in visit_Call for accuracy.
-        self.generic_visit(node)  # type: ignore
+
+class SecurityError(Exception):
+    pass
+
+
+def ast_scan(filepath: Path) -> None:
+    """Raise SecurityError if the file contains forbidden patterns."""
+    source = filepath.read_text(encoding="utf-8")
+    try:
+        tree = ast.parse(source, filename=str(filepath))
+    except SyntaxError as exc:
+        raise SecurityError(f"Syntax error in {filepath}: {exc}") from exc
+    ASTSecurityVisitor(str(filepath)).visit(tree)

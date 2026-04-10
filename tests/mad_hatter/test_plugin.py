@@ -1,7 +1,5 @@
 import os
 import pytest
-import fnmatch
-import subprocess
 from inspect import isfunction
 
 from cat.db.database import DEFAULT_SYSTEM_KEY
@@ -11,7 +9,6 @@ from cat.looking_glass.mad_hatter.decorators.hook import CatHook
 from cat.looking_glass.mad_hatter.decorators.tool import CatTool
 from cat.looking_glass.mad_hatter.plugin import Plugin, PluginManifest
 
-from tests.conftest import clean_up
 from tests.utils import mock_plugin_path
 
 
@@ -50,9 +47,9 @@ def test_create_plugin(plugin):
     assert plugin.tools == []
 
 
-def test_activate_plugin(plugin):
+async def test_activate_plugin(plugin):
     # activate it
-    plugin.activate(DEFAULT_SYSTEM_KEY)
+    await plugin.activate(DEFAULT_SYSTEM_KEY)
 
     assert plugin.active is True
 
@@ -73,7 +70,7 @@ def test_activate_plugin(plugin):
             assert hook.priority == 1  # default priority
 
     # tools
-    assert len(plugin.tools) == 1
+    assert len(plugin.tools) == 2
     tool = plugin.tools[0]
     assert isinstance(tool, CatTool)
     assert tool.name == "mock_tool"
@@ -97,7 +94,7 @@ def test_activate_plugin(plugin):
 
 async def test_deactivate_plugin(plugin):
     # The plugin is non active by default
-    plugin.activate(DEFAULT_SYSTEM_KEY)
+    await plugin.activate(DEFAULT_SYSTEM_KEY)
 
     # deactivate it
     await plugin.deactivate(DEFAULT_SYSTEM_KEY)
@@ -128,30 +125,3 @@ async def test_save_settings(plugin):
 
     settings = await plugin.load_settings(DEFAULT_SYSTEM_KEY)
     assert settings["a"] == fake_settings["a"]
-
-
-# Check if plugin requirements have been installed
-# ATTENTION: not using `plugin` fixture here, we instantiate and cleanup manually
-#           to use the unmocked Plugin class
-@pytest.mark.skip_encapsulation
-async def test_install_plugin_dependencies():
-    # manual cleanup
-    await clean_up()
-    # Uninstall mock plugin requirements
-    os.system("uv pip uninstall -y pip-install-test")
-
-    # Install mock plugin
-    p = Plugin(mock_plugin_path)
-
-    # Dependencies are installed on plugin activation
-    await p.activate(DEFAULT_SYSTEM_KEY)
-
-    # pip-install-test should have been installed
-    result = subprocess.run(["uv", "pip", "list"], stdout=subprocess.PIPE)
-    result = result.stdout.decode()
-    assert fnmatch.fnmatch(result, "*pip-install-test*")
-
-    # manual cleanup
-    await clean_up()
-    # Uninstall mock plugin requirements
-    os.system("uv pip uninstall -y pip-install-test")

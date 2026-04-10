@@ -31,7 +31,7 @@ async def test_get_all_chunker_settings(secure_client, secure_client_headers, ch
     assert json["selected_configuration"] == "RecursiveTextChunkerSettings"
 
 
-async def test_get_chunker_settings_non_existent(secure_client, secure_client_headers):
+async def test_get_chunker_settings_non_existent(secure_client, secure_client_headers, cheshire_cat):
     non_existent_chunker_name = "ChunkerNonExistentConfig"
     response = await secure_client.get(f"/chunking/settings/{non_existent_chunker_name}", headers=secure_client_headers)
     json = response.json()
@@ -40,7 +40,7 @@ async def test_get_chunker_settings_non_existent(secure_client, secure_client_he
     assert f"{non_existent_chunker_name} not supported" in json["detail"]
 
 
-async def test_get_chunker_settings(secure_client, secure_client_headers):
+async def test_get_chunker_settings(secure_client, secure_client_headers, cheshire_cat):
     chunker_name = "RecursiveTextChunkerSettings"
     response = await secure_client.get(f"/chunking/settings/{chunker_name}", headers=secure_client_headers)
     json = response.json()
@@ -52,7 +52,7 @@ async def test_get_chunker_settings(secure_client, secure_client_headers):
     assert json["scheme"]["type"] == "object"
 
 
-async def test_upsert_chunker_settings_success(secure_client, secure_client_headers):
+async def test_upsert_chunker_settings_success(secure_client, secure_client_headers, cheshire_cat):
     invented_model_name = "this_should_be_a_model"
 
     # set a different chunker
@@ -88,9 +88,9 @@ async def test_forbidden_access_no_auth(client):
     assert response.status_code == 401
 
 
-async def test_granted_access_on_permissions(secure_client, secure_client_headers, client):
+async def test_granted_access_on_permissions(secure_client, secure_client_headers, client, cheshire_cat):
     # create user
-    data = await create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"CHUNKER": ["READ"]})
+    data = await create_new_user(secure_client, headers=secure_client_headers, permissions={"CHUNKER": ["READ"]})
 
     creds = {"username": data["username"], "password": new_user_password}
 
@@ -101,9 +101,9 @@ async def test_granted_access_on_permissions(secure_client, secure_client_header
     assert response.status_code == 200
 
 
-async def test_forbidden_access_no_permission(secure_client, secure_client_headers, client):
+async def test_forbidden_access_no_permission(secure_client, secure_client_headers, client, cheshire_cat):
     # create user
-    data = await create_new_user(secure_client, "/users", headers=secure_client_headers)
+    data = await create_new_user(secure_client, headers=secure_client_headers)
     res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 
@@ -112,9 +112,9 @@ async def test_forbidden_access_no_permission(secure_client, secure_client_heade
     assert response.json()["detail"] == "Forbidden"
 
 
-async def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client):
+async def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client, cheshire_cat):
     # create user
-    data = await create_new_user(secure_client, "/users", headers=secure_client_headers, permissions={"CHUNKER": ["DELETE"]})
+    data = await create_new_user(secure_client, headers=secure_client_headers, permissions={"CHUNKER": ["DELETE"]})
     res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 

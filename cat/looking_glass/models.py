@@ -53,7 +53,7 @@ class AgenticWorkflowOutput(BaseModel):
         Indicates if there was an error during LLM processing, default False.
     """
     output: str | None = None
-    intermediate_steps: List[Tuple[Tuple[str | None, Dict, Dict] | None, str]] = Field(default_factory=list)
+    intermediate_steps: List[Tuple[Tuple[str | None, Dict, Dict] | None, str | None]] = Field(default_factory=list)
     with_llm_error: bool = False
 
 

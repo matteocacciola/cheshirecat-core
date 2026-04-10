@@ -1,3 +1,4 @@
+import asyncio
 import glob
 import importlib
 import json
@@ -61,8 +62,8 @@ class Plugin:
         self._active = False
 
     async def activate(self, agent_id: str):
-        # install plugin requirements on activation
-        self._install_requirements()
+        # install plugin requirements on activation (non-blocking: uses asyncio subprocess)
+        await self._install_requirements()
 
         # load hooks and tools
         self._load_decorated_functions()
@@ -278,7 +279,7 @@ class Plugin:
         json_file_data["name"] = json_file_data.get("name", to_camel_case(self._id))
         return PluginManifest(**json_file_data)
 
-    def _install_requirements(self):
+    async def _install_requirements(self):
         req_file = os.path.join(self.path, "requirements.txt")
         if not os.path.exists(req_file):
             return
@@ -286,38 +287,38 @@ class Plugin:
         start_time = time.time()
         log.info(f"Installing requirements for plugin {self.id}")
 
+        has_error = False
+        install_cmd = ["uv", "pip", "install", "--no-cache", "--no-upgrade", "-r", req_file]
         try:
-            with subprocess.Popen(
-                    ["uv", "pip", "install", "--no-cache", "--no-upgrade", "-r", req_file],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-            ) as proc:
-                for line in proc.stdout:  # type: ignore[attr-defined]
-                    log.debug(line.strip())
-                proc.wait()
-                if proc.returncode != 0:
-                    raise subprocess.CalledProcessError(proc.returncode, proc.args)
+            proc = await asyncio.create_subprocess_exec(
+                *install_cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+            )
+            while line := await proc.stdout.readline():  # type: ignore[union-attr]
+                log.debug(line.decode().strip())
+            await proc.wait()
+            if proc.returncode != 0:
+                raise subprocess.CalledProcessError(proc.returncode or 1, install_cmd)
 
             duration = time.time() - start_time
             log.info(f"Installation of requirements for {self.id} completed in {duration:.2f}s")
-            has_error = False
         except subprocess.CalledProcessError as e:
             log.error(f"Error while installing plugin {self.id} requirements: {e}")
 
             log.info(f"Uninstalling requirements for: {self.id}")
+            uninstall_cmd = ["uv", "pip", "uninstall", "-r", "requirements.txt"]
             try:
-                with subprocess.Popen(
-                        ["uv", "pip", "uninstall", "-r", "requirements.txt"],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True
-                ) as proc:
-                    for line in proc.stdout:  # type: ignore[attr-defined]
-                        log.debug(line.strip())
-                    proc.wait()
-                    if proc.returncode != 0:
-                        raise subprocess.CalledProcessError(proc.returncode, proc.args)
+                proc = await asyncio.create_subprocess_exec(
+                    *uninstall_cmd,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.STDOUT,
+                )
+                while line := await proc.stdout.readline():  # type: ignore[union-attr]
+                    log.debug(line.decode().strip())
+                await proc.wait()
+                if proc.returncode != 0:
+                    raise subprocess.CalledProcessError(proc.returncode or 1, uninstall_cmd)
             except Exception as e_:
                 log.error(f"Error while uninstalling plugin {self.id} requirements: {e_}")
 

@@ -20,12 +20,11 @@ def test_is_jwt():
     assert is_jwt(actual_jwt)
 
 
-async def test_refuse_issue_jwt(secure_client, client):
+async def test_refuse_issue_jwt(secure_client, client, cheshire_cat):
     creds = {"username": "user", "password": "wrong"}
 
     await create_new_user(
         secure_client,
-        "/users",
         creds["username"],
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -43,7 +42,6 @@ async def test_issue_jwt(secure_client, client, cheshire_cat):
     creds = {"username": "user", "password": new_user_password}
     await create_new_user(
         secure_client,
-        "/users",
         creds["username"],
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -61,8 +59,7 @@ async def test_issue_jwt(secure_client, client, cheshire_cat):
     assert is_jwt(received_token)
 
     # is the JWT correct for core auth handler?
-    auth_handler = await cheshire_cat.custom_auth_handler()
-    user_info = await auth_handler.authorize_user_from_jwt(
+    user_info = await cheshire_cat.custom_auth_handler.authorize_user_from_jwt(
         received_token, AuthResource.CHAT, AuthPermission.READ, key_id=agent_id
     )
     assert len(user_info.id) == 36 and len(user_info.id.split("-")) == 5  # uuid4
@@ -81,7 +78,7 @@ async def test_issue_jwt(secure_client, client, cheshire_cat):
         assert False
 
 
-async def test_issue_jwt_for_new_user(client, secure_client, secure_client_headers):
+async def test_issue_jwt_for_new_user(client, secure_client, secure_client_headers, cheshire_cat):
     # create new user
     creds = {"username": "Alice", "password": "Alice"}
 
@@ -93,7 +90,7 @@ async def test_issue_jwt_for_new_user(client, secure_client, secure_client_heade
 
     # let's create the user
     res = await secure_client.post(
-        "/users",
+        "/users/",
         json=creds | {"permissions": {str(AuthResource.LLM): [str(AuthPermission.WRITE)]}},
         headers=secure_client_headers,
     )
@@ -129,7 +126,6 @@ async def test_jwt_expiration(secure_client, client, cheshire_cat):
     creds = {"username": "user", "password": new_user_password}
     await create_new_user(
         secure_client,
-        "/users",
         creds["username"],
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -175,7 +171,6 @@ async def test_jwt_imposes_user_id(secure_client, client, cheshire_cat):
     creds = {"username": "user", "password": new_user_password}
     await create_new_user(
         secure_client,
-        "/users",
         creds["username"],
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),

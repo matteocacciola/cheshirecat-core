@@ -1,6 +1,6 @@
+from inspect import iscoroutinefunction
 from uuid import uuid4
 import pytest
-import pytest_asyncio
 import os
 import shutil
 import warnings
@@ -12,10 +12,10 @@ import time
 
 from cat.auth import auth_utils
 from cat.auth.permissions import AuthUserInfo, get_base_permissions
-from cat.env import get_env
+from cat.env import get_env, get_env_int
 from cat.looking_glass import StrayCat
 from cat.looking_glass.mad_hatter.plugin import Plugin
-from cat.startup import grinning_cat_api
+from cat.startup import create_app
 from cat.services.memory.messages import UserMessage
 from cat.services.factory.vector_db import QdrantHandler
 import cat.utils as utils
@@ -29,12 +29,10 @@ from tests.utils import (
     fake_timestamp,
 )
 
-pytest_plugins = ["pytest_asyncio"]
-
-memory_client = AsyncQdrantClient(":memory:")
+pytest_plugins = ["pytest"]
 
 # substitute classes' methods where necessary for testing purposes
-def mock_classes(monkeypatch):
+def mock_classes(monkeypatch, memory_client):
     # Mock the entire __init__ method to set _client to memory client, and the close method to do nothing
     def mock_init_vector_database(self, *args, **kwargs):
         # Call the parent __init__
@@ -45,16 +43,31 @@ def mock_classes(monkeypatch):
     monkeypatch.setattr(QdrantHandler, "__init__", mock_init_vector_database)
     monkeypatch.setattr(QdrantHandler, "close", lambda self: None)
 
+    def mock_get_redis_kwargs():
+        return {
+            "host": get_env("CAT_REDIS_HOST"),
+            "port": get_env_int("CAT_REDIS_PORT"),
+            "db": "1",
+            "encoding": "utf-8",
+            "decode_responses": True,
+        }
+    monkeypatch.setattr("cat.db.database.get_redis_kwargs", mock_get_redis_kwargs)
+
     utils.get_plugins_path = lambda: "tests/mocks/mock_plugin_folder/"
     utils.get_file_manager_root_storage_path = lambda: "tests/data/storage"
 
     # do not check plugin dependencies at every restart
-    def mock_install_requirements(self):
+    async def mock_install_requirements(self):
         pass
     monkeypatch.setattr(Plugin, "_install_requirements", mock_install_requirements)
 
     # mock the agent_id in the request
     auth_utils.extract_agent_id_from_request = lambda: agent_id
+
+    async def immediate_task(background_tasks, func, *args, **kwargs):
+        await func(*args, **kwargs) if iscoroutinefunction(func) else func(*args, **kwargs)
+
+    monkeypatch.setattr("cat.routes.routes_utils.run_background_task", immediate_task)
 
 
 async def clean_up():
@@ -84,60 +97,42 @@ async def clean_up():
     # flush redis database
     get_sync_db().flushdb()
 
-    # delete all the collections in Qdrant
-    collections = await memory_client.get_collections()
-    for collection in collections.collections:
-        await memory_client.delete_collection(collection.name)
 
-    # delete all singletons!!!
+@pytest.fixture(scope="function")
+async def memory_client():
+    client = AsyncQdrantClient(":memory:")
+    yield client
+    collections = await client.get_collections()
+    for collection in collections.collections:
+        await client.delete_collection(collection.name)
+    await client.close()
+
+
+@pytest.fixture(autouse=True, scope="function")
+async def encapsulate_each_test(request, monkeypatch, memory_client):
     utils.singleton.instances.clear()
 
-
-def should_skip_encapsulation(request):
-    return request.node.get_closest_marker("skip_encapsulation") is not None
-
-
-@pytest_asyncio.fixture(autouse=True)
-async def encapsulate_each_test(request, monkeypatch):
-    from cat.db.database import Database
-
-    if should_skip_encapsulation(request):
-        yield
-        return
-
-    mock_classes(monkeypatch)
-
-    current_debug = get_env("CAT_DEBUG")
-    current_redis_db = get_env("CAT_REDIS_DB")
-    os.environ["CAT_DEBUG"] = "false"
-    os.environ["CAT_REDIS_DB"] = "1"
+    mock_classes(monkeypatch, memory_client)
 
     await clean_up()
     yield
     await clean_up()
 
-    Database().reset_async()
-
-    if current_debug:
-        os.environ["CAT_DEBUG"] = current_debug
-    else:
-        del os.environ["CAT_DEBUG"]
-    if current_redis_db:
-        os.environ["CAT_REDIS_DB"] = current_redis_db
-    else:
-        del os.environ["CAT_REDIS_DB"]
+    utils.singleton.instances.clear()
 
 
-@pytest_asyncio.fixture(scope="function")
-async def client():
-    async with LifespanManager(grinning_cat_api) as manager:
+@pytest.fixture(scope="function")
+async def client(encapsulate_each_test):
+    app = create_app()
+    async with LifespanManager(app) as manager:
         async with AsyncClient(transport=ASGITransport(app=manager.app), base_url="http://test") as ac:
+            ac._fastapi_test_app = app
             yield ac
 
 
 # This fixture sets the CAT_API_KEY environment variable,
 # making mandatory for clients to possess api key or JWT
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def secure_client(client):
     current_api_key = os.getenv("CAT_API_KEY")
     current_jwt_secret = os.getenv("CAT_JWT_SECRET")
@@ -165,17 +160,17 @@ def secure_client_headers():
 
 
 @pytest.fixture(scope="function")
-def lizard(client):
-    yield grinning_cat_api.state.lizard
+async def lizard(client):
+    yield client._fastapi_test_app.state.lizard
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def cheshire_cat(lizard):
     cheshire_cat = await lizard.create_cheshire_cat(agent_id)
     yield cheshire_cat
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def plugin_manager(lizard):
     plugin_manager = lizard.plugin_manager
 
@@ -188,7 +183,7 @@ async def plugin_manager(lizard):
     await plugin_manager.uninstall_plugin("mock_plugin")
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def agent_plugin_manager(cheshire_cat):
     plugin_manager = cheshire_cat.plugin_manager
 
@@ -202,18 +197,17 @@ async def agent_plugin_manager(cheshire_cat):
     yield plugin_manager
 
 
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def stray_no_memory(cheshire_cat, agent_plugin_manager):
-    stray_cat = await StrayCat.create(
+    stray_cat = await StrayCat.from_cat(
         user_data=AuthUserInfo(id=str(uuid4()), name="Alice", permissions=get_base_permissions()),
-        agent_id=cheshire_cat.agent_key,
-        plugin_manager_generator=lambda: agent_plugin_manager,
+        cat=cheshire_cat,
     )
     yield stray_cat
 
 
 # fixture to have available an instance of StrayCat
-@pytest_asyncio.fixture(scope="function")
+@pytest.fixture(scope="function")
 async def stray(stray_no_memory):
     stray_no_memory.working_memory.user_message = UserMessage(text="meow")
     yield stray_no_memory
@@ -238,7 +232,7 @@ def patch_time_now(monkeypatch):
 # this fixture will give test functions a ready instantiated plugin
 # (and having the `client` fixture, a clean setup every unit)
 @pytest.fixture(scope="function")
-def plugin(lizard):
+async def plugin(lizard):
     p = Plugin(mock_plugin_path)
     yield p
 

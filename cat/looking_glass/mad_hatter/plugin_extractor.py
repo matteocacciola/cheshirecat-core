@@ -1,12 +1,12 @@
-import ast
 import mimetypes
 import os
 import shutil
 import uuid
+from pathlib import Path
 from slugify import slugify
 
 from cat.log import log
-from cat.services.python_security import PythonSecurityVisitor, MaliciousCodeError
+from cat.services.python_security import ast_scan, SecurityError
 from cat.utils import get_allowed_plugins_mime_types
 
 
@@ -43,7 +43,8 @@ class PluginExtractor:
         file_name_no_extension = os.path.splitext(file_name)[0]
         return slugify(file_name_no_extension, separator="_")
 
-    def _is_safe_plugin(self, folder_path: str) -> bool:
+    @staticmethod
+    def _is_safe_plugin(folder_path: str) -> bool:
         """
         Check all Python files in the plugin folder for safety.
 
@@ -54,18 +55,14 @@ class PluginExtractor:
             bool: True if all Python files are safe, False if any file contains malicious code.
         """
         def is_safe_python_file() -> bool:
-            with open(file_path, "r", encoding="utf-8") as f:
-                try:
-                    tree = ast.parse(f.read())
-                except SyntaxError as e:
-                    log.debug(f"Syntax error in {file_path}: {e}")
-                    return False
-            visitor = PythonSecurityVisitor(file_path)
             try:
-                visitor.visit(tree)
-                return not visitor.found_malicious
-            except MaliciousCodeError as e:
+                ast_scan(file_path)  # AST scan + SecurityError if malicious code is detected
+                return True
+            except SecurityError as e:
                 log.error(f"Malicious code detected: {e}")
+                return False
+            except Exception as e:  # SyntaxError, IOError, ecc.
+                log.debug(f"Could not scan {file_path}: {e}")
                 return False
 
         for root, _, files in os.walk(folder_path):
@@ -73,7 +70,7 @@ class PluginExtractor:
                 if not file.endswith(".py"):
                     continue
 
-                file_path = os.path.join(root, file)
+                file_path = Path(root) / file
                 if not is_safe_python_file():
                     return False
         return True

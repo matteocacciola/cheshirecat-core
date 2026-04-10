@@ -43,7 +43,7 @@ async def test_execute_agent_with_form_submit(secure_client, secure_client_heade
     async def mock_func(self, *args, **kwargs):
         self._state = CatFormState.COMPLETE
         self._model = json.loads(mocked_model)
-        result = self.submit(self._model)
+        result = await self.submit(self._model)
         self._state = CatFormState.CLOSED
         return result
     monkeypatch.setattr("cat.looking_glass.mad_hatter.decorators.experimental.form.CatForm.next", mock_func)

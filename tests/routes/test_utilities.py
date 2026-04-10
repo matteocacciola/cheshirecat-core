@@ -27,10 +27,9 @@ async def checks_on_agent_create(lizard, new_agent_id):
     users = await crud_users.get_users(new_agent_id)
     assert len(users) == 0
 
-    ccat = lizard.get_cheshire_cat(new_agent_id)
-    vmh = await ccat.vector_memory_handler()
-    num_vectors = await vmh.get_tenant_vectors_count(str(VectorMemoryType.DECLARATIVE))
-    points, _ = await vmh.get_all_tenant_points(str(VectorMemoryType.DECLARATIVE))
+    ccat = await lizard.get_cheshire_cat(new_agent_id)
+    num_vectors = await ccat.vector_memory_handler.get_tenant_vectors_count(str(VectorMemoryType.DECLARATIVE))
+    points, _ = await ccat.vector_memory_handler.get_all_tenant_points(str(VectorMemoryType.DECLARATIVE))
     assert num_vectors == 0
     assert len(points) == 0
 
@@ -53,21 +52,18 @@ async def checks_on_agent_destroy(cheshire_cat):
     settings = await crud_settings.get_settings(cheshire_cat.agent_key)
     assert len(settings) > 0
 
-    vmh = await cheshire_cat.vector_memory_handler()
-    collections = await vmh._client.get_collections()
+    collections = await cheshire_cat.vector_memory_handler._client.get_collections()
     assert len(collections.collections) > 0
 
-    vmh = await cheshire_cat.vector_memory_handler()
-    num_vectors = await vmh.get_tenant_vectors_count(str(VectorMemoryType.DECLARATIVE))
-    points, _ = await vmh.get_all_tenant_points(str(VectorMemoryType.DECLARATIVE))
+    num_vectors = await cheshire_cat.vector_memory_handler.get_tenant_vectors_count(str(VectorMemoryType.DECLARATIVE))
+    points, _ = await cheshire_cat.vector_memory_handler.get_all_tenant_points(str(VectorMemoryType.DECLARATIVE))
     assert num_vectors == 0
     assert len(points) == 0
 
 
 async def test_factory_reset_success(client, lizard, cheshire_cat):
     # check that the vector database is not empty
-    vmh = await cheshire_cat.vector_memory_handler()
-    c = await vmh._client.get_collections()
+    c = await cheshire_cat.vector_memory_handler._client.get_collections()
     assert len(c.collections) > 0
 
     creds = {
@@ -94,7 +90,7 @@ async def test_factory_reset_success(client, lizard, cheshire_cat):
     assert len(settings) > 0
 
     # check that the vector database is not empty
-    c = await vmh._client.get_collections()
+    c = await cheshire_cat.vector_memory_handler._client.get_collections()
     assert len(c.collections) == 3
 
 
@@ -129,8 +125,7 @@ async def test_agent_destroy_success(client, lizard, cheshire_cat):
     assert users == {}
 
     qdrant_filter = Filter(must=[FieldCondition(key="tenant_id", match=MatchValue(value=cheshire_cat.agent_key))])
-    vmh = await cheshire_cat.vector_memory_handler._client()
-    count_response = await vmh._client.count(
+    count_response = await cheshire_cat.vector_memory_handler._client.count(
         collection_name=str(VectorMemoryType.DECLARATIVE), count_filter=qdrant_filter
     )
     assert count_response.count == 0
@@ -151,7 +146,6 @@ async def test_agent_reset_success(client, lizard, cheshire_cat):
 async def test_agent_reset_by_new_admin_success(secure_client, client, lizard, cheshire_cat):
     data = await create_new_user(
         secure_client,
-        "/users",
         headers={"Authorization": f"Bearer {api_key}"},
         permissions={"CHESHIRE_CAT": ["WRITE"]}
     )
@@ -163,7 +157,7 @@ async def test_agent_reset_by_new_admin_success(secure_client, client, lizard, c
 async def test_agent_destroy_error_because_of_lack_of_permissions(client, lizard, cheshire_cat):
     # create new admin with wrong permissions
     data = await create_new_user(
-        client, "/users", headers=await get_client_admin_headers(client), permissions={"EMBEDDER": ["READ"]}
+        client, headers=await get_client_admin_headers(client), permissions={"EMBEDDER": ["READ"]}
     )
 
     creds = {"username": data["username"], "password": new_user_password}
@@ -269,13 +263,11 @@ async def test_clone_agent(secure_client, secure_client_headers, lizard, cheshir
     assert set(plugins) == set(cloned_plugins)
 
     # check that the vector memory points were cloned
-    cloned_ccat = lizard.get_cheshire_cat(new_agent_id)
-    vmh = await cheshire_cat.vector_memory_handler._client()
-    original_points, _ = await vmh.get_all_tenant_points(
+    cloned_ccat = await lizard.get_cheshire_cat(new_agent_id)
+    original_points, _ = await cheshire_cat.vector_memory_handler.get_all_tenant_points(
         str(VectorMemoryType.DECLARATIVE), with_vectors=True
     )
-    vmho = await cloned_ccat.vector_memory_handler()
-    cloned_points, _ = await vmho.get_all_tenant_points(
+    cloned_points, _ = await cloned_ccat.vector_memory_handler.get_all_tenant_points(
         str(VectorMemoryType.DECLARATIVE), with_vectors=True
     )
     assert len(original_points) == len(cloned_points)

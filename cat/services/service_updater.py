@@ -5,7 +5,7 @@ from cat.db.cruds import settings as crud_settings
 from cat.log import log
 from cat.services.service_factory import ServiceFactory
 from cat.services.string_crypto import StringCrypto
-from cat.utils import UpdaterFactory
+from cat.utils import UpdaterFactory, SUFFIX_TO_CRYPT
 
 
 class ServiceUpdater:
@@ -33,7 +33,7 @@ class ServiceUpdater:
             category=self._factory.setting_category,
             value={
                 k: crypto.encrypt(v)
-                if isinstance(v, str) and any(suffix in k for suffix in ["_key", "_secret"])
+                if isinstance(v, str) and any(suffix in k for suffix in SUFFIX_TO_CRYPT)
                 else v
                 for k, v in settings.items()
             },

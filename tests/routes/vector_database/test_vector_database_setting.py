@@ -1,4 +1,5 @@
 from json import dumps
+from unittest.mock import patch
 from fastapi.encoders import jsonable_encoder
 
 from cat.services.service_factory import ServiceFactory
@@ -31,7 +32,7 @@ async def test_get_all_vector_databases_settings(secure_client, secure_client_he
     assert json["selected_configuration"] == "QdrantConfig"
 
 
-async def test_get_vector_database_settings_non_existent(secure_client, secure_client_headers):
+async def test_get_vector_database_settings_non_existent(secure_client, secure_client_headers, cheshire_cat):
     non_existent_vector_db_name = "VectorDBNonExistentConfig"
     response = await secure_client.get(
         f"/vector_database/settings/{non_existent_vector_db_name}", headers=secure_client_headers
@@ -42,7 +43,7 @@ async def test_get_vector_database_settings_non_existent(secure_client, secure_c
     assert f"{non_existent_vector_db_name} not supported" in json["detail"]
 
 
-async def test_get_vector_database_settings(secure_client, secure_client_headers):
+async def test_get_vector_database_settings(secure_client, secure_client_headers, cheshire_cat):
     vector_db_name = "QdrantConfig"
     response = await secure_client.get(f"/vector_database/settings/{vector_db_name}", headers=secure_client_headers)
     json = response.json()
@@ -53,48 +54,49 @@ async def test_get_vector_database_settings(secure_client, secure_client_headers
     assert json["scheme"]["type"] == "object"
 
 
-async def test_upsert_vector_database_settings_success(secure_client, secure_client_headers):
-    new_vector_db = "QdrantConfig"
-    payload = {
-        "host": "localhost",
-        "port": 6333,
-        "api_key": "this_is_a_test_api_key",
-        "client_timeout": 10,
-    }
-    response = await secure_client.put(
-        f"/vector_database/settings/{new_vector_db}", json=payload, headers=secure_client_headers
-    )
+async def test_upsert_vector_database_settings_success(secure_client, secure_client_headers, cheshire_cat):
+    with patch("cat.services.factory.vector_db.BaseVectorDatabaseHandler.__eq__", return_value=False):
+        new_vector_db = "QdrantConfig"
+        payload = {
+            "host": "localhost",
+            "port": 6333,
+            "api_key": "this_is_a_test_api_key",
+            "client_timeout": 10,
+        }
+        response = await secure_client.put(
+            f"/vector_database/settings/{new_vector_db}", json=payload, headers=secure_client_headers
+        )
 
-    # check immediate response
-    json = response.json()
-    assert response.status_code == 200
-    assert json["name"] == new_vector_db
-    assert json["value"]["host"] == payload["host"]
-    assert json["value"]["port"] == payload["port"]
-    assert "api_key" in json["value"]
-    assert json["value"]["client_timeout"] == payload["client_timeout"]
+        # check immediate response
+        json = response.json()
+        assert response.status_code == 200
+        assert json["name"] == new_vector_db
+        assert json["value"]["host"] == payload["host"]
+        assert json["value"]["port"] == payload["port"]
+        assert "api_key" in json["value"]
+        assert json["value"]["client_timeout"] == payload["client_timeout"]
 
-    # retrieve all Vector databases settings to check if it was saved in DB
-    response = await secure_client.get("/vector_database/settings", headers=secure_client_headers)
-    json = response.json()
-    assert response.status_code == 200
-    assert json["selected_configuration"] == new_vector_db
-    saved_config = [c for c in json["settings"] if c["name"] == new_vector_db]
-    assert saved_config[0]["value"]["host"] == payload["host"]
-    assert saved_config[0]["value"]["port"] == payload["port"]
-    assert "api_key" in saved_config[0]["value"]
-    assert saved_config[0]["value"]["client_timeout"] == payload["client_timeout"]
+        # retrieve all Vector databases settings to check if it was saved in DB
+        response = await secure_client.get("/vector_database/settings", headers=secure_client_headers)
+        json = response.json()
+        assert response.status_code == 200
+        assert json["selected_configuration"] == new_vector_db
+        saved_config = [c for c in json["settings"] if c["name"] == new_vector_db]
+        assert saved_config[0]["value"]["host"] == payload["host"]
+        assert saved_config[0]["value"]["port"] == payload["port"]
+        assert "api_key" in saved_config[0]["value"]
+        assert saved_config[0]["value"]["client_timeout"] == payload["client_timeout"]
 
-    # check also specific Vector database endpoint
-    response = await secure_client.get(f"/vector_database/settings/{new_vector_db}", headers=secure_client_headers)
-    assert response.status_code == 200
-    json = response.json()
-    assert json["name"] == new_vector_db
-    assert json["value"]["host"] == payload["host"]
-    assert json["value"]["port"] == payload["port"]
-    assert "api_key" in json["value"]
-    assert json["value"]["client_timeout"] == payload["client_timeout"]
-    assert json["scheme"]["vectorDatabaseName"] == new_vector_db
+        # check also specific Vector database endpoint
+        response = await secure_client.get(f"/vector_database/settings/{new_vector_db}", headers=secure_client_headers)
+        assert response.status_code == 200
+        json = response.json()
+        assert json["name"] == new_vector_db
+        assert json["value"]["host"] == payload["host"]
+        assert json["value"]["port"] == payload["port"]
+        assert "api_key" in json["value"]
+        assert json["value"]["client_timeout"] == payload["client_timeout"]
+        assert json["scheme"]["vectorDatabaseName"] == new_vector_db
 
 
 async def test_forbidden_access_no_auth(client):
@@ -102,10 +104,10 @@ async def test_forbidden_access_no_auth(client):
     assert response.status_code == 401
 
 
-async def test_granted_access_on_permissions(secure_client, secure_client_headers, client):
+async def test_granted_access_on_permissions(secure_client, secure_client_headers, client, cheshire_cat):
     # create user
     data = await create_new_user(
-        secure_client, "/users", headers=secure_client_headers, permissions={"VECTOR_DATABASE": ["READ"]}
+        secure_client, headers=secure_client_headers, permissions={"VECTOR_DATABASE": ["READ"]}
     )
     res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
@@ -116,9 +118,9 @@ async def test_granted_access_on_permissions(secure_client, secure_client_header
     assert response.status_code == 200
 
 
-async def test_forbidden_access_no_permission(secure_client, secure_client_headers, client):
+async def test_forbidden_access_no_permission(secure_client, secure_client_headers, client, cheshire_cat):
     # create user
-    data = await create_new_user(secure_client, "/users", headers=secure_client_headers)
+    data = await create_new_user(secure_client, headers=secure_client_headers)
     res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]
 
@@ -129,10 +131,10 @@ async def test_forbidden_access_no_permission(secure_client, secure_client_heade
     assert response.json()["detail"] == "Forbidden"
 
 
-async def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client):
+async def test_forbidden_access_wrong_permissions(secure_client, secure_client_headers, client, cheshire_cat):
     # create user
     data = await create_new_user(
-        secure_client, "/users", headers=secure_client_headers, permissions={"VECTOR_DATABASE": ["DELETE"]}
+        secure_client, headers=secure_client_headers, permissions={"VECTOR_DATABASE": ["DELETE"]}
     )
     res = await client.post("/auth/token", json={"username": data["username"], "password": new_user_password})
     received_token = res.json()["access_token"]

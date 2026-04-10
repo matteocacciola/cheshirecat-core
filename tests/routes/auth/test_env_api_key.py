@@ -1,7 +1,7 @@
 import json
 import os
 import pytest
-from fastapi import WebSocketDisconnect
+from httpx_ws import WebSocketDisconnect
 
 from cat.auth.permissions import get_base_permissions
 from cat.env import get_env
@@ -26,10 +26,9 @@ def reset_api_key(key, value: str | None) -> None:
         del os.environ[key]
 
 
-async def test_api_key_http(secure_client, client):
+async def test_api_key_http(secure_client, client, cheshire_cat):
     await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -66,10 +65,9 @@ async def test_api_key_http(secure_client, client):
     reset_api_key("CAT_API_KEY", old_api_key)
 
 
-async def test_api_key_ws(secure_client, secure_client_headers, client):
+async def test_api_key_ws(secure_client, secure_client_headers, client, cheshire_cat):
     await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -81,12 +79,12 @@ async def test_api_key_ws(secure_client, secure_client_headers, client):
     mex = {"text": "Where do I go?"}
 
     wrong_tokens = [
-        {}, # no key
+        "", # no key
         "wrong", # wrong token
     ]
 
     for token in wrong_tokens:
-        with pytest.raises(WebSocketDisconnect):
+        with pytest.raises((WebSocketDisconnect, ExceptionGroup)):
             await send_websocket_message(mex, secure_client, token)
 
     # allow access if CAT_API_KEY is right

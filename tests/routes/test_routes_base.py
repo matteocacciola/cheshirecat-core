@@ -19,12 +19,12 @@ async def test_ping_success(client):
     assert isinstance(json_response, str)
 
 
-async def test_ping_non_admin_endpoint_with_admin(secure_client, secure_client_headers, client):
+async def test_ping_non_admin_endpoint_with_admin(secure_client, secure_client_headers, client, cheshire_cat):
     permissions = get_full_permissions()
     permissions[str(AuthResource.PLUGIN)].append(str(AuthPermission.READ))
 
     new_admin = await create_new_user(
-        client, "/users", headers=await get_client_admin_headers(client), permissions=permissions
+        client, headers=await get_client_admin_headers(client), permissions=permissions
     )
 
     creds = {
@@ -39,5 +39,5 @@ async def test_ping_non_admin_endpoint_with_admin(secure_client, secure_client_h
     received_token = res_json["access_token"]
 
     # check the access to the get LLMs endpoint
-    response = await client.get("/plugins", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
+    response = await client.get("/plugins/", headers={"Authorization": f"Bearer {received_token}", "X-Agent-ID": agent_id})
     assert response.status_code == 200

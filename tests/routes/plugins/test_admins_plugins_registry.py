@@ -9,7 +9,7 @@ async def mock_registry_download_plugin(url: str):
     return create_mock_plugin_zip(True)
 
 
-async def test_list_registry_plugins(secure_client, secure_client_headers):
+async def test_list_registry_plugins(secure_client, secure_client_headers, cheshire_cat):
     response = await secure_client.get("/plugins/installed", headers=secure_client_headers)
     json = response.json()
 
@@ -27,7 +27,7 @@ async def test_list_registry_plugins(secure_client, secure_client_headers):
         assert key in json["filters"].keys()
 
 
-async def test_list_registry_plugins_by_query(secure_client, secure_client_headers):
+async def test_list_registry_plugins_by_query(secure_client, secure_client_headers, cheshire_cat):
     params = {"query": "podcast"}
     response = await secure_client.get("/plugins/installed", params=params, headers=secure_client_headers)
     json = response.json()
@@ -40,7 +40,7 @@ async def test_list_registry_plugins_by_query(secure_client, secure_client_heade
         assert params["query"] in plugin_text  # verify searched text
 
 
-async def test_plugin_install_from_registry(secure_client, secure_client_headers, monkeypatch, lizard):
+async def test_plugin_install_from_registry(secure_client, secure_client_headers, monkeypatch, lizard, cheshire_cat):
     # Mock the download from the registry creating a zip on-the-fly
     monkeypatch.setattr(lizard.plugin_registry, "download_plugin", mock_registry_download_plugin)
 
@@ -83,7 +83,9 @@ async def test_plugin_install_from_registry(secure_client, secure_client_headers
 
 
 # take away from the list of available registry plugins, the ones that are already installed
-async def test_list_registry_plugins_without_duplicating_installed_plugins(secure_client, secure_client_headers):
+async def test_list_registry_plugins_without_duplicating_installed_plugins(
+    secure_client, secure_client_headers, cheshire_cat,
+):
     # 1. install plugin from registry
     # TODO !!!
 
@@ -99,7 +101,7 @@ async def test_list_registry_plugins_without_duplicating_installed_plugins(secur
 
 
 @pytest.mark.skip("This test has to be activated when also search by tag and author is activated in core")
-async def test_list_registry_plugins_by_author(secure_client, secure_client_headers):
+async def test_list_registry_plugins_by_author(secure_client, secure_client_headers, cheshire_cat):
     params = {
         "author": "Nicola Corbellini"
     }
@@ -114,7 +116,7 @@ async def test_list_registry_plugins_by_author(secure_client, secure_client_head
 
 
 @pytest.mark.skip("This test has to be activated when also search by tag and author is activated in core")
-async def test_list_registry_plugins_by_tag(secure_client, secure_client_headers):
+async def test_list_registry_plugins_by_tag(secure_client, secure_client_headers, cheshire_cat):
     params = {
         "tag": "llm"
     }

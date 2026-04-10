@@ -12,7 +12,7 @@ from tests.utils import (
 )
 
 
-async def test_memory_collections_created(secure_client, secure_client_headers):
+async def test_memory_collections_created(secure_client, secure_client_headers, cheshire_cat):
     # get collections
     response = await secure_client.get("/memory/collections", headers=secure_client_headers)
     json = response.json()
@@ -31,7 +31,7 @@ async def test_memory_collections_created(secure_client, secure_client_headers):
             assert collections_n_points[str(collection_name)] == 0
 
 
-async def test_memory_collection_non_existent_clear(secure_client, secure_client_headers):
+async def test_memory_collection_non_existent_clear(secure_client, secure_client_headers, cheshire_cat):
     non_existent_collection = "nonexistent"
     response = await secure_client.delete(f"/memory/collections/{non_existent_collection}", headers=secure_client_headers)
     json = response.json()
@@ -40,11 +40,10 @@ async def test_memory_collection_non_existent_clear(secure_client, secure_client
 
 
 async def test_memory_collections_wipe(
-    secure_client, secure_client_headers, mocked_default_llm_answer_prompt
+    secure_client, secure_client_headers, mocked_default_llm_answer_prompt, cheshire_cat
 ):
     user = await create_new_user(
         secure_client,
-        "/users",
         "user",
         headers={"Authorization": f"Bearer {api_key}", "X-Agent-ID": agent_id},
         permissions=get_base_permissions(),
@@ -69,7 +68,7 @@ async def test_memory_collections_wipe(
 
 
 async def test_memory_collections_create(
-    secure_client, secure_client_headers, mocked_default_llm_answer_prompt
+    secure_client, secure_client_headers, mocked_default_llm_answer_prompt, cheshire_cat
 ):
     # create collections
     response = await secure_client.post("/memory/collections/this_is_a_test_collection", headers=secure_client_headers)

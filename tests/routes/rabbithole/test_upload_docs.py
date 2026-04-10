@@ -49,7 +49,7 @@ async def _check_upon_request(secure_client, secure_client_headers, file_name):
     _check_analytics(analytics, file_name)
 
 
-async def test_rabbithole_upload_txt(secure_client, secure_client_headers):
+async def test_rabbithole_upload_txt(secure_client, secure_client_headers, cheshire_cat):
     content_type = "text/plain"
     file_name = "sample.txt"
     response, _ = await send_file(file_name, content_type, secure_client, secure_client_headers)
@@ -58,7 +58,9 @@ async def test_rabbithole_upload_txt(secure_client, secure_client_headers):
     await _check_upon_request(secure_client, secure_client_headers, file_name)
 
 
-async def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_headers, cheshire_cat):
+async def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_headers, lizard):
+    await lizard.create_cheshire_cat(agent_id)
+
     # set a new file manager
     file_manager_name = "LocalFileManagerConfig"
     response = await secure_client.put(
@@ -79,13 +81,14 @@ async def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_heade
     _check_analytics(await crud_embeddings.get_analytics(agent_id), file_name)
     await _check_upon_request(secure_client, secure_client_headers, file_name)
 
+    cheshire_cat = await lizard.get_cheshire_cat(agent_id)
+
     # check that the file has been stored in the proper folder
-    file_exists = (await cheshire_cat.file_manager()).file_exists(file_name, os.path.join(agent_id, chat_id))
+    file_exists = cheshire_cat.file_manager.file_exists(file_name, os.path.join(agent_id, chat_id))
     assert file_exists
 
     # check that the file has generated no entry in the declarative vector memory
-    vmh = await cheshire_cat.vector_memory_handler()
-    points, _ = await vmh.get_all_tenant_points(
+    points, _ = await cheshire_cat.vector_memory_handler.get_all_tenant_points(
         str(VectorMemoryType.DECLARATIVE),
         metadata={"source": file_name, "chat_id": chat_id},
         with_vectors=False,
@@ -93,7 +96,7 @@ async def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_heade
     assert len(points) == 0
 
     # check that the file has generated entries in the episodic vector memory
-    points, _ = await vmh.get_all_tenant_points(
+    points, _ = await cheshire_cat.vector_memory_handler.get_all_tenant_points(
         str(VectorMemoryType.EPISODIC),
         metadata={"source": file_name, "chat_id": chat_id},
         with_vectors=False,
@@ -101,7 +104,7 @@ async def test_rabbithole_upload_txt_to_stray(secure_client, secure_client_heade
     assert len(points) > 0
 
 
-async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_headers):
+async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_headers, cheshire_cat):
     cat = await lizard.create_cheshire_cat("another_agent_test")
 
     content_type = "application/pdf"
@@ -120,7 +123,7 @@ async def test_rabbithole_upload_pdf(lizard, secure_client, secure_client_header
     await cat.destroy_memory()
 
 
-async def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers):
+async def test_rabbithole_upload_batch_one_file(secure_client, secure_client_headers, cheshire_cat):
     content_type = "application/pdf"
     file_name = "sample.pdf"
     file_path = f"tests/mocks/{file_name}"
@@ -143,7 +146,7 @@ async def test_rabbithole_upload_batch_one_file(secure_client, secure_client_hea
     _check_analytics(await crud_embeddings.get_analytics(agent_id), file_name)
 
 
-async def test_rabbithole_upload_batch_one_file_to_chat(secure_client, secure_client_headers):
+async def test_rabbithole_upload_batch_one_file_to_chat(secure_client, secure_client_headers, cheshire_cat):
     content_type = "application/pdf"
     file_name = "sample.pdf"
     file_path = f"tests/mocks/{file_name}"
@@ -168,7 +171,7 @@ async def test_rabbithole_upload_batch_one_file_to_chat(secure_client, secure_cl
     _check_analytics(await crud_embeddings.get_analytics(agent_id), file_name)
 
 
-async def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_headers):
+async def test_rabbithole_upload_batch_multiple_files(secure_client, secure_client_headers, cheshire_cat):
     files = []
     files_to_upload = {"sample.pdf": "application/pdf", "sample.txt": "text/plain"}
     for file_name in files_to_upload:
@@ -197,7 +200,7 @@ async def test_rabbithole_upload_batch_multiple_files(secure_client, secure_clie
         _check_analytics(analytics, file_name, num_files=len(files_to_upload))
 
 
-async def test_rabbithole_upload_doc_with_metadata(secure_client, secure_client_headers):
+async def test_rabbithole_upload_doc_with_metadata(secure_client, secure_client_headers, cheshire_cat):
     content_type = "application/pdf"
     file_name = "sample.pdf"
 
@@ -224,7 +227,7 @@ async def test_rabbithole_upload_doc_with_metadata(secure_client, secure_client_
             assert dm["metadata"][k] == v
 
 
-async def test_rabbithole_upload_docs_batch_with_metadata(secure_client, secure_client_headers):
+async def test_rabbithole_upload_docs_batch_with_metadata(secure_client, secure_client_headers, cheshire_cat):
     files = []
     files_to_upload = {"sample.pdf": "application/pdf", "sample.txt": "text/plain"}
     for file_name in files_to_upload:
@@ -267,7 +270,7 @@ async def test_rabbithole_upload_docs_batch_with_metadata(secure_client, secure_
             assert dm["metadata"][k] == v
 
 
-async def test_simple_upload_pdf_with_image_only(secure_client, secure_client_headers):
+async def test_simple_upload_pdf_with_image_only(secure_client, secure_client_headers, cheshire_cat):
     new_chunker = "RecursiveTextChunkerSettings"
     payload = {"encoding_name": "cl100k_base","chunk_size": 256,"chunk_overlap": 64}
     response = await secure_client.put(f"/chunking/settings/{new_chunker}", json=payload, headers=secure_client_headers)

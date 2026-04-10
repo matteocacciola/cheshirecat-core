@@ -3,7 +3,7 @@ from fastapi import APIRouter, Body, BackgroundTasks
 
 from cat.auth.connection import AuthorizedInfo
 from cat.auth.permissions import AuthPermission, AuthResource, check_permissions
-from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse
+from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse, UpsertSettingResponse, run_background_task
 from cat.services.service_factory import ServiceFactory
 
 router = APIRouter(tags=["Vector Database"], prefix="/vector_database")
@@ -57,7 +57,7 @@ async def upsert_vector_database_setting(
     """Upsert the Vector Database setting"""
     ccat = info.cheshire_cat
 
-    previous_vector_db = await ccat.vector_memory_handler()  # type: ignore[union-attr]
+    previous_vector_db = ccat.vector_memory_handler
 
     sf = ServiceFactory(
         agent_key=ccat.agent_key,  # type: ignore[union-attr]
@@ -68,8 +68,10 @@ async def upsert_vector_database_setting(
     )
     result = await sf.upsert_service(vector_database_name, payload)
 
-    current_vector_db = await ccat.vector_memory_handler()  # type: ignore[union-attr]
-    if previous_vector_db != current_vector_db:
-        background_tasks.add_task(ccat.transfer_vector_points_from, previous_vector_db)  # type: ignore[union-attr]
+    ccat.vector_memory_handler = await ccat.service_provider.get_vector_memory_handler(
+        ccat.agent_key, ccat.plugin_manager,
+    )
+    if previous_vector_db != ccat.vector_memory_handler:
+        run_background_task(background_tasks, ccat.transfer_vector_points_from, previous_vector_db)
 
     return UpsertSettingResponse(**result)
