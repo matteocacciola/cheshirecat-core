@@ -110,8 +110,7 @@ async def recall_memory_points_from_text(
     if info.stray_cat:
         metadata["chat_id"] = info.stray_cat.id
 
-    vmh = await info.cheshire_cat.vector_memory_handler()
-    dm = await vmh.recall_tenant_memory_from_embedding(
+    dm = await info.cheshire_cat.vector_memory_handler.recall_tenant_memory_from_embedding(
         collection_name, query_embedding, k=k, metadata=metadata,
     )
 
@@ -212,8 +211,7 @@ async def delete_memory_point(
         await verify_memory_point_existence(info.cheshire_cat, collection_id, point_id)
 
         # delete point
-        vmh = await info.cheshire_cat.vector_memory_handler()
-        await vmh.delete_tenant_points_by_ids(collection_id, [point_id])
+        await info.cheshire_cat.vector_memory_handler.delete_tenant_points_by_ids(collection_id, [point_id])
 
         return DeleteMemoryPointResponse(deleted=point_id)
     except Exception as e:
@@ -237,17 +235,16 @@ async def delete_memory_points_by_metadata(
         metadata = metadata or {}
 
         # delete points
-        ret = await (await ccat.vector_memory_handler()).delete_tenant_points(collection_id, metadata)
+        ret = await ccat.vector_memory_handler.delete_tenant_points(collection_id, metadata)
 
         if source := metadata.get("source"):
-            file_manager = await ccat.file_manager()
             # delete the file with path `metadata["source"]` from the file storage
-            file_manager.remove_file(os.path.join(ccat.agent_key, source))
+            ccat.file_manager.remove_file(os.path.join(ccat.agent_key, source))
 
             # delete the file with path `metadata["source"]/metadata["chat_id"]` from the file storage
             chat_id = metadata.get("chat_id")
             if chat_id:
-                file_manager.remove_file(os.path.join(ccat.agent_key, chat_id, source))
+                ccat.file_manager.remove_file(os.path.join(ccat.agent_key, chat_id, source))
 
         return DeleteMemoryPointsByMetadataResponse(deleted=ret)
     except Exception as e:
@@ -328,8 +325,7 @@ async def get_points_in_collection(
         if offset == "":
             offset = None
 
-        vmh = await info.cheshire_cat.vector_memory_handler()
-        points, next_offset = await vmh.get_all_tenant_points(
+        points, next_offset = await info.cheshire_cat.vector_memory_handler.get_all_tenant_points(
             collection_name=collection_id, limit=limit, offset=offset, metadata=metadata
         )
 
