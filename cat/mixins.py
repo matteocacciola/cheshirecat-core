@@ -226,3 +226,25 @@ class BotMixin(ContextMixin, ABC):
                 pass
             self._vector_memory_handler = None
         self._service_provider = None
+
+
+class NonCopyableMixin:
+    """
+    Class that prevents copying operations.
+
+    This class is designed to prevent both shallow and deep copying operations. Attempting to
+    copy an instance of this class using either the `copy` or `deepcopy` methods will return
+    the instance itself, effectively making it non-copyable. This is useful in scenarios where
+    objects need to maintain unique identity and state integrity, avoiding unintended duplication.
+
+    Methods:
+        __copy__: Overrides shallow copy behavior to return the same instance.
+        __deepcopy__: Overrides deep copy behavior to return the same instance and registers
+                      it in the memo dictionary to prevent circular reference issues.
+    """
+    def __copy__(self):
+        return self
+
+    def __deepcopy__(self, memo):
+        memo[id(self)] = self  # register in the memo to avoid loops on circular references
+        return self

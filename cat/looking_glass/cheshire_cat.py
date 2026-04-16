@@ -18,14 +18,14 @@ from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.procedures import CatProcedureType
 from cat.looking_glass.models import StoredSourceWithMetadata
 from cat.looking_glass.stray_cat import StrayCat
-from cat.mixins import BotMixin
+from cat.mixins import BotMixin, NonCopyableMixin
 from cat.services.factory.file_manager import BaseFileManager
 from cat.services.factory.vector_db import BaseVectorDatabaseHandler
 from cat.services.memory.models import VectorMemoryType, PointStruct
 from cat.utils import guess_file_type, is_url
 
 
-class CheshireCat(BotMixin):
+class CheshireCat(BotMixin, NonCopyableMixin):
     """
     The Cheshire Cat.
 

@@ -10,7 +10,7 @@ from cat.log import log
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.procedures import CatProcedure
 from cat.looking_glass.models import AgenticWorkflowTask, AgenticWorkflowOutput, ChatResponse
-from cat.mixins import BotMixin
+from cat.mixins import BotMixin, NonCopyableMixin
 from cat.services.memory.messages import CatMessage, UserMessage
 from cat.services.memory.models import VectorMemoryType, RecallSettings
 from cat.services.memory.working_memory import WorkingMemory
@@ -18,7 +18,7 @@ from cat.services.notifier import NotifierService
 from cat.templates import prompts
 
 
-class StrayCat(BotMixin):
+class StrayCat(BotMixin, NonCopyableMixin):
     """Session object containing user data, conversation state, and many utility pointers.
     The framework creates an instance for every http request and websocket connection, making it available for plugins.
 
