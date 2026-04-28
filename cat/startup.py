@@ -25,6 +25,7 @@ from cat.routes import (
     file_manager,
     llm,
     chunker,
+    context_retriever,
     plugins,
     rabbit_hole,
     users,
@@ -92,6 +93,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_handler.router)
     app.include_router(embedder.router)
     app.include_router(chunker.router)
+    app.include_router(context_retriever.router)
     app.include_router(file_manager.router)
     app.include_router(llm.router)
     app.include_router(plugins.router)

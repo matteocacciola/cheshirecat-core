@@ -4,6 +4,7 @@ from cat import (
     AgenticWorkflowConfig,
     AuthHandlerConfig,
     ChunkerSettings,
+    ContextRetrieverSettings,
     EmbedderSettings,
     FileManagerConfig,
     LLMSettings,
@@ -81,6 +82,20 @@ def factory_allowed_chunkers(allowed: List[ChunkerSettings], cat) -> List:
 
     Returns:
         supported: List of ChunkerSettings classes for the allowed chunkers
+    """
+    return allowed
+
+
+@hook(priority=0)
+def factory_allowed_context_retrievers(allowed: List[ContextRetrieverSettings], cat) -> List:
+    """Hook to extend list of supported context retrievers.
+
+    Args:
+        allowed: List of ContextRetrieverSettings classes
+        cat: Cheshire Cat instance
+
+    Returns:
+        supported: List of ContextRetrieverSettings classes for the allowed chunkers
     """
     return allowed
 

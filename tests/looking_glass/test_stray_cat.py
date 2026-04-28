@@ -71,7 +71,7 @@ async def test_stray_recall_all_memories(secure_client, secure_client_headers, s
     await send_file("sample.pdf", "application/pdf", secure_client, secure_client_headers)
 
     query = (await lizard.embedder()).embed_query("")
-    memories = await stray.agentic_workflow.context_retrieval(
+    memories = await stray.context_retriever.run(
         VectorMemoryType.DECLARATIVE, RecallSettings(embedding=query, k=None)
     )
 
@@ -87,7 +87,7 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
 
     file_name = "sample.pdf"
     _, file_path = await send_file(file_name, content_type, secure_client, secure_client_headers)
-    memories = await stray.agentic_workflow.context_retrieval(
+    memories = await stray.context_retriever.run(
         VectorMemoryType.DECLARATIVE,
         RecallSettings(threshold=0.1, embedding=query, metadata={"source": file_name}),
     )
@@ -99,7 +99,7 @@ async def test_stray_recall_by_metadata(secure_client, secure_client_headers, st
         files = {"file": ("sample2.pdf", f, content_type)}
         _ = await secure_client.post("/rabbithole/", files=files, headers=secure_client_headers)
 
-    memories = await stray.agentic_workflow.context_retrieval(
+    memories = await stray.context_retriever.run(
         VectorMemoryType.DECLARATIVE,
         RecallSettings(threshold=0.1, embedding=query, metadata={"source": file_name}),
     )

@@ -10,6 +10,7 @@ from cat.rabbit_hole import RabbitHole
 from cat.services.factory.agentic_workflow import BaseAgenticWorkflowHandler
 from cat.services.factory.auth_handler import BaseAuthHandler
 from cat.services.factory.chunker import BaseChunker
+from cat.services.factory.context_retriever import BaseContextRetriever
 from cat.services.factory.embedder import Embeddings
 from cat.services.factory.file_manager import BaseFileManager
 from cat.services.factory.llm import LargeLanguageModel
@@ -107,6 +108,7 @@ class BotMixin(ContextMixin, ABC):
     """
     _agentic_workflow = None
     _chunker = None
+    _context_retriever = None
     _custom_auth_handler = None
     _file_manager = None
     _large_language_model = None
@@ -143,6 +145,14 @@ class BotMixin(ContextMixin, ABC):
     @chunker.setter
     def chunker(self, value: BaseChunker):
         self._chunker = value
+
+    @property
+    def context_retriever(self) -> BaseContextRetriever:
+        return self._context_retriever
+
+    @context_retriever.setter
+    def context_retriever(self, value: BaseContextRetriever):
+        self._context_retriever = value
 
     @property
     def custom_auth_handler(self) -> BaseAuthHandler:

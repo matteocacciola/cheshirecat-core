@@ -42,10 +42,10 @@ chat_memories = await self._agentic_workflow.context_retrieval(
 ```python
 # AFTER — parallel
 agent_memories, chat_memories = await asyncio.gather(
-    self._agentic_workflow.context_retrieval(
+    self._context_retriever.run(
         collection=VectorMemoryType.DECLARATIVE, params=config,
     ),
-    self._agentic_workflow.context_retrieval(
+    self._context_retriever.run(
         collection=VectorMemoryType.EPISODIC,
         params=config.model_copy(deep=True, update={"metadata": {"chat_id": self.id}}),
     ),

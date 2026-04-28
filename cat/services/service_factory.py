@@ -9,6 +9,7 @@ from cat.routes.routes_utils import GetSettingsResponse, GetSettingResponse
 from cat.services.factory.agentic_workflow import CoreAgenticWorkflowConfig
 from cat.services.factory.auth_handler import CoreAuthConfig
 from cat.services.factory.chunker import RecursiveTextChunkerSettings
+from cat.services.factory.context_retriever import DefaultContextRetrieverSettings
 from cat.services.factory.embedder import EmbedderDumbConfig
 from cat.services.factory.file_manager import DummyFileManagerConfig
 from cat.services.factory.llm import LLMDefaultConfig
@@ -24,7 +25,14 @@ class ServiceFactory:
         hook_manager: MadHatter,
         factory_allowed_handler_name: str,
         setting_category: Literal[
-            "auth_handler", "chunker", "embedder", "file_manager", "llm", "vector_database", "agentic_workflow"
+            "auth_handler",
+            "chunker",
+            "context_retriever",
+            "embedder",
+            "file_manager",
+            "llm",
+            "vector_database",
+            "agentic_workflow",
         ],
         schema_name: str,
     ):
@@ -41,6 +49,7 @@ class ServiceFactory:
             "agentic_workflow": CoreAgenticWorkflowConfig,
             "auth_handler": CoreAuthConfig,
             "chunker": RecursiveTextChunkerSettings,
+            "context_retriever": DefaultContextRetrieverSettings,
             "embedder": EmbedderDumbConfig,
             "file_manager": DummyFileManagerConfig,
             "llm": LLMDefaultConfig,

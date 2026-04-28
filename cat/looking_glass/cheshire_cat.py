@@ -65,6 +65,7 @@ class CheshireCat(BotMixin, NonCopyableMixin):
 
         cat.agentic_workflow = await cat.service_provider.get_agentic_workflow(cat.agent_key, cat.plugin_manager)
         cat.chunker = await cat.service_provider.get_chunker(cat.agent_key, cat.plugin_manager)
+        cat.context_retriever = await cat.service_provider.get_context_retriever(cat.agent_key, cat.plugin_manager)
         cat.custom_auth_handler = await cat.service_provider.get_custom_auth_handler(cat.agent_key, cat.plugin_manager)
         cat.file_manager = await cat.service_provider.get_file_manager(cat.agent_key, cat.plugin_manager)
         cat.large_language_model = await cat.service_provider.get_large_language_model(cat.agent_key, cat.plugin_manager)

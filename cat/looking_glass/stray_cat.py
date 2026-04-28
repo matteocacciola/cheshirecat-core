@@ -77,6 +77,7 @@ class StrayCat(BotMixin, NonCopyableMixin):
 
         instance.agentic_workflow = cat.agentic_workflow
         instance.chunker = cat.chunker
+        instance.context_retriever = cat.context_retriever
         instance.custom_auth_handler = cat.custom_auth_handler
         instance.file_manager = cat.file_manager
         instance.large_language_model = cat.large_language_model
@@ -109,10 +110,10 @@ class StrayCat(BotMixin, NonCopyableMixin):
         # Recall declarative and episodic memories in parallel — they are fully independent
         # Qdrant queries that hit different collections, so there is no reason to serialise them.
         agent_memories, chat_memories = await asyncio.gather(
-            self._agentic_workflow.context_retrieval(
+            self._context_retriever.run(
                 collection=VectorMemoryType.DECLARATIVE, params=config,
             ),
-            self._agentic_workflow.context_retrieval(
+            self._context_retriever.run(
                 collection=VectorMemoryType.EPISODIC,
                 params=config.model_copy(deep=True, update={"metadata": {"chat_id": self.id}}),
             ),
@@ -135,7 +136,7 @@ class StrayCat(BotMixin, NonCopyableMixin):
             List[StructuredTool]: A list of structured tools, combining reconstructed procedural memories from tools
             implemented in plugins as well as provided by MCP clients.
         """
-        memories = await self._agentic_workflow.context_retrieval(collection=VectorMemoryType.PROCEDURAL, params=config)
+        memories = await self._context_retriever.run(collection=VectorMemoryType.PROCEDURAL, params=config)
 
         # these are procedures from embeddings, i.e., only from CatTool or CatForm instances
         tools = []
