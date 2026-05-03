@@ -21,7 +21,6 @@ from cat.routes import (
     auth,
     auth_handler,
     base,
-    conversation,
     embedder,
     file_manager,
     llm,
@@ -92,7 +91,6 @@ def create_app() -> FastAPI:
     app.include_router(base.router)
     app.include_router(agentic_workflow.router)
     app.include_router(auth_handler.router)
-    app.include_router(conversation.router)
     app.include_router(embedder.router)
     app.include_router(chunker.router)
     app.include_router(context_retriever.router)

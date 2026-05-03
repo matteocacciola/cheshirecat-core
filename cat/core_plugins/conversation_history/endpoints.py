@@ -50,6 +50,19 @@ class GetConversationsResponse(BaseModel):
     updated_at: float | None
 
 
+def _resolve_ids(info: AuthorizedInfo, header_user_id: str | None = None):
+    """Return (agent_id, user_id) resolving user from X-User-ID header when present.
+
+    The header is sent by both the SDK and the admin UI. When an admin selects
+    a different user in the UI, X-User-ID contains that user's id while the JWT
+    belongs to the admin — so we must prefer the header over info.user.id.
+    Fallback to info.user.id keeps existing chatbot flows intact.
+    """
+    agent_id = info.cheshire_cat.agent_key if info.cheshire_cat else info.lizard.agent_key
+    user_id = header_user_id or info.user.id
+    return agent_id, user_id
+
+
 # DELETE conversation
 @endpoint.delete(
     "/{chat_id}",
@@ -58,12 +71,13 @@ class GetConversationsResponse(BaseModel):
     prefix="/conversations",
 )
 async def delete_conversation(
+    chat_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteConversationHistoryResponse:
-    """Delete the specified user's conversation"""
+    """Delete the specified conversation and all related files and vector memories."""
     stray_cat = info.stray_cat
     if not stray_cat:
-        log.warning("Trying to change conversation name but no StrayCat found in AuthorizedInfo")
+        log.warning("Trying to delete conversation but no StrayCat found in AuthorizedInfo")
         return DeleteConversationHistoryResponse(deleted=False)
 
     cat = info.cheshire_cat
@@ -77,14 +91,14 @@ async def delete_conversation(
         )
 
         # Delete conversation from the database
-        await crud_conversations.delete_conversation(stray_cat.agent_key, stray_cat.user.id, stray_cat.id)  # type: ignore[union-attr]
+        await crud_conversations.delete_conversation(stray_cat.agent_key, stray_cat.user.id, chat_id)  # type: ignore[union-attr]
 
         return DeleteConversationHistoryResponse(deleted=True)
     except Exception as e:
-        raise CustomValidationException(f"Failed to delete conversation {stray_cat.id}: {e}")
+        raise CustomValidationException(f"Failed to delete conversation {chat_id}: {e}")
 
 
-# GET conversation history from working memory
+# GET conversation history — reads from Redis, no active WS session required
 @endpoint.get(
     "/{chat_id}/history",
     response_model=GetConversationHistoryResponse,
@@ -94,15 +108,22 @@ async def delete_conversation(
 async def get_conversation_history(
     chat_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
+    x_user_id: str | None = None,
 ) -> GetConversationHistoryResponse:
-    """Get the specified user's conversation history from working memory"""
-    stray_cat = await info.cheshire_cat._find_stray_cat(chat_id)
-    if stray_cat is None:
+    """Get the specified conversation history from Redis."""
+    from fastapi import Request
+    agent_id, user_id = _resolve_ids(info, x_user_id)
+    messages_raw = await crud_conversations.get_messages(agent_id, user_id, chat_id)
+    if messages_raw is None:
         raise CustomNotFoundException(f"Conversation '{chat_id}' not found")
-    return GetConversationHistoryResponse(history=stray_cat.working_memory.history)
+    messages = [
+        ConversationMessage(**m) if isinstance(m, dict) else m
+        for m in messages_raw
+    ]
+    return GetConversationHistoryResponse(history=messages)
 
 
-# GET conversation attributes
+# GET single conversation attributes
 @endpoint.get(
     "/{chat_id}",
     response_model=GetConversationsResponse,
@@ -110,19 +131,19 @@ async def get_conversation_history(
     prefix="/conversations",
 )
 async def get_conversation(
+    chat_id: str,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
+    x_user_id: str | None = None,
 ) -> GetConversationsResponse:
-    """Get the specified user's conversation from working memory"""
-    attributes = await crud_conversations.get_conversation_attributes(
-        info.cheshire_cat.agent_key, info.user.id, info.stray_cat.id,
-    )
+    """Get the specified conversation attributes from Redis."""
+    agent_id, user_id = _resolve_ids(info, x_user_id)
+    attributes = await crud_conversations.get_conversation_attributes(agent_id, user_id, chat_id)
     if attributes is None:
         raise CustomNotFoundException("Conversation not found")
-
     return GetConversationsResponse(**attributes)
 
 
-# PUT conversation name or metadata change
+# PUT conversation name or metadata
 @endpoint.put(
     "/{chat_id}",
     response_model=PutConversationResponse,
@@ -130,23 +151,20 @@ async def get_conversation(
     prefix="/conversations",
 )
 async def change_attribute_conversation(
+    chat_id: str,
     payload: PutConversationAttributes,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
+    x_user_id: str | None = None,
 ) -> PutConversationResponse:
-    """Insert the specified conversation item into the working memory"""
-    if not info.stray_cat:
-        log.warning("Trying to change conversation name but no StrayCat found in AuthorizedInfo")
-        return PutConversationResponse(changed=False)
-
-    cat = info.stray_cat
-
+    """Update name and/or metadata of the specified conversation."""
+    agent_id, user_id = _resolve_ids(info, x_user_id)
     await crud_conversations.set_attributes(
-        cat.agent_key, cat.user.id, cat.id, name=payload.name, metadata=payload.metadata,
+        agent_id, user_id, chat_id, name=payload.name, metadata=payload.metadata,
     )
     return PutConversationResponse(changed=True)
 
 
-# GET all conversations, in the format of IDs and names
+# GET all conversations list
 @endpoint.get(
     "/",
     response_model=List[GetConversationsResponse],
@@ -155,10 +173,9 @@ async def change_attribute_conversation(
 )
 async def get_conversations(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
+    x_user_id: str | None = None,
 ) -> List[GetConversationsResponse]:
-    """Get the specified user's conversation history from working memory"""
-    agent_id = info.cheshire_cat.agent_key
-    user_id = info.user.id
+    """Get all conversations for the specified user."""
+    agent_id, user_id = _resolve_ids(info, x_user_id)
     attributes_list = await crud_conversations.get_conversations_attributes(agent_id, user_id)
-
-    return [GetConversationsResponse(**attributes_item) for attributes_item in attributes_list]
+    return [GetConversationsResponse(**item) for item in attributes_list]
