@@ -297,7 +297,14 @@ class CheshireCat(BotMixin, NonCopyableMixin):
         if not user:
             return None
 
-        return await StrayCat.from_cat(cat=self, user_data=AuthUserInfo(**user), stray_id=chat_id)
+        _known_keys = {"id", "username", "password", "permissions", "created_at", "updated_at"}
+        user_info = AuthUserInfo(
+            id=user["id"],
+            name=user["username"],
+            permissions=user.get("permissions"),
+            extra={k: v for k, v in user.items() if k not in _known_keys},
+        )
+        return await StrayCat.from_cat(cat=self, user_data=user_info, stray_id=chat_id)
 
     def has_custom_endpoint(self, path: str, methods: set[str] | List[str] | None = None):
         """
