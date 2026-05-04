@@ -1,5 +1,6 @@
 import os
 from typing import List, Dict, Any
+from fastapi import Request
 from pydantic import BaseModel, Field, model_validator
 
 from cat import (
@@ -50,7 +51,7 @@ class GetConversationsResponse(BaseModel):
     updated_at: float | None
 
 
-def _resolve_ids(info: AuthorizedInfo, header_user_id: str | None = None):
+def _resolve_ids(info: AuthorizedInfo, request: Request):
     """Return (agent_id, user_id) resolving user from X-User-ID header when present.
 
     The header is sent by both the SDK and the admin UI. When an admin selects
@@ -59,6 +60,7 @@ def _resolve_ids(info: AuthorizedInfo, header_user_id: str | None = None):
     Fallback to info.user.id keeps existing chatbot flows intact.
     """
     agent_id = info.cheshire_cat.agent_key if info.cheshire_cat else info.lizard.agent_key
+    header_user_id = request.headers.get("X-User-ID")
     user_id = header_user_id or info.user.id
     return agent_id, user_id
 
@@ -72,26 +74,24 @@ def _resolve_ids(info: AuthorizedInfo, header_user_id: str | None = None):
 )
 async def delete_conversation(
     chat_id: str,
+    request: Request,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteConversationHistoryResponse:
     """Delete the specified conversation and all related files and vector memories."""
-    stray_cat = info.stray_cat
-    if not stray_cat:
-        log.warning("Trying to delete conversation but no StrayCat found in AuthorizedInfo")
-        return DeleteConversationHistoryResponse(deleted=False)
-
+    agent_id, user_id = _resolve_ids(info, request)
     cat = info.cheshire_cat
+
     try:
         # delete the files related to the conversation from the storage
-        cat.file_manager.remove_folder(os.path.join(cat.agent_key, stray_cat.id))
+        cat.file_manager.remove_folder(os.path.join(agent_id, chat_id))
 
         # delete the elements of the conversation from the vector memory
         await cat.vector_memory_handler.delete_tenant_points(
-            str(VectorMemoryType.EPISODIC), {"chat_id": stray_cat.id},
+            str(VectorMemoryType.EPISODIC), {"chat_id": chat_id},
         )
 
         # Delete conversation from the database
-        await crud_conversations.delete_conversation(stray_cat.agent_key, stray_cat.user.id, chat_id)  # type: ignore[union-attr]
+        await crud_conversations.delete_conversation(agent_id, user_id, chat_id)
 
         return DeleteConversationHistoryResponse(deleted=True)
     except Exception as e:
@@ -107,12 +107,11 @@ async def delete_conversation(
 )
 async def get_conversation_history(
     chat_id: str,
+    request: Request,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
-    x_user_id: str | None = None,
 ) -> GetConversationHistoryResponse:
     """Get the specified conversation history from Redis."""
-    from fastapi import Request
-    agent_id, user_id = _resolve_ids(info, x_user_id)
+    agent_id, user_id = _resolve_ids(info, request)
     messages_raw = await crud_conversations.get_messages(agent_id, user_id, chat_id)
     if messages_raw is None:
         raise CustomNotFoundException(f"Conversation '{chat_id}' not found")
@@ -132,11 +131,11 @@ async def get_conversation_history(
 )
 async def get_conversation(
     chat_id: str,
+    request: Request,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
-    x_user_id: str | None = None,
 ) -> GetConversationsResponse:
     """Get the specified conversation attributes from Redis."""
-    agent_id, user_id = _resolve_ids(info, x_user_id)
+    agent_id, user_id = _resolve_ids(info, request)
     attributes = await crud_conversations.get_conversation_attributes(agent_id, user_id, chat_id)
     if attributes is None:
         raise CustomNotFoundException("Conversation not found")
@@ -153,11 +152,11 @@ async def get_conversation(
 async def change_attribute_conversation(
     chat_id: str,
     payload: PutConversationAttributes,
+    request: Request,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.WRITE),
-    x_user_id: str | None = None,
 ) -> PutConversationResponse:
     """Update name and/or metadata of the specified conversation."""
-    agent_id, user_id = _resolve_ids(info, x_user_id)
+    agent_id, user_id = _resolve_ids(info, request)
     await crud_conversations.set_attributes(
         agent_id, user_id, chat_id, name=payload.name, metadata=payload.metadata,
     )
@@ -172,10 +171,10 @@ async def change_attribute_conversation(
     prefix="/conversations",
 )
 async def get_conversations(
+    request: Request,
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
-    x_user_id: str | None = None,
 ) -> List[GetConversationsResponse]:
     """Get all conversations for the specified user."""
-    agent_id, user_id = _resolve_ids(info, x_user_id)
+    agent_id, user_id = _resolve_ids(info, request)
     attributes_list = await crud_conversations.get_conversations_attributes(agent_id, user_id)
     return [GetConversationsResponse(**item) for item in attributes_list]
