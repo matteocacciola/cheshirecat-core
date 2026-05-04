@@ -13,7 +13,7 @@ from cat import (
     log,
 )
 from cat.db.cruds import conversations as crud_conversations
-from cat.exceptions import CustomValidationException, CustomNotFoundException
+from cat.exceptions import CustomValidationException, CustomNotFoundException, CustomForbiddenException
 from cat.services.memory.models import VectorMemoryType
 
 
@@ -51,16 +51,34 @@ class GetConversationsResponse(BaseModel):
     updated_at: float | None
 
 
-def _resolve_ids(info: AuthorizedInfo, request: Request):
-    """Return (agent_id, user_id) resolving user from X-User-ID header when present.
+def _is_admin(info: AuthorizedInfo) -> bool:
+    """Return True when the caller has USERS:READ permission.
 
-    The header is sent by both the SDK and the admin UI. When an admin selects
-    a different user in the UI, X-User-ID contains that user's id while the JWT
-    belongs to the admin — so we must prefer the header over info.user.id.
-    Fallback to info.user.id keeps existing chatbot flows intact.
+    Admins and API-key users authenticated at the lizard level always hold
+    full permissions including USERS:READ.  Regular chatbot users only have
+    MEMORY and CHAT permissions, so they cannot impersonate other users.
+    """
+    perms = (info.user.permissions or {})
+    return str(AuthResource.USERS) in perms and str(AuthPermission.READ) in perms.get(str(AuthResource.USERS), [])
+
+
+def _resolve_ids(info: AuthorizedInfo, request: Request):
+    """Return (agent_id, user_id) resolving user from X-User-ID header.
+
+    The header is honoured only when the caller is an admin (USERS:READ).
+    Non-admin callers that supply a different X-User-ID receive 403 so that
+    a regular JWT holder cannot read another user's conversations.
+    Callers without the header always resolve to their own user id.
     """
     agent_id = info.cheshire_cat.agent_key if info.cheshire_cat else info.lizard.agent_key
     header_user_id = request.headers.get("X-User-ID")
+
+    if header_user_id and header_user_id != info.user.id:
+        if not _is_admin(info):
+            raise CustomForbiddenException(
+                "X-User-ID impersonation requires admin privileges (USERS:READ)"
+            )
+
     user_id = header_user_id or info.user.id
     return agent_id, user_id
 
@@ -78,6 +96,12 @@ async def delete_conversation(
     info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.DELETE),
 ) -> DeleteConversationHistoryResponse:
     """Delete the specified conversation and all related files and vector memories."""
+    # Guard: file/vector cleanup requires a valid CheshireCat instance.
+    if info.cheshire_cat is None:
+        raise CustomNotFoundException(
+            f"Agent not found; cannot delete conversation '{chat_id}'"
+        )
+
     agent_id, user_id = _resolve_ids(info, request)
     cat = info.cheshire_cat
 
@@ -112,9 +136,15 @@ async def get_conversation_history(
 ) -> GetConversationHistoryResponse:
     """Get the specified conversation history from Redis."""
     agent_id, user_id = _resolve_ids(info, request)
-    messages_raw = await crud_conversations.get_messages(agent_id, user_id, chat_id)
-    if messages_raw is None:
+
+    # Verify the conversation exists before fetching messages.
+    # get_messages() returns [] for both an empty conversation and a missing key;
+    # get_conversation_attributes() returns None only for a missing key.
+    attributes = await crud_conversations.get_conversation_attributes(agent_id, user_id, chat_id)
+    if attributes is None:
         raise CustomNotFoundException(f"Conversation '{chat_id}' not found")
+
+    messages_raw = await crud_conversations.get_messages(agent_id, user_id, chat_id)
     messages = [
         ConversationMessage(**m) if isinstance(m, dict) else m
         for m in messages_raw
@@ -157,6 +187,13 @@ async def change_attribute_conversation(
 ) -> PutConversationResponse:
     """Update name and/or metadata of the specified conversation."""
     agent_id, user_id = _resolve_ids(info, request)
+
+    # Guard: set_attributes() is a no-op when the conversation is missing.
+    # Return 404 explicitly so the caller is not misled by changed=True.
+    attributes = await crud_conversations.get_conversation_attributes(agent_id, user_id, chat_id)
+    if attributes is None:
+        raise CustomNotFoundException(f"Conversation '{chat_id}' not found")
+
     await crud_conversations.set_attributes(
         agent_id, user_id, chat_id, name=payload.name, metadata=payload.metadata,
     )
