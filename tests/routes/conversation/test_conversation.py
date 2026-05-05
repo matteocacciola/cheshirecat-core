@@ -347,6 +347,23 @@ async def test_get_conversations(secure_client, secure_client_headers, mocked_de
             assert item["num_messages"] == 4  # 2 mex + 2 replies
 
 
+async def test_get_conversations_by_agent(secure_client, secure_client_headers, mocked_default_llm_answer_prompt, cheshire_cat):
+    await test_get_conversations(secure_client, secure_client_headers, mocked_default_llm_answer_prompt, cheshire_cat)
+    user = await crud_users.get_user_by_username(agent_id, "user")
+
+    # check all the conversation histories by agent
+    response = await secure_client.get(
+        "/agents/conversations/", headers={**secure_client_headers, **{"X-User-ID": user["id"]}}
+    )
+    assert response.status_code == 200
+
+    json_response = response.json()
+    assert isinstance(json_response, dict)
+    assert len(json_response) == 1  # only one agent
+    assert user["id"] in json_response
+    assert len(json_response[user["id"]]) == 4
+
+
 async def test_get_conversation(secure_client, secure_client_headers, mocked_default_llm_answer_prompt, cheshire_cat):
     await create_new_user(
         secure_client,
