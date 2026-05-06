@@ -142,7 +142,7 @@ async def change_attribute_conversation(
     return PutConversationResponse(changed=True)
 
 
-# GET all conversations, in the format of IDs and names
+# GET all conversations of the picked user and the picked agent
 @endpoint.get(
     "/",
     response_model=List[GetConversationsResponse],
@@ -158,3 +158,25 @@ async def get_conversations(
     attributes_list = await crud_conversations.get_conversations_attributes(agent_id, user_id)
 
     return [GetConversationsResponse(**attributes_item) for attributes_item in attributes_list]
+
+
+# GET all conversations of the picked agent
+@endpoint.get(
+    "/",
+    response_model=Dict[str, List[GetConversationsResponse]],
+    tags=["Conversation"],
+    prefix="/agents/conversations",
+)
+async def get_conversations_by_agent(
+    info: AuthorizedInfo = check_permissions(AuthResource.MEMORY, AuthPermission.READ),
+) -> Dict[str, List[GetConversationsResponse]]:
+    """Get the specified user's conversation history from working memory"""
+    agent_id = info.cheshire_cat.agent_key
+    attributes_list = await crud_conversations.get_conversations_attributes(agent_id, "*", with_user=True)
+
+    grouped = {}
+    for attributes in attributes_list:
+        user_id = attributes.pop("user_id")
+        grouped.setdefault(user_id, []).append(GetConversationsResponse(**attributes))
+
+    return grouped
