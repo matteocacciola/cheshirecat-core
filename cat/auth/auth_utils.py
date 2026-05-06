@@ -48,15 +48,12 @@ def check_password(password: str, hashed: str) -> bool:
     except:
         return False
 
-
 def _extract_key_from_request(request: HTTPConnection, key: str, key_header: str) -> str:
-    return request.headers.get(
-        key_header,
-        request.path_params.get(
-            key,
-            request.query_params.get(key)
-        )
-    )
+    "look for a parameter for the first found in PATH -> QUERY -> HEADER order"
+    return request.path_params.get( key,
+           request.query_params.get(key,
+           request.headers.get(     key_header
+           )))
 
 
 def extract_agent_id_from_request(request: HTTPConnection) -> str | None:
