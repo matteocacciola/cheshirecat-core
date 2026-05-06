@@ -18,14 +18,14 @@ from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.procedures import CatProcedureType
 from cat.looking_glass.models import StoredSourceWithMetadata
 from cat.looking_glass.stray_cat import StrayCat
-from cat.mixins import BotMixin
+from cat.mixins import BotMixin, NonCopyableMixin
 from cat.services.factory.file_manager import BaseFileManager
 from cat.services.factory.vector_db import BaseVectorDatabaseHandler
 from cat.services.memory.models import VectorMemoryType, PointStruct
 from cat.utils import guess_file_type, is_url
 
 
-class CheshireCat(BotMixin):
+class CheshireCat(BotMixin, NonCopyableMixin):
     """
     The Cheshire Cat.
 
@@ -65,6 +65,7 @@ class CheshireCat(BotMixin):
 
         cat.agentic_workflow = await cat.service_provider.get_agentic_workflow(cat.agent_key, cat.plugin_manager)
         cat.chunker = await cat.service_provider.get_chunker(cat.agent_key, cat.plugin_manager)
+        cat.context_retriever = await cat.service_provider.get_context_retriever(cat.agent_key, cat.plugin_manager)
         cat.custom_auth_handler = await cat.service_provider.get_custom_auth_handler(cat.agent_key, cat.plugin_manager)
         cat.file_manager = await cat.service_provider.get_file_manager(cat.agent_key, cat.plugin_manager)
         cat.large_language_model = await cat.service_provider.get_large_language_model(cat.agent_key, cat.plugin_manager)

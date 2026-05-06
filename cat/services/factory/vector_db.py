@@ -748,7 +748,6 @@ class QdrantHandler(BaseVectorDatabaseHandler):
             except Exception as e:
                 log.error(f"Error when creating a schema index: {e}")
 
-
     async def close(self):
         if self._client and not self._client._client.closed:
             await self._client.close()

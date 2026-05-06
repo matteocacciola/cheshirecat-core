@@ -66,7 +66,7 @@ async def get_conversation(agent_id: str, user_id: str, chat_id: str) -> Dict[st
         raise
 
 
-async def get_conversations_attributes(agent_id: str, user_id: str) -> List[Dict[str, Any]]:
+async def get_conversations_attributes(agent_id: str, user_id: str, with_user: bool = False) -> List[Dict[str, Any]]:
     """
     Retrieve conversations parameters from Redis.
 
@@ -75,10 +75,12 @@ async def get_conversations_attributes(agent_id: str, user_id: str) -> List[Dict
     Args:
         agent_id: ID of the chatbot.
         user_id: ID of the user.
+        with_user: Whether to include the user_id in the results (default: False).
 
     Returns:
         List of dictionaries, each one having the format
             {
+                "user_id": str,
                 "chat_id": str,
                 "name": str,
                 "num_messages": int,
@@ -114,15 +116,18 @@ async def get_conversations_attributes(agent_id: str, user_id: str) -> List[Dict
             conversation = raw[0] if isinstance(raw, list) else raw
             messages = conversation.get("messages", [])
             num_messages = len(messages)
-
-            results.append({
+            result = {
                 "chat_id": chat_id,
                 "name": conversation.get("name", chat_id),
                 "num_messages": num_messages,
                 "metadata": conversation.get("metadata", {}),
                 "created_at": messages[0]["when"] if num_messages > 0 else None,
                 "updated_at": messages[-1]["when"] if num_messages > 0 else None,
-            })
+            }
+            if with_user:
+                result["user_id"] = _user_id
+
+            results.append(result)
 
         return results
     except RedisError as e:

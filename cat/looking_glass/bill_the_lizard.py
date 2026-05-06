@@ -15,7 +15,7 @@ from cat.log import log
 from cat.looking_glass.cheshire_cat import CheshireCat
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.looking_glass.mad_hatter.registry import PluginRegistry
-from cat.mixins import OrchestratorMixin
+from cat.mixins import OrchestratorMixin, NonCopyableMixin
 from cat.rabbit_hole import RabbitHole
 from cat.services.factory.auth_handler import CoreAuthHandler
 from cat.services.websocket_manager import WebSocketManager
@@ -23,7 +23,7 @@ from cat.utils import singleton, safe_deepcopy, sanitize_permissions
 
 
 @singleton
-class BillTheLizard(OrchestratorMixin):
+class BillTheLizard(OrchestratorMixin, NonCopyableMixin):
     """
     Singleton class that manages the Cheshire Cats and their strays.
 

@@ -10,6 +10,7 @@ from cat.rabbit_hole import RabbitHole
 from cat.services.factory.agentic_workflow import BaseAgenticWorkflowHandler
 from cat.services.factory.auth_handler import BaseAuthHandler
 from cat.services.factory.chunker import BaseChunker
+from cat.services.factory.context_retriever import BaseContextRetriever
 from cat.services.factory.embedder import Embeddings
 from cat.services.factory.file_manager import BaseFileManager
 from cat.services.factory.llm import LargeLanguageModel
@@ -107,6 +108,7 @@ class BotMixin(ContextMixin, ABC):
     """
     _agentic_workflow = None
     _chunker = None
+    _context_retriever = None
     _custom_auth_handler = None
     _file_manager = None
     _large_language_model = None
@@ -143,6 +145,14 @@ class BotMixin(ContextMixin, ABC):
     @chunker.setter
     def chunker(self, value: BaseChunker):
         self._chunker = value
+
+    @property
+    def context_retriever(self) -> BaseContextRetriever:
+        return self._context_retriever
+
+    @context_retriever.setter
+    def context_retriever(self, value: BaseContextRetriever):
+        self._context_retriever = value
 
     @property
     def custom_auth_handler(self) -> BaseAuthHandler:
@@ -226,3 +236,25 @@ class BotMixin(ContextMixin, ABC):
                 pass
             self._vector_memory_handler = None
         self._service_provider = None
+
+
+class NonCopyableMixin:
+    """
+    Class that prevents copying operations.
+
+    This class is designed to prevent both shallow and deep copying operations. Attempting to
+    copy an instance of this class using either the `copy` or `deepcopy` methods will return
+    the instance itself, effectively making it non-copyable. This is useful in scenarios where
+    objects need to maintain unique identity and state integrity, avoiding unintended duplication.
+
+    Methods:
+        __copy__: Overrides shallow copy behavior to return the same instance.
+        __deepcopy__: Overrides deep copy behavior to return the same instance and registers
+                      it in the memo dictionary to prevent circular reference issues.
+    """
+    def __copy__(self):
+        return self
+
+    def __deepcopy__(self, memo):
+        memo[id(self)] = self  # register in the memo to avoid loops on circular references
+        return self

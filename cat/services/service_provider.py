@@ -7,6 +7,7 @@ from cat.db.database import DEFAULT_SYSTEM_KEY
 from cat.looking_glass.mad_hatter.mad_hatter import MadHatter
 from cat.services.factory.agentic_workflow import BaseAgenticWorkflowHandler
 from cat.services.factory.auth_handler import BaseAuthHandler
+from cat.services.factory.context_retriever import BaseContextRetriever
 from cat.services.factory.embedder import Embeddings
 from cat.services.factory.llm import LargeLanguageModel
 from cat.services.service_factory import ServiceFactory
@@ -69,17 +70,20 @@ class ServiceProvider:
     async def get_chunker(self, agent_key: str, plugin_manager: MadHatter) -> BaseChunker:
         return await self._get_service_object(agent_key, plugin_manager, self._factory_services_params["chunker"])
 
+    async def get_context_retriever(self, agent_key: str, plugin_manager: MadHatter) -> BaseContextRetriever:
+        context_retriever = await self._get_service_object(agent_key, plugin_manager, self._factory_services_params["context_retriever"])
+        context_retriever.vector_memory_handler = await self.get_vector_memory_handler(agent_key, plugin_manager)
+        return context_retriever
+
     async def get_vector_memory_handler(self, agent_key: str, plugin_manager: MadHatter) -> BaseVectorDatabaseHandler:
         return await self._get_service_object(
             agent_key, plugin_manager, self._factory_services_params["vector_memory_handler"]
         )
 
     async def get_agentic_workflow(self, agent_key: str, plugin_manager: MadHatter) -> BaseAgenticWorkflowHandler:
-        agentic_workflow = await self._get_service_object(
+        return await self._get_service_object(
             agent_key, plugin_manager, self._factory_services_params["agentic_workflow"]
         )
-        agentic_workflow.vector_memory_handler = await self.get_vector_memory_handler(agent_key, plugin_manager)
-        return agentic_workflow
 
     async def bootstrap_services(self, agent_key: str, plugin_manager: MadHatter):
         list_factory_params = (
@@ -135,6 +139,11 @@ class ServiceProvider:
                 factory_allowed_handler_name="factory_allowed_chunkers",
                 setting_category="chunker",
                 schema_name="chunkerName",
+            ),
+            "context_retriever": FactoryParams(
+                factory_allowed_handler_name="factory_allowed_context_retrievers",
+                setting_category="context_retriever",
+                schema_name="contextRetrieverName",
             ),
             "vector_memory_handler": FactoryParams(
                 factory_allowed_handler_name="factory_allowed_vector_databases",

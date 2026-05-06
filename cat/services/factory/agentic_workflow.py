@@ -16,37 +16,20 @@ from pydantic import ConfigDict, Field
 from cat.log import log
 from cat.looking_glass.models import AgenticWorkflowOutput, AgenticWorkflowTask
 from cat.services.factory.models import BaseFactoryConfigModel
-from cat.services.factory.vector_db import BaseVectorDatabaseHandler
-from cat.services.memory.models import VectorMemoryType, DocumentRecall, RecallSettings
 
 
 class BaseAgenticWorkflowHandler(ABC):
     """
     Base class to build a custom Agentic Workflow.
     MUST be implemented by subclasses.
-
-    Attributes
-    ----------
-    _vector_memory_handler: BaseVectorDatabaseHandler
-        The vector memory handler to manage vector database operations.
     """
     def __init__(self, metadata: Dict | None = None):
         self._metadata = metadata or {}
-
-        self._vector_memory_handler = None
 
         self._task: AgenticWorkflowTask | None = None
         self._llm: BaseLanguageModel | None = None
         self._callbacks: List[BaseCallbackHandler] | None = None
         self._can_bind_tools = False
-
-    @property
-    def vector_memory_handler(self) -> BaseVectorDatabaseHandler:
-        return self._vector_memory_handler  # type: ignore[return-value]
-
-    @vector_memory_handler.setter
-    def vector_memory_handler(self, vmh: BaseVectorDatabaseHandler):
-        self._vector_memory_handler = vmh  # type: ignore[assignment]
 
     @property
     def metadata(self) -> Dict:
@@ -120,25 +103,6 @@ class BaseAgenticWorkflowHandler(ABC):
             return res
 
     @abstractmethod
-    async def context_retrieval(
-        self,
-        collection: VectorMemoryType,
-        params: RecallSettings,
-    ) -> List[DocumentRecall]:
-        """
-        Abstract method to recall relevant documents from a specified vector memory
-        collection based on the given query vector. This method operates asynchronously.
-
-        Args:
-            collection (VectorMemoryType): The collection from which documents will be recalled.
-            params (RecallSettings): The settings containing the query vector and other recall parameters.
-
-        Returns:
-            List[DocumentRecall]: A list of recalled documents along with their similarity scores.
-        """
-        pass
-
-    @abstractmethod
     async def _run_no_tool_binding(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
         """
         Executes the agentic workflow without using tool binding. This method is used when tools are not enabled
@@ -168,20 +132,6 @@ class BaseAgenticWorkflowHandler(ABC):
 
 
 class CoreAgenticWorkflow(BaseAgenticWorkflowHandler):
-    async def context_retrieval(
-        self,
-        collection: VectorMemoryType,
-        params: RecallSettings,
-    ) -> List[DocumentRecall]:
-        if params.k:
-            memories = await self.vector_memory_handler.recall_tenant_memory_from_embedding(
-                str(collection), params.embedding, params.metadata, params.k, params.threshold
-            )
-            return memories
-
-        memories = await self.vector_memory_handler.recall_tenant_memory(str(collection))
-        return memories
-
     async def _run_no_tool_binding(self, prompt: ChatPromptTemplate) -> AgenticWorkflowOutput:
         prompt_variables = self._task.prompt_variables or {}  # type: ignore[union-attr]
 
