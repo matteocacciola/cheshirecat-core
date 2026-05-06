@@ -59,3 +59,11 @@ make-migration:  ## Create the migration file after changing the models. Argumen
 		exit 1; \
 	fi
 	@docker exec -it grinning_cat_core uv run python migrations/manage_migrations.py revision -m "${args}"
+
+dhi:
+	git pull
+	docker pull dhi.io/python:3.13-dev
+	uv pip compile -U -o requirements.txt pyproject.toml
+	find cat -name requirements.txt | xargs -I% uv pip compile -o % %
+	docker buildx build . -f Dockerfile:dhi -t grinning-cat-core:dhi
+

@@ -1,0 +1,62 @@
+FROM dhi.io/python:3.13-dev
+
+# 1. Variabili d'ambiente essenziali
+ENV PYTHONUNBUFFERED=1 \
+    UV_NO_CACHE=1 \
+    UV_LINK_MODE=copy \
+    PATH="/app/.venv/bin:$PATH" \
+    PORT=80
+
+# 2. Portiamo uv nel sistema per installazioni super-veloci
+COPY --from=dhi.io/uv:0 /usr/local/bin/uv /usr/local/bin/uvx /usr/local/bin/
+
+WORKDIR /app
+
+# 3. Setup di sistema: Installiamo tutto ciò che serve (inclusi i tool di compilazione temporanei)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        build-essential \
+        libmagic1 \
+        libmagic-dev \
+        poppler-utils \
+        tesseract-ocr \
+        libgl1 \
+        media-types \
+        mailcap && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# 4. Dipendenze Python: Copiamo solo i manifesti per sfruttare la cache
+COPY pyproject.toml uv.lock ./
+COPY ./cat/core_plugins ./cat/core_plugins
+
+# Installiamo librerie Core e Plugin
+RUN uv venv .venv && \
+    uv sync --frozen --no-install-project --no-dev && \
+    find ./cat/core_plugins -name requirements.txt | sed 's/^/-r /' | xargs -r uv pip install
+
+# 5. HARDENING: Purga aggressiva dei tool di sviluppo e compilazione
+# Rimuoviamo 'build-essential', le librerie dev e i compilatori di base (gcc, make)
+RUN apt-get purge -y --auto-remove \
+        build-essential \
+        libmagic-dev \
+        gcc \
+        g++ \
+        make \
+        dpkg-dev \
+        libc6-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# 6. Copia del Codice Sorgente
+COPY ./cat ./cat
+COPY ./migrations ./migrations
+COPY ./LICENSE ./
+# NOTA: La directory ./data non viene copiata per evitare conflitti con i volumi del Compose
+
+# 7. Esposizione e Avvio
+# Dichiariamo esplicitamente la 80 per permettere al compose di mappare 1865:80
+EXPOSE 80
+
+CMD ["python", "-m", "cat.main"]
