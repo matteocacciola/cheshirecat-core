@@ -362,7 +362,7 @@ class CheshireCat(BotMixin, NonCopyableMixin):
                 if points:
                     await self.vector_memory_handler.add_points_to_tenant(
                         collection_name=collection_name,
-                        points=[PointStruct(**p.model_dump()) for p in points],
+                        points=[PointStruct(**p.model_dump(exclude={"shard_key", "order_value"})) for p in points],
                     )
             success = True
         except Exception as e:
